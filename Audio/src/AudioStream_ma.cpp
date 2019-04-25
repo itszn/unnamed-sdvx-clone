@@ -27,16 +27,19 @@ private:
 public:
 	~AudioStreamMA_Impl()
 	{
+		Deregister();
 		if (m_preloaded)
 		{
-			if(m_pcm)
+			if (m_pcm)
+			{
 				ma_free(m_pcm);
+				m_pcm = nullptr;
+			}
 		}
 		else
 		{
 			ma_decoder_uninit(&m_decoder);
 		}
-		Deregister();
 	}
 
 	bool Init(Audio* audio, const String& path, bool preload)

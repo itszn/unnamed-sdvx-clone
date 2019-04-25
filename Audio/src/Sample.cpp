@@ -28,11 +28,11 @@ public:
 public:
 	~Sample_Impl()
 	{
+		Deregister();
 		if (m_pcm)
 		{
 			ma_free(m_pcm);
 		}
-		Deregister();
 	}
 	virtual void Play(bool looping) override
 	{
