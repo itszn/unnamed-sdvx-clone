@@ -544,6 +544,11 @@ private:
 		}
 
 		lua_getglobal(m_lua, "songs_changed");
+		if (!lua_isfunction(m_lua, -1))
+		{
+			lua_pop(m_lua, 1);
+			return;
+		}
 		lua_pushboolean(m_lua, withAll);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
