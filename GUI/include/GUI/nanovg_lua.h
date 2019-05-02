@@ -335,6 +335,8 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	int imgH, imgW;
 	nvgImageSize(g_guiState.vg, image, &imgW, &imgH);
 	float scaleX, scaleY;
+	float tr[6];
+	nvgCurrentTransform(g_guiState.vg, tr);
 	scaleX = w / imgW;
 	scaleY = h / imgH;
 	nvgTranslate(g_guiState.vg, x, y);
@@ -346,9 +348,8 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	nvgFillPaint(g_guiState.vg, paint);
 	nvgRect(g_guiState.vg, 0, 0, imgW, imgH);
 	nvgFill(g_guiState.vg);
-	nvgScale(g_guiState.vg, 1.0 / scaleX, 1.0 / scaleY);
-	nvgRotate(g_guiState.vg, -angle);
-	nvgTranslate(g_guiState.vg, -x, -y);
+	nvgResetTransform(g_guiState.vg);
+	nvgTransform(g_guiState.vg, tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
 	return 0;
 }
 static int lScale(lua_State* L /*float x, float y*/)
