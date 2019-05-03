@@ -59,29 +59,13 @@ String Path::RemoveBase(String path, String base)
 }
 String Path::GetExtension(const String& path)
 {
-	size_t dotPos = path.find(".");
-	if(dotPos == -1)
-		return String();
-	return path.substr(dotPos + 1);
-}
-String Path::ReplaceExtension(String path, String newExt)
-{
-	newExt.TrimFront('.');
-
-	// Remove everything in the extension and the dot
 	size_t dotPos = path.find_last_of(".");
-	if(dotPos != -1)
-	{
-		path.erase(path.begin() + dotPos, path.end());
-	}
-
-	if(newExt.empty())
-		return path;
-
-	path.push_back('.');
-	path += newExt;
-
-	return path;
+	if (dotPos == std::string::npos)
+		return String();
+	size_t sepPos = path.find_last_of(Path::sep);
+	if(sepPos == std::string::npos || dotPos > sepPos)
+		return path.substr(dotPos + 1);
+	return String();
 }
 String Path::ExtractPathFromCmdLine(String& input)
 {
