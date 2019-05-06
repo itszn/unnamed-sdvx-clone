@@ -270,18 +270,24 @@ private:
 		return value;
 	}
 
-	String StringSelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
+	String StringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
 	{
 		String value = g_gameConfig.GetString(key);
 		int selection;
-		auto stringSearch = std::find(options.begin(), options.end(), *value);
-		if (stringSearch == options.end())
-			selection = 0;
-		else
+		auto stringSearch = std::find(options.begin(), options.end(), value);
+		if (stringSearch != options.end())
 			selection = stringSearch - options.begin();
+		else
+			selection = 0;
+
+		Vector<const char*> displayData;
+		for (String& s : options)
+		{
+			displayData.Add(*s);
+		}
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, options.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
+		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
 		value = options[selection];
 		g_gameConfig.Set(key, value);
 		return value;
@@ -299,6 +305,7 @@ private:
 public:
 	~SettingsScreen_Impl()
 	{
+		nk_sdl_shutdown();
 		g_application->ApplySettings();
 	}
 
@@ -386,16 +393,10 @@ public:
 
 
 		Vector<const char*> pads;
-		Vector<const char*> skins;
 
 		for (size_t i = 0; i < m_gamePads.size(); i++)
 		{
 			pads.Add(m_gamePads[i].GetData());
-		}
-
-		for (size_t i = 0; i < m_skins.size(); i++)
-		{
-			skins.Add(m_skins[i].GetData());
 		}
 
 		nk_color lcol = nk_hsv_f(m_laserColors[0] / 360, 1, 1);
@@ -469,7 +470,7 @@ public:
 
 			if (m_skins.size() > 0)
 			{
-				StringSelectionSetting(GameConfigKeys::Skin, skins, "Selected Skin:");
+				StringSelectionSetting(GameConfigKeys::Skin, m_skins, "Selected Skin:");
 			}
 
 			nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
