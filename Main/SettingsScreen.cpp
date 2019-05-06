@@ -246,7 +246,7 @@ private:
 	typename EnumClass::EnumType EnumSetting(GameConfigKeys key, String label)
 	{
 		
-		EnumStringMap<EnumClass::EnumType> nameMap = EnumClass::GetMap();
+		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
 		Vector<const char*> names;
 		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
 
