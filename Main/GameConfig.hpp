@@ -16,12 +16,12 @@ DefineEnum(GameConfigKeys,
 	AntiAliasing,
 	MasterVolume,
 	VSync,
+	ShowFps,
 	ForcePortrait,
 
 	// Game settings
 	HiSpeed,
-    UseMMod,
-    UseCMod,
+    SpeedMod,
     ModSpeed,
 	GlobalOffset,
 	InputOffset,
@@ -92,6 +92,12 @@ DefineEnum(GameConfigKeys,
 	WASAPI_Exclusive,
 
 	CheckForUpdates
+	);
+
+DefineEnum(SpeedMods,
+	XMod,
+	MMod,
+	CMod
 	);
 
 // Config for game settings

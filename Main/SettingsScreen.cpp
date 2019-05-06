@@ -48,7 +48,7 @@ private:
 	const char* m_speedMods[3] = { "XMod", "MMod", "CMod" };
 	const char* m_laserModes[3] = { "Keyboard", "Mouse", "Controller" };
 	const char* m_buttonModes[2] = { "Keyboard", "Controller" };
-	const char* m_aaModes[5] = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
+	Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
 
@@ -85,34 +85,17 @@ private:
 
 	};
 
-	//Button* m_buttonButtons[7];
-	//Button* m_laserButtons[2];
-	//Panel* m_laserColorPanels[2];
-
 	Texture m_whiteTex;
 
-	int m_speedMod = 0;
-	int m_laserMode = 0;
-	int m_buttonMode = 0;
+
 	int m_selectedGamepad = 0;
-	int m_selectedSkin = 0;
-	int m_globalOffset = 0;
-	int m_inputOffset = 0;
-	int m_antialiasing = 0;
-	int m_bounceGuard = 0;
-	float m_modSpeed = 400.f;
-	float m_hispeed = 1.f;
-	float m_laserSens = 1.0f;
-	float m_masterVolume = 1.0f;
 	float m_laserColors[2] = { 0.25f, 0.75f };
 	String m_controllerButtonNames[7];
 	String m_controllerLaserNames[2];
+	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
+	float m_buttonheight = 30;
 	char m_songsPath[1024];
 	int m_pathlen = 0;
-	int m_wasapi = 1;
-	int m_update = 1;
-	int m_windowFull = 0;
-	int m_forcePortrait = 0;
 
 	std::queue<SDL_Event> eventQueue;
 
@@ -122,51 +105,54 @@ private:
 	}
 
 	//TODO: Use argument instead of many functions if possible.
+
+
+
 	void SetKey_BTA()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT0, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT0));
 	}
 	void SetKey_BTB()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT1, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT1));
 	}
 	void SetKey_BTC()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT2, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT2));
 	}
 	void SetKey_BTD()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT3, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT3));
 	}
 	void SetKey_FXL()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_FX0, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_FX0));
 	}
 	void SetKey_FXR()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_FX1, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_FX1));
 	}
 	void SetKey_ST()
 	{
-		if (m_buttonMode == 1)
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BTS, true, m_selectedGamepad));
 		else
 			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BTS));
@@ -174,11 +160,13 @@ private:
 
 	void SetLL()
 	{
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, m_laserMode == 2, m_selectedGamepad));
+		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, lasermode == 2, m_selectedGamepad));
 	}
 	void SetRL()
 	{
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, m_laserMode == 2, m_selectedGamepad));
+		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, lasermode == 2, m_selectedGamepad));
 	}
 
 	void CalibrateSens()
@@ -190,79 +178,123 @@ private:
 
 	void SetSens(float sens)
 	{
-		m_laserSens = sens;
+		switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice))
+		{
+		case InputDevice::Controller:
+			g_gameConfig.Set(GameConfigKeys::Controller_Sensitivity, sens);
+			break;
+		case InputDevice::Mouse:
+			g_gameConfig.Set(GameConfigKeys::Mouse_Sensitivity, sens);
+			break;
+		case InputDevice::Keyboard:
+		default:
+			g_gameConfig.Set(GameConfigKeys::Key_Sensitivity, sens);
+			break;
+		}
 	}
 
 	void Exit()
 	{
 		g_gameWindow->OnAnyEvent.RemoveAll(this);
 
-		Map<String, InputDevice> inputModeMap = {
-			{ "Keyboard", InputDevice::Keyboard },
-			{ "Mouse", InputDevice::Mouse },
-			{ "Controller", InputDevice::Controller },
-		};
-		
-		g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, inputModeMap[m_buttonModes[m_buttonMode]]);
-		g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, inputModeMap[m_laserModes[m_laserMode]]);
-
-		g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
-		g_gameConfig.Set(GameConfigKeys::AntiAliasing, m_antialiasing);
-		g_gameConfig.Set(GameConfigKeys::ModSpeed, m_modSpeed);
-		g_gameConfig.Set(GameConfigKeys::MasterVolume, m_masterVolume);
 		g_gameConfig.Set(GameConfigKeys::Laser0Color, m_laserColors[0]);
 		g_gameConfig.Set(GameConfigKeys::Laser1Color, m_laserColors[1]);
-		g_gameConfig.Set(GameConfigKeys::Controller_DeviceID, m_selectedGamepad);
-		g_gameConfig.Set(GameConfigKeys::GlobalOffset, m_globalOffset);
-		g_gameConfig.Set(GameConfigKeys::WASAPI_Exclusive, m_wasapi == 0);
-		g_gameConfig.Set(GameConfigKeys::CheckForUpdates, m_update == 0);
-		g_gameConfig.Set(GameConfigKeys::WindowedFullscreen, m_windowFull == 0);
-		g_gameConfig.Set(GameConfigKeys::ForcePortrait, m_forcePortrait == 0);
-		g_gameConfig.Set(GameConfigKeys::InputOffset, m_inputOffset);
-		g_gameConfig.Set(GameConfigKeys::InputBounceGuard, m_bounceGuard);
 
 		String songsPath = String(m_songsPath, m_pathlen);
 		songsPath.TrimBack('\n');
 		songsPath.TrimBack(' ');
 		g_gameConfig.Set(GameConfigKeys::SongFolder, songsPath);
 
-		if(m_skins.size() > 0)
-			g_gameConfig.Set(GameConfigKeys::Skin, m_skins[m_selectedSkin]);
-
-		switch (inputModeMap[m_laserModes[m_laserMode]])
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
 		{
-		case InputDevice::Controller:
-			g_gameConfig.Set(GameConfigKeys::Controller_Sensitivity, m_laserSens);
-			break;
-		case InputDevice::Mouse:
-			g_gameConfig.Set(GameConfigKeys::Mouse_Sensitivity, m_laserSens);
-			break;
-		case InputDevice::Keyboard:
-		default:
-			g_gameConfig.Set(GameConfigKeys::Key_Sensitivity, m_laserSens);
-			break;
+			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
 		}
 
-		if (m_speedMod == 2)
-		{
-			g_gameConfig.Set(GameConfigKeys::UseCMod, true);
-			g_gameConfig.Set(GameConfigKeys::UseMMod, false);
-		}
-		else if (m_speedMod == 1)
-		{
-			g_gameConfig.Set(GameConfigKeys::UseCMod, false);
-			g_gameConfig.Set(GameConfigKeys::UseMMod, true);
-		}
-		else
-		{
-			g_gameConfig.Set(GameConfigKeys::UseCMod, false);
-			g_gameConfig.Set(GameConfigKeys::UseMMod, false);
-		}
 
 		g_input.Cleanup();
 		g_input.Init(*g_gameWindow);
 		g_application->RemoveTickable(this);
 	}
+
+	float FloatSetting(GameConfigKeys key, String label, float min, float max, float step = 0.01)
+	{
+		float value = g_gameConfig.GetFloat(key);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
+		nk_slider_float(m_nctx, min, &value, max, step);
+		g_gameConfig.Set(key, value);
+		return value;
+	}
+
+	float PercentSetting(GameConfigKeys key, String label)
+	{
+		float value = g_gameConfig.GetFloat(key);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
+		nk_slider_float(m_nctx, 0, &value, 1, 0.005);
+		g_gameConfig.Set(key, value);
+		return value;
+	}
+
+	bool ToggleSetting(GameConfigKeys key, String label)
+	{
+		int value = g_gameConfig.GetBool(key) ? 0 : 1;
+		nk_checkbox_label(m_nctx, *label, &value);
+		g_gameConfig.Set(key, value == 0);
+		return value;
+	}
+
+	template<typename EnumClass>
+	typename EnumClass::EnumType EnumSetting(GameConfigKeys key, String label)
+	{
+		
+		EnumStringMap<EnumClass::EnumType> nameMap = EnumClass::GetMap();
+		Vector<const char*> names;
+		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
+
+		for (auto it = nameMap.begin(); it != nameMap.end(); it++)
+		{
+			names.Add(*(*it).second);
+		}
+
+		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+		nk_combobox(m_nctx, names.data(), names.size(), &value, m_buttonheight, m_comboBoxSize);
+		g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[value]));
+		return nameMap.FromString(names[value]);
+	}
+
+	int SelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
+	{
+		int value = g_gameConfig.GetInt(key);
+		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+		nk_combobox(m_nctx, options.data(), options.size(), &value, m_buttonheight, m_comboBoxSize);
+		g_gameConfig.Set(key, value);
+		return value;
+	}
+
+	String StringSelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
+	{
+		String value = g_gameConfig.GetString(key);
+		int selection;
+		auto stringSearch = std::find(options.begin(), options.end(), *value);
+		if (stringSearch == options.end())
+			selection = 0;
+		else
+			selection = stringSearch - options.begin();
+
+		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+		nk_combobox(m_nctx, options.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
+		value = options[selection];
+		g_gameConfig.Set(key, value);
+		return value;
+	}
+
+	int IntSetting(GameConfigKeys key, String label, int min, int max, int step = 1, int perpixel = 1)
+	{
+		int value = g_gameConfig.GetInt(key);
+		value = nk_propertyi(m_nctx, *label, min, value, max, step, perpixel);
+		g_gameConfig.Set(key, value);
+		return value;
+	}
+
 
 public:
 	~SettingsScreen_Impl()
@@ -298,70 +330,13 @@ public:
 		m_nctx->style.slider.bar_active = nk_rgb(20, 20, 20);
 
 
-
-		if (g_gameConfig.GetBool(GameConfigKeys::UseCMod))
-			m_speedMod = 2;
-		else if (g_gameConfig.GetBool(GameConfigKeys::UseMMod))
-			m_speedMod = 1;
-
-		switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice))
-		{
-		case InputDevice::Controller:
-			m_buttonMode = 1;
-			break;
-		case InputDevice::Keyboard:
-		default:
-			m_buttonMode = 0;
-			break;
-		}
-
-		switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice))
-		{
-		case InputDevice::Controller:
-			m_laserMode = 2;
-			m_laserSens = g_gameConfig.GetFloat(GameConfigKeys::Controller_Sensitivity);
-			break;
-		case InputDevice::Mouse:
-			m_laserMode = 1;
-			m_laserSens = g_gameConfig.GetFloat(GameConfigKeys::Mouse_Sensitivity);
-			break;
-		case InputDevice::Keyboard:
-		default:
-			m_laserMode = 0;
-			m_laserSens = g_gameConfig.GetFloat(GameConfigKeys::Key_Sensitivity);
-			break;
-		}
-
-		m_antialiasing = g_gameConfig.GetInt(GameConfigKeys::AntiAliasing);
-
-		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
-		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
-		m_masterVolume = g_gameConfig.GetFloat(GameConfigKeys::MasterVolume);
 		m_laserColors[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 		m_laserColors[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
-
-		m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
-		m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
-		m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
-		m_wasapi = g_gameConfig.GetBool(GameConfigKeys::WASAPI_Exclusive) ? 0 : 1;
-		m_update = g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates) ? 0 : 1;
-		m_windowFull = g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen) ? 0 : 1;
-		m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait) ? 0 : 1;
 
 		String songspath = g_gameConfig.GetString(GameConfigKeys::SongFolder);
 		strcpy(m_songsPath, songspath.c_str());
 		m_pathlen = songspath.length();
 
-		m_selectedGamepad = g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID);
-		if (m_selectedGamepad >= m_gamePads.size())
-		{
-			m_selectedGamepad = 0;
-		}
-		auto skinSearch = std::find(m_skins.begin(), m_skins.end(), g_gameConfig.GetString(GameConfigKeys::Skin));
-		if (skinSearch == m_skins.end())
-			m_selectedSkin = 0;
-		else
-			m_selectedSkin = skinSearch - m_skins.begin();
 		return true;
 	}
 
@@ -378,7 +353,7 @@ public:
 
 		for (size_t i = 0; i < 7; i++)
 		{
-			if (m_buttonMode == 1)
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			{
 				m_controllerButtonNames[i] = Utility::Sprintf("%d", g_gameConfig.GetInt(m_controllerKeys[i]));
 			}
@@ -389,7 +364,7 @@ public:
 		}
 		for (size_t i = 0; i < 2; i++)
 		{
-			if (m_laserMode == 2)
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller)
 			{
 				m_controllerLaserNames[i] = Utility::Sprintf("%d", g_gameConfig.GetInt(m_controllerLaserKeys[i]));
 			}
@@ -409,7 +384,6 @@ public:
 		if (IsSuspended())
 			return;
 
-		float buttonheight = 30;
 
 		Vector<const char*> pads;
 		Vector<const char*> skins;
@@ -429,70 +403,73 @@ public:
 
 		float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 		float x = g_resolution.x / 2 - w / 2;
+		m_comboBoxSize = nk_vec2(w - 30, 250);
 
 		if (nk_begin(m_nctx, "Settings", nk_rect(x, 0, w, g_resolution.y), 0))
 		{
-			auto comboBoxSize = nk_vec2(w - 30 ,250);
 
-			nk_layout_row_dynamic(m_nctx, buttonheight, 3);
+			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetKey_ST();
 			if (nk_button_label(m_nctx, m_controllerLaserNames[1].c_str())) SetRL();
 
-			nk_layout_row_dynamic(m_nctx, buttonheight, 4);
+			nk_layout_row_dynamic(m_nctx, m_buttonheight, 4);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) SetKey_BTA();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) SetKey_BTB();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) SetKey_BTC();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) SetKey_BTD();
-			nk_layout_row_dynamic(m_nctx, buttonheight, 2);
+			nk_layout_row_dynamic(m_nctx, m_buttonheight, 2);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) SetKey_FXL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) SetKey_FXR();
 
-			nk_layout_row_dynamic(m_nctx, buttonheight, 1);
+			nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
 			if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) CalibrateSens();
 
-			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, "Laser sensitivity (%f):", m_laserSens);
-			nk_slider_float(m_nctx, 0, &m_laserSens, 20, 0.001);
+			GameConfigKeys laserSensKey;
+			switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice))
+			{
+			case InputDevice::Controller:
+				laserSensKey = GameConfigKeys::Controller_Sensitivity;
+				break;
+			case InputDevice::Mouse:
+				laserSensKey = GameConfigKeys::Mouse_Sensitivity;
+				break;
+			case InputDevice::Keyboard:
+			default:
+				laserSensKey = GameConfigKeys::Key_Sensitivity;
+				break;
+			}
 
-			nk_label(m_nctx, "Button input mode:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_combobox(m_nctx, m_buttonModes, 2, &m_buttonMode, buttonheight, comboBoxSize);
-
-			nk_label(m_nctx, "Laser input mode:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_combobox(m_nctx, m_laserModes, 3, &m_laserMode, buttonheight, comboBoxSize);
+			FloatSetting(laserSensKey, "Laser sensitivity (%f):", 0, 20, 0.001);
+			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
+			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
 
 			if (m_gamePads.size() > 0)
 			{
-				nk_label(m_nctx, "Selected Controller:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_combobox(m_nctx, pads.data(), m_gamePads.size(), &m_selectedGamepad, buttonheight, comboBoxSize);
+				m_selectedGamepad = SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
 			}
 
-			m_globalOffset = nk_propertyi(m_nctx, "Global Offset:", -1000, m_globalOffset, 1000, 1, 1);
-			m_inputOffset = nk_propertyi(m_nctx, "Input Offset:", -1000, m_inputOffset, 1000, 1, 1);
+			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
+			IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
+			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 
-			nk_label(m_nctx, "Speed mod:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_combobox(m_nctx, m_speedMods, 3, &m_speedMod, buttonheight, comboBoxSize);
+			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
 
-			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, "HiSpeed (%f):", m_hispeed);
-			nk_slider_float(m_nctx, 0.25, &m_hispeed, 20, 0.05);
-
-			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, "ModSpeed (%f):", m_modSpeed);
-			nk_slider_float(m_nctx, 50, &m_modSpeed, 1500, 0.5);
-
-			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, "Master Volume (%.1f%%):", m_masterVolume * 100);
-			nk_slider_float(m_nctx, 0, &m_masterVolume, 1, 0.005);
+			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
+			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
+			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
 
 			nk_layout_row_dynamic(m_nctx, 30, 1);
-			nk_checkbox_label(m_nctx, "Use windowed fullscreen", &m_windowFull);
+			ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
+			ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)");
+			ToggleSetting(GameConfigKeys::VSync, "VSync");
+			ToggleSetting(GameConfigKeys::ShowFps, "Show FPS");
 
-			nk_checkbox_label(m_nctx, "Force portrait rendering (don't use if already in portrait)", &m_forcePortrait);
-
-			nk_label(m_nctx, "Anti aliasing (requires restart):", nk_text_alignment::NK_TEXT_LEFT);
-			nk_combobox(m_nctx, m_aaModes, 5, &m_antialiasing, buttonheight, comboBoxSize);
+			SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti aliasing (requires restart):");
 
 			if (m_skins.size() > 0)
 			{
-				nk_label(m_nctx, "Selected Skin:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_combobox(m_nctx, skins.data(), m_skins.size(), &m_selectedSkin, buttonheight, comboBoxSize);
+				StringSelectionSetting(GameConfigKeys::Skin, skins, "Selected Skin:");
 			}
 
 			nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
@@ -504,9 +481,9 @@ public:
 
 			nk_layout_row_dynamic(m_nctx, 30, 1);
 #ifdef _WIN32
-			nk_checkbox_label(m_nctx, "WASAPI Exclusive Mode (requires restart)", &m_wasapi);
+			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
-			nk_checkbox_label(m_nctx, "Check for updates on startup", &m_update);
+			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);

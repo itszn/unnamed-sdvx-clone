@@ -30,7 +30,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MasterVolume, 1.0f);
 	Set(GameConfigKeys::ScreenX, -1);
 	Set(GameConfigKeys::ScreenY, -1);
-	Set(GameConfigKeys::VSync, 0);
+	Set(GameConfigKeys::VSync, false);
+	Set(GameConfigKeys::ShowFps, false);
 	Set(GameConfigKeys::ForcePortrait, false);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
@@ -39,14 +40,13 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LaserAssistLevel, 1.5f);
 	Set(GameConfigKeys::LaserPunish, 1.5f);
 	Set(GameConfigKeys::LaserSlamBoost, 2.0f);
-	Set(GameConfigKeys::UseMMod, false);
-	Set(GameConfigKeys::UseCMod, false);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
 	Set(GameConfigKeys::Laser0Color, 200.0f);
 	Set(GameConfigKeys::Laser1Color, 330.0f);
 
+	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
 
 	// Input settings
 	SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
@@ -93,7 +93,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Mouse_Sensitivity, 1.0f);
 
 	// Default to 0ms input bounce guard
-	Set(GameConfigKeys::InputBounceGuard, 0);
+	Set(GameConfigKeys::InputBounceGuard, 10);
 
 	Set(GameConfigKeys::LastSelected, 0);
 	Set(GameConfigKeys::LevelFilter, 0);

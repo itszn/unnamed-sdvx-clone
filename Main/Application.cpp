@@ -100,7 +100,8 @@ void Application::ApplySettings()
 		m_skin = newskin;
 		ReloadSkin();
 	}
-	g_gameWindow->SetVSync(g_gameConfig.GetInt(GameConfigKeys::VSync));
+	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
+	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 
 }
@@ -439,7 +440,8 @@ bool Application::m_Init()
 	// call the initial OnWindowResized now that we have intialized OpenGL
 	m_OnWindowResized(g_resolution);
 
-	g_gameWindow->SetVSync(g_gameConfig.GetInt(GameConfigKeys::VSync));
+	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
+	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 
 	///TODO: check if directory exists already?
 	Path::CreateDir("screenshots");
@@ -598,14 +600,17 @@ void Application::m_Tick()
 			tickable->Render(m_deltaTime);
 		}
 		m_renderStateBase.projectionTransform = GetGUIProjection();
-		nvgReset(g_guiState.vg);
-		nvgBeginPath(g_guiState.vg);
-		nvgFontFace(g_guiState.vg, "fallback");
-		nvgFontSize(g_guiState.vg, 20);
-		nvgTextAlign(g_guiState.vg, NVG_ALIGN_RIGHT);
-		nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
-		String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
-		nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+		if (m_showFps)
+		{
+			nvgReset(g_guiState.vg);
+			nvgBeginPath(g_guiState.vg);
+			nvgFontFace(g_guiState.vg, "fallback");
+			nvgFontSize(g_guiState.vg, 20);
+			nvgTextAlign(g_guiState.vg, NVG_ALIGN_RIGHT);
+			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
+			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
+			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+		}
 		nvgEndFrame(g_guiState.vg);
 		m_renderQueueBase.Process();
 		glCullFace(GL_FRONT);

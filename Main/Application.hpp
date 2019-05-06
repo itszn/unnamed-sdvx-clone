@@ -120,6 +120,7 @@ private:
 	float m_deltaTime;
 	bool m_allowMapConversion;
 	bool m_hasUpdate = false;
+	bool m_showFps = false;
 	String m_updateUrl;
 	String m_updateVersion;
 	String m_currentVersion;

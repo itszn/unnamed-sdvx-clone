@@ -82,8 +82,7 @@ private:
 	bool m_hideLane = false;
 
     // Use m-mod and what m-mod speed
-    bool m_usemMod = false;
-    bool m_usecMod = false;
+	SpeedMods m_speedMod;
     float m_modSpeed = 400;
 
 	// Game Canvas
@@ -170,8 +169,7 @@ public:
 		m_diffIndex.mapId = -1;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
-		m_usemMod = g_gameConfig.GetBool(GameConfigKeys::UseMMod);
-		m_usecMod = g_gameConfig.GetBool(GameConfigKeys::UseCMod);
+		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
@@ -185,8 +183,7 @@ public:
 		m_mapRootPath = Path::RemoveLast(m_mapPath, nullptr);
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
-        m_usemMod = g_gameConfig.GetBool(GameConfigKeys::UseMMod);
-        m_usecMod = g_gameConfig.GetBool(GameConfigKeys::UseCMod);
+		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
         m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 	~Game_Impl()
@@ -263,7 +260,7 @@ public:
         // Move this somewhere else?
         // Set hi-speed for m-Mod
         // Uses the "mode" of BPMs in the chart, should use median?
-        if(m_usemMod)
+        if(m_speedMod == SpeedMods::MMod)
         {
             Map<double, MapTime> bpmDurations;
             const Vector<TimingPoint*>& timingPoints = m_beatmap->GetLinearTimingPoints();
@@ -297,7 +294,7 @@ public:
 
             m_hispeed = m_modSpeed / useBPM; 
         }
-		else if (m_usecMod)
+		else if (m_speedMod == SpeedMods::CMod)
 		{
 			m_hispeed = m_modSpeed / m_beatmap->GetLinearTimingPoints().front()->GetBPM();
 		}
@@ -580,7 +577,7 @@ public:
 	virtual void Render(float deltaTime) override
 	{
 		// 8 beats (2 measures) in view at 1x hi-speed
-		if (m_usecMod)
+		if (m_speedMod == SpeedMods::CMod)
 			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
 		else
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
@@ -612,7 +609,7 @@ public:
 
 		// Get objects in range
 		MapTime msViewRange = m_playback.ViewDistanceToDuration(m_track->GetViewRange());
-		if (m_usecMod)
+		if (m_speedMod == SpeedMods::CMod)
 		{
 			msViewRange = 480000.0 / m_playback.cModSpeed;
 		}
@@ -912,11 +909,11 @@ public:
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
 
         // If c-mod is used
-		if (m_usecMod)
+		if (m_speedMod == SpeedMods::CMod)
 		{
 			m_playback.OnTimingPointChanged.Add(this, &Game_Impl::OnTimingPointChanged);
 		}
-		m_playback.cMod = m_usecMod;
+		m_playback.cMod = m_speedMod == SpeedMods::CMod;
 		m_playback.cModSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 		// Register input bindings
 		m_scoring.OnButtonMiss.Add(this, &Game_Impl::OnButtonMiss);
@@ -1014,7 +1011,7 @@ public:
 				float change = g_input.GetInputLaserDir(i) / 3.0f;
 				m_hispeed += change;
 				m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
-				if ((m_usecMod || m_usemMod) && change != 0.0f)
+				if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
 				{
 					g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
 					m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();

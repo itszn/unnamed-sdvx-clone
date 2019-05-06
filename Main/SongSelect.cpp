@@ -1513,8 +1513,7 @@ public:
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
 			m_settingsWheel->ClearSettings();
-			g_gameConfig.Set(GameConfigKeys::UseCMod, false);
-			g_gameConfig.Set(GameConfigKeys::UseMMod, true);
+			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
 		}
