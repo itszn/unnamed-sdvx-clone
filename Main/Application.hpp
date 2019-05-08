@@ -128,6 +128,7 @@ private:
 	Timer m_jobTimer;
 	//gauge colors, 0 = normal fail, 1 = normal clear, 2 = hard lower, 3 = hard upper
 	Color m_gaugeColors[4] = { Colori(0, 204, 255), Colori(255, 102, 255), Colori(200, 50, 0), Colori(255, 100, 0) };
+	class SkinConfig* m_skinConfig;
 };
 
 class JacketLoadingJob : public JobBase

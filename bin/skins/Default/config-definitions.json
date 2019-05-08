@@ -1,0 +1,11 @@
+{
+	"position": {
+		"type": "selection",
+		"default": "bottom",
+		"values": ["bottom", "middle", "top"]
+	},
+	"showCrit": {
+		"type": "bool",
+		"default": true
+	}
+}

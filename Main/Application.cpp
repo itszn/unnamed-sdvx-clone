@@ -20,6 +20,7 @@
 #include "discord_rpc.h"
 #include "cpr/cpr.h"
 #include "jansson.h"
+#include "SkinConfig.hpp"
 #define NANOVG_GL3_IMPLEMENTATION
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
@@ -353,7 +354,7 @@ bool Application::m_Init()
 
 	// Set skin variable
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
-
+	m_skinConfig = new SkinConfig(m_skin);
 	// Window cursor
 	Image cursorImg = ImageRes::Create("skins/" + m_skin + "/textures/cursor.png");
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
@@ -657,10 +658,17 @@ void Application::m_Cleanup()
 		g_jobSheduler = nullptr;
 	}
 
+	if (m_skinConfig)
+	{
+		delete m_skinConfig;
+		m_skinConfig = nullptr;
+	}
+
 	Discord_Shutdown();
 
 	if(m_updateThread.joinable())
 		m_updateThread.join();
+
 
 	// Finally, save config
 	m_SaveConfig();
