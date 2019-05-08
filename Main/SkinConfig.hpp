@@ -6,42 +6,42 @@ struct SkinSetting
 	enum class Type
 	{
 		Float,
-		Int,
-		Bool,
+		Integer,
+		Boolean,
 		Selection,
 		Text,
 		Label,
 		Separator
 	};
-	Type type = Type::Float;
+	SkinSetting::Type type = Type::Float;
 	String key;
 	String label;
 	union
 	{
 		struct {
-			float default;
+			float def;
 			float min;
 			float max;
 		} floatSetting;
 
 		struct {
-			int default;
+			int def;
 			int min;
 			int max;
 		} intSetting;
 
 		struct {
-			char* default;
+			char* def;
 			String* options;
 			int numOptions;
 		} selectionSetting;
 
 		struct {
-			bool default;
+			bool def;
 		} boolSetting;
 
 		struct {
-			char* default;
+			char* def;
 		} textSetting;
 	};
 };

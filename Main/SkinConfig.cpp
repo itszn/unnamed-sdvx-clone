@@ -20,8 +20,8 @@ SkinConfig::SkinConfig(String skin)
 
 	Map<String, SkinSetting::Type> inputModeMap = {
 		{ "selection", SkinSetting::Type::Selection },
-		{ "bool", SkinSetting::Type::Bool },
-		{ "int", SkinSetting::Type::Int},
+		{ "bool", SkinSetting::Type::Boolean },
+		{ "int", SkinSetting::Type::Integer},
 		{ "float", SkinSetting::Type::Float},
 		{ "label", SkinSetting::Type::Label},
 		{ "text", SkinSetting::Type::Text},
@@ -37,6 +37,7 @@ SkinConfig::SkinConfig(String skin)
 		for (auto entry : definitions.items())
 		{
 			SkinSetting newsetting;
+      Logf("Adding skin config entry : %s", Logger::Info, entry.key());
 			if (entry.key() == "separator")
 			{
 				newsetting.type = SkinSetting::Type::Separator;
@@ -47,7 +48,7 @@ SkinConfig::SkinConfig(String skin)
 			newsetting.key = entry.key();
 			if (values.contains("label"))
 			{
-				newsetting.label = (String)values.at("label");
+				newsetting.label = (std::string)values.at("label");
 			}
 			else
 			{
@@ -57,31 +58,31 @@ SkinConfig::SkinConfig(String skin)
 			switch (newsetting.type)
 			{
 			case SkinSetting::Type::Selection:
-				newsetting.selectionSetting.default = strdup(*(String)values.at("default"));
+				newsetting.selectionSetting.def = strdup(((std::string)values.at("default")).c_str());
 				newsetting.selectionSetting.numOptions = values.at("values").size();
 				newsetting.selectionSetting.options = new String[newsetting.selectionSetting.numOptions];
 				for (size_t i = 0; i < newsetting.selectionSetting.numOptions; i++)
 				{
-					newsetting.selectionSetting.options[i] = (String)values.at("values").at(i);
+					newsetting.selectionSetting.options[i] = (std::string)values.at("values").at(i);
 				}
 				break;
 
-			case SkinSetting::Type::Bool:
-				newsetting.boolSetting.default = values.at("default");
+			case SkinSetting::Type::Boolean:
+				newsetting.boolSetting.def = values.at("default");
 				break;
 
 			case SkinSetting::Type::Text:
-				newsetting.textSetting.default = strdup(*(String)values.at("default"));
+				newsetting.textSetting.def = strdup(((std::string)values.at("default")).c_str());
 				break;
 
-			case SkinSetting::Type::Int:
-				newsetting.intSetting.default = values.at("default");
+			case SkinSetting::Type::Integer:
+				newsetting.intSetting.def = values.at("default");
 				newsetting.intSetting.max = values.at("max");
 				newsetting.intSetting.min = values.at("min");
 				break;
 
 			case SkinSetting::Type::Float:
-				newsetting.floatSetting.default = values.at("default");
+				newsetting.floatSetting.def = values.at("default");
 				newsetting.floatSetting.max = values.at("max");
 				newsetting.floatSetting.min = values.at("min");
 				break;
@@ -90,6 +91,7 @@ SkinConfig::SkinConfig(String skin)
 		}
 	}
 
+  InitDefaults();
 	Load(Path::Normalize("skins/" + skin + "/skin.cfg"));
 }
 
@@ -121,20 +123,20 @@ void SkinConfig::InitDefaults()
 		switch (setting.type)
 		{
 		case SkinSetting::Type::Selection:
-			def = setting.selectionSetting.default;
+			def = setting.selectionSetting.def;
 			Set(setting.key, def);
 			break;
-		case SkinSetting::Type::Bool:
-			Set(setting.key, setting.boolSetting.default);
+		case SkinSetting::Type::Boolean:
+			Set(setting.key, setting.boolSetting.def);
 			break;
-		case SkinSetting::Type::Int:
-			Set(setting.key, setting.intSetting.default);
+		case SkinSetting::Type::Integer:
+			Set(setting.key, setting.intSetting.def);
 			break;
 		case SkinSetting::Type::Float:
-			Set(setting.key, setting.floatSetting.default);
+			Set(setting.key, setting.floatSetting.def);
 			break;
 		case SkinSetting::Type::Text:
-			def = setting.textSetting.default;
+			def = setting.textSetting.def;
 			Set(setting.key, def);
 			break;
 		}

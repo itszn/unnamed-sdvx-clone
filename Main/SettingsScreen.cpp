@@ -910,7 +910,7 @@ void SkinSettingsScreen::Render(float deltaTime)
 		nk_layout_row_dynamic(m_nctx, 30, 1);
 		for (auto s : m_skinConfig->GetSettings())
 		{
-			if (s.type == SkinSetting::Type::Bool)
+			if (s.type == SkinSetting::Type::Boolean)
 			{
 				ToggleSetting(s.key, s.label);
 			}
@@ -922,7 +922,7 @@ void SkinSettingsScreen::Render(float deltaTime)
 			{
 				FloatSetting(s.key, s.label + " (%.2f):", s.floatSetting.min, s.floatSetting.max);
 			}
-			else if (s.type == SkinSetting::Type::Int)
+			else if (s.type == SkinSetting::Type::Integer)
 			{
 				IntSetting(s.key, s.label, s.intSetting.min, s.intSetting.max);
 			}
