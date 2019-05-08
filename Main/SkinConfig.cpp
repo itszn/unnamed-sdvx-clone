@@ -37,7 +37,6 @@ SkinConfig::SkinConfig(String skin)
 		for (auto entry : definitions.items())
 		{
 			SkinSetting newsetting;
-      Logf("Adding skin config entry : %s", Logger::Info, entry.key());
 			if (entry.key() == "separator")
 			{
 				newsetting.type = SkinSetting::Type::Separator;
@@ -46,9 +45,10 @@ SkinConfig::SkinConfig(String skin)
 			}
 			auto values = entry.value();
 			newsetting.key = entry.key();
+			String def;
 			if (values.contains("label"))
 			{
-				newsetting.label = (std::string)values.at("label");
+				values.at("label").get_to(newsetting.label);
 			}
 			else
 			{
@@ -58,12 +58,13 @@ SkinConfig::SkinConfig(String skin)
 			switch (newsetting.type)
 			{
 			case SkinSetting::Type::Selection:
-				newsetting.selectionSetting.def = strdup(((std::string)values.at("default")).c_str());
+				values.at("default").get_to(def);
+				newsetting.selectionSetting.def = strdup(*def);
 				newsetting.selectionSetting.numOptions = values.at("values").size();
 				newsetting.selectionSetting.options = new String[newsetting.selectionSetting.numOptions];
 				for (size_t i = 0; i < newsetting.selectionSetting.numOptions; i++)
 				{
-					newsetting.selectionSetting.options[i] = (std::string)values.at("values").at(i);
+					values.at("values").at(i).get_to(newsetting.selectionSetting.options[i]);
 				}
 				break;
 
@@ -72,7 +73,8 @@ SkinConfig::SkinConfig(String skin)
 				break;
 
 			case SkinSetting::Type::Text:
-				newsetting.textSetting.def = strdup(((std::string)values.at("default")).c_str());
+				values.at("default").get_to(def);
+				newsetting.textSetting.def = strdup(*def);
 				break;
 
 			case SkinSetting::Type::Integer:
