@@ -60,6 +60,6 @@ add_definitions(-DFONS_USE_FREETYPE)
 set_property(GLOBAL PROPERTY MA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/miniaudio)
 
 #json for modern c++
-set_property(GLOBAL PROPERTY NLOHMANN_JSON_HPP ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json/json.hpp)
+set_property(GLOBAL PROPERTY NLOHMANN_JSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json)
 
 

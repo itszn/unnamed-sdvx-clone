@@ -489,6 +489,10 @@ public:
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
 			nk_spacing(m_nctx, 1);
+			if (nk_button_label(m_nctx, "Skin Settings"))
+			{
+				g_application->AddTickable(new SkinSettingsScreen(g_gameConfig.GetString(GameConfigKeys::Skin), m_nctx));
+			}
 			if (nk_button_label(m_nctx, "Exit")) Exit();
 			nk_end(m_nctx);
 		}
@@ -789,4 +793,154 @@ LaserSensCalibrationScreen* LaserSensCalibrationScreen::Create()
 {
 	LaserSensCalibrationScreen* impl = new LaserSensCalibrationScreen_Impl();
 	return impl;
+}
+
+
+
+
+void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
+
+	String value = m_skinConfig->GetString(key);
+	int selection;
+	String* options = setting.selectionSetting.options;
+	auto stringSearch = std::find(options, options + setting.selectionSetting.numOptions, value);
+	if (stringSearch != options + setting.selectionSetting.numOptions)
+		selection = (stringSearch - options);
+	else
+		selection = 0;
+
+	Vector<const char*> displayData;
+	for (size_t i = 0; i < setting.selectionSetting.numOptions; i++)
+	{
+		displayData.Add(*setting.selectionSetting.options[i]);
+	}
+
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_combobox(m_nctx, displayData.data(), setting.selectionSetting.numOptions, &selection, 30, nk_vec2(w - 30, 250));
+	value = options[selection];
+	m_skinConfig->Set(key, value);
+}
+
+void SkinSettingsScreen::Exit()
+{
+	g_application->RemoveTickable(this);
+}
+
+void SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
+{
+	int value = m_skinConfig->GetInt(key);
+	value = nk_propertyi(m_nctx, *label, min, value, max, step, perpixel);
+	m_skinConfig->Set(key, value);
+}
+
+float SkinSettingsScreen::FloatSetting(String key, String label, float min, float max, float step)
+{
+	float value = m_skinConfig->GetFloat(key);
+	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
+	nk_slider_float(m_nctx, min, &value, max, step);
+	m_skinConfig->Set(key, value);
+	return value;
+}
+
+float SkinSettingsScreen::PercentSetting(String key, String label)
+{
+	float value = m_skinConfig->GetFloat(key);
+	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
+	nk_slider_float(m_nctx, 0, &value, 1, 0.005);
+	m_skinConfig->Set(key, value);
+	return value;
+}
+
+void SkinSettingsScreen::TextSetting(String key, String label)
+{
+	String value = m_skinConfig->GetString(key);
+	char display[1024];
+	strcpy(display, value.c_str());
+	int len = value.length();
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default);
+	value = String(display, len);
+	m_skinConfig->Set(key, value);
+}
+
+bool SkinSettingsScreen::ToggleSetting(String key, String label)
+{
+	int value = m_skinConfig->GetBool(key) ? 0 : 1;
+	nk_checkbox_label(m_nctx, *label, &value);
+	m_skinConfig->Set(key, value == 0);
+	return value;
+}
+
+SkinSettingsScreen::SkinSettingsScreen(String skin, nk_context* ctx)
+{
+	m_nctx = ctx;
+	m_skin = skin;
+	if (skin == g_application->GetCurrentSkin())
+	{
+		m_skinConfig = g_skinConfig;
+	}
+	else
+	{
+		m_skinConfig = new SkinConfig(skin);
+	}
+}
+
+SkinSettingsScreen::~SkinSettingsScreen()
+{
+	if (m_skinConfig != g_skinConfig && m_skinConfig)
+	{
+		delete m_skinConfig;
+		m_skinConfig = nullptr;
+	}
+}
+
+void SkinSettingsScreen::Tick(float deltatime)
+{
+
+}
+
+void SkinSettingsScreen::Render(float deltaTime)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
+	float x = g_resolution.x / 2 - w / 2;
+	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
+	{
+		nk_layout_row_dynamic(m_nctx, 30, 1);
+		for (auto s : m_skinConfig->GetSettings())
+		{
+			if (s.type == SkinSetting::Type::Bool)
+			{
+				ToggleSetting(s.key, s.label);
+			}
+			else if (s.type == SkinSetting::Type::Selection)
+			{
+				StringSelectionSetting(s.key, s.label, s);
+			}
+			else if (s.type == SkinSetting::Type::Float)
+			{
+				FloatSetting(s.key, s.label + " (%.2f):", s.floatSetting.min, s.floatSetting.max);
+			}
+			else if (s.type == SkinSetting::Type::Int)
+			{
+				IntSetting(s.key, s.label, s.intSetting.min, s.intSetting.max);
+			}
+			else if (s.type == SkinSetting::Type::Label)
+			{
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *s.key);
+			}
+			else if (s.type == SkinSetting::Type::Separator)
+			{
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+			}
+			else if (s.type == SkinSetting::Type::Text)
+			{
+				TextSetting(s.key, s.label);
+			}
+		}
+		if (nk_button_label(m_nctx, "Exit")) Exit();
+		nk_end(m_nctx);
+	}
+	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
 }

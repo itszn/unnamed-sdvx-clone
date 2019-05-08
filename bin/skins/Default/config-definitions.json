@@ -1,11 +1,45 @@
 {
+	"Gameplay:" : { "type" : "label" },
+	
 	"position": {
 		"type": "selection",
+		"label": "Early/Late display position",
 		"default": "bottom",
 		"values": ["bottom", "middle", "top"]
 	},
+	"nick": {
+		"type" : "text",
+		"label" : "Display name",
+		"default" : "Guest"
+	},
+	
 	"showCrit": {
 		"type": "bool",
+		"label": "Test toggle",
 		"default": true
+	},
+	
+	"separator" : {},
+	
+	"Test objects:" : { "type" : "label" },
+	"without_label": {
+		"type": "bool",
+		"default": false
+	},
+	
+	"Testing with space" : {
+		"type": "float",
+		"label": "Test setting with spaces in the key",
+		"default": 50.0,
+		"max": 100.0,
+		"min": -100.0
+	},
+	
+	"Ineger_test" : {
+		"type": "int",
+		"label": "Ineger Test with range -100<->100",
+		"default": 50,
+		"max": 100,
+		"min": -100
 	}
 }

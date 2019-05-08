@@ -2,7 +2,7 @@
 
 # Find files used for project
 # Find miniaudio root
-get_property(NLOHMANN_JSON_HPP GLOBAL PROPERTY NLOHMANN_JSON_HPP)
+get_property(NLOHMANN_JSON_ROOT GLOBAL PROPERTY NLOHMANN_JSON_ROOT)
 file(GLOB Audio_include "Audio/*.hpp")
 file(GLOB Audio_src "Audio/*.cpp")
 file(GLOB GUI_include "GUI/*.hpp")
@@ -16,7 +16,6 @@ file(GLOB Main_src "*.cpp" "*.hpp"  "Resource.rc"
 source_group("Header Files\\Audio" FILES ${Audio_include})
 source_group("Source Files\\Audio" FILES ${Audio_src})
 source_group("Header Files\\nuklear" FILES ${nuk_include})
-source_group("Header Files\\nlohmann_json" FILES ${NLOHMANN_JSON_HPP})
 source_group("Header Files\\GUI" FILES ${GUI_include})
 source_group("Source Files\\GUI" FILES ${GUI_src})
 
@@ -25,7 +24,7 @@ enable_cpp14()
 enable_precompiled_headers("${Main_src}" stdafx.cpp)
 precompiled_header_exclude("Resource.rc")
 
-include_directories(Audio GUI .)
+include_directories(Audio GUI . ${NLOHMANN_JSON_ROOT})
 add_executable(usc-game ${Main_src} ${C_src})
 
 if(${CMAKE_VERSION} VERSION_GREATER "3.11")

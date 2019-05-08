@@ -1,20 +1,30 @@
 #include "stdafx.h"
 #include "SkinConfig.hpp"
-#include "../third_party/nlohmann_json/json.hpp"
+#include "json.hpp"
+#include "fifo_map.hpp"
 
 using namespace nlohmann;
 
+
+// https://github.com/nlohmann/json/issues/485#issuecomment-333652309
+// A workaround to give to use fifo_map as map, we are just ignoring the 'less' compare
+template<class K, class V, class dummy_compare, class A>
+using workaround_fifo_map = fifo_map<K, V, fifo_map_compare<K>, A>;
 
 SkinConfig::SkinConfig(String skin)
 {
 	m_skin = skin;
 
 
+	using ordered_json = basic_json<workaround_fifo_map>;
+
 	Map<String, SkinSetting::Type> inputModeMap = {
 		{ "selection", SkinSetting::Type::Selection },
 		{ "bool", SkinSetting::Type::Bool },
 		{ "int", SkinSetting::Type::Int},
 		{ "float", SkinSetting::Type::Float},
+		{ "label", SkinSetting::Type::Label},
+		{ "text", SkinSetting::Type::Text},
 	};
 
 	File defFile;
@@ -23,12 +33,26 @@ SkinConfig::SkinConfig(String skin)
 		Buffer buf(defFile.GetSize());
 		defFile.Read(buf.data(), buf.size());
 		String jsonData((char*)buf.data(), buf.size());
-		auto definitions = json::parse(*jsonData);
+		auto definitions = ordered_json::parse(*jsonData);
 		for (auto entry : definitions.items())
 		{
 			SkinSetting newsetting;
+			if (entry.key() == "separator")
+			{
+				newsetting.type = SkinSetting::Type::Separator;
+				m_settings.Add(newsetting);
+				continue;
+			}
 			auto values = entry.value();
 			newsetting.key = entry.key();
+			if (values.contains("label"))
+			{
+				newsetting.label = (String)values.at("label");
+			}
+			else
+			{
+				newsetting.label = entry.key();
+			}
 			newsetting.type = inputModeMap.at(values.at("type"));
 			switch (newsetting.type)
 			{
@@ -44,6 +68,10 @@ SkinConfig::SkinConfig(String skin)
 
 			case SkinSetting::Type::Bool:
 				newsetting.boolSetting.default = values.at("default");
+				break;
+
+			case SkinSetting::Type::Text:
+				newsetting.textSetting.default = strdup(*(String)values.at("default"));
 				break;
 
 			case SkinSetting::Type::Int:
@@ -80,14 +108,20 @@ bool SkinConfig::IsSet(String key) const
 	return (m_keys.Contains(key) && m_entries.Contains(m_keys.at(key)));
 }
 
+const Vector<SkinSetting>& SkinConfig::GetSettings() const
+{
+	return m_settings;
+}
+
 void SkinConfig::InitDefaults()
 {
 	for (auto& setting : m_settings)
 	{
-		String def(setting.selectionSetting.default);
+		String def;
 		switch (setting.type)
 		{
 		case SkinSetting::Type::Selection:
+			def = setting.selectionSetting.default;
 			Set(setting.key, def);
 			break;
 		case SkinSetting::Type::Bool:
@@ -98,6 +132,10 @@ void SkinConfig::InitDefaults()
 			break;
 		case SkinSetting::Type::Float:
 			Set(setting.key, setting.floatSetting.default);
+			break;
+		case SkinSetting::Type::Text:
+			def = setting.textSetting.default;
+			Set(setting.key, def);
 			break;
 		}
 	}

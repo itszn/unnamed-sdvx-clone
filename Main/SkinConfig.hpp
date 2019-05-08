@@ -8,10 +8,14 @@ struct SkinSetting
 		Float,
 		Int,
 		Bool,
-		Selection
+		Selection,
+		Text,
+		Label,
+		Separator
 	};
 	Type type = Type::Float;
 	String key;
+	String label;
 	union
 	{
 		struct {
@@ -35,6 +39,10 @@ struct SkinSetting
 		struct {
 			bool default;
 		} boolSetting;
+
+		struct {
+			char* default;
+		} textSetting;
 	};
 };
 
@@ -52,6 +60,7 @@ public:
 	String GetString(String key) const;
 	bool GetBool(String key) const;
 	bool IsSet(String key) const;
+	const Vector<SkinSetting>& GetSettings() const;
 
 private:
 	void InitDefaults() override;

@@ -31,6 +31,7 @@
 #endif
 
 GameConfig g_gameConfig;
+SkinConfig* g_skinConfig;
 OpenGL* g_gl = nullptr;
 Graphics::Window* g_gameWindow = nullptr;
 Application* g_application = nullptr;
@@ -354,7 +355,7 @@ bool Application::m_Init()
 
 	// Set skin variable
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
-	m_skinConfig = new SkinConfig(m_skin);
+	g_skinConfig = new SkinConfig(m_skin);
 	// Window cursor
 	Image cursorImg = ImageRes::Create("skins/" + m_skin + "/textures/cursor.png");
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
@@ -658,10 +659,10 @@ void Application::m_Cleanup()
 		g_jobSheduler = nullptr;
 	}
 
-	if (m_skinConfig)
+	if (g_skinConfig)
 	{
-		delete m_skinConfig;
-		m_skinConfig = nullptr;
+		delete g_skinConfig;
+		g_skinConfig = nullptr;
 	}
 
 	Discord_Shutdown();
