@@ -953,7 +953,7 @@ void SkinSettingsScreen::Render(float deltaTime)
 	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
 	{
 		nk_layout_row_dynamic(m_nctx, 30, 1);
-		for (auto& s : m_skinConfig->GetSettings())
+		for (auto s : m_skinConfig->GetSettings())
 		{
 			if (s.type == SkinSetting::Type::Boolean)
 			{
