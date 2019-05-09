@@ -13,14 +13,14 @@
 		"default" : "Guest"
 	},
 	
-	"separator" : {},
+	"separator_a" : {},
 	"Song select:" : { "type" : "label" },
 	"show_guide": {
 		"label" : "Show control guide on song select",
 		"type": "bool",
 		"default": true
 	},
-	"separator" : {},
+	"separator_b" : {},
 	"Test objects:" : { "type" : "label" },
 	"Testing with space" : {
 		"type": "float",

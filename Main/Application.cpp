@@ -885,6 +885,11 @@ void Application::ReloadScript(const String& name, lua_State* L)
 void Application::ReloadSkin()
 {
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+	if (g_skinConfig)
+	{
+		delete g_skinConfig;
+	}
+	g_skinConfig = new SkinConfig(m_skin);
 	g_guiState.fontCahce.clear();
 	g_guiState.textCache.clear();
 	g_guiState.nextTextId.clear();

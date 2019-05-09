@@ -53,11 +53,11 @@ SkinConfig::SkinConfig(String skin)
 			return;
 		}
 
-
 		for (auto entry : definitions.items())
 		{
 			SkinSetting newsetting;
-			if (entry.key() == "separator")
+			String key = entry.key();
+			if (key.compare(0, 9, "separator") == 0)
 			{
 				newsetting.type = SkinSetting::Type::Separator;
 				m_settings.Add(newsetting);
@@ -69,7 +69,7 @@ SkinConfig::SkinConfig(String skin)
 			String type;
 			if (!values.contains("type"))
 			{
-				showError(Utility::Sprintf("No type specified for: \"%s\"", entry.key()));
+				showError(Utility::Sprintf("No type specified for: \"%s\"", key));
 				continue;
 			}
 			
@@ -77,7 +77,7 @@ SkinConfig::SkinConfig(String skin)
 
 			if (!inputModeMap.Contains(type))
 			{
-				showError(Utility::Sprintf("Unknown type \"%s\" used for \"%s\"", type, entry.key()));
+				showError(Utility::Sprintf("Unknown type \"%s\" used for \"%s\"", type, key));
 				continue;
 			}
 
