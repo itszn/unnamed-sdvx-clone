@@ -41,6 +41,6 @@
 	"col_test" : {
 		"type": "color",
 		"label": "Color Test",
-		"default": "FF6633FF"
+		"default": "007FFFFF"
 	}
 }

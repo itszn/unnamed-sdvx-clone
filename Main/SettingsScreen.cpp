@@ -868,24 +868,42 @@ void SkinSettingsScreen::TextSetting(String key, String label)
 void SkinSettingsScreen::ColorSetting(String key, String label)
 {
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0) - 100;
-	Colori value = m_skinConfig->GetColor(key).ToRGBA8();
+	Color value = m_skinConfig->GetColor(key);
 	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-	int r, g, b, a;
+	float r, g, b, a;
 	r = value.x;
 	g = value.y;
 	b = value.z;
 	a = value.w;
-	nk_color nkCol = nk_rgba(r,g,b,a);
-	if (nk_combo_begin_color(m_nctx, nkCol, nk_vec2(w, 200))) {
-		float ratios[] = { 1.0f, 0.0f };
-		nk_layout_row(m_nctx, NK_DYNAMIC, 30, 1, ratios);
-		r = (nk_byte)nk_propertyi(m_nctx, "R", 0, r, 255, 1, 1);
-		g = (nk_byte)nk_propertyi(m_nctx, "G", 0, g, 255, 1, 1);
-		b = (nk_byte)nk_propertyi(m_nctx, "B", 0, b, 255, 1, 1);
-		a = (nk_byte)nk_propertyi(m_nctx, "A", 0, a, 255, 1, 1);
+	nk_colorf nkCol = { r,g,b,a };
+	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
+		enum color_mode { COL_RGB, COL_HSV };
+		nk_layout_row_dynamic(m_nctx, 120, 1);
+		nkCol = nk_color_picker(m_nctx, nkCol, NK_RGBA);
+
+		nk_layout_row_dynamic(m_nctx, 25, 2);
+		m_hsvMap[key] = nk_option_label(m_nctx, "RGB", m_hsvMap[key] ? 1 : 0) == 1;
+		m_hsvMap[key] = nk_option_label(m_nctx, "HSV", m_hsvMap[key] ? 0 : 1) == 0;
+
+		nk_layout_row_dynamic(m_nctx, 25, 1);
+		if (!m_hsvMap[key]) {
+			nkCol.r = nk_propertyf(m_nctx, "#R:", 0, nkCol.r, 1.0f, 0.01f, 0.005f);
+			nkCol.g = nk_propertyf(m_nctx, "#G:", 0, nkCol.g, 1.0f, 0.01f, 0.005f);
+			nkCol.b = nk_propertyf(m_nctx, "#B:", 0, nkCol.b, 1.0f, 0.01f, 0.005f);
+			nkCol.a = nk_propertyf(m_nctx, "#A:", 0, nkCol.a, 1.0f, 0.01f, 0.005f);
+		}
+		else {
+			float hsva[4];
+			nk_colorf_hsva_fv(hsva, nkCol);
+			hsva[0] = nk_propertyf(m_nctx, "#H:", 0, hsva[0], 1.0f, 0.01f, 0.05f);
+			hsva[1] = nk_propertyf(m_nctx, "#S:", 0, hsva[1], 1.0f, 0.01f, 0.05f);
+			hsva[2] = nk_propertyf(m_nctx, "#V:", 0, hsva[2], 1.0f, 0.01f, 0.05f);
+			hsva[3] = nk_propertyf(m_nctx, "#A:", 0, hsva[3], 1.0f, 0.01f, 0.05f);
+			nkCol = nk_hsva_colorfv(hsva);
+		}
 		nk_combo_end(m_nctx);
 	}
-	m_skinConfig->Set(key, Colori(r, g, b, a));
+	m_skinConfig->Set(key, Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a));
 
 
 	nk_layout_row_dynamic(m_nctx, 30, 1);
@@ -935,7 +953,7 @@ void SkinSettingsScreen::Render(float deltaTime)
 	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
 	{
 		nk_layout_row_dynamic(m_nctx, 30, 1);
-		for (auto s : m_skinConfig->GetSettings())
+		for (auto& s : m_skinConfig->GetSettings())
 		{
 			if (s.type == SkinSetting::Type::Boolean)
 			{

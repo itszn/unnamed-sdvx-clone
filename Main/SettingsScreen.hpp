@@ -51,4 +51,5 @@ private:
 	class SkinConfig* m_skinConfig;
 	class nk_context* m_nctx;
 	String m_skin;
+	Map<String, bool> m_hsvMap;
 };
