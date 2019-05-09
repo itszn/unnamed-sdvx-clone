@@ -19,6 +19,14 @@ Color::Color(float r, float g, float b) : Color(r,g,b,1.0f)
 Color::Color(float all) : Color(all, all, all, 1.0f)
 {
 }
+bool Color::operator ==(const Color& other)
+{
+	return this->x == other.x && this->y == other.y && this->z == other.y && this->w == other.w;
+}
+bool Color::operator !=(const Color& other)
+{
+	return !(*this == other);
+}
 Colori Color::ToRGBA8() const
 {
 	return Colori(*this * 255.0f);
@@ -75,6 +83,8 @@ Colori::Colori(uint8 r, uint8 g, uint8 b) : Colori(r,g,b,255)
 {
 
 }
+
+
 
 // Converted integer constants
 const Colori Colori::Cyan = Color::Cyan;

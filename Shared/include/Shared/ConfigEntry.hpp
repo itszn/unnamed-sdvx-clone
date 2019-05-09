@@ -1,5 +1,6 @@
 #pragma once
 #include "Shared/String.hpp"
+#include "Shared/Color.hpp"
 
 class IConfigEntry
 {
@@ -10,6 +11,7 @@ public:
 		Float,
 		Boolean,
 		String,
+		Color,
 		Enum
 	};
 
@@ -62,6 +64,15 @@ public:
 	virtual String ToString() const override;
 	virtual void FromString(const String& str) override;
 	EntryType GetType() override { return EntryType::String; };
+};
+
+class ColorConfigEntry : public IConfigEntry
+{
+public:
+	Color data;
+	virtual String ToString() const override;
+	virtual void FromString(const String& str) override;
+	EntryType GetType() override { return EntryType::Color; };
 };
 
 template<typename EnumClass>

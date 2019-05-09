@@ -865,6 +865,33 @@ void SkinSettingsScreen::TextSetting(String key, String label)
 	m_skinConfig->Set(key, value);
 }
 
+void SkinSettingsScreen::ColorSetting(String key, String label)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0) - 100;
+	Colori value = m_skinConfig->GetColor(key).ToRGBA8();
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	int r, g, b, a;
+	r = value.x;
+	g = value.y;
+	b = value.z;
+	a = value.w;
+	nk_color nkCol = nk_rgba(r,g,b,a);
+	if (nk_combo_begin_color(m_nctx, nkCol, nk_vec2(w, 200))) {
+		float ratios[] = { 1.0f, 0.0f };
+		nk_layout_row(m_nctx, NK_DYNAMIC, 30, 1, ratios);
+		r = (nk_byte)nk_propertyi(m_nctx, "R", 0, r, 255, 1, 1);
+		g = (nk_byte)nk_propertyi(m_nctx, "G", 0, g, 255, 1, 1);
+		b = (nk_byte)nk_propertyi(m_nctx, "B", 0, b, 255, 1, 1);
+		a = (nk_byte)nk_propertyi(m_nctx, "A", 0, a, 255, 1, 1);
+		nk_combo_end(m_nctx);
+	}
+	m_skinConfig->Set(key, Colori(r, g, b, a));
+
+
+	nk_layout_row_dynamic(m_nctx, 30, 1);
+
+}
+
 bool SkinSettingsScreen::ToggleSetting(String key, String label)
 {
 	int value = m_skinConfig->GetBool(key) ? 0 : 1;
@@ -937,6 +964,10 @@ void SkinSettingsScreen::Render(float deltaTime)
 			else if (s.type == SkinSetting::Type::Text)
 			{
 				TextSetting(s.key, s.label);
+			}
+			else if (s.type == SkinSetting::Type::Color)
+			{
+				ColorSetting(s.key, s.label);
 			}
 		}
 		if (nk_button_label(m_nctx, "Exit")) Exit();

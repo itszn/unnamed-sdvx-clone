@@ -37,3 +37,18 @@ void FloatConfigEntry::FromString(const String& str)
 {
 	data = (float)atof(*str);
 }
+
+String ColorConfigEntry::ToString() const
+{
+	Colori ci = data.ToRGBA8();
+	return Utility::Sprintf("%02X%02X%02X%02X", ci.x, ci.y, ci.z, ci.w);
+}
+void ColorConfigEntry::FromString(const String& str)
+{
+	int r, g, b, a;
+	sscanf(str.substr(0, 2).c_str(), "%X", &r);
+	sscanf(str.substr(2, 2).c_str(), "%X", &g);
+	sscanf(str.substr(4, 2).c_str(), "%X", &b);
+	sscanf(str.substr(6, 2).c_str(), "%X", &a);
+	data = Colori(r,g,b,a);
+}

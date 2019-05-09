@@ -5,7 +5,9 @@ local buttonWidth = 250;
 local buttonHeight = 75;
 local buttonBorder = 2;
 local label = -1;
-gfx.GradientColors(0,128,255,255,0,128,255,0)
+
+local gr_r, gr_g, gr_b, gr_a = game.GetSkinSetting("col_test")
+gfx.GradientColors(gr_r,gr_g,gr_b,gr_a,0,128,255,0)
 local gradient = gfx.LinearGradient(0,0,0,1)
 
 view_update = function()
@@ -47,7 +49,14 @@ draw_button = function(name, x, y, hoverindex)
     gfx.Text(name, x, y);
 end;
 
+function updateGradient()
+	gr_r, gr_g, gr_b, gr_a = game.GetSkinSetting("col_test")
+	gfx.GradientColors(gr_r,gr_g,gr_b,gr_a,0,128,255,0)
+	gradient = gfx.LinearGradient(0,0,0,1)
+end
+
 render = function(deltaTime)
+	updateGradient()
     resx,resy = game.GetResolution();
     mposx,mposy = game.GetMousePos();
     gfx.Scale(resx, resy / 3)

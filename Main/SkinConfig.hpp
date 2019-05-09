@@ -9,6 +9,7 @@ struct SkinSetting
 		Integer,
 		Boolean,
 		Selection,
+		Color,
 		Text,
 		Label,
 		Separator
@@ -43,6 +44,11 @@ struct SkinSetting
 		struct {
 			char* def;
 		} textSetting;
+		
+		struct {
+			Color* def;
+			bool hsv;
+		} colorSetting;
 	};
 };
 
@@ -55,10 +61,12 @@ public:
 	void Set(String key, const float& value);
 	void Set(String key, const int32& value);
 	void Set(String key, const bool& value);
+	void Set(String key, const Color& value);
 	int GetInt(String key) const;
 	float GetFloat(String key) const;
 	String GetString(String key) const;
 	bool GetBool(String key) const;
+	Color GetColor(String key) const;
 	IConfigEntry* GetEntry(String key) const;
 	bool IsSet(String key) const;
 	const Vector<SkinSetting>& GetSettings() const;

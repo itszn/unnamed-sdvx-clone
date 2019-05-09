@@ -1404,6 +1404,15 @@ static int lGetSkinSetting(lua_State* L /*String key*/)
 		lua_pushstring(L, entry->As<StringConfigEntry>()->data.c_str());
 		return 1;
 	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Color)
+	{
+		Colori data = entry->As<ColorConfigEntry>()->data.ToRGBA8();
+		lua_pushnumber(L, data.x);
+		lua_pushnumber(L, data.y);
+		lua_pushnumber(L, data.z);
+		lua_pushnumber(L, data.w);
+		return 4;
+	}
 	else
 	{
 		return 0;

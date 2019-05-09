@@ -25,6 +25,7 @@ SkinConfig::SkinConfig(String skin)
 		{ "float", SkinSetting::Type::Float},
 		{ "label", SkinSetting::Type::Label},
 		{ "text", SkinSetting::Type::Text},
+		{ "color", SkinSetting::Type::Color},
 	};
 
 	File defFile;
@@ -88,6 +89,21 @@ SkinConfig::SkinConfig(String skin)
 				newsetting.floatSetting.max = values.at("max");
 				newsetting.floatSetting.min = values.at("min");
 				break;
+
+			case SkinSetting::Type::Color:
+				values.at("default").get_to(def);
+				ColorConfigEntry ce;
+				ce.FromString(def);
+				newsetting.colorSetting.def = new Color(ce.data);
+				if (values.contains("hsv"))
+				{
+					newsetting.colorSetting.hsv = values.at("hsv");
+				}
+				else
+				{
+					newsetting.colorSetting.hsv = false;
+				}
+				break;
 			}
 			m_settings.Add(newsetting);
 		}
@@ -141,7 +157,11 @@ void SkinConfig::InitDefaults()
 			def = setting.textSetting.def;
 			Set(setting.key, def);
 			break;
+		case SkinSetting::Type::Color:
+			Set(setting.key, *setting.colorSetting.def);
+			break;
 		}
+
 	}
 }
 
@@ -160,6 +180,11 @@ String SkinConfig::GetString(String key) const
 bool SkinConfig::GetBool(String key) const
 {
 	return GetEnsure<BoolConfigEntry>(key)->data;
+}
+
+Color SkinConfig::GetColor(String key) const
+{
+	return GetEnsure<ColorConfigEntry>(key)->data;
 }
 
 IConfigEntry* SkinConfig::GetEntry(String key) const
@@ -192,6 +217,15 @@ void SkinConfig::Set(String key, const float& value)
 void SkinConfig::Set(String key, const bool& value)
 {
 	bool& dst = SetEnsure<BoolConfigEntry>(key)->data;
+	if (dst != value)
+	{
+		dst = value;
+		m_dirty = true;
+	}
+}
+void SkinConfig::Set(String key, const Color & value)
+{
+	Color& dst = SetEnsure<ColorConfigEntry>(key)->data;
 	if (dst != value)
 	{
 		dst = value;
