@@ -162,6 +162,14 @@ bool SkinConfig::GetBool(String key) const
 	return GetEnsure<BoolConfigEntry>(key)->data;
 }
 
+IConfigEntry* SkinConfig::GetEntry(String key) const
+{
+	if(!m_keys.Contains(key))
+		return nullptr;
+
+	return m_entries.at(m_keys.at(key));
+}
+
 
 void SkinConfig::Set(String key, const int32& value)
 {

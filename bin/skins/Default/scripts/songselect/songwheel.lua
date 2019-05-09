@@ -21,6 +21,7 @@ local effector = 0
 local searchText = gfx.CreateLabel("",5,0)
 local searchIndex = 1
 local jacketFallback = gfx.CreateSkinImage("song_select/loading.png", 0)
+local showGuide = game.GetSkinSetting("show_guide")
 gfx.LoadSkinFont("UDDigiKyokashoNP-B.ttf");
 local legendTable = {
   {["labelSingleLine"] =  gfx.CreateLabel("DIFFICULTY SELECT",16, 0), ["labelMultiLine"] =  gfx.CreateLabel("DIFFICULTY\nSELECT",16, 0), ["image"] = gfx.CreateSkinImage("legend/knob-left.png", 0)},
@@ -472,11 +473,13 @@ render = function(deltaTime)
       end
     end
     --Draw Legend Information
-    if aspectRatio == "PortraitWidescreen" then
-      draw_legend(0,(fifthY/3)*14, fullX, (fifthY/3)*1)
-    else
-      draw_legend(0,(fifthY/2)*9, fullX, (fifthY/2))
-    end
+	if showGuide then
+		if aspectRatio == "PortraitWidescreen" then
+			draw_legend(0,(fifthY/3)*14, fullX, (fifthY/3)*1)
+		else
+			draw_legend(0,(fifthY/2)*9, fullX, (fifthY/2))
+		end
+	end
 
     --draw text search
     if aspectRatio == "PortraitWidescreen" then

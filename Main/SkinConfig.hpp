@@ -59,6 +59,7 @@ public:
 	float GetFloat(String key) const;
 	String GetString(String key) const;
 	bool GetBool(String key) const;
+	IConfigEntry* GetEntry(String key) const;
 	bool IsSet(String key) const;
 	const Vector<SkinSetting>& GetSettings() const;
 

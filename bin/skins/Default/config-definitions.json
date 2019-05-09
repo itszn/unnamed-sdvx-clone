@@ -1,11 +1,11 @@
 {
 	"Gameplay:" : { "type" : "label" },
 	
-	"position": {
+	"earlate_position": {
 		"type": "selection",
 		"label": "Early/Late display position",
 		"default": "bottom",
-		"values": ["bottom", "middle", "top"]
+		"values": ["bottom", "middle", "top", "off"]
 	},
 	"nick": {
 		"type" : "text",
@@ -13,20 +13,15 @@
 		"default" : "Guest"
 	},
 	
-	"showCrit": {
+	"separator" : {},
+	"Song select:" : { "type" : "label" },
+	"show_guide": {
+		"label" : "Show control guide on song select",
 		"type": "bool",
-		"label": "Test toggle",
 		"default": true
 	},
-	
 	"separator" : {},
-	
 	"Test objects:" : { "type" : "label" },
-	"without_label": {
-		"type": "bool",
-		"default": false
-	},
-	
 	"Testing with space" : {
 		"type": "float",
 		"label": "Test setting with spaces in the key",

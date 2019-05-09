@@ -1326,6 +1326,90 @@ static int lGetSkin(lua_State* L)
 	return 1;
 }
 
+static int lSetSkinSetting(lua_State* L /*String key, Any value*/)
+{
+	String key = luaL_checkstring(L, 1);
+	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	if (!entry) //just set depending on value type
+	{
+		if (lua_isboolean(L, 2))
+		{
+			bool value = luaL_checknumber(L, 2) == 1;
+			g_skinConfig->Set(key, value);
+		}
+		else if (lua_isnumber(L, 2)) //no good way to know if int or not
+		{
+			float value = luaL_checknumber(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (lua_isstring(L, 2))
+		{
+			String value = luaL_checkstring(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+	}
+	else
+	{
+		if (entry->GetType() == IConfigEntry::EntryType::Boolean)
+		{
+			bool value = luaL_checknumber(L, 2) == 1;
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::Float)
+		{
+			float value = luaL_checknumber(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::Integer)
+		{
+			int value = luaL_checkinteger(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::String)
+		{
+			String value = luaL_checkstring(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+	}
+	return 0;
+}
+
+
+static int lGetSkinSetting(lua_State* L /*String key*/)
+{
+	String key = luaL_checkstring(L, 1);
+	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	if (!entry)
+	{
+		return 0;
+	}
+
+	if (entry->GetType() == IConfigEntry::EntryType::Boolean)
+	{
+		lua_pushboolean(L, entry->As<BoolConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Float)
+	{
+		lua_pushnumber(L, entry->As<FloatConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Integer)
+	{
+		lua_pushnumber(L, entry->As<IntConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::String)
+	{
+		lua_pushstring(L, entry->As<StringConfigEntry>()->data.c_str());
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 void Application::m_SetNvgLuaBindings(lua_State * state)
 {
 	auto pushFuncToTable = [&](const char* name, int (*func)(lua_State*))
@@ -1481,6 +1565,9 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushFuncToTable("GetKnob", lGetKnob);
 		pushFuncToTable("UpdateAvailable", lGetUpdateAvailable);
 		pushFuncToTable("GetSkin", lGetSkin);
+		pushFuncToTable("GetSkin", lGetSkin);
+		pushFuncToTable("GetSkinSetting", lGetSkinSetting);
+		pushFuncToTable("SetSkinSetting", lSetSkinSetting);
 
 		//constants
 		pushIntToTable("LOGGER_INFO", Logger::Severity::Info);
