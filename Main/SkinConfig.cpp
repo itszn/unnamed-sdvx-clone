@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "Application.hpp"
 #include "SkinConfig.hpp"
 #include "json.hpp"
 #include "fifo_map.hpp"
@@ -31,10 +32,28 @@ SkinConfig::SkinConfig(String skin)
 	File defFile;
 	if(defFile.OpenRead(Path::Normalize("skins/" + skin + "/config-definitions.json")));
 	{
+		auto showError = [](String message)
+		{
+			g_gameWindow->ShowMessageBox("Skin config parser error.", message, 0);
+		};
+		
+
 		Buffer buf(defFile.GetSize());
 		defFile.Read(buf.data(), buf.size());
 		String jsonData((char*)buf.data(), buf.size());
-		auto definitions = ordered_json::parse(*jsonData);
+		ordered_json definitions;
+		///TODO: Don't use exceptions
+		try
+		{
+			definitions = ordered_json::parse(*jsonData);
+		}
+		catch (const std::exception& e)
+		{
+			showError(e.what());
+			return;
+		}
+
+
 		for (auto entry : definitions.items())
 		{
 			SkinSetting newsetting;
@@ -47,6 +66,21 @@ SkinConfig::SkinConfig(String skin)
 			auto values = entry.value();
 			newsetting.key = entry.key();
 			String def;
+			String type;
+			if (!values.contains("type"))
+			{
+				showError(Utility::Sprintf("No type specified for: \"%s\"", entry.key()));
+				continue;
+			}
+			
+			values.at("type").get_to(type);
+
+			if (!inputModeMap.Contains(type))
+			{
+				showError(Utility::Sprintf("Unknown type \"%s\" used for \"%s\"", type, entry.key()));
+				continue;
+			}
+
 			if (values.contains("label"))
 			{
 				values.at("label").get_to(newsetting.label);
@@ -55,7 +89,15 @@ SkinConfig::SkinConfig(String skin)
 			{
 				newsetting.label = entry.key();
 			}
-			newsetting.type = inputModeMap.at(values.at("type"));
+
+			newsetting.type = inputModeMap.at(type);
+
+			if (!values.contains("default") && newsetting.type != SkinSetting::Type::Label)
+			{
+				showError(Utility::Sprintf("No default value specified for: \"%s\"", entry.key()));
+				continue;
+			}
+
 			switch (newsetting.type)
 			{
 			case SkinSetting::Type::Selection:
@@ -109,7 +151,7 @@ SkinConfig::SkinConfig(String skin)
 		}
 	}
 
-  InitDefaults();
+    InitDefaults();
 	Load(Path::Normalize("skins/" + skin + "/skin.cfg"));
 }
 
