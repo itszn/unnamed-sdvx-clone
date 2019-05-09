@@ -7,7 +7,7 @@ local buttonBorder = 2;
 local label = -1;
 
 local gr_r, gr_g, gr_b, gr_a = game.GetSkinSetting("col_test")
-gfx.GradientColors(gr_r,gr_g,gr_b,gr_a,0,128,255,0)
+gfx.GradientColors(0,127,255,255,0,128,255,0)
 local gradient = gfx.LinearGradient(0,0,0,1)
 
 view_update = function()
@@ -51,6 +51,7 @@ end;
 
 function updateGradient()
 	gr_r, gr_g, gr_b, gr_a = game.GetSkinSetting("col_test")
+	if gr_r == nil then return end
 	gfx.GradientColors(gr_r,gr_g,gr_b,gr_a,0,128,255,0)
 	gradient = gfx.LinearGradient(0,0,0,1)
 end

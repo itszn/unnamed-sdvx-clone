@@ -30,7 +30,7 @@ SkinConfig::SkinConfig(String skin)
 	};
 
 	File defFile;
-	if(defFile.OpenRead(Path::Normalize("skins/" + skin + "/config-definitions.json")));
+	if(defFile.OpenRead(Path::Normalize("skins/" + skin + "/config-definitions.json")))
 	{
 		auto showError = [](String message)
 		{
