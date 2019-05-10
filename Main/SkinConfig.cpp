@@ -94,7 +94,7 @@ SkinConfig::SkinConfig(String skin)
 
 			if (!values.contains("default") && newsetting.type != SkinSetting::Type::Label)
 			{
-				showError(Utility::Sprintf("No default value specified for: \"%s\"", entry.key()));
+				showError(Utility::Sprintf("No default value specified for: \"%s\"", key));
 				continue;
 			}
 
