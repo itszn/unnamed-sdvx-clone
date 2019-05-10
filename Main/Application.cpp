@@ -423,7 +423,7 @@ bool Application::m_Init()
 #else
 		g_guiState.vg = nvgCreateGL3(0);
 #endif
-		nvgCreateFont(g_guiState.vg, "fallback", "fonts/fallbackfont.otf");
+		nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
 	}
 
 	if(g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
@@ -903,7 +903,7 @@ void Application::ReloadSkin()
 	g_guiState.vg = nvgCreateGL3(0);
 #endif
 
-	nvgCreateFont(g_guiState.vg, "fallback", "fonts/fallbackfont.otf");
+	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
 }
 void Application::DisposeLua(lua_State* state)
 {

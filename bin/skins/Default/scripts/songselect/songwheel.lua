@@ -22,7 +22,6 @@ local searchText = gfx.CreateLabel("",5,0)
 local searchIndex = 1
 local jacketFallback = gfx.CreateSkinImage("song_select/loading.png", 0)
 local showGuide = game.GetSkinSetting("show_guide")
-gfx.LoadSkinFont("UDDigiKyokashoNP-B.ttf");
 local legendTable = {
   {["labelSingleLine"] =  gfx.CreateLabel("DIFFICULTY SELECT",16, 0), ["labelMultiLine"] =  gfx.CreateLabel("DIFFICULTY\nSELECT",16, 0), ["image"] = gfx.CreateSkinImage("legend/knob-left.png", 0)},
   {["labelSingleLine"] =  gfx.CreateLabel("MUSIC SELECT",16, 0),      ["labelMultiLine"] =  gfx.CreateLabel("MUSIC\nSELECT",16, 0),      ["image"] = gfx.CreateSkinImage("legend/knob-right.png", 0)},
@@ -51,7 +50,7 @@ local badges = {
     gfx.CreateSkinImage("badges/perfect.png", 0)
 }
 
-gfx.LoadSkinFont("segoeui.ttf");
+gfx.LoadSkinFont("NotoSans-Regular.ttf");
 
 game.LoadSkinSample("menu_click")
 game.LoadSkinSample("click-02")
@@ -445,7 +444,7 @@ draw_search = function(x,y,w,h)
   gfx.Fill()
   gfx.Stroke()
   gfx.BeginPath();
-  gfx.LoadSkinFont("segoeui.ttf");
+  gfx.LoadSkinFont("NotoSans-Regular.ttf");
   gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_MIDDLE);
   gfx.DrawLabel(searchText, xpos+10,y+(h/2), w-20)
 
@@ -457,7 +456,7 @@ render = function(deltaTime)
     resx,resy = game.GetResolution();
     adjustScreen(resx,resy);
     gfx.BeginPath();
-    gfx.LoadSkinFont("segoeui.ttf");
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
     gfx.FontSize(40);
     gfx.FillColor(255,255,255);
     if songwheel.songs[1] ~= nil then
@@ -506,7 +505,7 @@ render = function(deltaTime)
 		local forceText = string.format("Force: %.2f", totalForce)
 		gfx.Text(forceText, 0, fullY)
 	end
-    gfx.LoadSkinFont("segoeui.ttf");
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
     gfx.ResetTransform()
     gfx.ForceRender()
 end

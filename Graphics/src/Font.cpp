@@ -364,7 +364,7 @@ namespace Graphics
 
 		// Load fallback font
 		File file;
-		if(!file.OpenRead("fonts/fallbackfont.otf"))
+		if(!file.OpenRead("fonts/NotoSansCJKjp-Regular.otf"))
 			return false;
 		loadedFallbackFont.resize(file.GetSize());
 		file.Read(loadedFallbackFont.data(), loadedFallbackFont.size());

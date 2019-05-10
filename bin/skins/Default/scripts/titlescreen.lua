@@ -68,7 +68,7 @@ render = function(deltaTime)
     gfx.BeginPath()
     buttonY = resy / 2;
     hovered = nil;
-    gfx.LoadSkinFont("segoeui.ttf");
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
     draw_button("Start", resx / 2, buttonY, Menu.Start);
     buttonY = buttonY + 100;
     draw_button("Settings", resx / 2, buttonY, Menu.Settings);

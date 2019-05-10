@@ -492,7 +492,7 @@ function draw_song_info(deltaTime)
     if portrait then gfx.Scale(0.7, 0.7) end
 
     -- Ensure the font has been loaded
-    gfx.LoadSkinFont("segoeui.ttf")
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
 
     -- Draw the background, a simple grey box
     gfx.FillColor(20, 20, 20, 200)

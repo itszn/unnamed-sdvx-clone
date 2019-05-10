@@ -315,15 +315,53 @@ public:
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
 		m_skins = Path::GetSubDirs("./skins/");
-
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
 			struct nk_font_atlas *atlas;
 			nk_sdl_font_stash_begin(&atlas);
-			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/fallback_truetype.ttf").c_str(), 24, 0);
+			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NotoSans-Regular.ttf").c_str(), 24, 0);
 
+			struct nk_font_config cfg_kr = nk_font_config(24);
+			cfg_kr.merge_mode = nk_true;
+			cfg_kr.range = nk_font_korean_glyph_ranges();
+
+			NK_STORAGE const nk_rune jp_ranges[] = {
+				0x0020, 0x00FF,
+				0x3000, 0x303f,
+				0x3040, 0x309f,
+				0x30a0, 0x30ff,
+				0x4e00, 0x9faf,
+				0xff00, 0xffef,
+				0
+			};
+			struct nk_font_config cfg_jp = nk_font_config(24);
+			cfg_jp.merge_mode = nk_true;
+			cfg_jp.range = jp_ranges;
+
+			NK_STORAGE const nk_rune cjk_ranges[] = {
+				0x0020, 0x00FF,
+				0x3000, 0x30FF,
+				0x3131, 0x3163,
+				0xAC00, 0xD79D,
+				0x31F0, 0x31FF,
+				0xFF00, 0xFFEF,
+				0x4e00, 0x9FAF,
+				0
+			};
+
+			struct nk_font_config cfg_cjk = nk_font_config(24);
+			cfg_cjk.merge_mode = nk_true;
+			cfg_cjk.range = cjk_ranges;
+
+
+			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NanumBarunGothic.ttf").c_str(), 24, &cfg_kr);
+			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/mplus-1m-medium.ttf").c_str(), 24, &cfg_jp);
+			nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/DroidSansFallback.ttf").c_str(), 24, &cfg_cjk);
+
+			
 			nk_sdl_font_stash_end();
+			nk_font_atlas_cleanup(atlas);
 			//nk_style_load_all_cursors(m_nctx, atlas->cursors);
 			nk_style_set_font(m_nctx, &fallback->handle);
 		}
