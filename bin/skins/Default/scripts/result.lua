@@ -139,6 +139,7 @@ draw_graph = function(x,y,w,h)
 end
 
 render = function(deltaTime, showStats)
+	gfx.BeginPath()
     gfx.ImageRect(0, 0, resx, resy, backgroundImage, 0.5, 0);
     gfx.Scale(scale,scale)
     gfx.Translate(moveX,moveY)
