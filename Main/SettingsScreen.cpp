@@ -38,6 +38,7 @@
 
 #define MAX_VERTEX_MEMORY 512 * 1024
 #define MAX_ELEMENT_MEMORY 128 * 1024
+#define FULL_FONT_TEXTURE_HEIGHT 32768 //needed to load all CJK glyphs
 
 class SettingsScreen_Impl : public SettingsScreen
 {
@@ -357,8 +358,13 @@ public:
 
 			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NanumBarunGothic.ttf").c_str(), 24, &cfg_kr);
 			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/mplus-1m-medium.ttf").c_str(), 24, &cfg_jp);
-			nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/DroidSansFallback.ttf").c_str(), 24, &cfg_cjk);
-
+			int maxSize;
+			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
+			Logf("System max texture size: %d", Logger::Info, maxSize);
+			if (maxSize >= FULL_FONT_TEXTURE_HEIGHT)
+			{
+				nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/DroidSansFallback.ttf").c_str(), 24, &cfg_cjk);
+			}
 			
 			nk_sdl_font_stash_end();
 			nk_font_atlas_cleanup(atlas);
