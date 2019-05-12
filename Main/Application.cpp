@@ -19,7 +19,7 @@
 #include "nanovg.h"
 #include "discord_rpc.h"
 #include "cpr/cpr.h"
-#include "jansson.h"
+#include "json.hpp"
 #include "SkinConfig.hpp"
 #define NANOVG_GL3_IMPLEMENTATION
 #include "nanovg_gl.h"
@@ -233,30 +233,39 @@ void __updateChecker()
 	}
 	else
 	{
-		json_error_t jsonError;
-		json_t *latestInfo = json_loads(r.text.c_str(), 0, &jsonError);
-		if (latestInfo && json_is_object(latestInfo))
+		nlohmann::json latestInfo;
+		///TODO: Don't use exceptions
+		try
 		{
-			json_t *version = json_object_get(latestInfo, "tag_name");
-			//tag_name should always be "vX.Y.Z" so we remove the 'v'
-			String tagname = json_string_value(version) + 1;
-			bool outdated = false;
-			Vector<String> versionStrings = tagname.Explode(".");
-			int major = 0, minor = 0, patch = 0;
-			major = std::stoi(versionStrings[0]);
-			if (versionStrings.size() > 1)
-				minor = std::stoi(versionStrings[1]);
-			if (versionStrings.size() > 2)
-				patch = std::stoi(versionStrings[2]);
+			latestInfo = nlohmann::json::parse(r.text);
+		}
+		catch (const std::exception& e)
+		{
+			Logf("Failed to parse version json: \"%s\"", Logger::Error, e.what());
+			return;
+		}
 
-			outdated = major > VERSION_MAJOR || minor > VERSION_MINOR || patch > VERSION_PATCH;
 
-			if (outdated)
-			{
-				json_t* urlObj = json_object_get(latestInfo, "html_url");
-				String updateUrl = json_string_value(urlObj);				
-				g_application->SetUpdateAvailable(tagname, updateUrl);
-			}
+		//tag_name should always be "vX.Y.Z" so we remove the 'v'
+		String tagname;
+		latestInfo.at("tag_name").get_to(tagname);
+		tagname = tagname.substr(1);
+		bool outdated = false;
+		Vector<String> versionStrings = tagname.Explode(".");
+		int major = 0, minor = 0, patch = 0;
+		major = std::stoi(versionStrings[0]);
+		if (versionStrings.size() > 1)
+			minor = std::stoi(versionStrings[1]);
+		if (versionStrings.size() > 2)
+			patch = std::stoi(versionStrings[2]);
+
+		outdated = major > VERSION_MAJOR || minor > VERSION_MINOR || patch > VERSION_PATCH;
+
+		if (outdated)
+		{
+			String updateUrl;
+			latestInfo.at("html_url").get_to(updateUrl);
+			g_application->SetUpdateAvailable(tagname, updateUrl);
 		}
 	}
 }
