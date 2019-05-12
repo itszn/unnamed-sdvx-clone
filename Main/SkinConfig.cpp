@@ -161,8 +161,40 @@ SkinConfig::~SkinConfig()
 	{
 		m_reverseKeys.Add(it.second, it.first);
 	}
-
 	Save(Path::Normalize("skins/" + m_skin + "/skin.cfg"));
+	for (auto s : m_settings)
+	{
+		if (s.type == SkinSetting::Type::Color)
+		{
+			if (s.colorSetting.def)
+			{
+				delete s.colorSetting.def;
+				s.textSetting.def = nullptr;
+			}
+		}
+		else if (s.type == SkinSetting::Type::Selection)
+		{
+			if (s.selectionSetting.def)
+			{
+				free(s.selectionSetting.def);
+				s.selectionSetting.def = nullptr;
+			}
+			if (s.selectionSetting.options)
+			{
+				delete[] s.selectionSetting.options;
+				s.selectionSetting.options = nullptr;
+			}
+
+		}
+		else if (s.type == SkinSetting::Type::Text)
+		{
+			if (s.textSetting.def)
+			{
+				free(s.textSetting.def);
+				s.textSetting.def = nullptr;
+			}
+		}
+	}
 }
 
 bool SkinConfig::IsSet(String key) const
