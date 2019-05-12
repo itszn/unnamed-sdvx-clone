@@ -1490,6 +1490,7 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushFuncToTable("BoxGradient", lBoxGradient);
 		pushFuncToTable("RadialGradient", lRadialGradient);
 		pushFuncToTable("ImagePattern", lImagePattern);
+		pushFuncToTable("UpdateImagePattern", lUpdateImagePattern);
 		pushFuncToTable("GradientColors", lGradientColors);
 		pushFuncToTable("FillPaint", lFillPaint);
 		pushFuncToTable("StrokePaint", lStrokePaint);

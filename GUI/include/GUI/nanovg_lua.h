@@ -770,6 +770,32 @@ static int lImagePattern(lua_State* L /* float ox, float oy, float ex, float ey,
 	return 1;
 }
 
+static int lUpdateImagePattern(lua_State* L /*int paint, float ox, float oy, float ex, float ey, float angle, float alpha*/)
+{
+	int paint = luaL_checkinteger(L, 1);
+	if (!g_guiState.paintCache[L].Contains(paint))
+		return 0;
+	NVGpaint& p = g_guiState.paintCache[L].at(paint);
+
+	float ox = luaL_checknumber(L, 2);
+	float oy = luaL_checknumber(L, 3);
+	float ex = luaL_checknumber(L, 4);
+	float ey = luaL_checknumber(L, 5);
+	float angle = luaL_checknumber(L, 6);
+	float alpha = luaL_checknumber(L, 7);
+
+	nvgTransformIdentity(p.xform);
+	nvgTransformRotate(p.xform, angle);
+	p.xform[4] = ox;
+	p.xform[5] = oy;
+
+	p.extent[0] = ex;
+	p.extent[1] = ey;
+
+	p.innerColor = p.outerColor = nvgRGBAf(1, 1, 1, alpha);
+	return 0;
+}
+
 static int lGradientColors(lua_State* L /*int ri, int gi, int bi, int ai, int ro, int go, int bo, int ao*/)
 {
 	int ri, gi, bi, ai, ro, go, bo, ao;
