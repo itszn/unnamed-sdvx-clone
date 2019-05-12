@@ -11,6 +11,8 @@ extern Vector2i g_resolution;
 extern class Application* g_application;
 extern class JobSheduler* g_jobSheduler;
 extern class Input g_input;
+extern class SkinConfig* g_skinConfig;
+
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 3

@@ -1,1 +1,1 @@
-gfx.LoadSkinFont("segoeui.ttf");
+gfx.LoadSkinFont("NotoSans-Regular.ttf");

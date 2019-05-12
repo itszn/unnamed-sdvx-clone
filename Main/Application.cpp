@@ -20,6 +20,7 @@
 #include "discord_rpc.h"
 #include "cpr/cpr.h"
 #include "jansson.h"
+#include "SkinConfig.hpp"
 #define NANOVG_GL3_IMPLEMENTATION
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
@@ -30,6 +31,7 @@
 #endif
 
 GameConfig g_gameConfig;
+SkinConfig* g_skinConfig;
 OpenGL* g_gl = nullptr;
 Graphics::Window* g_gameWindow = nullptr;
 Application* g_application = nullptr;
@@ -353,7 +355,7 @@ bool Application::m_Init()
 
 	// Set skin variable
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
-
+	g_skinConfig = new SkinConfig(m_skin);
 	// Window cursor
 	Image cursorImg = ImageRes::Create("skins/" + m_skin + "/textures/cursor.png");
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
@@ -421,7 +423,7 @@ bool Application::m_Init()
 #else
 		g_guiState.vg = nvgCreateGL3(0);
 #endif
-		nvgCreateFont(g_guiState.vg, "fallback", "fonts/fallbackfont.otf");
+		nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
 	}
 
 	if(g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
@@ -657,10 +659,17 @@ void Application::m_Cleanup()
 		g_jobSheduler = nullptr;
 	}
 
+	if (g_skinConfig)
+	{
+		delete g_skinConfig;
+		g_skinConfig = nullptr;
+	}
+
 	Discord_Shutdown();
 
 	if(m_updateThread.joinable())
 		m_updateThread.join();
+
 
 	// Finally, save config
 	m_SaveConfig();
@@ -876,6 +885,11 @@ void Application::ReloadScript(const String& name, lua_State* L)
 void Application::ReloadSkin()
 {
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+	if (g_skinConfig)
+	{
+		delete g_skinConfig;
+	}
+	g_skinConfig = new SkinConfig(m_skin);
 	g_guiState.fontCahce.clear();
 	g_guiState.textCache.clear();
 	g_guiState.nextTextId.clear();
@@ -889,7 +903,7 @@ void Application::ReloadSkin()
 	g_guiState.vg = nvgCreateGL3(0);
 #endif
 
-	nvgCreateFont(g_guiState.vg, "fallback", "fonts/fallbackfont.otf");
+	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
 }
 void Application::DisposeLua(lua_State* state)
 {
@@ -1317,6 +1331,99 @@ static int lGetSkin(lua_State* L)
 	return 1;
 }
 
+static int lSetSkinSetting(lua_State* L /*String key, Any value*/)
+{
+	String key = luaL_checkstring(L, 1);
+	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	if (!entry) //just set depending on value type
+	{
+		if (lua_isboolean(L, 2))
+		{
+			bool value = luaL_checknumber(L, 2) == 1;
+			g_skinConfig->Set(key, value);
+		}
+		else if (lua_isnumber(L, 2)) //no good way to know if int or not
+		{
+			float value = luaL_checknumber(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (lua_isstring(L, 2))
+		{
+			String value = luaL_checkstring(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+	}
+	else
+	{
+		if (entry->GetType() == IConfigEntry::EntryType::Boolean)
+		{
+			bool value = luaL_checknumber(L, 2) == 1;
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::Float)
+		{
+			float value = luaL_checknumber(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::Integer)
+		{
+			int value = luaL_checkinteger(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+		else if (entry->GetType() == IConfigEntry::EntryType::String)
+		{
+			String value = luaL_checkstring(L, 2);
+			g_skinConfig->Set(key, value);
+		}
+	}
+	return 0;
+}
+
+
+static int lGetSkinSetting(lua_State* L /*String key*/)
+{
+	String key = luaL_checkstring(L, 1);
+	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	if (!entry)
+	{
+		return 0;
+	}
+
+	if (entry->GetType() == IConfigEntry::EntryType::Boolean)
+	{
+		lua_pushboolean(L, entry->As<BoolConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Float)
+	{
+		lua_pushnumber(L, entry->As<FloatConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Integer)
+	{
+		lua_pushnumber(L, entry->As<IntConfigEntry>()->data);
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::String)
+	{
+		lua_pushstring(L, entry->As<StringConfigEntry>()->data.c_str());
+		return 1;
+	}
+	else if (entry->GetType() == IConfigEntry::EntryType::Color)
+	{
+		Colori data = entry->As<ColorConfigEntry>()->data.ToRGBA8();
+		lua_pushnumber(L, data.x);
+		lua_pushnumber(L, data.y);
+		lua_pushnumber(L, data.z);
+		lua_pushnumber(L, data.w);
+		return 4;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 void Application::m_SetNvgLuaBindings(lua_State * state)
 {
 	auto pushFuncToTable = [&](const char* name, int (*func)(lua_State*))
@@ -1472,6 +1579,9 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushFuncToTable("GetKnob", lGetKnob);
 		pushFuncToTable("UpdateAvailable", lGetUpdateAvailable);
 		pushFuncToTable("GetSkin", lGetSkin);
+		pushFuncToTable("GetSkin", lGetSkin);
+		pushFuncToTable("GetSkinSetting", lGetSkinSetting);
+		pushFuncToTable("SetSkinSetting", lSetSkinSetting);
 
 		//constants
 		pushIntToTable("LOGGER_INFO", Logger::Severity::Info);

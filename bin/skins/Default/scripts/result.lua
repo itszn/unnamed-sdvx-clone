@@ -82,7 +82,7 @@ end
 
 draw_highscores = function()
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
-    gfx.LoadSkinFont("segoeui.ttf")
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
     gfx.FontSize(30)
     gfx.Text("Highscores:",510,30)
     for i,s in ipairs(result.highScores) do
@@ -103,7 +103,7 @@ draw_highscores = function()
         gfx.FontSize(60)
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_TOP)
         gfx.Text(string.format("%08d", s.score), 650, ypos - 4)
-        gfx.LoadSkinFont("segoeui.ttf")
+        gfx.LoadSkinFont("NotoSans-Regular.ttf")
         gfx.FontSize(20)
         if s.timestamp > 0 then
             gfx.Text(os.date("%Y-%m-%d %H:%M:%S", s.timestamp), 650, ypos + 45)
@@ -139,6 +139,7 @@ draw_graph = function(x,y,w,h)
 end
 
 render = function(deltaTime, showStats)
+	gfx.BeginPath()
     gfx.ImageRect(0, 0, resx, resy, backgroundImage, 0.5, 0);
     gfx.Scale(scale,scale)
     gfx.Translate(moveX,moveY)
@@ -160,7 +161,7 @@ render = function(deltaTime, showStats)
     gfx.Fill()
     
     --Title and jacket
-    gfx.LoadSkinFont("segoeui.ttf")
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
     gfx.BeginPath()
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
@@ -228,7 +229,7 @@ render = function(deltaTime, showStats)
 
     draw_highscores()
     
-    gfx.LoadSkinFont("segoeui.ttf")
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
     shotTimer = math.max(shotTimer - deltaTime, 0)
     if shotTimer > 1 then
         draw_shotnotif(505,755);

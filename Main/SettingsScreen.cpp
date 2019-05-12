@@ -38,6 +38,7 @@
 
 #define MAX_VERTEX_MEMORY 512 * 1024
 #define MAX_ELEMENT_MEMORY 128 * 1024
+#define FULL_FONT_TEXTURE_HEIGHT 32768 //needed to load all CJK glyphs
 
 class SettingsScreen_Impl : public SettingsScreen
 {
@@ -315,15 +316,58 @@ public:
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
 		m_skins = Path::GetSubDirs("./skins/");
-
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
 			struct nk_font_atlas *atlas;
 			nk_sdl_font_stash_begin(&atlas);
-			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/fallback_truetype.ttf").c_str(), 24, 0);
+			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NotoSans-Regular.ttf").c_str(), 24, 0);
 
+			struct nk_font_config cfg_kr = nk_font_config(24);
+			cfg_kr.merge_mode = nk_true;
+			cfg_kr.range = nk_font_korean_glyph_ranges();
+
+			NK_STORAGE const nk_rune jp_ranges[] = {
+				0x0020, 0x00FF,
+				0x3000, 0x303f,
+				0x3040, 0x309f,
+				0x30a0, 0x30ff,
+				0x4e00, 0x9faf,
+				0xff00, 0xffef,
+				0
+			};
+			struct nk_font_config cfg_jp = nk_font_config(24);
+			cfg_jp.merge_mode = nk_true;
+			cfg_jp.range = jp_ranges;
+
+			NK_STORAGE const nk_rune cjk_ranges[] = {
+				0x0020, 0x00FF,
+				0x3000, 0x30FF,
+				0x3131, 0x3163,
+				0xAC00, 0xD79D,
+				0x31F0, 0x31FF,
+				0xFF00, 0xFFEF,
+				0x4e00, 0x9FAF,
+				0
+			};
+
+			struct nk_font_config cfg_cjk = nk_font_config(24);
+			cfg_cjk.merge_mode = nk_true;
+			cfg_cjk.range = cjk_ranges;
+
+
+			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NanumBarunGothic.ttf").c_str(), 24, &cfg_kr);
+			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/mplus-1m-medium.ttf").c_str(), 24, &cfg_jp);
+			int maxSize;
+			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
+			Logf("System max texture size: %d", Logger::Info, maxSize);
+			if (maxSize >= FULL_FONT_TEXTURE_HEIGHT)
+			{
+				nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/DroidSansFallback.ttf").c_str(), 24, &cfg_cjk);
+			}
+			
 			nk_sdl_font_stash_end();
+			nk_font_atlas_cleanup(atlas);
 			//nk_style_load_all_cursors(m_nctx, atlas->cursors);
 			nk_style_set_font(m_nctx, &fallback->handle);
 		}
@@ -489,6 +533,10 @@ public:
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
 			nk_spacing(m_nctx, 1);
+			if (nk_button_label(m_nctx, "Skin Settings"))
+			{
+				g_application->AddTickable(new SkinSettingsScreen(g_gameConfig.GetString(GameConfigKeys::Skin), m_nctx));
+			}
 			if (nk_button_label(m_nctx, "Exit")) Exit();
 			nk_end(m_nctx);
 		}
@@ -789,4 +837,205 @@ LaserSensCalibrationScreen* LaserSensCalibrationScreen::Create()
 {
 	LaserSensCalibrationScreen* impl = new LaserSensCalibrationScreen_Impl();
 	return impl;
+}
+
+
+
+
+void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
+
+	String value = m_skinConfig->GetString(key);
+	int selection;
+	String* options = setting.selectionSetting.options;
+	auto stringSearch = std::find(options, options + setting.selectionSetting.numOptions, value);
+	if (stringSearch != options + setting.selectionSetting.numOptions)
+		selection = (stringSearch - options);
+	else
+		selection = 0;
+
+	Vector<const char*> displayData;
+	for (size_t i = 0; i < setting.selectionSetting.numOptions; i++)
+	{
+		displayData.Add(*setting.selectionSetting.options[i]);
+	}
+
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_combobox(m_nctx, displayData.data(), setting.selectionSetting.numOptions, &selection, 30, nk_vec2(w - 30, 250));
+	value = options[selection];
+	m_skinConfig->Set(key, value);
+}
+
+void SkinSettingsScreen::Exit()
+{
+	g_application->RemoveTickable(this);
+}
+
+void SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
+{
+	int value = m_skinConfig->GetInt(key);
+	value = nk_propertyi(m_nctx, *label, min, value, max, step, perpixel);
+	m_skinConfig->Set(key, value);
+}
+
+float SkinSettingsScreen::FloatSetting(String key, String label, float min, float max, float step)
+{
+	float value = m_skinConfig->GetFloat(key);
+	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
+	nk_slider_float(m_nctx, min, &value, max, step);
+	m_skinConfig->Set(key, value);
+	return value;
+}
+
+float SkinSettingsScreen::PercentSetting(String key, String label)
+{
+	float value = m_skinConfig->GetFloat(key);
+	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
+	nk_slider_float(m_nctx, 0, &value, 1, 0.005);
+	m_skinConfig->Set(key, value);
+	return value;
+}
+
+void SkinSettingsScreen::TextSetting(String key, String label)
+{
+	String value = m_skinConfig->GetString(key);
+	char display[1024];
+	strcpy(display, value.c_str());
+	int len = value.length();
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default);
+	value = String(display, len);
+	m_skinConfig->Set(key, value);
+}
+
+void SkinSettingsScreen::ColorSetting(String key, String label)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0) - 100;
+	Color value = m_skinConfig->GetColor(key);
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	float r, g, b, a;
+	r = value.x;
+	g = value.y;
+	b = value.z;
+	a = value.w;
+	nk_colorf nkCol = { r,g,b,a };
+	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
+		enum color_mode { COL_RGB, COL_HSV };
+		nk_layout_row_dynamic(m_nctx, 120, 1);
+		nkCol = nk_color_picker(m_nctx, nkCol, NK_RGBA);
+
+		nk_layout_row_dynamic(m_nctx, 25, 2);
+		m_hsvMap[key] = nk_option_label(m_nctx, "RGB", m_hsvMap[key] ? 1 : 0) == 1;
+		m_hsvMap[key] = nk_option_label(m_nctx, "HSV", m_hsvMap[key] ? 0 : 1) == 0;
+
+		nk_layout_row_dynamic(m_nctx, 25, 1);
+		if (!m_hsvMap[key]) {
+			nkCol.r = nk_propertyf(m_nctx, "#R:", 0, nkCol.r, 1.0f, 0.01f, 0.005f);
+			nkCol.g = nk_propertyf(m_nctx, "#G:", 0, nkCol.g, 1.0f, 0.01f, 0.005f);
+			nkCol.b = nk_propertyf(m_nctx, "#B:", 0, nkCol.b, 1.0f, 0.01f, 0.005f);
+			nkCol.a = nk_propertyf(m_nctx, "#A:", 0, nkCol.a, 1.0f, 0.01f, 0.005f);
+		}
+		else {
+			float hsva[4];
+			nk_colorf_hsva_fv(hsva, nkCol);
+			hsva[0] = nk_propertyf(m_nctx, "#H:", 0, hsva[0], 1.0f, 0.01f, 0.05f);
+			hsva[1] = nk_propertyf(m_nctx, "#S:", 0, hsva[1], 1.0f, 0.01f, 0.05f);
+			hsva[2] = nk_propertyf(m_nctx, "#V:", 0, hsva[2], 1.0f, 0.01f, 0.05f);
+			hsva[3] = nk_propertyf(m_nctx, "#A:", 0, hsva[3], 1.0f, 0.01f, 0.05f);
+			nkCol = nk_hsva_colorfv(hsva);
+		}
+		nk_combo_end(m_nctx);
+	}
+	m_skinConfig->Set(key, Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a));
+
+
+	nk_layout_row_dynamic(m_nctx, 30, 1);
+
+}
+
+bool SkinSettingsScreen::ToggleSetting(String key, String label)
+{
+	int value = m_skinConfig->GetBool(key) ? 0 : 1;
+	nk_checkbox_label(m_nctx, *label, &value);
+	m_skinConfig->Set(key, value == 0);
+	return value;
+}
+
+SkinSettingsScreen::SkinSettingsScreen(String skin, nk_context* ctx)
+{
+	m_nctx = ctx;
+	m_skin = skin;
+	if (skin == g_application->GetCurrentSkin())
+	{
+		m_skinConfig = g_skinConfig;
+	}
+	else
+	{
+		m_skinConfig = new SkinConfig(skin);
+	}
+}
+
+SkinSettingsScreen::~SkinSettingsScreen()
+{
+	if (m_skinConfig != g_skinConfig && m_skinConfig)
+	{
+		delete m_skinConfig;
+		m_skinConfig = nullptr;
+	}
+}
+
+void SkinSettingsScreen::Tick(float deltatime)
+{
+
+}
+
+void SkinSettingsScreen::Render(float deltaTime)
+{
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
+	float x = g_resolution.x / 2 - w / 2;
+	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
+	{
+		nk_layout_row_dynamic(m_nctx, 30, 1);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", *m_skin);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+		for (auto s : m_skinConfig->GetSettings())
+		{
+			if (s.type == SkinSetting::Type::Boolean)
+			{
+				ToggleSetting(s.key, s.label);
+			}
+			else if (s.type == SkinSetting::Type::Selection)
+			{
+				StringSelectionSetting(s.key, s.label, s);
+			}
+			else if (s.type == SkinSetting::Type::Float)
+			{
+				FloatSetting(s.key, s.label + " (%.2f):", s.floatSetting.min, s.floatSetting.max);
+			}
+			else if (s.type == SkinSetting::Type::Integer)
+			{
+				IntSetting(s.key, s.label, s.intSetting.min, s.intSetting.max);
+			}
+			else if (s.type == SkinSetting::Type::Label)
+			{
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *s.key);
+			}
+			else if (s.type == SkinSetting::Type::Separator)
+			{
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+			}
+			else if (s.type == SkinSetting::Type::Text)
+			{
+				TextSetting(s.key, s.label);
+			}
+			else if (s.type == SkinSetting::Type::Color)
+			{
+				ColorSetting(s.key, s.label);
+			}
+		}
+		if (nk_button_label(m_nctx, "Exit")) Exit();
+		nk_end(m_nctx);
+	}
+	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
 }

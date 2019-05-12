@@ -21,6 +21,7 @@ Contents:
    songwheel
    filterwheel
    settingswheel
+   skinsettings
 
 
 Indices and tables

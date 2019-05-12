@@ -30,7 +30,7 @@ render = function(deltaTime, shown)
     gfx.FillColor(0,0,0,200)
     gfx.FastRect(0,0,resx,resy)
     gfx.BeginPath();
-    gfx.LoadSkinFont("segoeui.ttf");
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
     gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE);
     gfx.FontSize(40);
     gfx.FastText(folderOffset,0,0)

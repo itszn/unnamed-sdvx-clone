@@ -6,7 +6,7 @@ local lastSelected = 0
 
 render = function(deltaTime, shown)
     gfx.BeginPath();
-    gfx.LoadSkinFont("segoeui.ttf");
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
     gfx.FontSize(40);
     if shown then

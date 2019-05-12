@@ -1088,7 +1088,7 @@ public:
 		if (map == m_currentPreviewAudio){
 			if (m_previewDelayTicks){
 				--m_previewDelayTicks;
-			}else if (!m_previewLoaded){
+			}else if (!m_previewLoaded && !m_currentPreviewAudio->difficulties.empty()){
 				// Set current preview audio
 				DifficultyIndex* previewDiff = m_currentPreviewAudio->difficulties[0];
 				String audioPath = m_currentPreviewAudio->path + Path::sep + previewDiff->settings.audioNoFX;

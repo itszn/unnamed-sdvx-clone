@@ -124,6 +124,7 @@ local critCap = gfx.CreateSkinImage("crit_cap.png", 0)
 local critCapBack = gfx.CreateSkinImage("crit_cap_back.png", 0)
 local laserCursor = gfx.CreateSkinImage("pointer.png", 0)
 local laserCursorOverlay = gfx.CreateSkinImage("pointer_overlay.png", 0)
+local earlatePos = game.GetSkinSetting("earlate_position")
 
 local ioConsoleDetails = {
     gfx.CreateSkinImage("console/detail_left.png", 0),
@@ -203,7 +204,9 @@ function render(deltaTime)
     draw_score(deltaTime)
     gfx.Translate(0, -yshift + 150 * math.max(introTimer - 1, 0))
     draw_gauge(deltaTime)
-    draw_earlate(deltaTime)
+	if earlatePos ~= "off" then
+		draw_earlate(deltaTime)
+	end
     draw_combo(deltaTime)
     draw_alerts(deltaTime)
 end
@@ -489,7 +492,7 @@ function draw_song_info(deltaTime)
     if portrait then gfx.Scale(0.7, 0.7) end
 
     -- Ensure the font has been loaded
-    gfx.LoadSkinFont("segoeui.ttf")
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
 
     -- Draw the background, a simple grey box
     gfx.FillColor(20, 20, 20, 200)
@@ -669,7 +672,13 @@ function draw_earlate(deltaTime)
     gfx.FontSize(35)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_MIDDLE)
     local ypos = desh * critLinePos[1] - 150
-    if portrait then ypos = desh * critLinePos[2] - 150 end
+    if portrait then ypos = desh * critLinePos[2] - 200 end
+	if earlatePos == "middle" then
+		ypos = ypos - 200
+	elseif earlatePos == "top" then
+		ypos = ypos - 400
+	end
+
     if late then
         gfx.FillColor(0,255,255, alpha)
         gfx.Text("LATE", desw / 2, ypos)
@@ -738,13 +747,36 @@ function draw_alerts(deltaTime)
         gfx.Restore()
     end
 end
+
+function change_earlatepos()
+	if earlatePos == "top" then
+		earlatePos = "off"
+	elseif earlatePos == "off" then
+		earlatePos = "bottom"
+	elseif earlatePos == "bottom" then
+		earlatePos = "middle"
+	elseif earlatePos == "middle" then
+		earlatePos = "top"
+	end
+	game.SetSkinSetting("earlate_position", earlatePos)
+end
+
 -- -------------------------------------------------------------------------- --
 -- render_intro:                                                              --
+local bta_last = false
 function render_intro(deltaTime)
     if not game.GetButton(game.BUTTON_STA) then
         introTimer = introTimer - deltaTime
-    end
+		earlateTimer = 0
+	else
+		earlateTimer = 1
+		if (not bta_last) and game.GetButton(game.BUTTON_BTA) then
+			change_earlatepos()
+		end
+	end
+	bta_last = game.GetButton(game.BUTTON_BTA)
     introTimer = math.max(introTimer, 0)
+	
     return introTimer <= 0
 end
 -- -------------------------------------------------------------------------- --
