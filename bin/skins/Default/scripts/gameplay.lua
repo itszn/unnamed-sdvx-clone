@@ -11,10 +11,11 @@ local RECT_STROKE = "stroke"
 local RECT_FILL_STROKE = RECT_FILL .. RECT_STROKE
 
 gfx._ImageAlpha = 1
-
-gfx._FillColor = gfx.FillColor
-gfx._StrokeColor = gfx.StrokeColor
-gfx._SetImageTint = gfx.SetImageTint
+if gfx._FillColor == nil then
+	gfx._FillColor = gfx.FillColor
+	gfx._StrokeColor = gfx.StrokeColor
+	gfx._SetImageTint = gfx.SetImageTint
+end
 
 -- we aren't even gonna overwrite it here, it's just dead to us
 gfx.SetImageTint = nil
@@ -145,9 +146,10 @@ local consoleAnimImages = {
 }
 -- -------------------------------------------------------------------------- --
 -- Timers, used for animations:                                               --
-local introTimer = 2
-local outroTimer = 0
-
+if introTimer == nil then
+	introTimer = 2
+	outroTimer = 0
+end
 local alertTimers = {-2,-2}
 
 local earlateTimer = 0
