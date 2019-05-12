@@ -777,18 +777,20 @@ public:
 
 	void Render(float deltatime)
 	{
-		String prompt = "Press Start Twice";
 		if (m_state)
 		{
 			float sens = 6.0 / (m_delta / m_currentSetting);
-			prompt = Utility::Sprintf("Turn left knob one revolution clockwise \nand then press start.\nCurrent Sens: %.2f", sens);
+			
+			g_application->FastText("Turn left knob one revolution clockwise", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText("then press start.", g_resolution.x / 2, g_resolution.y / 2 + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), g_resolution.x / 2, g_resolution.y / 2 + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 
 		}
 		else
 		{
 			m_delta = 0;
+			g_application->FastText("Press start twice", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 		}
-		g_application->FastText(prompt, g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 	}
 
 	void OnButtonPressed(Input::Button button)
