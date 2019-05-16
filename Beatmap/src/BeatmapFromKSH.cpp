@@ -181,6 +181,13 @@ static MultiParam ParseParam(const String& in)
 		ret.type = MultiParam::Samples;
 		sscanf(*in, "%i", &ret.ival);
 	}
+	else if (in.find("%") != -1)
+	{
+		ret.type = MultiParam::Float;
+		int percentage = 0;
+		sscanf(*in, "%i", &percentage);
+		ret.fval = percentage / 100.0;
+	}
 	else
 	{
 		ret.type = MultiParam::Int;
@@ -212,24 +219,32 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition& def)
 		}
 		else
 		{
-			size_t split = s.second.find('-', 1);
+			size_t splitArrow = s.second.find('>', 1);
+			String param;
+			if (splitArrow != -1)
+			{
+				param = s.second.substr(splitArrow + 1);
+			} else {
+				param = s.second;
+			}
+			size_t split = param.find('-', 1);
 			if (split != -1)
 			{
 				String a, b;
-				a = s.second.substr(0, split);
-				b = s.second.substr(split + 1);
+				a = param.substr(0, split);
+				b = param.substr(split + 1);
 
 				MultiParamRange pr = { ParseParam(a), ParseParam(b) };
 				if (pr.params[0].type != pr.params[1].type)
 				{
-					Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Warning, s.first, s.second, s.first);
+					Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Warning, s.first, param, s.first);
 					continue;
 				}
 				params.Add(s.first, pr);
 			}
 			else
 			{
-				params.Add(s.first, ParseParam(s.second));
+				params.Add(s.first, ParseParam(param));
 			}
 		}
 	}
