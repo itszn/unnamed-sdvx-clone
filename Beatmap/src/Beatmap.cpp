@@ -92,6 +92,11 @@ const Vector<String>& Beatmap::GetSamplePaths() const
 	return m_samplePaths;
 }
 
+const Vector<String>& Beatmap::GetSwitchablePaths() const
+{
+	return m_switchablePaths;
+}
+
 AudioEffect Beatmap::GetEffect(EffectType type) const
 {
 	if(type >= EffectType::UserDefined0)

@@ -46,7 +46,9 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 		Logf("Failed to load any audio for beatmap \"%s\"", Logger::Error, audioPath);
 		return false;
 	}
-	m_music->SetVolume(mapSettings.musicVolume);
+
+	m_musicVolume = mapSettings.musicVolume;
+	m_music->SetVolume(m_musicVolume);
 
 	// Load FX track
 	audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + mapSettings.audioFX);
@@ -68,6 +70,39 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 			}
 		}
 	}
+	
+	if (m_fxtrack.IsValid()) {
+		// Prevent loading switchables if fx track is in use.
+		return true;
+	}
+
+	auto switchablePaths = m_beatmap->GetSwitchablePaths();
+
+	// Load switchable audio tracks
+	for (auto it = switchablePaths.begin(); it != switchablePaths.end(); ++it) {
+		audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + *it);
+		audioPath.TrimBack(' ');
+		audioPathUnicode = Utility::ConvertToWString(audioPath);
+
+		SwitchableAudio switchable;
+		switchable.m_enabled = false;
+		if (!audioPath.empty()) {
+			if (!Path::FileExists(audioPath))
+			{
+				Logf("Audio for a SwitchAudio effect does not exists at: \"%s\"", Logger::Warning, audioPath);
+			}
+			else
+			{
+				switchable.m_audio = g_audio->CreateStream(audioPath, true);
+				if (switchable.m_audio)
+				{
+					// Mute all switchable audio by default
+					switchable.m_audio->SetVolume(0.0f);
+				}
+			}
+		}
+		m_switchables.Add(switchable);
+	}
 
 	return true;
 }
@@ -80,6 +115,9 @@ void AudioPlayback::Play()
 	m_music->Play();
 	if(m_fxtrack)
 		m_fxtrack->Play();
+	for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+		if (it->m_audio)
+			it->m_audio->Play();
 }
 void AudioPlayback::Advance(MapTime ms)
 {
@@ -94,6 +132,9 @@ void AudioPlayback::SetPosition(MapTime time)
 	m_music->SetPosition(time);
 	if(m_fxtrack)
 		m_fxtrack->SetPosition(time);
+	for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+		if (it->m_audio)
+			it->m_audio->SetPosition(time);
 }
 void AudioPlayback::TogglePause()
 {
@@ -102,12 +143,18 @@ void AudioPlayback::TogglePause()
 		m_music->Play();
 		if(m_fxtrack)
 			m_fxtrack->Play();
+		for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+			if (it->m_audio)
+				it->m_audio->Play();
 	}
 	else
 	{
 		m_music->Pause();
 		if(m_fxtrack)
 			m_fxtrack->Pause();
+		for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+			if (it->m_audio)
+				it->m_audio->Pause();
 	}
 	m_paused = !m_paused;
 }
@@ -133,6 +180,11 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState* object, class Beatm
 	DSP*& dsp = m_buttonDSPs[index];
 
 	m_buttonEffects[index] = m_beatmap->GetEffect(object->effectType);
+
+	// Do not create DSP for SwitchAudio effect
+	if (m_buttonEffects[index].type == EffectType::SwitchAudio)
+		return;
+
 	dsp = m_buttonEffects[index].CreateDSP(m_GetDSPTrack().GetData(), *this);
 
 	if(dsp)
@@ -149,6 +201,12 @@ void AudioPlayback::SetEffectEnabled(uint32 index, bool enabled)
 {
 	assert(index >= 0 && index <= 1);
 	m_effectMix[index] = enabled ? 1.0f : 0.0f;
+	
+	if (m_buttonEffects[index].type == EffectType::SwitchAudio) {
+		SetSwitchableTrackEnabled(m_buttonEffects[index].switchaudio.index.Sample(), enabled);
+		return;
+	}
+
 	if(m_buttonDSPs[index])
 	{
 		m_buttonDSPs[index]->mix = m_effectMix[index];
@@ -176,6 +234,19 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 {
 	if(m_laserEffect.type != EffectType::None && (active || (input != 0.0f)))
 	{
+		if (m_laserEffect.type == EffectType::SwitchAudio) {
+			m_laserSwitchable = m_laserEffect.switchaudio.index.Sample();
+			SetSwitchableTrackEnabled(m_laserSwitchable, true);
+			return;
+		}
+		
+		// SwitchAudio transition into other filters
+		if (m_laserSwitchable > 0)
+		{
+			SetSwitchableTrackEnabled(m_laserSwitchable, false);
+			m_laserSwitchable = -1;
+		}
+
 		// Create DSP
 		if(!m_laserDSP)
 		{
@@ -197,6 +268,9 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 	}
 	else
 	{
+		if (m_laserSwitchable > 0)
+			SetSwitchableTrackEnabled(m_laserSwitchable, true);
+		m_laserSwitchable = -1;
 		m_CleanupDSP(m_laserDSP);
 		m_laserInput = 0.0f;
 	}
@@ -227,17 +301,61 @@ void AudioPlayback::SetFXTrackEnabled(bool enabled)
 	{
 		if(enabled)
 		{
-			m_fxtrack->SetVolume(1.0f);
+			m_fxtrack->SetVolume(m_musicVolume);
 			m_music->SetVolume(0.0f);
 		}
 		else
 		{
 			m_fxtrack->SetVolume(0.0f);
-			m_music->SetVolume(1.0f);
+			m_music->SetVolume(m_musicVolume);
 		}
 	}
 	m_fxtrackEnabled = enabled;
 }
+void AudioPlayback::SetSwitchableTrackEnabled(int index, bool enabled)
+{
+	if (m_fxtrack.IsValid())
+		return;
+
+	assert(index >= 0 && index < m_switchables.size());
+
+	int32 disableTrack = -1;
+	int32 enableTrack = -1;
+
+	if (!enabled) {
+		disableTrack = index;
+		m_enabledSwitchables.Remove(index);
+		enableTrack = m_enabledSwitchables.size() ? m_enabledSwitchables.back() : -2;
+	} else {
+		disableTrack = m_enabledSwitchables.size() ? m_enabledSwitchables.back() : -2;
+		m_enabledSwitchables.AddUnique(index);
+		enableTrack = m_enabledSwitchables.size() ? m_enabledSwitchables.back() : -2;
+	}
+
+	if (disableTrack != -1) {
+		if (disableTrack == -2)
+			m_music->SetVolume(0.0f);
+		else if (m_switchables[disableTrack].m_audio)
+			m_switchables[disableTrack].m_audio->SetVolume(0.0f);
+	}
+
+	if (enableTrack != -1) {
+		if (enableTrack == -2)
+			m_music->SetVolume(m_musicVolume);
+		else if (m_switchables[enableTrack].m_audio)
+			m_switchables[enableTrack].m_audio->SetVolume(m_musicVolume);
+	}
+}
+
+void AudioPlayback::ResetSwitchableTracks() {
+	for (int i = 0; i < m_switchables.size(); ++i)
+	{
+		if (m_switchables[i].m_audio)
+			m_switchables[i].m_audio->SetVolume(0.0f);
+	}
+	m_music->SetVolume(m_musicVolume);
+}
+
 BeatmapPlayback& AudioPlayback::GetBeatmapPlayback()
 {
 	return *m_playback;
@@ -255,6 +373,9 @@ void AudioPlayback::SetPlaybackSpeed(float speed)
 	m_music->PlaybackSpeed = speed;
 	if (m_fxtrack)
 		m_fxtrack->PlaybackSpeed = speed;
+	for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+		if (it->m_audio)
+			it->m_audio->PlaybackSpeed = speed;
 }
 float AudioPlayback::GetPlaybackSpeed() const
 {
@@ -265,6 +386,9 @@ void AudioPlayback::SetVolume(float volume)
 	m_music->SetVolume(volume);
 	if (m_fxtrack)
 		m_fxtrack->SetVolume(volume);
+	for (auto it = m_switchables.begin(); it != m_switchables.end(); ++it)
+		if (it->m_audio)
+			it->m_audio->SetVolume(volume);
 }
 void AudioPlayback::m_CleanupDSP(DSP*& ptr)
 {
@@ -340,7 +464,7 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 	{
 		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
 		GateDSP * gd = (GateDSP*)m_laserDSP;
-		gd->SetLength(actualLength);
+		// gd->SetLength(actualLength);
 		break;
 	}
 	case EffectType::Retrigger:
