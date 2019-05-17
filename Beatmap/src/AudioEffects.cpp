@@ -106,6 +106,9 @@ static AudioEffect CreateDefault(EffectType type)
 		ret.flanger.offset = IntRange(10);
 		ret.flanger.depth = IntRange(40);
 		break;
+	case EffectType::SwitchAudio:
+		ret.switchaudio.index = -1;
+		break;
 	}
 
 	return ret;

@@ -19,6 +19,11 @@ public:
 	void SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectState* object);
 };
 
+struct SwitchableAudio {
+	bool m_enabled;
+	AudioStream m_audio;
+};
+
 /* 
 	Handles playback of map audio
 	keeps track of the state of sound effects
@@ -66,6 +71,10 @@ public:
 	// Toggle FX track or normal track
 	// this is just to support maps that do actually have an FX track
 	void SetFXTrackEnabled(bool enabled);
+	
+	// Switch audio track
+	void SetSwitchableTrackEnabled(int index, bool enabled);
+	void ResetSwitchableTracks();
 
 	BeatmapPlayback& GetBeatmapPlayback();
 	const Beatmap& GetBeatmap() const;
@@ -88,6 +97,13 @@ private:
 
 	AudioStream m_music;
 	AudioStream m_fxtrack;
+	Vector<SwitchableAudio> m_switchables;
+	Vector<int32> m_enabledSwitchables;
+	int32 m_laserSwitchable = -1;
+	
+
+	float m_musicVolume = 1.0f;
+
 	bool m_paused = false;
 	bool m_fxtrackEnabled = true;
 

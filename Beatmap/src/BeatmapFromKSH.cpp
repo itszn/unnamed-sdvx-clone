@@ -69,6 +69,7 @@ public:
 		effectTypes["LPF"] = EffectType::LowPassFilter;
 		effectTypes["HPF"] = EffectType::HighPassFilter;
 		effectTypes["PEAK"] = EffectType::PeakingFilter;
+		effectTypes["SwitchAudio"] = EffectType::SwitchAudio;
 	}
 
 	// Only checks if a mapping exists and returns this, or None
@@ -195,7 +196,7 @@ static MultiParam ParseParam(const String& in)
 	}
 	return ret;
 }
-AudioEffect ParseCustomEffect(const KShootEffectDefinition& def)
+AudioEffect ParseCustomEffect(const KShootEffectDefinition& def, Vector<String> &switchablePaths)
 {
 	static EffectTypeMap defaultEffects;
 	AudioEffect effect;
@@ -219,6 +220,26 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition& def)
 		}
 		else
 		{
+			// Special case for SwitchAudio effect
+			if (s.first == "fileName") {
+				MultiParam switchableIndex;
+				switchableIndex.type = MultiParam::Int;
+
+				auto it = std::find(switchablePaths.begin(), switchablePaths.end(), s.second);
+				if (it == switchablePaths.end())
+				{
+					switchableIndex.ival = switchablePaths.size();
+					switchablePaths.Add(s.second);
+				}
+				else
+				{
+					switchableIndex.ival = std::distance(switchablePaths.begin(), it);
+				}
+
+				params.Add("index", switchableIndex);
+				continue;
+			}
+
 			size_t splitArrow = s.second.find('>', 1);
 			String param;
 			if (splitArrow != -1)
@@ -279,6 +300,14 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition& def)
 			target = param->ToSamplesParam();
 		}
 	};
+	auto AssignIntIfSet = [&](EffectParam<int32> & target, const String & name)
+	{
+		auto* param = params.Find(name);
+		if (param)
+		{
+			target = param->ToSamplesParam();
+		}
+	};
 
 	AssignFloatIfSet(effect.mix, "mix");
 
@@ -317,6 +346,9 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition& def)
 	case EffectType::TapeStop:
 		AssignDurationIfSet(effect.duration, "speed");
 		break;
+	case EffectType::SwitchAudio:
+		AssignIntIfSet(effect.switchaudio.index, "index");
+		break;
 	}
 
 	return effect;
@@ -350,14 +382,14 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 		EffectType type = effectTypeMap.FindOrAddEffectType(it->first);
 		if (m_customEffects.Contains(type))
 			continue;
-		m_customEffects.Add(type, ParseCustomEffect(it->second));
+		m_customEffects.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
 	}
 	for (auto it = kshootMap.filterDefines.begin(); it != kshootMap.filterDefines.end(); it++)
 	{
 		EffectType type = filterTypeMap.FindOrAddEffectType(it->first);
 		if (m_customFilters.Contains(type))
 			continue;
-		m_customFilters.Add(type, ParseCustomEffect(it->second));
+		m_customFilters.Add(type, ParseCustomEffect(it->second, m_switchablePaths));
 	}
 
 	auto ParseFilterType = [&](const String& str)

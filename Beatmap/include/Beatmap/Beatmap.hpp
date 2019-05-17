@@ -86,6 +86,8 @@ public:
 
 	const Vector<String>& GetSamplePaths() const;
 
+	const Vector<String>& GetSwitchablePaths() const;
+
 	// Retrieves audio effect settings for a given button id
 	AudioEffect GetEffect(EffectType type) const;
 	// Retrieves audio effect settings for a given filter effect id
@@ -104,6 +106,7 @@ private:
 	Vector<ObjectState*> m_objectStates;
 	Vector<ZoomControlPoint*> m_zoomControlPoints;
 	Vector<String> m_samplePaths;
+	Vector<String> m_switchablePaths;
 	BeatmapSettings m_settings;
 	
 };
