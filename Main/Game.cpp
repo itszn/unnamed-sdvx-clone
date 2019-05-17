@@ -387,6 +387,7 @@ public:
 			pushStringToTable("artist", mapSettings.artist);
 			pushIntToTable("difficulty", mapSettings.difficulty);
 			pushIntToTable("level", mapSettings.level);
+			pushIntToTable("gaugeType", (m_flags & GameFlags::Hard) != GameFlags::None ? 1 : 0);
 			lua_pushstring(m_lua, "scoreReplays");
 			lua_newtable(m_lua);
 			lua_settable(m_lua, -3);
