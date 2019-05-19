@@ -2,6 +2,7 @@
 #include <Audio/Sample.hpp>
 #include <Shared/Jobs.hpp>
 #include <Shared/Thread.hpp>
+#include "SkinHttp.hpp"
 #define DISCORD_APPLICATION_ID "514489760568573952"
 extern class OpenGL* g_gl;
 extern class GUIState g_guiState;
@@ -103,7 +104,7 @@ private:
 	void m_OnKeyPressed(int32 key);
 	void m_OnKeyReleased(int32 key);
 	void m_OnWindowResized(const Vector2i& newSize);
-	void m_SetNvgLuaBindings(class lua_State* state);
+	void m_SetNvgLuaBindings(struct lua_State* state);
 
 	RenderState m_renderStateBase;
 	RenderQueue m_renderQueueBase;
@@ -117,6 +118,7 @@ private:
 	String m_lastMapPath;
 	Thread m_updateThread;
 	class Beatmap* m_currentMap = nullptr;
+	SkinHttp m_skinHtpp;
 
 	float m_lastRenderTime;
 	float m_deltaTime;
