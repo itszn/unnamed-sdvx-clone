@@ -2,12 +2,12 @@
 #include "stdafx.h"
 #include "Shared/Thread.hpp"
 #include "cpr/cpr.h"
-
+#include <queue>
 
 struct AsyncRequest
 {
 	struct lua_State* L;
-	std::future<cpr::Response> r;
+	cpr::AsyncResponse r;
 	int callback;
 };
 
@@ -34,9 +34,12 @@ public:
 private:
 	Thread m_requestThread;
 	Mutex m_mutex;
-	Vector<AsyncRequest> m_requests;
-	Vector<CompleteRequest> m_callbackQueue;
+	std::queue<AsyncRequest*> m_requests;
+	std::queue<CompleteRequest> m_callbackQueue;
 	bool m_running;
-	void m_requestLoop();
 	Map<struct lua_State*, class LuaBindable*> m_boundStates;
+
+	void m_requestLoop();
+	cpr::Header m_HeaderFromLuaTable(struct lua_State* L, int index);
+	void m_PushResponse(struct lua_State* L, const cpr::Response& r);
 };

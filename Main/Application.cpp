@@ -582,6 +582,9 @@ void Application::m_Tick()
 	// Handle input first
 	g_input.Update(m_deltaTime);
 
+	// Process async lua http callbacks
+	m_skinHtpp.ProcessCallbacks();
+
 	// Tick all items
 	for(auto& tickable : g_tickables)
 	{
