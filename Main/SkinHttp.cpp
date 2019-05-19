@@ -78,6 +78,7 @@ void SkinHttp::m_PushResponse(lua_State * L, const cpr::Response & r)
 	pushString("text", r.text);
 	pushNumber("status", r.status_code);
 	pushNumber("elapsed", r.elapsed);
+	pushString("error", r.error.message.c_str());
 	pushString("cookies", r.cookies.GetEncoded().c_str());
 	lua_pushstring(L, "header");
 	lua_newtable(L);
@@ -122,6 +123,17 @@ int SkinHttp::lGetAsync(lua_State * L)
 
 int SkinHttp::lPostAsync(lua_State * L)
 {
+	String url = luaL_checkstring(L, 2);
+	String payload = luaL_checkstring(L, 3);
+	cpr::Header header = m_HeaderFromLuaTable(L, 4);
+	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	AsyncRequest* r = new AsyncRequest();
+	r->r = cpr::PostAsync(cpr::Url{ url }, cpr::Body{ *payload }, header);
+	r->callback = callback;
+	r->L = L;
+	m_mutex.lock();
+	m_requests.push(r);
+	m_mutex.unlock();
 	return 0;
 }
 
@@ -136,7 +148,12 @@ int SkinHttp::lGet(lua_State * L)
 
 int SkinHttp::lPost(lua_State * L)
 {
-	return 0;
+	String url = luaL_checkstring(L, 2);
+	String payload = luaL_checkstring(L, 3);
+	cpr::Header header = m_HeaderFromLuaTable(L, 4);
+	auto response = cpr::Post(cpr::Url{ url }, cpr::Body{*payload}, header);
+	m_PushResponse(L, response);
+	return 1;
 }
 
 void SkinHttp::ProcessCallbacks()
