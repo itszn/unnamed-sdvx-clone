@@ -4,8 +4,8 @@
 #include "String.hpp"
 #include "Map.hpp"
 
-int lMemberCallFunction(lua_State* L);
-int lIndexFunction(lua_State* L);
+static int lMemberCallFunction(lua_State* L);
+static int lIndexFunction(lua_State* L);
 
 class LuaBindable
 {
@@ -41,13 +41,13 @@ private:
 	lua_State* m_lua;
 };
 
-int lMemberCallFunction(lua_State* L)
+static int lMemberCallFunction(lua_State* L)
 {
 	IFunctionBinding<int, lua_State*>** t = (IFunctionBinding<int, lua_State*>**)(luaL_checkudata(L, 1, "Scriptable_Callback"));
 	return (*t)->Call(L);
 }
 
-int lIndexFunction(lua_State* L)
+static int lIndexFunction(lua_State* L)
 {
 	LuaBindable** t = static_cast<LuaBindable**>(luaL_checkudata(L, 1, "Scriptable"));
 	String lookup = luaL_checkstring(L, 2);

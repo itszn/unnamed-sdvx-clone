@@ -337,7 +337,7 @@ nanovg.h:420_
 .. _nanovg.h:420: https://github.com/memononen/nanovg/blob/master/src/nanovg.h#L420
 
 UpdateImagePattern(int paint, float ox, float oy, float ex, float ey, float angle, float alpha)
-**********************************************************************************************
+***********************************************************************************************
 Updates the parameters of an already existing ImagePattern.
 
 

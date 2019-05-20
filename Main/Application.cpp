@@ -21,6 +21,7 @@
 #include "cpr/cpr.h"
 #include "json.hpp"
 #include "SkinConfig.hpp"
+#include "SkinHttp.hpp"
 #define NANOVG_GL3_IMPLEMENTATION
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
@@ -448,6 +449,8 @@ bool Application::m_Init()
 	m_fillMaterial->opaque = false;
 	m_gauge = new HealthGauge();
 	LoadGauge(false);
+
+	//m_skinHtpp = new SkinHttp();
 	// call the initial OnWindowResized now that we have intialized OpenGL
 	m_OnWindowResized(g_resolution);
 
@@ -579,6 +582,9 @@ void Application::m_Tick()
 	// Handle input first
 	g_input.Update(m_deltaTime);
 
+	// Process async lua http callbacks
+	m_skinHttp.ProcessCallbacks();
+
 	// Tick all items
 	for(auto& tickable : g_tickables)
 	{
@@ -673,6 +679,17 @@ void Application::m_Cleanup()
 		delete g_skinConfig;
 		g_skinConfig = nullptr;
 	}
+	if (m_gauge)
+	{
+		delete m_gauge;
+		m_gauge = nullptr;
+	}
+
+	//if (m_skinHtpp)
+	//{
+	//	delete m_skinHtpp;
+	//	m_skinHtpp = nullptr;
+	//}
 
 	Discord_Shutdown();
 
@@ -917,6 +934,7 @@ void Application::ReloadSkin()
 void Application::DisposeLua(lua_State* state)
 {
 	DisposeGUI(state);
+	m_skinHttp.ClearState(state);
 	lua_close(state);
 }
 void Application::SetGaugeColor(int i, Color c)
@@ -1609,6 +1627,9 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 
 		lua_setglobal(state, "game");
 	}
+
+	//http
+	m_skinHttp.PushFunctions(state);
 }
 
 bool JacketLoadingJob::Run()
