@@ -120,7 +120,8 @@ local scale -- the scale to get from design to actual units
 local jacketFallback = gfx.CreateSkinImage("song_select/loading.png", 0)
 local bottomFill = gfx.CreateSkinImage("console/console.png", 0)
 local topFill = gfx.CreateSkinImage("fill_top.png", 0)
-local critAnim = gfx.CreateSkinImage("crit_anim.png", 0)
+local critAnimImg = gfx.CreateSkinImage("crit_anim.png", gfx.IMAGE_REPEATX)
+local critAnim = gfx.ImagePattern(0,-50,100,100,0,critAnimImg,1)
 local critCap = gfx.CreateSkinImage("crit_cap.png", 0)
 local critCapBack = gfx.CreateSkinImage("crit_cap_back.png", 0)
 local laserCursor = gfx.CreateSkinImage("pointer.png", 0)
@@ -268,7 +269,7 @@ function render_crit_base(deltaTime)
     local critWidth = resx * (portrait and 1 or 0.8)
     
     -- get the scaled dimensions of the crit line pieces
-    local clw, clh = gfx.ImageSize(critAnim)
+    local clw, clh = gfx.ImageSize(critAnimImg)
     local critAnimHeight = 15 * scale
     local critAnimWidth = critAnimHeight * (clw / clh)
 
@@ -289,26 +290,31 @@ function render_crit_base(deltaTime)
 
     -- render the core of the crit line
     do
-        -- The crit line is made up of many small pieces scrolling outward
-        -- Calculate how many pieces, starting at what offset, are require to
-        --  completely fill the space with no gaps from edge to center
+        -- The crit line is made up of two rects with a pattern that scrolls in opposite directions on each rect
         local numPieces = 1 + math.ceil(critWidth / (critAnimWidth * 2))
         local startOffset = critAnimWidth * ((critAnimTimer * 1.5) % 1)
 
         -- left side
         -- Use a scissor to limit the drawable area to only what should be visible
+        gfx.UpdateImagePattern(critAnim, 
+            -startOffset, -critAnimHeight/2, critAnimWidth, critAnimHeight, 0, 1)
         gfx.Scissor(-critWidth / 2, -critAnimHeight / 2, critWidth / 2, critAnimHeight)
-        for i = 1, numPieces do
-            gfx.DrawRect(critAnim, -startOffset - critAnimWidth * (i - 1), -critAnimHeight / 2, critAnimWidth, critAnimHeight)
-        end
+        gfx.BeginPath()
+        gfx.Rect(-critWidth / 2, -critAnimHeight / 2, critWidth / 2, critAnimHeight)
+        gfx.FillPaint(critAnim)
+        gfx.Fill()
         gfx.ResetScissor()
+        
 
         -- right side
         -- exactly the same, but in reverse
+        gfx.UpdateImagePattern(critAnim, 
+            startOffset, -critAnimHeight/2, critAnimWidth, critAnimHeight, 0, 1)
         gfx.Scissor(0, -critAnimHeight / 2, critWidth / 2, critAnimHeight)
-        for i = 1, numPieces do
-            gfx.DrawRect(critAnim, -critAnimWidth + startOffset + critAnimWidth * (i - 1), -critAnimHeight / 2, critAnimWidth, critAnimHeight)
-        end
+        gfx.BeginPath()
+        gfx.Rect(0, -critAnimHeight / 2, critWidth / 2, critAnimHeight)
+        gfx.FillPaint(critAnim)
+        gfx.Fill()
         gfx.ResetScissor()
     end
 
