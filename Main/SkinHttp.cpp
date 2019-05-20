@@ -7,7 +7,7 @@ void SkinHttp::m_requestLoop()
 {
 	while (m_running)
 	{		
-		m_mutex.lock();
+		m_mutex.lock(); ///TODO: use semaphore?
 		if (m_requests.size() > 0)
 		{
 			//get request
@@ -102,8 +102,17 @@ SkinHttp::~SkinHttp()
 	if(m_requestThread.joinable())
 		m_requestThread.join();
 
-	//m_requests.clear();
-	//m_callbackQueue.clear();
+	while (!m_requests.empty())
+	{
+		delete m_requests.front();
+		m_requests.pop();
+	}
+
+	for (auto& s : m_boundStates)
+	{
+		delete s.second;
+	}
+	m_boundStates.clear();
 }
 
 int SkinHttp::lGetAsync(lua_State * L)
@@ -151,7 +160,7 @@ int SkinHttp::lPost(lua_State * L)
 	String url = luaL_checkstring(L, 2);
 	String payload = luaL_checkstring(L, 3);
 	cpr::Header header = m_HeaderFromLuaTable(L, 4);
-	auto response = cpr::Post(cpr::Url{ url }, cpr::Body{*payload}, header);
+	auto response = cpr::Post(cpr::Url{ url }, cpr::Body{ *payload }, header);
 	m_PushResponse(L, response);
 	return 1;
 }
@@ -165,15 +174,18 @@ void SkinHttp::ProcessCallbacks()
 		CompleteRequest& cr = m_callbackQueue.front();
 		m_mutex.unlock();
 
-		//process response
-		lua_rawgeti(cr.L, LUA_REGISTRYINDEX, cr.callback);
-		m_PushResponse(cr.L, cr.r);
-		if (lua_pcall(cr.L, 1, 0, 0) != 0)
+		if (m_boundStates.Contains(cr.L))
 		{
-			Logf("Lua error on calling http callback: %s", Logger::Error, lua_tostring(cr.L, -1));
+			//process response
+			lua_rawgeti(cr.L, LUA_REGISTRYINDEX, cr.callback);
+			m_PushResponse(cr.L, cr.r);
+			if (lua_pcall(cr.L, 1, 0, 0) != 0)
+			{
+				Logf("Lua error on calling http callback: %s", Logger::Error, lua_tostring(cr.L, -1));
+			}
+			lua_settop(cr.L, 0);
+			luaL_unref(cr.L, LUA_REGISTRYINDEX, cr.callback);
 		}
-		lua_settop(cr.L, 0);
-		luaL_unref(cr.L, LUA_REGISTRYINDEX, cr.callback);
 		//pop response
 		m_mutex.lock();
 		m_callbackQueue.pop();

@@ -118,7 +118,7 @@ private:
 	String m_lastMapPath;
 	Thread m_updateThread;
 	class Beatmap* m_currentMap = nullptr;
-	SkinHttp m_skinHtpp;
+	SkinHttp m_skinHttp;
 
 	float m_lastRenderTime;
 	float m_deltaTime;

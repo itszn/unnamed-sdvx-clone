@@ -583,7 +583,7 @@ void Application::m_Tick()
 	g_input.Update(m_deltaTime);
 
 	// Process async lua http callbacks
-	m_skinHtpp.ProcessCallbacks();
+	m_skinHttp.ProcessCallbacks();
 
 	// Tick all items
 	for(auto& tickable : g_tickables)
@@ -934,6 +934,7 @@ void Application::ReloadSkin()
 void Application::DisposeLua(lua_State* state)
 {
 	DisposeGUI(state);
+	m_skinHttp.ClearState(state);
 	lua_close(state);
 }
 void Application::SetGaugeColor(int i, Color c)
@@ -1628,7 +1629,7 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 	}
 
 	//http
-	m_skinHtpp.PushFunctions(state);
+	m_skinHttp.PushFunctions(state);
 }
 
 bool JacketLoadingJob::Run()
