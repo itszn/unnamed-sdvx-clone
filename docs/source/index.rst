@@ -22,6 +22,7 @@ Contents:
    filterwheel
    settingswheel
    skinsettings
+   http
 
 
 Indices and tables
