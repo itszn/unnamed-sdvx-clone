@@ -4,8 +4,8 @@
 #include "String.hpp"
 #include "Map.hpp"
 
-int lMemberCallFunction(lua_State* L);
-int lIndexFunction(lua_State* L);
+static int lMemberCallFunction(lua_State* L);
+static int lIndexFunction(lua_State* L);
 
 class LuaBindable
 {
