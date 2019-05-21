@@ -93,6 +93,7 @@ namespace Graphics
 		float scale;
 		float fade;
 		float drag;
+		
 
 		bool IsAlive() const
 		{
@@ -137,6 +138,10 @@ namespace Graphics
 
 	ParticleEmitter::ParticleEmitter(ParticleSystem_Impl* sys) : m_system(sys)
 	{
+		m_mesh = MeshRes::Create(m_system->gl);
+		m_mesh->SetPrimitiveType(PrimitiveType::PointList);
+		m_mesh->
+
 		// Set parameter defaults
 #define PARTICLE_DEFAULT(__name, __value)\
 	Set##__name(__value);
@@ -282,14 +287,8 @@ namespace Graphics
 			break;
 		}
 
-		// Create vertex buffer
-		Mesh mesh = MeshRes::Create(m_system->gl);
-
-		mesh->SetData(verts);
-		mesh->SetPrimitiveType(PrimitiveType::PointList);
-
-		mesh->Draw();
-		mesh.Destroy();
+		m_mesh->SetData(verts);	
+		m_mesh->Draw();
 	}
 
 	void ParticleEmitter::Reset()

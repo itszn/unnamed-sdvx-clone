@@ -62,7 +62,7 @@ namespace Graphics
 		bool m_deactivated = false;
 		bool m_finished = false;
 		uint32 m_emitterLoopIndex = 0;
-
+		Ref<MeshRes> m_mesh;
 		friend class ParticleSystem_Impl;
 		friend class Particle;
 		ParticleSystem_Impl* m_system;

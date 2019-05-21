@@ -74,6 +74,7 @@ namespace Graphics
 		Map<String, uint32> m_textureIDs;
 		uint32 m_userID = SV_User;
 		uint32 m_textureID = 0;
+		Set<String> m_uniforms;
 
 		Material_Impl(OpenGL* gl) : m_gl(gl)
 		{
@@ -102,7 +103,7 @@ namespace Graphics
 				uint32 type;
 				glGetActiveUniform(handle, i, sizeof(name), &nameLen, &size, &type, name);
 				uint32 loc = glGetUniformLocation(handle, name);
-
+				m_uniforms.Add(name);
 				// Select type
 				uint32 textureID = 0;
 				String typeName = "Unknown";
@@ -267,6 +268,11 @@ namespace Graphics
 		{
 			// Bind pipeline to context
 			glBindProgramPipeline(m_pipeline);
+		}
+
+		virtual bool HasUniform(String name) override
+		{
+			return m_uniforms.Contains(name);
 		}
 
 		BoundParameterInfo* GetBoundParameters(const String& name, uint32& count)

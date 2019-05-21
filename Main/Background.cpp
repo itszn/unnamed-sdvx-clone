@@ -40,6 +40,7 @@ public:
 	float clearTransition = 0.0f;
 	float offsyncTimer = 0.0f;
 	bool foreground;
+	bool hasFbTex;
 };
 
 class TestBackground : public FullscreenBackground
@@ -90,7 +91,7 @@ class TestBackground : public FullscreenBackground
 
 		CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
 		fullscreenMaterial->opaque = false;
-
+		hasFbTex = fullscreenMaterial->HasUniform("fb_tex");
 		return true;
 	}
 	virtual void Render(float deltaTime) override
@@ -132,7 +133,7 @@ class TestBackground : public FullscreenBackground
 		fullscreenMaterialParams.SetParameter("mainTex", backgroundTexture);
 		fullscreenMaterialParams.SetParameter("screenCenter", screenCenter);
 		fullscreenMaterialParams.SetParameter("timing", timing);
-		if (foreground)
+		if (foreground && hasFbTex)
 		{
 			frameBufferTexture->SetFromFrameBuffer();
 			fullscreenMaterialParams.SetParameter("fb_tex", frameBufferTexture);

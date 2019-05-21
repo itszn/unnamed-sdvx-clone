@@ -89,7 +89,7 @@ namespace Graphics
 
 		// Only binds parameters to the current shader
 		virtual void BindParameters(const MaterialParameterSet& params, const Transform& worldTransform) = 0;
-
+		virtual bool HasUniform(String name) = 0;
 		// Bind only shaders/pipeline to context
 		virtual void BindToContext() = 0;
 	};
