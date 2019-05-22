@@ -14,8 +14,6 @@ local bgAngle = 0.5
 local bgPaint = gfx.ImagePattern(0,0, 256,256, bgAngle, bgPattern, 1.0)
 local bgPatternTimer = 0
 
-Http.Get()
-
 view_update = function()
     if package.config:sub(1,1) == '\\' then --windows
         updateUrl, updateVersion = game.UpdateAvailable()
