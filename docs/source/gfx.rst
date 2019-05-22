@@ -407,6 +407,10 @@ Example:
     end
     
     
+LoadWebImageJob(char* url, int placeholder, int w = 0, int h = 0)
+*****************************************************************
+Works the same as ``LoadImageJob`` but the path is a web url instead.
+   
 Scissor(float x, float y, float w, float h)
 ****************************************************************
 nanovg.h:431_

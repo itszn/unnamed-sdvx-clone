@@ -136,8 +136,13 @@ namespace Graphics
 			if(b.size() < 4)
 				return false;
 
+			return Load(pImage, b);
+		}
+
+		bool Load(ImageRes* pImage, Buffer& b)
+		{
 			// Check for PNG based on first 4 bytes
-			if(*(uint32*)b.data() == (uint32&)"‰PNG")
+			if (*(uint32*)b.data() == (uint32&)"‰PNG")
 				return LoadPNG(pImage, b);
 			else // jay-PEG ?
 				return LoadJPEG(pImage, b);
@@ -154,5 +159,10 @@ namespace Graphics
 	bool ImageLoader::Load(ImageRes* pImage, const String& fullPath)
 	{
 		return ImageLoader_Impl::Main().Load(pImage, fullPath);
+	}
+
+	bool ImageLoader::Load(ImageRes* pImage, Buffer& b)
+	{
+		return ImageLoader_Impl::Main().Load(pImage, b);
 	}
 }

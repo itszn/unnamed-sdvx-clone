@@ -831,7 +831,7 @@ Graphics::Font Application::LoadFont(const String & name, const bool & external)
 	return newFont;
 }
 
-int Application::LoadImageJob(const String & path, Vector2i size, int placeholder)
+int Application::LoadImageJob(const String & path, Vector2i size, int placeholder, const bool& web)
 {
 	int ret = placeholder;
 	auto it = m_jacketImages.find(path);
@@ -843,6 +843,7 @@ int Application::LoadImageJob(const String & path, Vector2i size, int placeholde
 		job->target = newImage;
 		job->w = size.x;
 		job->h = size.y;
+		job->web = web;
 		newImage->loadingJob = Ref<JobBase>(job);
 		newImage->lastUsage = m_jobTimer.SecondsAsFloat();
 		g_jobSheduler->Queue(newImage->loadingJob);
@@ -1341,6 +1342,20 @@ static int lLoadImageJob(lua_State* L /* char* path, int placeholder, int w = 0,
 	return 1;
 }
 
+static int lLoadWebImageJob(lua_State* L /* char* url, int placeholder, int w = 0, int h = 0 */)
+{
+	const char* url = luaL_checkstring(L, 1);
+	int fallback = luaL_checkinteger(L, 2);
+	int w = 0, h = 0;
+	if (lua_gettop(L) == 4)
+	{
+		w = luaL_checkinteger(L, 3);
+		h = luaL_checkinteger(L, 4);
+	}
+	lua_pushinteger(L, g_application->LoadImageJob(url, { w,h }, fallback, true));
+	return 1;
+}
+
 static int lSetGaugeColor(lua_State* L /*int colorIndex, int r, int g, int b*/)
 {
 	int colorindex, r, g, b;
@@ -1528,6 +1543,7 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushFuncToTable("PathWinding", lPathWinding);
 		pushFuncToTable("ForceRender", lForceRender);
 		pushFuncToTable("LoadImageJob", lLoadImageJob);
+		pushFuncToTable("LoadWebImageJob", lLoadWebImageJob);
 		pushFuncToTable("Scissor", lScissor);
 		pushFuncToTable("IntersectScissor", lIntersectScissor);
 		pushFuncToTable("ResetScissor", lResetScissor);
@@ -1635,13 +1651,34 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 bool JacketLoadingJob::Run()
 {
 	// Create loading task
-	loadedImage = ImageRes::Create(imagePath);
-	if (loadedImage.IsValid()) {
-		if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h) {
-			loadedImage->ReSize({ w,h });
+	if (web)
+	{
+		auto response = cpr::Get(imagePath);
+		if (response.error.code != cpr::ErrorCode::OK)
+		{
+			return false;
 		}
+		Buffer b;
+		b.resize(response.text.length());
+		memcpy(b.data(), response.text.c_str(), b.size());
+		loadedImage = ImageRes::Create(b);
+		if (loadedImage.IsValid()) {
+			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h) {
+				loadedImage->ReSize({ w,h });
+			}
+		}
+		return loadedImage.IsValid();
 	}
-	return loadedImage.IsValid();
+	else
+	{
+		loadedImage = ImageRes::Create(imagePath);
+		if (loadedImage.IsValid()) {
+			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h) {
+				loadedImage->ReSize({ w,h });
+			}
+		}
+		return loadedImage.IsValid();
+	}
 }
 void JacketLoadingJob::Finalize()
 {

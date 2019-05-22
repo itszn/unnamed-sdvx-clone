@@ -13,5 +13,6 @@ namespace Graphics
 	{
 	public:
 		static bool Load(ImageRes* outPtr, const String& fullPath);
+		static bool Load(ImageRes* outPtr, Buffer& b);
 	};
 }

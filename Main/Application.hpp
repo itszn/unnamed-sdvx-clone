@@ -68,7 +68,7 @@ public:
 	Material LoadMaterial(const String& name);
 	Sample LoadSample(const String& name, const bool& external = false);
 	Graphics::Font LoadFont(const String& name, const bool& external = false);
-	int LoadImageJob(const String& path, Vector2i size, int placeholder);
+	int LoadImageJob(const String& path, Vector2i size, int placeholder, const bool& web = false);
 	class lua_State* LoadScript(const String& name);
 	void ReloadScript(const String& name, lua_State* L);
 	void LoadGauge(bool hard);
@@ -143,5 +143,6 @@ public:
 	Image loadedImage;
 	String imagePath;
 	int w = 0, h = 0;
+	bool web = false;
 	Application::CachedJacketImage* target;
 };

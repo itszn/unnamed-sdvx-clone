@@ -174,6 +174,20 @@ namespace Graphics
 		pImpl->SetSize(size);
 		return GetResourceManager<ResourceType::Image>().Register(pImpl);
 	}
+	Ref<ImageRes> ImageRes::Create(Buffer & b)
+	{
+		Image_Impl* pImpl = new Image_Impl();
+		if (ImageLoader::Load(pImpl, b))
+		{
+			return GetResourceManager<ResourceType::Image>().Register(pImpl);
+		}
+		else
+		{
+			delete pImpl;
+			pImpl = nullptr;
+		}
+		return Image();
+	}
 	Image ImageRes::Create(const String& assetPath)
 	{
 		Image_Impl* pImpl = new Image_Impl();

@@ -13,6 +13,7 @@ namespace Graphics
 		virtual ~ImageRes() = default;
 		static Ref<ImageRes> Create(const String& assetPath);
 		static Ref<ImageRes> Create(Vector2i size = Vector2i());
+		static Ref<ImageRes> Create(Buffer& b);
 		static Ref<ImageRes> Screenshot(class OpenGL* gl, Vector2i size = Vector2i(), Vector2i pos = Vector2i());
 	public:
 		virtual void SetSize(Vector2i size) = 0;
