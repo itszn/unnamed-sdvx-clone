@@ -140,7 +140,6 @@ namespace Graphics
 	{
 		m_mesh = MeshRes::Create(m_system->gl);
 		m_mesh->SetPrimitiveType(PrimitiveType::PointList);
-		m_mesh->
 
 		// Set parameter defaults
 #define PARTICLE_DEFAULT(__name, __value)\

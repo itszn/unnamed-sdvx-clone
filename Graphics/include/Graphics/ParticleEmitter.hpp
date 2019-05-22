@@ -1,6 +1,7 @@
 #pragma once
 #include <Graphics/Material.hpp>
 #include <Graphics/Texture.hpp>
+#include <Graphics/Mesh.hpp>
 #include <Graphics/ParticleParameter.hpp>
 
 namespace Graphics
@@ -62,7 +63,7 @@ namespace Graphics
 		bool m_deactivated = false;
 		bool m_finished = false;
 		uint32 m_emitterLoopIndex = 0;
-		Ref<MeshRes> m_mesh;
+		Mesh m_mesh;
 		friend class ParticleSystem_Impl;
 		friend class Particle;
 		ParticleSystem_Impl* m_system;
