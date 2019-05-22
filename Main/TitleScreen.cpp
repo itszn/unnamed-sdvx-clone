@@ -16,6 +16,7 @@
 #include "Shared/Enum.hpp"
 #include "lua.hpp"
 #include "Shared/LuaBindable.hpp"
+#include "DownloadScreen.hpp"
 
 class TitleScreen_Impl : public TitleScreen
 {
@@ -42,6 +43,12 @@ private:
 	int lStart(lua_State* L)
 	{
 		Start();
+		return 0;
+	}
+
+	int lDownloads(lua_State* L)
+	{
+		g_application->AddTickable(new DownloadScreen());
 		return 0;
 	}
 
@@ -94,6 +101,7 @@ public:
 		m_luaBinds->AddFunction("Exit", this, &TitleScreen_Impl::lExit);
 		m_luaBinds->AddFunction("Settings", this, &TitleScreen_Impl::lSettings);
 		m_luaBinds->AddFunction("Start", this, &TitleScreen_Impl::lStart);
+		m_luaBinds->AddFunction("DLScreen", this, &TitleScreen_Impl::lDownloads);
 		m_luaBinds->Push();
 		lua_settop(m_lua, 0);
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);
