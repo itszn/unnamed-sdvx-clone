@@ -55,4 +55,15 @@ set_property(GLOBAL PROPERTY MA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/miniaudio)
 #json for modern c++
 set_property(GLOBAL PROPERTY NLOHMANN_JSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json)
 
+#libarchive
+set(ENABLE_TEST OFF CACHE BOOL "Enable unit and regression tests")
+set(ENABLE_INSTALL OFF CACHE BOOL "Enable installing of libraries")
+set(ENABLE_TAR OFF CACHE BOOL "Enable tar building")
+set(ENABLE_CPIO OFF CACHE BOOL "Enable cpio building")
+set(ENABLE_CAT OFF CACHE BOOL "Enable cat building")
 
+
+set(ENABLE_WERROR OFF CACHE BOOL "Treat warnings as errors - default is ON for Debug, OFF otherwise.")
+
+add_subdirectory(libarchive)
+target_include_directories(archive PUBLIC libarchive/libarchive)

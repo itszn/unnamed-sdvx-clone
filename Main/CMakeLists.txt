@@ -50,6 +50,7 @@ target_link_libraries(usc-game nanovg)
 target_link_libraries(usc-game lua)
 target_link_libraries(usc-game discord-rpc)
 target_link_libraries(usc-game cpr)
+target_link_libraries(usc-game archive)
 
 if(WIN32)
 	# Bundled libraries

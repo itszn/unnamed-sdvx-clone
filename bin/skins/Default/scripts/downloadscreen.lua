@@ -22,6 +22,22 @@ function addsong(song)
     table.insert(songs, song)
 end
 
+function encodeURI(str)
+    if (str) then
+        str = string.gsub(str, "\n", "\r\n")
+        str = string.gsub(str, "([^%w ])",
+            function (c) 
+                local dontChange = "-/_:"
+                if string.match(dontChange, c) then return c end
+                return string.format ("%%%02X", string.byte(c)) 
+            end)
+        str = string.gsub(str, " ", "%%20")
+   end
+   return str
+end
+
+
+
 function gotSongsCallback(response)
     if response.status ~= 200 then 
         error() 
@@ -82,7 +98,6 @@ function render_cursor()
 end
 
 function render(deltaTime)
-    
     gfx.LoadSkinFont("NotoSans-Regular.ttf");
     displayCursorPosX = displayCursorPosX - (displayCursorPosX - cursorPosX) * deltaTime * 10
     displayCursorPosY = displayCursorPosY - (displayCursorPosY - cursorPosY) * deltaTime * 10
@@ -97,7 +112,12 @@ function render(deltaTime)
         
         end
     end
-    
+end
+
+function button_pressed(button)
+    if button == game.BUTTON_STA then
+        dlScreen.DownloadArchive(encodeURI(songs[cursorPos + 1].cdn_download_url), header)
+    end
 end
 
 function key_pressed(key)

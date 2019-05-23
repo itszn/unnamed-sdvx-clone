@@ -23,6 +23,7 @@ class SkinHttp
 public:
 	SkinHttp();
 	~SkinHttp();
+	static cpr::Header HeaderFromLuaTable(struct lua_State* L, int index);
 	int lGetAsync(struct lua_State* L);
 	int lPostAsync(struct lua_State* L);
 	int lGet(struct lua_State* L);
@@ -40,6 +41,5 @@ private:
 	Map<struct lua_State*, class LuaBindable*> m_boundStates;
 
 	void m_requestLoop();
-	cpr::Header m_HeaderFromLuaTable(struct lua_State* L, int index);
 	void m_PushResponse(struct lua_State* L, const cpr::Response& r);
 };

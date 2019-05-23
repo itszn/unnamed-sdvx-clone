@@ -36,7 +36,7 @@ void SkinHttp::m_requestLoop()
 }
 
 //https://stackoverflow.com/a/6142700
-cpr::Header SkinHttp::m_HeaderFromLuaTable(lua_State * L, int index)
+cpr::Header SkinHttp::HeaderFromLuaTable(lua_State * L, int index)
 {
 	cpr::Header ret;
 	if (!lua_istable(L, index))
@@ -118,7 +118,7 @@ SkinHttp::~SkinHttp()
 int SkinHttp::lGetAsync(lua_State * L)
 {
 	String url = luaL_checkstring(L, 2);
-	cpr::Header header = m_HeaderFromLuaTable(L, 3);
+	cpr::Header header = HeaderFromLuaTable(L, 3);
 	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
 	AsyncRequest* r = new AsyncRequest();
 	r->r = cpr::GetAsync(cpr::Url{ url }, header);
@@ -134,7 +134,7 @@ int SkinHttp::lPostAsync(lua_State * L)
 {
 	String url = luaL_checkstring(L, 2);
 	String payload = luaL_checkstring(L, 3);
-	cpr::Header header = m_HeaderFromLuaTable(L, 4);
+	cpr::Header header = HeaderFromLuaTable(L, 4);
 	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
 	AsyncRequest* r = new AsyncRequest();
 	r->r = cpr::PostAsync(cpr::Url{ url }, cpr::Body{ *payload }, header);
@@ -149,7 +149,7 @@ int SkinHttp::lPostAsync(lua_State * L)
 int SkinHttp::lGet(lua_State * L)
 {
 	String url = luaL_checkstring(L, 2);
-	cpr::Header header = m_HeaderFromLuaTable(L, 3);
+	cpr::Header header = HeaderFromLuaTable(L, 3);
 	auto response = cpr::Get(cpr::Url{ url }, header);
 	m_PushResponse(L, response);
 	return 1;
@@ -159,7 +159,7 @@ int SkinHttp::lPost(lua_State * L)
 {
 	String url = luaL_checkstring(L, 2);
 	String payload = luaL_checkstring(L, 3);
-	cpr::Header header = m_HeaderFromLuaTable(L, 4);
+	cpr::Header header = HeaderFromLuaTable(L, 4);
 	auto response = cpr::Post(cpr::Url{ url }, cpr::Body{ *payload }, header);
 	m_PushResponse(L, response);
 	return 1;

@@ -2,6 +2,10 @@
 #include "DownloadScreen.hpp"
 #include "Application.hpp"
 #include "lua.hpp"
+#include "archive.h"
+#include "archive_entry.h"
+#include "SkinHttp.hpp"
+#include "cpr/util.h"
 
 DownloadScreen::DownloadScreen()
 {
@@ -25,7 +29,9 @@ bool DownloadScreen::Init()
 	g_input.OnButtonReleased.Add(this, &DownloadScreen::m_OnButtonReleased);
 	g_gameWindow->OnMouseScroll.Add(this, &DownloadScreen::m_OnMouseScroll);
 	m_bindable = new LuaBindable(m_lua, "dlScreen");
-	m_bindable->AddFunction("Exit", this, &DownloadScreen::m_exit);
+	m_bindable->AddFunction("Exit", this, &DownloadScreen::m_Exit);
+	m_bindable->AddFunction("DownloadArchive", this, &DownloadScreen::m_DownloadArchive);
+	m_bindable->AddFunction("GetSongFolder", this, &DownloadScreen::m_DownloadArchive);
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
 
@@ -143,7 +149,34 @@ void DownloadScreen::m_OnMouseScroll(int32 steps)
 	lua_settop(m_lua, 0);
 }
 
-int DownloadScreen::m_exit(lua_State * L)
+int DownloadScreen::m_DownloadArchive(lua_State* L)
+{
+	String url = luaL_checkstring(L, 2);
+	auto header = SkinHttp::HeaderFromLuaTable(L, 3);
+
+	auto response = cpr::Get(cpr::Url{ url }, header);
+
+	{
+		archive* a;
+		a = archive_read_new();
+		archive_read_support_filter_all(a);
+		archive_read_support_format_all(a);
+		int r = archive_read_open_memory(a, response.text.c_str(), response.text.length());
+		if (r != ARCHIVE_OK)
+			return 0;
+
+		struct archive_entry *entry;
+		while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+			Logf("%s", Logger::Info, archive_entry_pathname(entry));
+			archive_read_data_skip(a);  // Note 2
+		}
+		r = archive_read_free(a);
+	}
+
+	return 0;
+}
+
+int DownloadScreen::m_Exit(lua_State * L)
 {
 	g_application->RemoveTickable(this);
 	return 0;
