@@ -1654,7 +1654,7 @@ bool JacketLoadingJob::Run()
 	if (web)
 	{
 		auto response = cpr::Get(imagePath);
-		if (response.error.code != cpr::ErrorCode::OK)
+		if (response.error.code != cpr::ErrorCode::OK || response.status_code >= 300)
 		{
 			return false;
 		}

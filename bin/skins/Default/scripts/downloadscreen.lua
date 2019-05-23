@@ -14,7 +14,11 @@ local loading = true
 
 local songs = {}
 function addsong(song)
-    song.jacket = gfx.LoadWebImageJob(song.jacket_url, jacketFallback, 250, 250)
+    if song.jacket_url ~= nil then
+        song.jacket = gfx.LoadWebImageJob(song.jacket_url, jacketFallback, 250, 250)
+    else
+        song.jacket = jacketFallback
+    end
     table.insert(songs, song)
 end
 
@@ -43,7 +47,7 @@ function render_song(song, x,y)
     gfx.Text(song.title, 0,0)
     gfx.FontSize(20)
     gfx.Text(song.artist, 0,30)
-    if song.jacket == jacketFallback then
+    if song.jacket_url ~= nil and song.jacket == jacketFallback then
         song.jacket = gfx.LoadWebImageJob(song.jacket_url, jacketFallback, 250, 250)
     end
     gfx.BeginPath()
