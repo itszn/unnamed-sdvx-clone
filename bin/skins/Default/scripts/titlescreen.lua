@@ -91,7 +91,7 @@ render = function(deltaTime)
     gfx.LoadSkinFont("NotoSans-Regular.ttf");
     draw_button("Start", resx / 2, buttonY, Menu.Start);
     buttonY = buttonY + 100;
-    draw_button("Get Songs", resx / 2, buttonY, Menu.DLScreen);
+    draw_button("Get Songs BETA", resx / 2, buttonY, Menu.DLScreen);
     buttonY = buttonY + 100;
     draw_button("Settings", resx / 2, buttonY, Menu.Settings);
     buttonY = buttonY + 100;
