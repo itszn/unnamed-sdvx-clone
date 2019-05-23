@@ -11,7 +11,7 @@ local displayCursorPosX = 0
 local displayCursorPosY = 0
 local nextUrl = "https://ksm.dev/app/songs"
 local loading = true
-
+local downloaded = {}
 local songs = {}
 function addsong(song)
     if song.jacket_url ~= nil then
@@ -114,9 +114,22 @@ function render(deltaTime)
     end
 end
 
+function archive_callback(entries, id)
+    game.Log("Listing entries for " .. id, 0)
+    local songsfolder = dlScreen.GetSongsPath()
+    res = {}
+    for i, entry in ipairs(entries) do
+        game.Log(entry, 0)
+        res[entry] = songsfolder .. "/" .. entry
+    end
+    return res
+end
+
 function button_pressed(button)
     if button == game.BUTTON_STA then
-        dlScreen.DownloadArchive(encodeURI(songs[cursorPos + 1].cdn_download_url), header)
+        local song = songs[cursorPos + 1]
+        if song == nil then return end
+        dlScreen.DownloadArchive(encodeURI(song.cdn_download_url), header, song.id, archive_callback)
     end
 end
 

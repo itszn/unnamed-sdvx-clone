@@ -264,7 +264,7 @@ private:
 
 	int SelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
 	{
-		int value = g_gameConfig.GetInt(key);
+		int value = g_gameConfig.GetInt(key) % options.size();
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, options.data(), options.size(), &value, m_buttonheight, m_comboBoxSize);
 		g_gameConfig.Set(key, value);

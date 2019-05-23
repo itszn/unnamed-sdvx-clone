@@ -195,7 +195,7 @@ class SelectionWheel
 	Map<int32, SongSelectIndex> m_maps;
 	Map<int32, SongSelectIndex> m_mapFilter;
 	bool m_filterSet = false;
-
+	IApplicationTickable* m_owner;
 	// Currently selected selection ID
 	int32 m_currentlySelectedId = 0;
 	// Currently selected selection ID
@@ -213,7 +213,7 @@ class SelectionWheel
 	std::mutex m_lock;
 
 public:
-	SelectionWheel()
+	SelectionWheel(IApplicationTickable* owner) : m_owner(owner)
 	{
 	}
 	bool Init()
@@ -246,7 +246,7 @@ public:
 		{
 			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-			assert(false);
+			g_application->RemoveTickable(m_owner);
 		}
 	}
 	~SelectionWheel()
@@ -1039,7 +1039,7 @@ public:
 		if (!m_settingsWheel->Init())
 			return false;
 		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
-		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel());
+		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel(this));
 		if (!m_selectionWheel->Init())
 			return false;
 		m_filterSelection = Ref<FilterSelection>(new FilterSelection(m_selectionWheel));

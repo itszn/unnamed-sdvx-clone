@@ -64,6 +64,5 @@ set(ENABLE_CAT OFF CACHE BOOL "Enable cat building")
 
 
 set(ENABLE_WERROR OFF CACHE BOOL "Treat warnings as errors - default is ON for Debug, OFF otherwise.")
-
 add_subdirectory(libarchive)
 target_include_directories(archive PUBLIC libarchive/libarchive)
