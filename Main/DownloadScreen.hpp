@@ -18,9 +18,10 @@ public:
 private:
 	struct lua_State* m_lua;
 	LuaBindable* m_bindable;
+	float m_advanceSong = 0.0f;
 
 	void m_OnButtonPressed(Input::Button buttonCode);
 	void m_OnButtonReleased(Input::Button buttonCode);
-
+	void m_OnMouseScroll(int32 steps);
 	int m_exit(struct lua_State* L);
 };
