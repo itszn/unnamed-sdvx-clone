@@ -61,6 +61,7 @@ set(ENABLE_INSTALL OFF CACHE BOOL "Enable installing of libraries")
 set(ENABLE_TAR OFF CACHE BOOL "Enable tar building")
 set(ENABLE_CPIO OFF CACHE BOOL "Enable cpio building")
 set(ENABLE_CAT OFF CACHE BOOL "Enable cat building")
+set(ENABLE_OPENSSL OFF CACHE BOOL "Enable use of OpenSSL")
 
 
 set(ENABLE_WERROR OFF CACHE BOOL "Treat warnings as errors - default is ON for Debug, OFF otherwise.")
