@@ -167,11 +167,25 @@ function archive_callback(entries, id)
     game.Log("Listing entries for " .. id, 0)
     local songsfolder = dlScreen.GetSongsPath()
     res = {}
+    folders = { songsfolder .. "/nautica/" }
+    local hasFolder = false
     for i, entry in ipairs(entries) do
+        if entry:sub(-1) == '/' then 
+            hasFolder = true 
+            table.insert(folders, songsfolder .. "/nautica/" .. entry)
+        end
         game.Log(entry, 0)
-        res[entry] = songsfolder .. "/" .. entry
+        res[entry] = songsfolder .. "/nautica/" .. entry
+    end
+    
+    if not hasFolder then
+        for i, entry in ipairs(entries) do
+            res[entry] = songsfolder .. "/nautica/" .. id .. "/" .. entry
+        end
+        table.insert(folders, songsfolder .. "/nautica/" .. id .. "/")
     end
     downloaded[id] = "Downloaded"
+    res[".folders"] = table.concat(folders, "|")
     return res
 end
 

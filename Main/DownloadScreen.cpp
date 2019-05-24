@@ -236,6 +236,16 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		else //process returned table and extract files
 		{
 			auto entryPathMap = m_mapFromLuaTable(1);
+
+			if (entryPathMap.Contains(".folders"))
+			{
+				auto folders = entryPathMap.at(".folders").Explode("|");
+				for (String& f : folders)
+				{
+					Path::CreateDir(f);
+				}
+			}
+
 			entry = nullptr;
 			ar.a = archive_read_new();
 			archive_read_support_filter_all(ar.a);
