@@ -13,15 +13,24 @@ local nextUrl = "https://ksm.dev/app/songs"
 local loading = true
 local downloaded = {}
 local songs = {}
+local cachepath = "skins/" .. game.GetSkin() .. "/nautica.json"
 function addsong(song)
     if song.jacket_url ~= nil then
         song.jacket = gfx.LoadWebImageJob(song.jacket_url, jacketFallback, 250, 250)
     else
         song.jacket = jacketFallback
     end
+    if downloaded[song.id] then
+        song.status = "Downloaded"
+    end
     table.insert(songs, song)
 end
 
+dlcache = io.open(cachepath, "r")
+if dlcache then
+    downloaded = json.decode(dlcache:read("*all"))
+    dlcache:close()
+end
 function encodeURI(str)
     if (str) then
         str = string.gsub(str, "\n", "\r\n")
@@ -85,6 +94,16 @@ function render_song(song, x,y)
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_MIDDLE)
         gfx.Text(string.format("%d Effected by %s", diff.level, diff.effector), 255, diffY + 250 / 8)
     end
+    if downloaded[song.id] then
+        gfx.BeginPath()
+        gfx.Rect(0,0,750,300)
+        gfx.FillColor(0,0,0,127)
+        gfx.Fill()
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+        gfx.FontSize(60)
+        gfx.FillColor(255,255,255)
+        gfx.Text(downloaded[song.id], 375, 150)
+    end
     gfx.Restore()
 end
 
@@ -122,6 +141,7 @@ function archive_callback(entries, id)
         game.Log(entry, 0)
         res[entry] = songsfolder .. "/" .. entry
     end
+    downloaded[id] = "Downloaded"
     return res
 end
 
@@ -130,11 +150,17 @@ function button_pressed(button)
         local song = songs[cursorPos + 1]
         if song == nil then return end
         dlScreen.DownloadArchive(encodeURI(song.cdn_download_url), header, song.id, archive_callback)
+        downloaded[song.id] = "Downloading..."
     end
 end
 
 function key_pressed(key)
-    if key == 27 then dlScreen.Exit() end --escape pressed
+    if key == 27 then --escape pressed
+        dlcache = io.open(cachepath, "w")
+        dlcache:write(json.encode(downloaded))
+        dlcache:close()
+        dlScreen.Exit() 
+    end
 end
 
 function advance_selection(steps)

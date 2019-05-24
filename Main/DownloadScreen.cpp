@@ -18,7 +18,8 @@ DownloadScreen::~DownloadScreen()
 	g_input.OnButtonReleased.RemoveAll(this);
 	g_gameWindow->OnMouseScroll.RemoveAll(this);
 	m_running = false;
-	m_archiveThread.join();
+	if(m_archiveThread.joinable())
+		m_archiveThread.join();
 	if(m_lua)
 		g_application->DisposeLua(m_lua);
 }
@@ -295,7 +296,11 @@ bool DownloadScreen::m_extractFile(archive * a, String path)
 		Path::CreateDir(path);
 		return true;
 	}
-	f.OpenWrite(Path::Normalize(path));
+	
+	if (!f.OpenWrite(Path::Normalize(path)))
+	{
+		return false;
+	}
 
 	while(true) {
 		r = archive_read_data_block(a, &buff, &size, &offset);
