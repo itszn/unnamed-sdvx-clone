@@ -16,10 +16,22 @@ local cursorPosY = 0
 local displayCursorPosX = 0
 local displayCursorPosY = 0
 local nextUrl = "https://ksm.dev/app/songs"
+local screenState = 0 --0 = normal, 1 = level, 2 = sorting
 local loading = true
 local downloaded = {}
 local songs = {}
+local selectedLevels = {}
+local selectedSorting = "Uploaded"
+for i = 1, 20 do
+    selectedLevels[i] = false
+end
+
 local cachepath = "skins/" .. game.GetSkin() .. "/nautica.json"
+local levelcursor = 0
+local sortingcursor = 0
+local sortingOptions = {"Uploaded", "Oldest"}
+local needsReload = false
+
 function addsong(song)
     if song.jacket_url ~= nil then
         song.jacket = gfx.LoadWebImageJob(song.jacket_url, jacketFallback, 250, 250)
@@ -161,6 +173,10 @@ function render(deltaTime)
         end
     end
     render_cursor()
+    if needsReload then reload_songs() end
+    if screenState == 1 then render_level_filters()
+    elseif screenState == 2 then render_sorting_selection()
+    end
 end
 
 function archive_callback(entries, id)
@@ -189,12 +205,65 @@ function archive_callback(entries, id)
     return res
 end
 
+function reload_songs()
+    needsReload = true
+    if loading then return end
+    local useLevels = false
+    local levelarr = {}
+    
+    for i,value in ipairs(selectedLevels) do
+        if value then 
+            useLevels = true
+            table.insert(levelarr, i)
+        end
+    end
+    nextUrl = string.format("https://ksm.dev/app/songs?sort=%s", selectedSorting:lower())
+    if useLevels then
+        nextUrl = nextUrl .. "&levels=" .. table.concat(levelarr, ",")
+    end
+    songs = {}
+    cursorPos = 0
+    cursorPosX = 0
+    cursorPosY = 0
+    displayCursorPosX = 0
+    displayCursorPosY = 0
+    load_more()
+    game.Log(nextUrl, 0)
+    needsReload = false
+    
+end
+
 function button_pressed(button)
     if button == game.BUTTON_STA then
-        local song = songs[cursorPos + 1]
-        if song == nil then return end
-        dlScreen.DownloadArchive(encodeURI(song.cdn_download_url), header, song.id, archive_callback)
-        downloaded[song.id] = "Downloading..."
+        if screenState == 0 then
+            local song = songs[cursorPos + 1]
+            if song == nil then return end
+            dlScreen.DownloadArchive(encodeURI(song.cdn_download_url), header, song.id, archive_callback)
+            downloaded[song.id] = "Downloading..."
+        elseif screenState == 1 then
+            if selectedLevels[levelcursor + 1] then 
+                selectedLevels[levelcursor + 1] = false
+            else
+                selectedLevels[levelcursor + 1] = true
+            end
+            reload_songs()
+        elseif screenState == 2 then
+            selectedSorting = sortingOptions[sortingcursor + 1]
+            reload_songs()
+        end
+        
+    elseif button == game.BUTTON_FXL then
+        if screenState ~= 1 then
+            screenState = 1
+         else
+            screenState = 0
+        end
+    elseif button == game.BUTTON_FXR then
+        if screenState ~= 2 then
+            screenState = 2
+         else
+            screenState = 0
+        end
     end
 end
 
@@ -207,11 +276,70 @@ function key_pressed(key)
     end
 end
 
+
 function advance_selection(steps)
-    cursorPos = (cursorPos + steps) % #songs
-    cursorPosX = cursorPos % xCount
-    cursorPosY = math.floor(cursorPos / xCount)
-    if cursorPos > #songs - 6 then
-        load_more()
+    if screenState == 0 and #songs > 0 then
+        cursorPos = (cursorPos + steps) % #songs
+        cursorPosX = cursorPos % xCount
+        cursorPosY = math.floor(cursorPos / xCount)
+        if cursorPos > #songs - 6 then
+            load_more()
+        end
+    elseif screenState == 1 then
+        levelcursor = (levelcursor + steps) % 20
+    elseif screenState == 2 then
+        sortingcursor = (sortingcursor + steps) % #sortingOptions
     end
+end
+
+function render_level_filters()
+    gfx.Save()
+    gfx.ResetTransform()
+    gfx.BeginPath()
+    gfx.Rect(0,0, resX, resY)
+    gfx.FillColor(0,0,0,200)
+    gfx.Fill()
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+    gfx.FontSize(60)
+    gfx.Text("Level filters:", 10, 10)
+    gfx.BeginPath()
+    gfx.Rect(resX/2 - 30, resY/2 - 22, 60, 44)
+    gfx.StrokeColor(255,128,0)
+    gfx.StrokeWidth(2)
+    gfx.Stroke()
+    gfx.FontSize(40)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    for i = 1, 20 do
+        y = (resY/2) +  (i - (levelcursor + 1)) * 40
+        if selectedLevels[i] then gfx.FillColor(255,255,255) else gfx.FillColor(127,127,127) end
+        gfx.Text(tostring(i), resX/2, y)
+    end
+    gfx.Restore()
+end
+
+function render_sorting_selection()
+    gfx.Save()
+    gfx.ResetTransform()
+    gfx.BeginPath()
+    gfx.Rect(0,0, resX, resY)
+    gfx.FillColor(0,0,0,200)
+    gfx.Fill()
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+    gfx.FontSize(60)
+    gfx.Text("Sorting method:", 10, 10)
+    gfx.BeginPath()
+    gfx.Rect(resX/2 - 75, resY/2 - 22, 150, 44)
+    gfx.StrokeColor(255,128,0)
+    gfx.StrokeWidth(2)
+    gfx.Stroke()
+    gfx.FontSize(40)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    for i, opt in ipairs(sortingOptions) do
+        y = (resY/2) +  (i - (sortingcursor + 1)) * 40
+        if selectedSorting == opt then gfx.FillColor(255,255,255) else gfx.FillColor(127,127,127) end
+        gfx.Text(opt, resX/2, y)
+    end
+    gfx.Restore()
 end
