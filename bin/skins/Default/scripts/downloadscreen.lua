@@ -245,9 +245,11 @@ function archive_callback(entries, id)
     folders = { songsfolder .. "/nautica/" }
     local hasFolder = false
     for i, entry in ipairs(entries) do
-        if entry:sub(-1) == '/' then 
-            hasFolder = true 
-            table.insert(folders, songsfolder .. "/nautica/" .. entry)
+        for j = 1, #entry do
+            if entry:sub(j,j) == '/' then
+               hasFolder = true
+               table.insert(folders, songsfolder .. "/nautica/" .. entry:sub(1,j))
+            end
         end
         game.Log(entry, 0)
         res[entry] = songsfolder .. "/nautica/" .. entry

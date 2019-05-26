@@ -240,9 +240,13 @@ void DownloadScreen::m_ProcessArchiveResponses()
 			if (entryPathMap.Contains(".folders"))
 			{
 				auto folders = entryPathMap.at(".folders").Explode("|");
+				Set<String> created;
 				for (String& f : folders)
 				{
+					if (created.Contains(f))
+						continue;
 					Path::CreateDir(f);
+					created.Add(f);
 				}
 			}
 

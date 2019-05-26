@@ -236,6 +236,16 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	return 0.0f;
 }
 
+bool Scoring::GetLaserActive()
+{
+	return IsObjectHeld(6) || IsObjectHeld(7);
+}
+
+bool Scoring::GetFXActive()
+{
+	return IsObjectHeld(4) || IsObjectHeld(5);
+}
+
 static const float laserOutputInterpolationDuration = 0.1f;
 float Scoring::GetLaserOutput()
 {

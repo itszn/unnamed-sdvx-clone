@@ -978,8 +978,7 @@ public:
 		m_audioPlayback.SetLaserFilterInput(m_scoring.GetLaserOutput(), m_scoring.IsLaserHeld(0, false) || m_scoring.IsLaserHeld(1, false));
 		m_audioPlayback.Tick(deltaTime);
 
-		// Link FX track to combo counter for now
-		m_audioPlayback.SetFXTrackEnabled(m_scoring.currentComboCounter > 0);
+		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
 		// Stop playing if gauge is on hard and at 0%
 		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)

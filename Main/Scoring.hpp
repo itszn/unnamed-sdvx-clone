@@ -90,6 +90,7 @@ public:
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
+	bool GetFXActive();
 	float GetLaserOutput();
 
 	float GetMeanHitDelta();
