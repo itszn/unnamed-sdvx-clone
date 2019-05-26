@@ -152,6 +152,62 @@ function render_cursor()
     gfx.Stroke()
 end
 
+function render_loading()
+    if not loading then return end
+    gfx.Save()
+    gfx.ResetTransform()
+    gfx.BeginPath()
+    gfx.MoveTo(resX, resY)
+    gfx.LineTo(resX - 350, resY)
+    gfx.LineTo(resX - 300, resY - 50)
+    gfx.LineTo(resX, resY - 50)
+    gfx.ClosePath()
+    gfx.FillColor(33,33,33)
+    gfx.Fill()
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("LOADING...", resX - 20, resY - 3)
+    gfx.Restore()
+end
+
+function render_hotkeys()
+    gfx.Save()
+    gfx.ResetTransform()
+    gfx.BeginPath()
+    gfx.FillColor(0,0,0,240)
+    gfx.Rect(0,resY - 50, resX, 50)
+    gfx.Fill()
+    gfx.FontSize(30)
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.Text("FXR: Sorting", resX/2 + 20, resY - 10)
+    gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.Text("FXL: Levels", resX/2 - 20, resY - 10)
+    gfx.Restore()
+end
+
+function render_info()
+    gfx.Save()
+    gfx.ResetTransform()
+    gfx.BeginPath()
+    gfx.MoveTo(0, resY)
+    gfx.LineTo(350, resY)
+    gfx.LineTo(300, resY - 50)
+    gfx.LineTo(0, resY - 50)
+    gfx.ClosePath()
+    gfx.FillColor(33,33,33)
+    gfx.Fill()
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("Nautica", 3, resY - 3)
+    local xmin,ymin,xmax,ymax = gfx.TextBounds(3, resY - 3, "Nautica")
+    gfx.FontSize(20)
+    gfx.Text("https://ksm.dev/", xmax + 13, resY - 3)
+    gfx.Restore()
+end
+
 function render(deltaTime)
     gfx.ImageRect(0, 0, resX, resY, backgroundImage, 1, 0);
     gfx.LoadSkinFont("NotoSans-Regular.ttf");
@@ -177,6 +233,9 @@ function render(deltaTime)
     if screenState == 1 then render_level_filters()
     elseif screenState == 2 then render_sorting_selection()
     end
+    render_hotkeys()
+    render_loading()
+    render_info()
 end
 
 function archive_callback(entries, id)
