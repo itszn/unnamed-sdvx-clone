@@ -480,6 +480,14 @@ public:
 
 	}
 
+	DifficultyIndex* GetRandomDiff()
+	{
+		auto it = m_difficulties.begin();
+		uint32 selection = Random::IntRange(0, (int32)m_difficulties.size() - 1);
+		std::advance(it, selection);
+		return it->second;
+	}
+
 private:
 	void m_CleanupMapIndex()
 	{
@@ -783,4 +791,8 @@ void MapDatabase::RemoveSearchPath(const String& path)
 void MapDatabase::AddScore(const DifficultyIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
 {
 	m_impl->AddScore(diff, score, crit, almost, miss, gauge, gameflags, simpleHitStats, timestamp);
+}
+DifficultyIndex* MapDatabase::GetRandomDiff()
+{
+	return m_impl->GetRandomDiff();
 }

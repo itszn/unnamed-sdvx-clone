@@ -63,6 +63,10 @@ public:
 	// Song was manually ended
 	virtual bool GetManualExit() = 0;
 	virtual float GetPlaybackSpeed() = 0;
+	// Set demo mode
+	virtual void SetDemoMode(bool value) = 0; 
+	// Set song db so a random song can be selected
+	virtual void SetSongDB(class MapDatabase* db) = 0;
 	// The folder that contians the map
 	virtual const String& GetMapRootPath() const = 0;
 	// Full path to map

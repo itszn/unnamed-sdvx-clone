@@ -85,6 +85,9 @@ public:
 	Map<int32, MapIndex*> FindMapsByFolder(const String& folder);
 	MapIndex* GetMap(int32 idx);
 
+	// Get a random chart
+	DifficultyIndex* GetRandomDiff();
+
 	void AddSearchPath(const String& path);
 	void AddScore(const DifficultyIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp);
 	void RemoveSearchPath(const String& path);

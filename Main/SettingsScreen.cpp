@@ -497,6 +497,8 @@ public:
 			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
 			IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
 			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
+			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
+
 
 			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
 

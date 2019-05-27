@@ -4,6 +4,7 @@
 #include <array>
 #include <random>
 #include <Beatmap/BeatmapPlayback.hpp>
+#include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
 #include "Scoring.hpp"
 #include <Audio/Audio.hpp>
@@ -67,6 +68,7 @@ public:
 private:
 	bool m_playing = true;
 	bool m_started = false;
+	bool m_demo = false;
 	bool m_introCompleted = false;
 	bool m_outroCompleted = false;
 	bool m_paused = false;
@@ -156,6 +158,7 @@ private:
 	float m_shakeDuration = 0.083;
 
 	Map<ScoreIndex*, ScoreReplay> m_scoreReplays;
+	MapDatabase* m_db;
 
 public:
 	Game_Impl(const String& mapPath, GameFlags flags)
@@ -1156,11 +1159,37 @@ public:
 		}
 		if (m_outroCompleted && !m_transitioning)
 		{
-			// Transition to score screen
-			TransitionScreen* transition = TransitionScreen::Create(ScoreScreen::Create(this));
-			transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
-			g_application->AddTickable(transition);
-			m_transitioning = true;
+			if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore)) || (m_manualExit && m_demo))
+			{
+				g_application->RemoveTickable(this);
+			}
+			else if (m_demo)
+			{
+				// Transition to another random track
+				Game* game = nullptr;
+				while (!game) // ensure a working game
+				{
+					DifficultyIndex* diff = m_db->GetRandomDiff();
+					game = Game::Create(*diff, m_flags);
+				}
+				game->GetScoring().autoplay = true;
+				game->SetDemoMode(true);
+				game->SetSongDB(m_db);
+
+				// Transition to game
+				TransitionScreen* transition = TransitionScreen::Create(game);
+				g_application->AddTickable(transition);
+				m_transitioning = true;
+				transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
+			}
+			else
+			{
+				// Transition to score screen
+				TransitionScreen* transition = TransitionScreen::Create(ScoreScreen::Create(this));
+				transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
+				g_application->AddTickable(transition);
+				m_transitioning = true;
+			}
 		}
 	}
 
@@ -1175,8 +1204,30 @@ public:
 	}
 	void OnScoreScreenLoaded(IAsyncLoadableApplicationTickable* tickable)
 	{
-		// Remove self
-		g_application->RemoveTickable(this);
+		//if demo and tickable failed, try another diff
+		if (!tickable && m_demo)
+		{
+			Game* game = nullptr;
+			while (!game) // ensure a working game
+			{
+				DifficultyIndex* diff = m_db->GetRandomDiff();
+				game = Game::Create(*diff, m_flags);
+			}
+			game->GetScoring().autoplay = true;
+			game->SetDemoMode(true);
+			game->SetSongDB(m_db);
+
+			// Transition to game
+			TransitionScreen* transition = TransitionScreen::Create(game);
+			g_application->AddTickable(transition);
+			m_transitioning = true;
+			transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
+		}
+		else
+		{
+			// Remove self
+			g_application->RemoveTickable(this);
+		}
 	}
 
 	void RenderParticles(const RenderState& rs, float deltaTime)
@@ -1738,7 +1789,14 @@ public:
 	{
 		return m_diffIndex;
 	}
-
+	virtual void SetDemoMode(bool value)
+	{
+		m_demo = value;
+	}
+	virtual void SetSongDB(MapDatabase* db)
+	{
+		m_db = db;
+	}
 };
 
 Game* Game::Create(const DifficultyIndex& difficulty, GameFlags flags)

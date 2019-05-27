@@ -33,6 +33,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::VSync, false);
 	Set(GameConfigKeys::ShowFps, false);
 	Set(GameConfigKeys::ForcePortrait, false);
+	Set(GameConfigKeys::SkipScore, true);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);

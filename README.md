@@ -45,6 +45,7 @@ If something breaks in the song database, delete "maps.db". **Please note this w
 - Use the arrow keys or knobs to select a song and difficulty
 - Use \[Page Down\]/\[Page Up\] to scroll faster
 - Press \[F2\] to select a random song
+- Press \[F8\] demo mode (continuously autoplay random songs)
 - Press \[F9\] to reload the skin
 - Press \[F11\] to open the the currently selected chart in the editor specified by the `EditorPath` setting
 - Press \[F12\] to open the directory of the currently selected song in your file explorer

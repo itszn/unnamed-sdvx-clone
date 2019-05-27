@@ -1355,6 +1355,25 @@ public:
 			{
 				m_selectionWheel->SelectRandom();
 			}
+			else if (key == SDLK_F8) // start demo mode
+			{
+				DifficultyIndex* diff = m_mapDatabase.GetRandomDiff();
+
+				Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
+				if (!game)
+				{
+					Logf("Failed to start game", Logger::Error);
+					return;
+				}
+				game->GetScoring().autoplay = true;
+				game->SetDemoMode(true);
+				game->SetSongDB(&m_mapDatabase);
+				m_suspended = true;
+
+				// Transition to game
+				TransitionScreen* transistion = TransitionScreen::Create(game);
+				g_application->AddTickable(transistion);
+			}
 			else if (key == SDLK_F9)
 			{
 				m_selectionWheel->ReloadScript();
