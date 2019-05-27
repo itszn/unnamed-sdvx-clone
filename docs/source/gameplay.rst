@@ -7,6 +7,7 @@ The following fields are available under the ``gameplay`` table:
     string title
     string artist
     string jacketPath
+    bool demoMode
     int difficulty
     int level
     float progress // 0.0 at the start of a song, 1.0 at the end

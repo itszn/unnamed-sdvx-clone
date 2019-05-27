@@ -773,6 +773,10 @@ end
 -- render_intro:                                                              --
 local bta_last = false
 function render_intro(deltaTime)
+    if gameplay.demoMode then
+        introTimer = 0
+        return true
+    end
     if not game.GetButton(game.BUTTON_STA) then
         introTimer = introTimer - deltaTime
 		earlateTimer = 0
@@ -791,19 +795,25 @@ end
 -- render_outro:                                                              --
 function render_outro(deltaTime, clearState)
     if clearState == 0 then return true end
-    gfx.ResetTransform()
-    gfx.BeginPath()
-    gfx.Rect(0,0,resx,resy)
-    gfx.FillColor(0,0,0, math.floor(127 * math.min(outroTimer, 1)))
-    gfx.Fill()
-    gfx.Scale(scale,scale)
-    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
-    gfx.FillColor(255,255,255, math.floor(255 * math.min(outroTimer, 1)))
-    gfx.LoadSkinFont("NovaMono.ttf")
-    gfx.FontSize(70)
-    gfx.Text(clearTexts[clearState], desw / 2, desh / 2)
-    outroTimer = outroTimer + deltaTime
-    return outroTimer > 2, 1 - outroTimer
+    if not gameplay.demoMode then
+        gfx.ResetTransform()
+        gfx.BeginPath()
+        gfx.Rect(0,0,resx,resy)
+        gfx.FillColor(0,0,0, math.floor(127 * math.min(outroTimer, 1)))
+        gfx.Fill()
+        gfx.Scale(scale,scale)
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+        gfx.FillColor(255,255,255, math.floor(255 * math.min(outroTimer, 1)))
+        gfx.LoadSkinFont("NovaMono.ttf")
+        gfx.FontSize(70)
+        gfx.Text(clearTexts[clearState], desw / 2, desh / 2)
+        outroTimer = outroTimer + deltaTime
+        return outroTimer > 2, 1 - outroTimer
+    else
+        outroTimer = outroTimer + deltaTime
+        return outroTimer > 2, 1
+    end
+
 end
 -- -------------------------------------------------------------------------- --
 -- update_score:                                                              --

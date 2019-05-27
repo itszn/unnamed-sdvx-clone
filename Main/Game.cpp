@@ -388,6 +388,11 @@ public:
 			pushStringToTable("jacketPath", jacketPath);
 			pushStringToTable("title", mapSettings.title);
 			pushStringToTable("artist", mapSettings.artist);
+
+			lua_pushstring(m_lua, "demoMode");
+			lua_pushboolean(m_lua, m_demo);
+			lua_settable(m_lua, -3);
+
 			pushIntToTable("difficulty", mapSettings.difficulty);
 			pushIntToTable("level", mapSettings.level);
 			pushIntToTable("gaugeType", (m_flags & GameFlags::Hard) != GameFlags::None ? 1 : 0);
