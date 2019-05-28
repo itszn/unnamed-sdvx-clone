@@ -8,6 +8,10 @@ void TObjectState<void>::SortArray(Vector<ObjectState*>& arr)
 	{
 		if(l->time == r->time)
 		{
+			// sort events on the same tick by their index
+			if (l->type == ObjectType::Event && r->type == ObjectType::Event)
+				return ((EventObjectState*)l)->interTickIndex < ((EventObjectState*)r)->interTickIndex;
+
 			// Sort laser slams to come first
 			bool ls = l->type == ObjectType::Laser && (((LaserObjectState*)l)->flags & LaserObjectState::flag_Instant);
 			bool rs = r->type == ObjectType::Laser && (((LaserObjectState*)r)->flags & LaserObjectState::flag_Instant);

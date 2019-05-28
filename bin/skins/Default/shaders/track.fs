@@ -14,7 +14,7 @@ void main()
 	vec4 mainColor = texture(mainTex, fsTex.xy);
     vec4 col = mainColor;
 
-    if(fsTex.y > hidden * 0.6)
+    if(fsTex.y > hidden)
     {
         //Red channel to color right lane
         col.xyz = vec3(.9) * rCol.xyz * vec3(mainColor.x);

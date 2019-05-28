@@ -229,6 +229,9 @@ struct ObjectTypeData_Event
 	// Always 32 bits of data, but the one used depends on the key
 	EventData data;
 
+	// For sorting events that happen on the same tick
+	uint32 interTickIndex;
+
 	static const ObjectType staticType = ObjectType::Event;
 };
 

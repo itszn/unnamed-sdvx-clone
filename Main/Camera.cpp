@@ -121,17 +121,15 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedlimit = m_rollIntensity * 3;
+	float speedlimit = Math::Max(m_rollIntensity * 3, 14.0f / 360.0f);
 
-	LerpTo(m_laserRoll, m_targetLaserRoll, m_targetLaserRoll != 0.0f ? speedlimit : speedlimit / 2.f);
-
-	float actualTargetRoll;
 	if (pManualTiltEnabled)
-		actualTargetRoll = pLaneTilt;
-	else actualTargetRoll = m_laserRoll;
+		m_laserRoll = pLaneTilt;
+	else
+		LerpTo(m_laserRoll, m_targetLaserRoll, m_targetLaserRoll != 0.0f ? speedlimit : speedlimit / 2.f);
 
 	//LerpTo(m_actualRoll, actualTargetRoll, 8);
-	m_actualRoll = actualTargetRoll;
+	m_actualRoll = m_laserRoll;
 
 	m_spinProgress = (float)(playback.GetLastTime() - m_spinStart) / m_spinDuration;
 	// Calculate camera spin
@@ -289,6 +287,7 @@ void Camera::SetTargetRoll(float target)
 		}
 		m_targetRollSet = true;
 	}
+	m_targetLaserRoll = Math::Min(fabs(m_targetLaserRoll), m_rollIntensity) * Math::Sign(m_targetLaserRoll);
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)

@@ -605,6 +605,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 		bool isManualTilt = false;
 
+		uint32 tickSettingIndex = 0;
 		// Process settings
 		for (auto& p : tick.settings)
 		{
@@ -794,6 +795,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 			{
 				EventObjectState* evt = new EventObjectState();
 				evt->time = mapTime;
+				evt->interTickIndex = tickSettingIndex;
 				evt->key = EventKey::TrackRollBehaviour;
 				evt->data.rollVal = TrackRollBehaviour::Zero;
 
@@ -811,6 +813,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Bigger;
 				else if (v == "biggest")
 					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Biggest;
+				else if (v == "zero")
+					evt->data.rollVal = evt->data.rollVal | TrackRollBehaviour::Zero;
 				else
 				{
 					evt->data.rollVal = TrackRollBehaviour::Manual;
@@ -900,6 +904,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 			{
 				Logf("[KSH]Unkown map parameter at %d:%d: %s", Logger::Warning, it.GetTime().block, it.GetTime().tick, p.first);
 			}
+			tickSettingIndex++;
 		}
 
 		// Set button states

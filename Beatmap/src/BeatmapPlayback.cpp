@@ -108,7 +108,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 				{
 					m_holdObjects.Add(*obj);
 				}
-				m_hittableObjects.Add(*it);
+				m_hittableObjects.AddUnique(*it);
 				OnObjectEntered.Call(*it);
 			}
 		}
@@ -126,7 +126,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 			if (obj->type == ObjectType::Laser)
 			{
 				m_holdObjects.Add(*obj);
-				m_hittableObjects.Add(*it);
+				m_hittableObjects.AddUnique(*it);
 				OnObjectEntered.Call(*it);
 			}
 		}
@@ -275,7 +275,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 	}
 }
 
-Set<ObjectState*>& BeatmapPlayback::GetHittableObjects()
+Vector<ObjectState*>& BeatmapPlayback::GetHittableObjects()
 {
 	return m_hittableObjects;
 }

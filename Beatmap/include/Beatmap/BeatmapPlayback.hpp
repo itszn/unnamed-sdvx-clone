@@ -21,7 +21,7 @@ public:
 	void Update(MapTime newTime);
 
 	// Modifyable array of all hittable objects, within -+'hittableObjectTreshold' of current time
-	Set<ObjectState*>& GetHittableObjects();
+	Vector<ObjectState*>& GetHittableObjects();
 	MapTime hittableObjectEnter = 500;
 	MapTime hittableLaserEnter = 1000;
 	MapTime hittableObjectLeave = 500;
@@ -135,7 +135,7 @@ private:
 	ZoomControlPoint* m_zoomEndPoints[4] = { nullptr };
 
 	// Contains all the objects that are in the current valid timing area
-	Set<ObjectState*> m_hittableObjects;
+	Vector<ObjectState*> m_hittableObjects;
 	// Hold objects to render even when their start time is not in the current visibility range
 	Set<ObjectState*> m_holdObjects;
 	// Hold buttons with effects that are active
