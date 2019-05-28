@@ -111,6 +111,7 @@ render = function(deltaTime)
        gfx.FontSize(30)
        gfx.Text(string.format("Version %s is now available", updateVersion), 5, resy - buttonHeight - 10)
        draw_button("View", buttonWidth / 2 + 5, resy - buttonHeight / 2 - 5, view_update);
+       draw_button("Update", buttonWidth * 1.5 + 15, resy - buttonHeight / 2 - 5, Menu.Update)
     end
 end;
 

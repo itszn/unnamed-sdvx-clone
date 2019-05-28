@@ -27,6 +27,7 @@
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
 #include "SDL_keycode.h"
+#include <Windows.h>
 #else
 #include "SDL2/SDL_keycode.h"
 #endif
@@ -154,11 +155,33 @@ int32 Application::Run()
 	return 0;
 }
 
-void Application::SetUpdateAvailable(const String& version, const String& url)
+void Application::SetUpdateAvailable(const String& version, const String& url, const String& download)
 {
 	m_updateVersion = version;
 	m_updateUrl = url;
+	m_updateDownload = download;
 	m_hasUpdate = true;
+}
+
+void Application::RunUpdater()
+{
+#ifdef _WIN32
+	//HANDLE handle = GetCurrentProcess();
+	//HANDLE handledup;
+
+	//DuplicateHandle(GetCurrentProcess(),
+	//	handle,
+	//	GetCurrentProcess(),
+	//	&handledup,
+	//	SYNCHRONIZE,
+	//	FALSE,
+	//	0);
+
+	/// TODO: use process handle instead of pid to wait
+	String arguments = Utility::Sprintf("%lld %s", GetCurrentProcessId(), *m_updateDownload);
+	Path::Run(Path::Absolute("updater.exe"), *arguments);
+	Shutdown();
+#endif
 }
 
 Vector<String> Application::GetUpdateAvailable()
@@ -225,48 +248,94 @@ void __updateChecker()
 {
 
 	ProfilerScope $1("Check for updates");
-	auto r = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest" });	
-
-	Logf("Update check status code: %d", Logger::Normal, r.status_code);
-	if (r.error.code != cpr::ErrorCode::OK)
+	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
 	{
-		Logf("Failed to get update information: %s", Logger::Error, r.error.message.c_str());
+		auto r = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest" });
+
+		Logf("Update check status code: %d", Logger::Normal, r.status_code);
+		if (r.error.code != cpr::ErrorCode::OK)
+		{
+			Logf("Failed to get update information: %s", Logger::Error, r.error.message.c_str());
+		}
+		else
+		{
+			nlohmann::json latestInfo;
+			///TODO: Don't use exceptions
+			try
+			{
+				latestInfo = nlohmann::json::parse(r.text);
+			}
+			catch (const std::exception& e)
+			{
+				Logf("Failed to parse version json: \"%s\"", Logger::Error, e.what());
+				return;
+			}
+
+
+			//tag_name should always be "vX.Y.Z" so we remove the 'v'
+			String tagname;
+			latestInfo.at("tag_name").get_to(tagname);
+			tagname = tagname.substr(1);
+			bool outdated = false;
+			Vector<String> versionStrings = tagname.Explode(".");
+			int major = 0, minor = 0, patch = 0;
+			major = std::stoi(versionStrings[0]);
+			if (versionStrings.size() > 1)
+				minor = std::stoi(versionStrings[1]);
+			if (versionStrings.size() > 2)
+				patch = std::stoi(versionStrings[2]);
+
+			outdated = major > VERSION_MAJOR || minor > VERSION_MINOR || patch > VERSION_PATCH;
+
+			if (outdated)
+			{
+				String updateUrl;
+				latestInfo.at("html_url").get_to(updateUrl);
+				String updateDownload;
+				latestInfo.at("assets").at(0).at("browser_download_url").get_to(updateDownload);
+				g_application->SetUpdateAvailable(tagname, updateUrl, updateDownload);
+			}
+		}
 	}
 	else
 	{
-		nlohmann::json latestInfo;
-		///TODO: Don't use exceptions
-		try
+		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits" });
+		if (response.status_code != 200)
 		{
-			latestInfo = nlohmann::json::parse(r.text);
-		}
-		catch (const std::exception& e)
-		{
-			Logf("Failed to parse version json: \"%s\"", Logger::Error, e.what());
-			return;
+			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
 		}
 
+		auto commits = nlohmann::json::parse(response.text);
 
-		//tag_name should always be "vX.Y.Z" so we remove the 'v'
-		String tagname;
-		latestInfo.at("tag_name").get_to(tagname);
-		tagname = tagname.substr(1);
-		bool outdated = false;
-		Vector<String> versionStrings = tagname.Explode(".");
-		int major = 0, minor = 0, patch = 0;
-		major = std::stoi(versionStrings[0]);
-		if (versionStrings.size() > 1)
-			minor = std::stoi(versionStrings[1]);
-		if (versionStrings.size() > 2)
-			patch = std::stoi(versionStrings[2]);
+		char git_commit[] = GIT_COMMIT;
+		char* tok = strtok(git_commit, "_");
+		tok = strtok(NULL, "_");
+		String current_hash(tok);
 
-		outdated = major > VERSION_MAJOR || minor > VERSION_MINOR || patch > VERSION_PATCH;
-
-		if (outdated)
+		int commit = 0;
+		while (commit < 30)
 		{
-			String updateUrl;
-			latestInfo.at("html_url").get_to(updateUrl);
-			g_application->SetUpdateAvailable(tagname, updateUrl);
+			String new_hash = commits[commit]["sha"];
+			if (current_hash == new_hash.substr(0, current_hash.length()))
+			{
+				return;
+			}
+			printf("Getting build status for commit \"%s\"", new_hash.c_str());
+			auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash + "/status" });
+			if (response.status_code != 200)
+			{
+				Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
+			}
+			auto commit_status = nlohmann::json::parse(response.text);
+			String state = commit_status["state"];
+			if (state == "success")
+			{
+				String updateUrl;
+				commits[commit].at("html_url").get_to(updateUrl);
+				g_application->SetUpdateAvailable(new_hash.substr(0,7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+				return;
+			}
+			commit++;
 		}
 	}
 }

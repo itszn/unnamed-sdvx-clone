@@ -108,4 +108,5 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::WASAPI_Exclusive, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
+	Set(GameConfigKeys::OnlyRelease, true);
 }

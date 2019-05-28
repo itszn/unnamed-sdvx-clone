@@ -92,7 +92,8 @@ DefineEnum(GameConfigKeys,
 
 	WASAPI_Exclusive,
 
-	CheckForUpdates
+	CheckForUpdates,
+	OnlyRelease
 	);
 
 DefineEnum(SpeedMods,

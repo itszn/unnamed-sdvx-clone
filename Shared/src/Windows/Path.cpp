@@ -166,7 +166,7 @@ bool Path::Run(const String& programPath, const String& parameters)
 		return false;
 	}
 
-	if (CreateProcessA(NULL, command.GetData(), NULL, NULL, false, DETACHED_PROCESS, NULL, NULL, &info, &processInfo))
+	if (CreateProcessA(NULL, command.GetData(), NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, &info, &processInfo))
 	{
 		CloseHandle(processInfo.hProcess);
 		CloseHandle(processInfo.hThread);

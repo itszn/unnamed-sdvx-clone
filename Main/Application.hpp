@@ -87,7 +87,8 @@ public:
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
 	void DiscordPresenceSong(const struct BeatmapSettings& song, int64 startTime, int64 endTime);
-	void SetUpdateAvailable(const String& version, const String& url);
+	void SetUpdateAvailable(const String& version, const String& url, const String& download);
+	void RunUpdater();
 
 	//if empty: no update avaiable
 	//else: index 0 = url, index 1 = version
@@ -126,6 +127,7 @@ private:
 	bool m_hasUpdate = false;
 	bool m_showFps = false;
 	String m_updateUrl;
+	String m_updateDownload;
 	String m_updateVersion;
 	String m_currentVersion;
 	String m_skin;

@@ -531,6 +531,7 @@ public:
 			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
 			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
+			ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
 
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);

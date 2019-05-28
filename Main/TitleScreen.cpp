@@ -52,6 +52,12 @@ private:
 		return 0;
 	}
 
+	int lUpdate(lua_State* L)
+	{
+		g_application->RunUpdater();
+		return 0;
+	}
+
 	void Settings()
 	{
 		g_application->AddTickable(SettingsScreen::Create());
@@ -102,6 +108,7 @@ public:
 		m_luaBinds->AddFunction("Settings", this, &TitleScreen_Impl::lSettings);
 		m_luaBinds->AddFunction("Start", this, &TitleScreen_Impl::lStart);
 		m_luaBinds->AddFunction("DLScreen", this, &TitleScreen_Impl::lDownloads);
+		m_luaBinds->AddFunction("Update", this, &TitleScreen_Impl::lUpdate);
 		m_luaBinds->Push();
 		lua_settop(m_lua, 0);
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);

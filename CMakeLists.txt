@@ -81,6 +81,9 @@ add_subdirectory(Tests.Game)
 
 # Enabled project filters on windows
 if(MSVC)
+	#updater for windows
+	add_subdirectory(updater)	
+
 	# Use filters in VS projects
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 	
