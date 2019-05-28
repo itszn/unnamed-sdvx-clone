@@ -299,6 +299,7 @@ void __updateChecker()
 	}
 	else
 	{
+#ifdef GIT_COMMIT
 		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits" });
 		if (response.status_code != 200)
 		{
@@ -306,11 +307,9 @@ void __updateChecker()
 		}
 
 		auto commits = nlohmann::json::parse(response.text);
-
-		char git_commit[] = GIT_COMMIT;
-		char* tok = strtok(git_commit, "_");
-		tok = strtok(NULL, "_");
-		String current_hash(tok);
+		String current_hash;
+		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
+		
 
 		int commit = 0;
 		while (commit < 30)
@@ -337,6 +336,7 @@ void __updateChecker()
 			}
 			commit++;
 		}
+#endif
 	}
 }
 
