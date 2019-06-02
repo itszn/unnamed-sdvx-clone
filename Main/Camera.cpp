@@ -257,10 +257,16 @@ RenderState Camera::CreateRenderState(bool clipped)
 
 	// Calculate clipping distances
 	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
-	float distToTrackEnd = sqrtf(toTrackEnd.x * toTrackEnd.x + toTrackEnd.y * toTrackEnd.y + toTrackEnd.z * toTrackEnd.z);
+	Vector3 toTrackBegin = (track->trackOrigin).TransformPoint(Vector3(0.0f, -1.f, 0.f));
+	
+	float radPitch = Math::degToRad * m_actualCameraPitch;
+	float endDist = -VectorMath::Dot(toTrackEnd, { 0, sinf(radPitch) ,cosf(radPitch) });
+	float beginDist = -VectorMath::Dot(toTrackBegin, { 0, sinf(radPitch) ,cosf(radPitch) });
+	float clipFar = Math::Max(endDist, beginDist);
+	float clipNear = Math::Min(endDist, beginDist);
 
 	rs.cameraTransform = cameraTransform;
-	rs.projectionTransform = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, 0.1f, distToTrackEnd + viewRangeExtension);
+	rs.projectionTransform = ProjectionMatrix::CreatePerspective(fov, g_aspectRatio, Math::Max(clipNear, 0.1f), clipFar + viewRangeExtension);
 
 	m_rsLast = rs;
 	return rs;
