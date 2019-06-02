@@ -424,13 +424,19 @@ bool Scoring::IsLaserIdle(uint32 index) const
 	return m_laserSegmentQueue.empty() && m_currentLaserSegments[0] == nullptr && m_currentLaserSegments[1] == nullptr;
 }
 
+double Scoring::m_CalculateTicks(const TimingPoint * tp) const
+{
+	// Tick rate based on BPM
+	const double tickNoteValue = 16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7, 0)));
+	return tp->GetWholeNoteLength() / tickNoteValue;;
+}
+
 void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks) const
 {
 	const TimingPoint* tp = m_playback->GetTimingPointAt(hold->time);
 
 	// Tick rate based on BPM
-	double tickNoteValue = 16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7, 0)));
-	double tickInterval = tp->GetWholeNoteLength() / tickNoteValue;
+	double tickInterval = m_CalculateTicks(tp); 
 
 	double tickpos = hold->time;
 	if (!hold->prev) // no tick at the very start of a hold
@@ -440,8 +446,6 @@ void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks
 	while (tickpos < hold->time + hold->duration - tickInterval)
 	{
 		ticks.Add((MapTime)tickpos);
-		tickNoteValue = 16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7, 0)));
-		tickInterval = tp->GetWholeNoteLength() / tickNoteValue;
 		tickpos += tickInterval;
 	}
 	if (ticks.size() == 0)
@@ -455,8 +459,7 @@ void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTic
 	const TimingPoint* tp = m_playback->GetTimingPointAt(laserRoot->time);
 
 	// Tick rate based on BPM
-	const double tickNoteValue = 16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7,0)));
-	const double tickInterval = tp->GetWholeNoteLength() / tickNoteValue;
+	double tickInterval = m_CalculateTicks(tp);
 
 	LaserObjectState* sectionStart = laserRoot;
 	MapTime sectionStartTime = laserRoot->time;

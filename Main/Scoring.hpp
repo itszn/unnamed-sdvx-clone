@@ -205,6 +205,8 @@ public:
 	// Time since laser has been used
 	float timeSinceLaserUsed[2];
 private:
+	// Calculates the number of ticks for a given TP
+	double m_CalculateTicks(const TimingPoint* tp) const;
 	// Calculates the times at which a single hold object ticks
 	void m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks) const;
 	// Calculates the times at which a single laser chain object ticks
