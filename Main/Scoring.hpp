@@ -143,6 +143,7 @@ public:
 
 	// Object timing window
 	static const MapTime missHitTime;
+	static const MapTime holdHitTime;
 	static const MapTime goodHitTime;
 	static const MapTime perfectHitTime;
 	static const float idleLaserSpeed;

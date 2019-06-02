@@ -5,8 +5,9 @@
 #include "GameConfig.hpp"
 
 const MapTime Scoring::missHitTime = 275;
-const MapTime Scoring::goodHitTime = 100;
-const MapTime Scoring::perfectHitTime = 42;
+const MapTime Scoring::holdHitTime = 138;
+const MapTime Scoring::goodHitTime = 92;
+const MapTime Scoring::perfectHitTime = 46;
 const float Scoring::idleLaserSpeed = 1.0f;
 
 Scoring::Scoring()
@@ -640,7 +641,7 @@ void Scoring::m_UpdateTicks()
 					MapTime holdStart = hos->GetRoot()->time;
 
 					// Check buttons here for holds
-					if((m_input && m_input->GetButton(button) && holdStart - goodHitTime < m_buttonHitTime[(uint8)button]) || autoplay || autoplayButtons)
+					if((m_input && m_input->GetButton(button) && holdStart - holdHitTime < m_buttonHitTime[(uint8)button]) || autoplay || autoplayButtons)
 					{							
 						m_TickHit(tick, buttonCode);
 						HitStat* stat = new HitStat(tick->object);
