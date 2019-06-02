@@ -969,7 +969,8 @@ lua_State* Application::LoadScript(const String & name)
 void Application::ReloadScript(const String& name, lua_State* L)
 {
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
-	if (luaL_dofile(L, path.c_str()))
+	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(L, -1));
 		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(L, -1), 0);
