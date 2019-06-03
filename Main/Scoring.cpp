@@ -141,6 +141,8 @@ void Scoring::Reset()
 	m_assistLevel = g_gameConfig.GetFloat(GameConfigKeys::LaserAssistLevel);
 	m_assistSlamBoost = g_gameConfig.GetFloat(GameConfigKeys::LaserSlamBoost);
 	m_assistPunish = g_gameConfig.GetFloat(GameConfigKeys::LaserPunish);
+	m_assistChangeExponent = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeExponent);
+	m_assistChangePeriod = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeTime);
 	// Recalculate maximum score
 	mapTotals = CalculateMapTotals();
 
@@ -1050,14 +1052,25 @@ void Scoring::m_UpdateLasers(float deltaTime)
 					if (positionDelta < 0)
 						laserPositions[i] = Math::Max(laserPositions[i] + input, laserTargetPositions[i]);
 				}
+
+				
 				notAffectingGameplay = false;
+				
+				float punishMult = 1.0f;
+				//if next segment is the opposite direction then allow for some extra wrong turning
+				if(currentSegment->next && currentSegment->next->GetDirection() != laserDir && currentSegment->next->GetDirection() != 0.0f)
+				{
+					punishMult -= (float)Math::Max(0.0f, mapTime - currentSegment->next->time + m_assistChangePeriod) / m_assistChangePeriod;
+					punishMult = powf(punishMult, m_assistChangeExponent);
+				}
+
 				if (inputDir == moveDir && fabs(positionDelta) < laserDistanceLeniency)
 				{
 					m_autoLaserTime[i] = m_assistTime;
 				}
 				if (inputDir != 0 && inputDir != laserDir)
 				{
-					m_autoLaserTime[i] -=  deltaTime * m_assistPunish;
+					m_autoLaserTime[i] -=  deltaTime * m_assistPunish * punishMult;
 					//m_autoLaserTime[i] = Math::Min(m_autoLaserTime[i], m_assistTime * 0.2f);
 				}
 			}

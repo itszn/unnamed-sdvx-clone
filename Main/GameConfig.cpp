@@ -41,6 +41,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LaserAssistLevel, 1.5f);
 	Set(GameConfigKeys::LaserPunish, 1.5f);
 	Set(GameConfigKeys::LaserSlamBoost, 2.0f);
+	Set(GameConfigKeys::LaserChangeTime, 50.0f);
+	Set(GameConfigKeys::LaserChangeExponent, 1.0f);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
