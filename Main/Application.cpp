@@ -931,27 +931,29 @@ int Application::LoadImageJob(const String & path, Vector2i size, int placeholde
 	return ret;
 }
 
+void Application::SetScriptPath(lua_State * s)
+{
+	//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
+	String lua_path = Path::Normalize(
+		"./skins/" + m_skin + "/scripts/?.lua;"
+		+ "./skins/" + m_skin + "/scripts/?");
+
+	lua_getglobal(s, "package");
+	lua_getfield(s, -1, "path"); // get field "path" from table at top of stack (-1)
+	std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
+	cur_path.append(";"); // do your path magic here
+	cur_path.append(lua_path.c_str());
+	lua_pop(s, 1); // get rid of the string on the stack we just pushed on line 5
+	lua_pushstring(s, cur_path.c_str()); // push the new one
+	lua_setfield(s, -2, "path"); // set the field "path" in table at -2 with value at top of stack
+	lua_pop(s, 1); // get rid of package table from top of stack
+}
+
 lua_State* Application::LoadScript(const String & name)
 {
 	lua_State* s = luaL_newstate();
 	luaL_openlibs(s);
-
-	//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
-	{
-		String lua_path = Path::Normalize(
-			"./skins/" + m_skin + "/scripts/?.lua;"
-			+ "./skins/" + m_skin + "/scripts/?");
-
-		lua_getglobal(s, "package");
-		lua_getfield(s, -1, "path"); // get field "path" from table at top of stack (-1)
-		std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
-		cur_path.append(";"); // do your path magic here
-		cur_path.append(lua_path.c_str());
-		lua_pop(s, 1); // get rid of the string on the stack we just pushed on line 5
-		lua_pushstring(s, cur_path.c_str()); // push the new one
-		lua_setfield(s, -2, "path"); // set the field "path" in table at -2 with value at top of stack
-		lua_pop(s, 1); // get rid of package table from top of stack
-	}
+	SetScriptPath(s);
 
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
@@ -968,6 +970,7 @@ lua_State* Application::LoadScript(const String & name)
 
 void Application::ReloadScript(const String& name, lua_State* L)
 {
+	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))

@@ -69,7 +69,8 @@ public:
 	Sample LoadSample(const String& name, const bool& external = false);
 	Graphics::Font LoadFont(const String& name, const bool& external = false);
 	int LoadImageJob(const String& path, Vector2i size, int placeholder, const bool& web = false);
-	class lua_State* LoadScript(const String& name);
+	void SetScriptPath(lua_State* L);
+	lua_State* LoadScript(const String& name);
 	void ReloadScript(const String& name, lua_State* L);
 	void LoadGauge(bool hard);
 	void DrawGauge(float rate, float x, float y, float w, float h, float deltaTime);
@@ -82,7 +83,7 @@ public:
 	void PlayNamedSample(String name, bool loop);
 	void StopNamedSample(String name);
 	void ReloadSkin();
-	void DisposeLua(class lua_State* state);
+	void DisposeLua(lua_State* state);
 	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
