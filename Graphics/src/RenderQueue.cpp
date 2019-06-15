@@ -88,10 +88,10 @@ namespace Graphics
 						switch(mat->blendMode)
 						{
 						case MaterialBlendMode::Normal:
-							glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+							glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 							break;
 						case MaterialBlendMode::Additive:
-							glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+							glBlendFunc(GL_ONE, GL_ONE);
 							break;
 						case MaterialBlendMode::Multiply:
 							glBlendFunc(GL_SRC_ALPHA, GL_SRC_COLOR);

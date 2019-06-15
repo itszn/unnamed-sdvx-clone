@@ -50,6 +50,7 @@ namespace Graphics
 
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, sampleCount);
 			SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 2);
+			SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 
 			m_window = SDL_CreateWindow(*titleUtf8, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 				m_clntSize.x, m_clntSize.y, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
