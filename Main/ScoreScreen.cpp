@@ -8,11 +8,6 @@
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
 #include "HealthGauge.hpp"
-#ifdef _WIN32
-#include "SDL_keycode.h"
-#else
-#include "SDL2/SDL_keycode.h"
-#endif
 #include "lua.hpp"
 #include "Shared/Time.hpp"
 

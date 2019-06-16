@@ -3,6 +3,7 @@ language: cpp
 matrix:
   include:
     - os: linux
+      dist: xenial
       addons:
         apt:
           sources:
@@ -20,6 +21,7 @@ matrix:
         - "sudo apt-get install -y libogg-dev"
         - "sudo apt-get install -y libvorbis-dev"
         - "sudo apt-get install -y libsdl2-dev"
+        #- "sudo apt-get install -y libarchive-dev"
         - "sudo apt-get install -y zlib1g-dev --reinstall"
         - "sudo apt-get install -y libjpeg-dev --reinstall"
       install:
@@ -44,6 +46,16 @@ matrix:
         - make
         - sudo make install
         - cd ..
+        #LibArchive
+        - LA_URL="https://www.libarchive.org/downloads/libarchive-3.3.3.tar.gz"
+        - mkdir la && travis_retry wget --no-check-certificate --quiet -O - ${LA_URL} | tar --strip-components=1 -xz -C la
+        - cd la
+        - ./configure
+        - make
+        - make check
+        - sudo make install
+        - cd ..
+        
         
     - os: osx 
       osx_image: xcode9.3
@@ -56,6 +68,9 @@ matrix:
             - sdl2
             - libpng
             - jpeg
+            - libarchive
+      before_script:
+        - brew link -f libarchive
 
 before_install:
   - "git submodule update --init --recursive"

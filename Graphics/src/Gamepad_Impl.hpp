@@ -2,7 +2,7 @@
 #include "Gamepad.hpp"
 
 #ifdef _WIN32
-#include "SDL_joystick.h"
+#include "SDL2/SDL_joystick.h"
 #else
 #include "SDL2/SDL_joystick.h"
 #endif

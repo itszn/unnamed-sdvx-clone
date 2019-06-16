@@ -22,14 +22,12 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
+#include "SDL2/SDL_keycode.h"
 #define NANOVG_GL3_IMPLEMENTATION
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
-#include "SDL_keycode.h"
 #include <Windows.h>
-#else
-#include "SDL2/SDL_keycode.h"
 #endif
 
 GameConfig g_gameConfig;

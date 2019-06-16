@@ -1,3 +1,5 @@
 add_executable(updater updater.cpp)
 target_link_libraries(updater cpr)
-target_link_libraries(updater archive)
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party/)
+include(FindLibraries)
+target_link_libraries(updater ${LibArchive_LIBRARIES})
