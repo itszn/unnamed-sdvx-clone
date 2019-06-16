@@ -1,7 +1,22 @@
 # Root CMake file
 cmake_minimum_required(VERSION 3.8)
+#set(VCPKG_CRT_LINKAGE static)
+#set(VCPKG_LIBRARY_LINKAGE static)
+#set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg target triplet (ex. x86-windows)")
+
+if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      CACHE STRING "")
+      
+  message("Found vcpkg root '$ENV{VCPKG_ROOT}'")
+  
+elseif(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  message(FATAL_ERROR "Could not find vcpkg root")
+endif()
+
+
 project(FX)
-find_package(ZLIB REQUIRED)
+cmake_policy(SET CMP0079 NEW)
 # Project configurations
 set(CMAKE_CONFIGURATION_TYPES Debug Release)
 set(CMAKE_DEBUG_POSTFIX _Debug)
@@ -88,17 +103,17 @@ if(MSVC)
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 	
 	# Put all third party libraries in a seperate folder in the VS solution
-	set_target_properties(jpeg PROPERTIES FOLDER "Third Party")
-	set_target_properties(png PROPERTIES FOLDER "Third Party")
-	set_target_properties(zlib PROPERTIES FOLDER "Third Party")
-	set_target_properties(ogg PROPERTIES FOLDER "Third Party")
-	set_target_properties(vorbis PROPERTIES FOLDER "Third Party")
-	set_target_properties(freetype PROPERTIES FOLDER "Third Party")
-	set_target_properties(archive PROPERTIES FOLDER "Third Party")
-	set_target_properties(archive_static PROPERTIES FOLDER "Third Party")
-	set_target_properties(SDL2 PROPERTIES FOLDER "Third Party")
+	#set_target_properties(jpeg PROPERTIES FOLDER "Third Party")
+	#set_target_properties(png PROPERTIES FOLDER "Third Party")
+	#set_target_properties(zlib PROPERTIES FOLDER "Third Party")
+	#set_target_properties(ogg PROPERTIES FOLDER "Third Party")
+	#set_target_properties(vorbis PROPERTIES FOLDER "Third Party")
+	#set_target_properties(freetype PROPERTIES FOLDER "Third Party")
+	#set_target_properties(archive PROPERTIES FOLDER "Third Party")
+	#set_target_properties(archive_static PROPERTIES FOLDER "Third Party")
+	#set_target_properties(SDL2 PROPERTIES FOLDER "Third Party")
 	set_target_properties(cpr PROPERTIES FOLDER "Third Party")
-	set_target_properties(libcurl PROPERTIES FOLDER "Third Party/external")
+	#set_target_properties(libcurl PROPERTIES FOLDER "Third Party/external")
     set_target_properties(nanovg PROPERTIES FOLDER "Third Party")
     #set_target_properties(nuklear PROPERTIES FOLDER "Third Party")
     set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")

@@ -19,12 +19,7 @@
 #include "AsyncAssetLoader.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
-
-#ifdef _WIN32
-#include"SDL_keycode.h"
-#else
 #include "SDL2/SDL_keycode.h"
-#endif
 
 extern "C"
 {

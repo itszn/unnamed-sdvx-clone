@@ -13,13 +13,8 @@
 #ifndef NK_SDL_GL3_H_
 #define NK_SDL_GL3_H_
 
-#ifdef _WIN32
-#include "SDL.h"
-#include "SDL_opengl.h"
-#else
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_opengl.h"
-#endif
 
 NK_API struct nk_context*   nk_sdl_init(SDL_Window *win);
 NK_API void                 nk_sdl_font_stash_begin(struct nk_font_atlas **atlas);

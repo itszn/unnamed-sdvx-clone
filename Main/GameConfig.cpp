@@ -1,10 +1,6 @@
 #include "stdafx.h"
 #include "GameConfig.hpp"
-#ifdef _WIN32
-#include "SDL_keycode.h"
-#else
 #include "SDL2/SDL_keycode.h"
-#endif
 
 GameConfig::GameConfig()
 {

@@ -10,6 +10,9 @@
 #include <tchar.h>
 #endif
 
+// SDL keycodes
+#include <SDL2/SDL_keycode.h>
+
 // C RunTime Header Files
 #include <stdlib.h>
 

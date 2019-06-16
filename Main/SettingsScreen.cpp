@@ -14,13 +14,7 @@
 #include "Shared/Enum.hpp"
 #include "Input.hpp"
 #include <queue>
-#ifdef _WIN32
-#include "SDL_keyboard.h"
-#include <SDL.h>
-#else
-#include "SDL2/SDL_keyboard.h"
 #include <SDL2/SDL.h>
-#endif
 #include "nanovg.h"
 
 
