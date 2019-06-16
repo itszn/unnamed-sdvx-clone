@@ -16,7 +16,9 @@ endif()
 
 
 project(FX)
-cmake_policy(SET CMP0079 NEW)
+if(WIN32 AND ${CMAKE_VERSION} VERSION_GREATER "3.12")
+    cmake_policy(SET CMP0079 NEW)
+endif()
 # Project configurations
 set(CMAKE_CONFIGURATION_TYPES Debug Release)
 set(CMAKE_DEBUG_POSTFIX _Debug)
