@@ -18,14 +18,15 @@ public:
 	{
 		// Store the name of the executable
 		moduleName = Path::GetModuleName();
-
+		
 #ifdef _WIN32
 		// Store console output handle
 		consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 #endif
 
 		// Log to file
-		m_logFile.OpenWrite(Utility::Sprintf("log_%s.txt", moduleName));
+		String logPath = Path::Absolute(Utility::Sprintf("log_%s.txt", moduleName));
+		m_logFile.OpenWrite(logPath);
 		m_writer = FileWriter(m_logFile);
 	}
 

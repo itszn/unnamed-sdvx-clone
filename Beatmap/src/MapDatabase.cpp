@@ -69,7 +69,7 @@ public:
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
 	{
-		String databasePath = "maps.db";
+		String databasePath = Path::Absolute("maps.db");
 		if(!m_database.Open(databasePath))
 		{
 			Logf("Failed to open database [%s]", Logger::Warning, databasePath);
@@ -161,7 +161,7 @@ public:
 		if(m_searchPaths.Contains(normalizedPath))
 			return;
 
-		m_searchPaths.Add(path);
+		m_searchPaths.Add(normalizedPath);
 	}
 	void RemoveSearchPath(const String& path)
 	{
@@ -169,7 +169,7 @@ public:
 		if(!m_searchPaths.Contains(normalizedPath))
 			return;
 
-		m_searchPaths.erase(path);
+		m_searchPaths.erase(normalizedPath);
 	}
 
 	/* Thread safe event queue functions */

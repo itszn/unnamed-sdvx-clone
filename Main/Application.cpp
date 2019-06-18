@@ -194,7 +194,7 @@ Vector<String> Application::GetUpdateAvailable()
 bool Application::m_LoadConfig()
 {
 	File configFile;
-	if(configFile.OpenRead("Main.cfg"))
+	if(configFile.OpenRead(Path::Absolute("Main.cfg")))
 	{
 		FileReader reader(configFile);
 		if(g_gameConfig.Load(reader))
@@ -208,7 +208,7 @@ void Application::m_SaveConfig()
 		return;
 
 	File configFile;
-	if(configFile.OpenWrite("Main.cfg"))
+	if(configFile.OpenWrite(Path::Absolute("Main.cfg")))
 	{
 		FileWriter writer(configFile);
 		g_gameConfig.Save(writer);
@@ -434,7 +434,7 @@ bool Application::m_Init()
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
 	g_skinConfig = new SkinConfig(m_skin);
 	// Window cursor
-	Image cursorImg = ImageRes::Create("skins/" + m_skin + "/textures/cursor.png");
+	Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + m_skin + "/textures/cursor.png"));
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
 
 	if(startFullscreen)
@@ -500,7 +500,7 @@ bool Application::m_Init()
 #else
 		g_guiState.vg = nvgCreateGL3(0);
 #endif
-		nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
+		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
 	if(g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
@@ -525,7 +525,8 @@ bool Application::m_Init()
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 
 	///TODO: check if directory exists already?
-	Path::CreateDir("screenshots");
+	Path::CreateDir(Path::Absolute("screenshots"));
+	Path::CreateDir(Path::Absolute("songs"));
 
 	return true;
 }
@@ -821,7 +822,7 @@ RenderQueue* Application::GetRenderQueueBase()
 Graphics::Image Application::LoadImage(const String& name)
 {
 	String path = String("skins/") + m_skin + String("/textures/") + name;
-	return ImageRes::Create(path);
+	return ImageRes::Create(Path::Absolute(path));
 }
 
 Graphics::Image Application::LoadImageExternal(const String& name)
@@ -852,6 +853,9 @@ Material Application::LoadMaterial(const String& name)
 	String pathV = String("skins/") + m_skin + String("/shaders/") + name + ".vs";
 	String pathF = String("skins/") + m_skin + String("/shaders/") + name + ".fs";
 	String pathG = String("skins/") + m_skin + String("/shaders/") + name + ".gs";
+	pathV = Path::Absolute(pathV);
+	pathF = Path::Absolute(pathF);
+	pathG = Path::Absolute(pathG);
 	Material ret = MaterialRes::Create(g_gl, pathV, pathF);
 	// Additionally load geometry shader
 	if(Path::FileExists(pathG))
@@ -869,7 +873,7 @@ Sample Application::LoadSample(const String& name, const bool& external)
     if(external)
 	    path = name;
     else
-        path = String("skins/") + m_skin + String("/audio/") + name;
+        path = Path::Absolute(String("skins/") + m_skin + String("/audio/") + name);
 
 	path = Path::Normalize(path);
 	String ext = Path::GetExtension(path);
@@ -933,8 +937,8 @@ void Application::SetScriptPath(lua_State * s)
 {
 	//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
 	String lua_path = Path::Normalize(
-		"./skins/" + m_skin + "/scripts/?.lua;"
-		+ "./skins/" + m_skin + "/scripts/?");
+		 Path::Absolute("./skins/" + m_skin + "/scripts/?.lua;")
+		+ Path::Absolute("./skins/" + m_skin + "/scripts/?"));
 
 	lua_getglobal(s, "package");
 	lua_getfield(s, -1, "path"); // get field "path" from table at top of stack (-1)
@@ -955,6 +959,8 @@ lua_State* Application::LoadScript(const String & name)
 
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	path = Path::Absolute(path);
+	commonPath = Path::Absolute(commonPath);
 	m_SetNvgLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
@@ -971,6 +977,8 @@ void Application::ReloadScript(const String& name, lua_State* L)
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	path = Path::Absolute(path);
+	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(L, -1));
@@ -1323,6 +1331,7 @@ static int lCreateSkinImage(lua_State* L /*const char* filename, int imageflags 
 	const char* filename = luaL_checkstring(L, 1);
 	int imageflags = luaL_checkinteger(L, 2);
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + filename;
+	path = Path::Absolute(path);
 	int handle = nvgCreateImage(g_guiState.vg, path.c_str(), imageflags);
 	if (handle != 0)
 	{
@@ -1347,7 +1356,7 @@ static int lLoadSkinAnimation(lua_State* L)
 	}
 
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + p;
-
+	path = Path::Absolute(path);
 	int result = LoadAnimation(L, *path, frametime, loopcount);
 	if (result == -1)
 		return 0;
@@ -1360,6 +1369,7 @@ static int lLoadSkinFont(lua_State* L /*const char* name */)
 {
 	const char* name = luaL_checkstring(L, 1);
 	String path = "skins/" + g_application->GetCurrentSkin() + "/fonts/" + name;
+	path = Path::Absolute(path);
 	LoadFont(name, path.c_str());
 	return 0;
 }
@@ -1389,6 +1399,13 @@ static int lStopSample(lua_State* L /* char* name */)
 	const char* name = luaL_checkstring(L, 1);
 	g_application->StopNamedSample(name);
 	return 0;
+}
+
+static int lPathAbsolute(lua_State* L /* string path */)
+{
+	const char* path = luaL_checkstring(L, 1);
+	lua_pushstring(L, *Path::Absolute(path));
+	return 1;
 }
 
 static int lForceRender(lua_State* L)
@@ -1713,6 +1730,13 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushIntToTable("BUTTON_STA", (int)Input::Button::BT_S);
 
 		lua_setglobal(state, "game");
+	}
+
+	//path
+	{
+		lua_newtable(state);
+		pushFuncToTable("Absolute", lPathAbsolute);
+		lua_setglobal(state, "path");
 	}
 
 	//http

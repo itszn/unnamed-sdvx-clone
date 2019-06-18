@@ -315,7 +315,7 @@ public:
 		{
 			struct nk_font_atlas *atlas;
 			nk_sdl_font_stash_begin(&atlas);
-			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/NotoSans-Regular.ttf").c_str(), 24, 0);
+			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize( Path::Absolute("fonts/settings/NotoSans-Regular.ttf")).c_str(), 24, 0);
 
 			struct nk_font_config cfg_kr = nk_font_config(24);
 			cfg_kr.merge_mode = nk_true;
@@ -357,7 +357,7 @@ public:
 			Logf("System max texture size: %d", Logger::Info, maxSize);
 			if (maxSize >= FULL_FONT_TEXTURE_HEIGHT)
 			{
-				nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/DroidSansFallback.ttf").c_str(), 24, &cfg_cjk);
+				nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
 			}
 			
 			nk_sdl_font_stash_end();

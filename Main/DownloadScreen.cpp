@@ -294,7 +294,7 @@ int DownloadScreen::m_DownloadArchive(lua_State* L)
 
 int DownloadScreen::m_GetSongsPath(lua_State * L)
 {
-	lua_pushstring(L, *g_gameConfig.GetString(GameConfigKeys::SongFolder));
+	lua_pushstring(L, *Path::Normalize(Path::Absolute(g_gameConfig.GetString(GameConfigKeys::SongFolder))));
 	return 1;
 }
 

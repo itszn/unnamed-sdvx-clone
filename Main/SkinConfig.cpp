@@ -30,7 +30,9 @@ SkinConfig::SkinConfig(String skin)
 	};
 
 	File defFile;
-	if(defFile.OpenRead(Path::Normalize("skins/" + skin + "/config-definitions.json")))
+	String configPath = Path::Normalize(Path::Absolute("skins/" + skin + "/config-definitions.json"));
+	//Log(configPath);
+	if(defFile.OpenRead(configPath))
 	{
 		auto showError = [](String message)
 		{
@@ -152,7 +154,7 @@ SkinConfig::SkinConfig(String skin)
 	}
 
     InitDefaults();
-	Load(Path::Normalize("skins/" + skin + "/skin.cfg"));
+	Load(Path::Normalize(Path::Absolute("skins/" + skin + "/skin.cfg")));
 }
 
 SkinConfig::~SkinConfig()
@@ -161,7 +163,7 @@ SkinConfig::~SkinConfig()
 	{
 		m_reverseKeys.Add(it.second, it.first);
 	}
-	Save(Path::Normalize("skins/" + m_skin + "/skin.cfg"));
+	Save(Path::Normalize(Path::Absolute("skins/" + m_skin + "/skin.cfg")));
 	for (auto s : m_settings)
 	{
 		if (s.type == SkinSetting::Type::Color)

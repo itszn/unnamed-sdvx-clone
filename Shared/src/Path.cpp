@@ -10,7 +10,8 @@ String Path::Absolute(const String& path)
 	if(IsAbsolute(path))
 		return path;
 
-	String currentDir = GetCurrentPath();
+	String currentDir = GetExecutablePath();
+  currentDir = RemoveLast(currentDir);
 	return currentDir + sep + path;
 }
 String Path::RemoveLast(const String& path, String* lastOut /*= nullptr*/)
