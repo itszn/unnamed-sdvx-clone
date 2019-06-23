@@ -421,6 +421,7 @@ public:
 		// Do this here so we don't get input events while still loading
 		m_scoring.SetFlags(m_flags);
 		m_scoring.SetPlayback(m_playback);
+		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
 		m_scoring.Reset(); // Initialize
 

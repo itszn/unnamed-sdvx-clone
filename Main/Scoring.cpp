@@ -100,6 +100,10 @@ void Scoring::SetFlags(GameFlags flags)
 {
 	m_flags = flags;
 }
+void Scoring::SetEndTime(MapTime time)
+{
+	m_endTime = time;
+}
 void Scoring::m_CleanupInput()
 {
 	if(m_input)
@@ -169,6 +173,16 @@ void Scoring::Reset()
 		shortGaugeGain = (total * 20) / (5.0f * ((float)mapTotals.numTicks + (4.0f *(float)mapTotals.numSingles)));
 		tickGaugeGain = shortGaugeGain / 4.0f;
 	}
+
+
+	MapTime drainNormal, drainHalf;
+	drainNormal = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainNormal);
+	drainHalf = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainHalf);
+
+	double secondsOver = ((double)m_endTime / 1000.0) - (double)drainNormal;
+	secondsOver = Math::Max(0.0, secondsOver);
+
+	m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
 
 	m_heldObjects.clear();
 	memset(m_holdObjects, 0, sizeof(m_holdObjects));
@@ -846,12 +860,12 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 {
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
 	stat->hasMissed = true;
-	float shortMissDrain = 0.02f;
+	float shortMissDrain = 0.02f * m_drainMultiplier;
 	if ((m_flags & GameFlags::Hard) != GameFlags::None)
 	{
 		// Thanks to Hibiki_ext in the discord for help with this
 		float drainMultiplier = Math::Clamp(1.0f - ((0.3f - currentGauge) * 2.f), 0.5f, 1.0f);
-		shortMissDrain = 0.09f * drainMultiplier;
+		shortMissDrain = 0.09f * drainMultiplier * m_drainMultiplier;
 	}
 	if(tick->HasFlag(TickFlags::Button))
 	{

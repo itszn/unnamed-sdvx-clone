@@ -39,6 +39,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LaserSlamBoost, 2.0f);
 	Set(GameConfigKeys::LaserChangeTime, 50.0f);
 	Set(GameConfigKeys::LaserChangeExponent, 1.0f);
+	Set(GameConfigKeys::GaugeDrainNormal, 180);
+	Set(GameConfigKeys::GaugeDrainHalf, 300);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
@@ -91,7 +93,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Mouse_Laser1Axis, 1);
 	Set(GameConfigKeys::Mouse_Sensitivity, 1.0f);
 
-	// Default to 0ms input bounce guard
+	// Default to 10ms input bounce guard
 	Set(GameConfigKeys::InputBounceGuard, 10);
 
 	Set(GameConfigKeys::LastSelected, 0);

@@ -209,6 +209,7 @@ function render_info()
 end
 
 function render(deltaTime)
+    gfx.BeginPath()
     gfx.ImageRect(0, 0, resX, resY, backgroundImage, 1, 0);
     gfx.LoadSkinFont("NotoSans-Regular.ttf");
     displayCursorPosX = displayCursorPosX - (displayCursorPosX - cursorPosX) * deltaTime * 10

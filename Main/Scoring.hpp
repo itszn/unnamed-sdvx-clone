@@ -77,6 +77,7 @@ public:
 	void SetInput(Input* input);
 
 	void SetFlags(GameFlags flags);
+	void SetEndTime(MapTime time);
 
 	// Resets/Initializes the scoring system
 	// Called after SetPlayback
@@ -286,6 +287,8 @@ private:
 	// Offet to use for calculating judge (ms)
 	uint32 m_inputOffset = 0;
 	int32 m_bounceGuard = 0;
+	float m_drainMultiplier = 1.0f;
+	MapTime m_endTime = 180000;
 
 	// used the update the amount of hit ticks for hold/laser notes
 	Map<ObjectState*, HitStat*> m_holdHitStats;

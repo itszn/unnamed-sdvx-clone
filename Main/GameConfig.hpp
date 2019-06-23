@@ -36,6 +36,8 @@ DefineEnum(GameConfigKeys,
 	LaserSlamBoost,
 	LaserChangeTime,
 	LaserChangeExponent,
+	GaugeDrainNormal,
+	GaugeDrainHalf,
 
 	// Input device setting per element
 	LaserInputDevice,
