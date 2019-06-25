@@ -153,7 +153,12 @@ void Scoring::Reset()
 	// Recalculate gauge gain
 
 	currentGauge = 0.0f;
-	float total = m_playback->GetBeatmap().GetMapSettings().total / 100.0f + 0.001f; //Add a little in case floats go under
+	float total = 2.10f + 0.001f; //Add a little in case floats go under
+	bool manualTotal = m_playback->GetBeatmap().GetMapSettings().total > 99;
+	if (manualTotal)
+	{
+		total = (float)m_playback->GetBeatmap().GetMapSettings().total / 100.0f + 0.001f;
+	}
 	if ((m_flags & GameFlags::Hard) != GameFlags::None)
 	{
 		total *= 12.f / 21.f;
@@ -174,15 +179,20 @@ void Scoring::Reset()
 		tickGaugeGain = shortGaugeGain / 4.0f;
 	}
 
+	if (manualTotal)
+	{
+		m_drainMultiplier = 1.0;
+	}
+	else
+	{
+		MapTime drainNormal, drainHalf;
+		drainNormal = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainNormal);
+		drainHalf = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainHalf);
 
-	MapTime drainNormal, drainHalf;
-	drainNormal = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainNormal);
-	drainHalf = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainHalf);
-
-	double secondsOver = ((double)m_endTime / 1000.0) - (double)drainNormal;
-	secondsOver = Math::Max(0.0, secondsOver);
-
-	m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
+		double secondsOver = ((double)m_endTime / 1000.0) - (double)drainNormal;
+		secondsOver = Math::Max(0.0, secondsOver);
+		m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
+	}
 
 	m_heldObjects.clear();
 	memset(m_holdObjects, 0, sizeof(m_holdObjects));

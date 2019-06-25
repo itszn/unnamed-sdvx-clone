@@ -33,7 +33,7 @@ struct BeatmapSettings
 	uint8 difficulty;
 
 	// Total, total gauge gained when played perfectly
-	uint16 total = 210;
+	uint16 total = 0;
 
 	// Preview offset
 	MapTime previewOffset;
