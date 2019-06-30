@@ -187,12 +187,6 @@ function render(deltaTime)
     -- make sure that our transform is cleared, clean working space
     -- TODO: this shouldn't be necessary!!!
     gfx.ResetTransform()
-
-    -- While the intro timer is running, we fade in from black
-    if introTimer > 0 then
-        gfx.FillColor(0, 0, 0, math.floor(255 * math.min(introTimer, 1)))
-        gfx.DrawRect(RECT_FILL, 0, 0, resx, resy)
-    end
     
     gfx.Scale(scale, scale)
     local yshift = 0

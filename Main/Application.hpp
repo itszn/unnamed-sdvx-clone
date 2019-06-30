@@ -70,7 +70,7 @@ public:
 	Graphics::Font LoadFont(const String& name, const bool& external = false);
 	int LoadImageJob(const String& path, Vector2i size, int placeholder, const bool& web = false);
 	void SetScriptPath(lua_State* L);
-	lua_State* LoadScript(const String& name);
+	lua_State* LoadScript(const String& name, bool noError = false);
 	void ReloadScript(const String& name, lua_State* L);
 	void LoadGauge(bool hard);
 	void DrawGauge(float rate, float x, float y, float w, float h, float deltaTime);
@@ -78,6 +78,7 @@ public:
 	float GetAppTime() const { return m_lastRenderTime; }
 	float GetRenderFPS() const;
 	Material GetFontMaterial() const;
+	Material GetGuiTexMaterial() const;
 	Transform GetGUIProjection() const;
 	void StoreNamedSample(String name, Sample sample);
 	void PlayNamedSample(String name, bool loop);
@@ -90,6 +91,8 @@ public:
 	void DiscordPresenceSong(const struct BeatmapSettings& song, int64 startTime, int64 endTime);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
+	void ForceRender();
+	struct NVGcontext* GetVGContext();
 
 	//if empty: no update avaiable
 	//else: index 0 = url, index 1 = version
@@ -115,6 +118,7 @@ private:
 	Map<String, Sample> m_samples;
 	Material m_fontMaterial;
 	Material m_fillMaterial;
+	Material m_guiTex;
 	class HealthGauge* m_gauge;
 	Map<String, CachedJacketImage*> m_jacketImages;
 	String m_lastMapPath;

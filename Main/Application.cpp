@@ -182,6 +182,18 @@ void Application::RunUpdater()
 #endif
 }
 
+void Application::ForceRender()
+{
+	nvgEndFrame(g_guiState.vg);
+	g_application->GetRenderQueueBase()->Process();
+	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+}
+
+NVGcontext * Application::GetVGContext()
+{
+	return g_guiState.vg;
+}
+
 Vector<String> Application::GetUpdateAvailable()
 {
 	if (m_hasUpdate) {
@@ -514,6 +526,8 @@ bool Application::m_Init()
 	m_fontMaterial->opaque = false;	
 	CheckedLoad(m_fillMaterial = LoadMaterial("guiColor"));
 	m_fillMaterial->opaque = false;
+	CheckedLoad(m_guiTex = LoadMaterial("guiTex"));
+	m_guiTex->opaque = false;
 	m_gauge = new HealthGauge();
 	LoadGauge(false);
 
@@ -680,6 +694,7 @@ void Application::m_Tick()
 		g_guiState.scissor = Rect(0,0,-1,-1);
 		g_guiState.imageTint = nvgRGB(255, 255, 255);
 		// Render all items
+		assert(!g_tickables.empty());
 		for(auto& tickable : g_tickables)
 		{
 			tickable->Render(m_deltaTime);
@@ -951,7 +966,7 @@ void Application::SetScriptPath(lua_State * s)
 	lua_pop(s, 1); // get rid of package table from top of stack
 }
 
-lua_State* Application::LoadScript(const String & name)
+lua_State* Application::LoadScript(const String & name, bool noError)
 {
 	lua_State* s = luaL_newstate();
 	luaL_openlibs(s);
@@ -965,7 +980,8 @@ lua_State* Application::LoadScript(const String & name)
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(s, -1));
-		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(s, -1), 0);
+		if(!noError)
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(s, -1), 0);
 		lua_close(s);
 		return nullptr;
 	}
@@ -1116,6 +1132,11 @@ float Application::GetRenderFPS() const
 Material Application::GetFontMaterial() const
 {
 	return m_fontMaterial;
+}
+
+Material Application::GetGuiTexMaterial() const
+{
+	return m_guiTex;
 }
 
 Transform Application::GetGUIProjection() const
@@ -1410,9 +1431,7 @@ static int lPathAbsolute(lua_State* L /* string path */)
 
 static int lForceRender(lua_State* L)
 {
-	nvgEndFrame(g_guiState.vg);
-	g_application->GetRenderQueueBase()->Process();
-	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+	g_application->ForceRender();
 	return 0;
 }
 
