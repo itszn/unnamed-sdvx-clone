@@ -352,6 +352,10 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 	{
 		bool isHold = obj->type == ObjectType::Hold;
 		MultiObjectState* mobj = (MultiObjectState*)obj;
+		if (!isHold && mobj->button.isHidden) //don't draw hit objects
+		{
+			return;
+		}
 		MaterialParameterSet params;
 		Material mat = buttonMaterial;
 		Mesh mesh;

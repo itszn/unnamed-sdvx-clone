@@ -4,7 +4,7 @@
 #include <math.h>
 #include "GameConfig.hpp"
 
-const MapTime Scoring::missHitTime = 275;
+const MapTime Scoring::missHitTime = 250;
 const MapTime Scoring::holdHitTime = 138;
 const MapTime Scoring::goodHitTime = 92;
 const MapTime Scoring::perfectHitTime = 46;
@@ -879,7 +879,7 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 	}
 	if(tick->HasFlag(TickFlags::Button))
 	{
-		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > goodHitTime); 
+		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > goodHitTime, tick->object); 
 		stat->rating = ScoreHitRating::Miss;
 		stat->delta = delta;
 		currentGauge -= shortMissDrain;

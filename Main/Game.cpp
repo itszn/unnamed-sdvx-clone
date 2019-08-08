@@ -1470,6 +1470,10 @@ public:
 				}
 			}
 
+			//set button invisible
+			if (st != nullptr)
+				st->isHidden = true;
+
 			// Create hit effect particle
 			Color hitColor = (buttonIdx < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
 			float hitWidth = (buttonIdx < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
@@ -1481,11 +1485,13 @@ public:
 		}
 
 	}
-	void OnButtonMiss(Input::Button button, bool hitEffect)
+	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
 	{
 		uint32 buttonIdx = (uint32)button;
 		if (hitEffect)
 		{
+			ButtonObjectState* st = (ButtonObjectState*)object;
+			st->isHidden = true;
 			Color c = m_track->hitColors[0];
 			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 		}
