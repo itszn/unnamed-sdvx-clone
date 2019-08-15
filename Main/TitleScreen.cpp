@@ -17,6 +17,7 @@
 #include "lua.hpp"
 #include "Shared/LuaBindable.hpp"
 #include "DownloadScreen.hpp"
+#include "MultiplayerScreen.hpp"
 
 class TitleScreen_Impl : public TitleScreen
 {
@@ -49,6 +50,12 @@ private:
 	int lDownloads(lua_State* L)
 	{
 		g_application->AddTickable(new DownloadScreen());
+		return 0;
+	}
+
+	int lMultiplayer(lua_State* L)
+	{
+		g_application->AddTickable(new MultiplayerScreen());
 		return 0;
 	}
 
@@ -109,6 +116,9 @@ public:
 		m_luaBinds->AddFunction("Start", this, &TitleScreen_Impl::lStart);
 		m_luaBinds->AddFunction("DLScreen", this, &TitleScreen_Impl::lDownloads);
 		m_luaBinds->AddFunction("Update", this, &TitleScreen_Impl::lUpdate);
+
+		m_luaBinds->AddFunction("Multiplayer", this, &TitleScreen_Impl::lMultiplayer);
+
 		m_luaBinds->Push();
 		lua_settop(m_lua, 0);
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);

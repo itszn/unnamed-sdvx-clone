@@ -13,6 +13,7 @@
 #include "lua.hpp"
 #include <iterator>
 #include <mutex>
+#include <MultiplayerScreen.hpp>
 
 
 class TextInput
@@ -1023,7 +1024,10 @@ private:
 	Map<Input::Button, float> m_timeSinceButtonReleased;
 	lua_State* m_lua = nullptr;
 
+	MultiplayerScreen* m_multiplayer = nullptr;
+
 public:
+
 	bool Init() override
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
@@ -1154,6 +1158,15 @@ public:
 				MapIndex* map = m_selectionWheel->GetSelection();
 				if (map)
 				{
+					if (m_multiplayer != nullptr) {
+						// When we are in multiplayer, just report the song and exit instead
+						m_multiplayer->SetSelectedMap(map, m_selectionWheel->GetSelectedDifficulty());
+
+						m_suspended = true;
+						g_application->RemoveTickable(this);
+						return;
+					}
+
 					DifficultyIndex* diff = m_selectionWheel->GetSelectedDifficulty();
 
 					Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
@@ -1533,7 +1546,18 @@ public:
 		}
 
 	}
+
+	void MakeMultiplayer(MultiplayerScreen* multiplayer) {
+		m_multiplayer = multiplayer;
+	}
 };
+
+SongSelect* SongSelect::Create(MultiplayerScreen* multiplayer)
+{
+	SongSelect_Impl* impl = new SongSelect_Impl();
+	impl->MakeMultiplayer(multiplayer);
+	return impl;
+}
 
 SongSelect* SongSelect::Create()
 {

@@ -835,3 +835,141 @@ function laser_alert(isRight) --for starting laser alert animations
         alertTimers[1] = 1.5
     end
 end
+
+
+-- ======================== Start mutliplayer ========================
+
+json = require "json"
+
+local normal_font = game.GetSkinSetting('multi.normal_font')
+if normal_font == nil then
+    normal_font = 'NotoSans-Regular.ttf'
+end
+local mono_font = game.GetSkinSetting('multi.mono_font')
+if mono_font == nil then
+    mono_font = 'NovaMono.ttf'
+end
+
+local SERVER = game.GetSkinSetting("multi.server")
+local users = nil
+
+function init_tcp()
+    -- If not multiplayer, Tcp won't be defined and we'll crash
+    if not gameplay.multiplayer then
+        return
+    end
+
+    Tcp.SetTopicHandler("game.scoreboard", function(data)
+        users = {}
+        for i, u in ipairs(data.users) do
+            table.insert(users, u)
+        end
+    end)
+end
+
+if game.GetSkinSetting('multi.use_restore_hack') then
+    local draw_alerts_real = draw_alerts;
+    draw_alerts = function(deltaTime)
+        draw_alerts_real(deltaTime)
+        alertTimers[1] = math.max(alertTimers[1] - deltaTime,-2)
+        alertTimers[2] = math.max(alertTimers[2] - deltaTime,-2)
+        if alertTimers[1] > 0 then --draw left alert
+            gfx.Restore()
+        end
+        if alertTimers[2] > 0 then --draw right alert
+            gfx.Restore()
+        end
+    end
+end
+
+-- Hook the render function and draw the scoreboard
+local real_render = render
+render = function(deltaTime)
+    real_render(deltaTime)
+    draw_users(deltaTime)
+end
+
+-- Update the users in the scoreboard
+function score_callback(response)
+    if response.status ~= 200 then 
+        error() 
+        return 
+    end
+    local jsondata = json.decode(response.text)
+    users = {}
+    for i, u in ipairs(jsondata.users) do
+        table.insert(users, u)
+    end
+end
+
+-- Render scoreboard
+function draw_users(detaTime)
+    if (users == nil) then
+        return
+    end
+
+    local yshift = 0
+
+    -- In portrait, we draw a banner across the top
+    -- The rest of the UI needs to be drawn below that banner
+    if portrait then
+        local bannerWidth, bannerHeight = gfx.ImageSize(topFill)
+        yshift = desw * (bannerHeight / bannerWidth)
+        gfx.Scale(0.7, 0.7)
+    end
+
+    gfx.Save()
+
+    -- Add a small margin at the edge
+    gfx.Translate(5,yshift+200)
+
+    -- Reset some text related stuff that was changed in draw_state
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
+    gfx.FontSize(35)
+    gfx.FillColor(255, 255, 255)
+    local yoff = 0
+    if portrait then
+        yoff = 75;
+    end
+    local rank = 0
+    for i, u in ipairs(users) do
+        gfx.FillColor(255, 255, 255)
+        local score_big = string.format("%04d",math.floor(u.score/1000));
+        local score_small = string.format("%03d",u.score%1000);
+        local user_text = '('..u.name..')';
+
+        local size_big = 40;
+        local size_small = 28;
+        local size_name = 30;
+
+        if u.id == gameplay.user_id then
+            size_big = 48
+            size_small = 32
+            size_name = 40
+            rank = i;
+        end
+
+        gfx.LoadSkinFont(mono_font)
+        gfx.FontSize(size_big)
+        gfx.Text(score_big, 0, yoff);
+        local xmin,ymin,xmax,ymax_big = gfx.TextBounds(0, yoff, score_big);
+        xmax = xmax + 7
+
+        gfx.FontSize(size_small)
+        gfx.Text(score_small, xmax, yoff);
+        xmin,ymin,xmax,ymax = gfx.TextBounds(xmax, yoff, score_small);
+        xmax = xmax + 7
+
+        if u.id == gameplay.user_id then
+            gfx.FillColor(237, 240, 144)
+        end
+        
+        gfx.LoadSkinFont(normal_font)
+        gfx.FontSize(size_name)
+        gfx.Text(user_text, xmax, yoff)
+
+        yoff = ymax_big + 15
+    end
+
+    gfx.Restore()
+end
