@@ -60,6 +60,7 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
 	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleAuthResponse);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
+	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 	
 	// TODO(itszn) better method for entering server and port
 	String host = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
@@ -85,6 +86,13 @@ bool MultiplayerScreen::Init()
     return true;
 }
 
+void MultiplayerScreen::m_handleSocketClose() {
+	// Don't exit if we are in game or selection
+	if (m_suspended)
+		return;
+	g_application->RemoveTickable(this);
+}
+
 // Save the unique user id the server assigns us
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 {
@@ -99,7 +107,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 		return true;
 
 	// Case for same song as before
-	if (packet["song"] == m_selectedMapShortPath)
+	if (m_hasSelectedMap && packet["song"] == m_selectedMapShortPath)
 		return true;
 
 	// Clear jacket variable to force image reload
@@ -171,9 +179,9 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 }
 
 // Get a map from a given "short" path
-DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const std::string path, int32 diff_ind)
+DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int32 diff_ind)
 {
-	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path, diff_ind);
+	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path.c_str(), diff_ind);
 	for (auto map : m_mapDatabase.FindMaps(path))
 	{
 		// No haxing pls
@@ -216,6 +224,36 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	}
 
 	m_updateSelectedMap(new_diff->mapId, diff_index, true);
+
+}
+
+void MultiplayerScreen::m_change_difficulty(int offset)
+{
+	MapIndex* map = m_mapDatabase.GetMap(this->m_selectedMapId);
+	int oldDiff = this->m_selectedDiffIndex;
+	int newInd = this->m_selectedDiffIndex + offset;
+	if (newInd < 0 || newInd >= map->difficulties.size())
+	{
+		return;
+	}
+
+	m_updateSelectedMap(this->m_selectedMapId, newInd, false);
+
+	lua_getglobal(m_lua, "set_diff");
+	if (lua_isfunction(m_lua, -1))
+	{
+		lua_pushinteger(m_lua, oldDiff + 1);
+		lua_pushinteger(m_lua, newInd + 1);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_diff", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+	lua_settop(m_lua, 0);
+	
+
 }
 
 void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new)
@@ -249,6 +287,22 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_PushStringToTable("effector", mapSettings.effector.c_str());
 	m_PushStringToTable("illustrator", mapSettings.illustrator.c_str());
 
+	int diffIndex = 0;
+	lua_pushstring(m_lua, "all_difficulties");
+	lua_newtable(m_lua);
+	for (auto& diff : map->difficulties)
+	{
+		lua_pushinteger(m_lua, ++diffIndex);
+		lua_newtable(m_lua);
+		const BeatmapSettings& diffSettings = diff->settings;
+		m_PushIntToTable("level", diffSettings.level);
+		m_PushIntToTable("id", diff->id);
+		m_PushIntToTable("diff_index", diffIndex-1);
+		m_PushIntToTable("difficulty", diffSettings.difficulty);
+		lua_settable(m_lua, -3);
+	}
+	lua_settable(m_lua, -3);
+
 	lua_setglobal(m_lua, "selected_song");
 
 	// If we selected this song ourselves, we have to tell the server about it
@@ -258,6 +312,14 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		packet["topic"] = "room.setsong";
 		packet["song"] = m_selectedMapShortPath;
 		packet["diff"] = diff_ind;
+		packet["level"] = mapSettings.level;
+		m_tcp.SendJSON(packet);
+	}
+	else
+	{
+		nlohmann::json packet;
+		packet["topic"] = "user.song.level";
+		packet["level"] = mapSettings.level;
 		m_tcp.SendJSON(packet);
 	}
 
@@ -324,12 +386,13 @@ void MultiplayerScreen::PerformScoreTick(Scoring& scoring)
 	m_tcp.SendJSON(packet);
 }
 
-void MultiplayerScreen::SendFinalScore(Scoring& scoring)
+void MultiplayerScreen::SendFinalScore(Scoring& scoring, int clearState)
 {
 	nlohmann::json packet;
 	packet["topic"] = "room.score.final";
 	packet["score"] = scoring.CalculateCurrentScore();
 	packet["combo"] = scoring.maxComboCounter;
+	packet["clear"] = clearState;
 	m_tcp.SendJSON(packet);
 }
 
@@ -365,7 +428,23 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 		}
 	}
 	lua_settop(m_lua, 0);
+	
+	if (key == SDLK_LEFT)
+	{
+		m_change_difficulty(-1);
+	}
+	else if (key == SDLK_RIGHT)
+	{
+		m_change_difficulty(1);
+	}
+	else if (key == SDLK_ESCAPE)
+	{
+		if (m_hasSelectedMap)
+			m_hasSelectedMap = false;
+	}
 }
+
+
 
 void MultiplayerScreen::OnKeyReleased(int32 key)
 {
@@ -441,6 +520,7 @@ void MultiplayerScreen::m_OnMouseScroll(int32 steps)
 
 int MultiplayerScreen::lExit(lua_State * L)
 {
+	m_suspended = true;
 	g_application->RemoveTickable(this);
 	return 0;
 }
@@ -455,6 +535,14 @@ int MultiplayerScreen::lSongSelect(lua_State* L)
 void MultiplayerScreen::OnRestore()
 {
 	m_suspended = false;
+
+	// If we disconnected while playing or selecting wait until we get back before exiting
+	if (!m_tcp.IsOpen())
+	{
+		m_suspended = true;
+		g_application->RemoveTickable(this);
+		return;
+	}
 
 	nlohmann::json packet;
 	packet["topic"] = "room.update.get";

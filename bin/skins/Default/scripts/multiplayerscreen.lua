@@ -27,6 +27,8 @@ local missing_song = false;
 
 local did_exit = false;
 
+local diffColors = {{0,0,255}, {0,255,0}, {255,0,0}, {255, 0, 255}}
+
 local grades = {
     {["max"] = 6999999, ["image"] = gfx.CreateSkinImage("score/D.png", 0)},
     {["max"] = 7999999, ["image"] = gfx.CreateSkinImage("score/C.png", 0)},
@@ -40,6 +42,13 @@ local grades = {
     {["max"] = 99999999, ["image"] = gfx.CreateSkinImage("score/S.png", 0)}
   }
 
+local badges = {
+    gfx.CreateSkinImage("badges/played.png", 0),
+    gfx.CreateSkinImage("badges/clear.png", 0),
+    gfx.CreateSkinImage("badges/hard-clear.png", 0),
+    gfx.CreateSkinImage("badges/full-combo.png", 0),
+    gfx.CreateSkinImage("badges/perfect.png", 0)
+}
 
 local user_name_key = game.GetSkinSetting('multi.user_name_key')
 if user_name_key == nil then
@@ -125,7 +134,11 @@ draw_checkbox = function(text, x, y, hoverindex, current, can_click)
     local ty = y - (buttonHeight / 2);
     gfx.BeginPath();
     
-    gfx.FillColor(255,255,255);
+    if can_click then
+        gfx.FillColor(255,255,255);
+    else
+        gfx.FillColor(150,100,100);
+    end
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
     gfx.FontSize(35);
     gfx.Text(text, x, y)
@@ -214,14 +227,14 @@ draw_user = function(user, x, y, rank)
         gfx.FillColor(255,255,0)
         gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE);
         local combo_text = '  '..user.combo..'x'
-        gfx.Text(combo_text, x+buttonWidth/2 - 5, second_y);
-        local xmin,ymin,xmax,ymax = gfx.TextBounds(x+buttonWidth/2 - 5, second_y, combo_text);
+        gfx.Text(combo_text, x+buttonWidth/2 - 5, second_y-5);
+        local xmin,ymin,xmax,ymax = gfx.TextBounds(x+buttonWidth/2 - 5, second_y-5, combo_text);
 
         
         local score_text = '  '..string.format("%08d",user.score);
         gfx.FillColor(255,255,255)
-        gfx.Text(score_text, xmin, second_y);
-        xmin,ymin,xmax,ymax = gfx.TextBounds(xmin, second_y, score_text);
+        gfx.Text(score_text, xmin, second_y-5);
+        xmin,ymin,xmax,ymax = gfx.TextBounds(xmin, second_y-5, score_text);
 
         if user.grade == nil then
             for i,v in ipairs(grades) do
@@ -231,12 +244,33 @@ draw_user = function(user, x, y, rank)
                 end
             end
         end
+        if user.badge == nil and user.clear > 1 then
+            user.badge = badges[user.clear];
+        end
 
         gfx.BeginPath()
         local iw, ih = gfx.ImageSize(user.grade)
         local iar = iw/ih
-        local grade_height = buttonHeight/2 - 20
-        gfx.ImageRect(xmin - iar * grade_height, second_y - buttonHeight/4 + 10 , iar * grade_height, grade_height, user.grade, 1, 0)
+        local grade_height = buttonHeight/2 - 10
+        gfx.ImageRect(xmin - iar * grade_height, second_y - buttonHeight/4 , iar * grade_height, grade_height, user.grade, 1, 0)
+    end
+    if user.level ~= 0 then
+        gfx.FillColor(255,255,0)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_MIDDLE);
+        local level_text = 'Lvl '..user.level..' '
+        gfx.Text(level_text, x-buttonWidth/2 + 5, second_y-5)
+        local xmin,ymin,xmax,ymax = gfx.TextBounds(x-buttonWidth/2 + 5, second_y-5, level_text);
+
+
+        if user.badge then
+            gfx.BeginPath() 
+            local iw, ih = gfx.ImageSize(user.badge)
+            local iar = iw/ih;
+            local badge_height = buttonHeight/2 - 10
+            gfx.ImageRect(xmax+5, second_y - buttonHeight/4 , iar * badge_height, badge_height, user.badge, 1, 0)
+
+
+        end
     end
 end;
 
@@ -276,14 +310,95 @@ function render_info()
     gfx.Text("Multiplayer", 3, resY - 15)
     local xmin,ymin,xmax,ymax = gfx.TextBounds(3, resY - 3, "Multiplayer")
     gfx.FontSize(20)
-    gfx.Text('v0.01', xmax + 13, resY - 15)
+    gfx.Text('v0.10', xmax + 13, resY - 15)
     --gfx.Text('Server: '..'', xmax + 13, resY - 15)
     gfx.Restore()
 end
 
+draw_diff_icon = function(diff, x, y, w, h, selected)
+    local shrinkX = w/4
+    local shrinkY = h/4
+    if selected then
+      gfx.FontSize(h/2)
+      shrinkX = w/6
+      shrinkY = h/6
+    else
+      gfx.FontSize(math.floor(h / 3))
+    end
+    gfx.BeginPath()
+    gfx.RoundedRectVarying(x+shrinkX,y+shrinkY,w-shrinkX*2,h-shrinkY*2,0,0,0,0)
+    gfx.FillColor(15,15,15)
+    gfx.StrokeColor(table.unpack(diffColors[diff.difficulty + 1]))
+    gfx.StrokeWidth(2)
+    gfx.Fill()
+    gfx.Stroke()
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_CENTER)
+    gfx.FastText(tostring(diff.level), x+(w/2),y+(h/2))
+end
+
+local doffset = 0;
+local timer = 0;
+
+draw_cursor = function(x,y,rotation,width)
+	gfx.Save()
+    gfx.BeginPath();
+    gfx.Translate(x,y)
+    gfx.Rotate(rotation)
+    gfx.StrokeColor(255,128,0)
+    gfx.StrokeWidth(4)
+    gfx.Rect(-width/2, -width/2, width, width)
+    gfx.Stroke()
+    gfx.Restore()
+end
+
+draw_diffs = function(diffs, x, y, w, h, selectedDiff)
+    local diffWidth = w/2.5
+    local diffHeight = w/2.5
+    local diffCount = #diffs
+    gfx.Scissor(x,y,w,h)
+    for i = math.max(selectedDiff - 2, 1), math.max(selectedDiff - 1,1) do
+      local diff = diffs[i]
+      local xpos = x + ((w/2 - diffWidth/2) + (selectedDiff - i + doffset)*(-0.8*diffWidth))
+      if  i ~= selectedDiff then
+        draw_diff_icon(diff, xpos, y, diffWidth, diffHeight, false)
+      end
+    end
+
+    --after selected
+  for i = math.min(selectedDiff + 2, diffCount), selectedDiff + 1,-1 do
+      local diff = diffs[i]
+      local xpos = x + ((w/2 - diffWidth/2) + (selectedDiff - i + doffset)*(-0.8*diffWidth))
+      if  i ~= selectedDiff then
+        draw_diff_icon(diff, xpos, y, diffWidth, diffHeight, false)
+      end
+    end
+    local diff = diffs[selectedDiff]
+    local xpos = x + ((w/2 - diffWidth/2) + (doffset)*(-0.8*diffWidth))
+  draw_diff_icon(diff, xpos, y, diffWidth, diffHeight, true)
+  gfx.BeginPath()
+  gfx.FillColor(0,128,255)
+  gfx.Rect(x,y+10,2,diffHeight-h/6)
+  gfx.Fill()
+  gfx.BeginPath()
+  gfx.Rect(x+w-2,y+10,2,diffHeight-h/6)
+  gfx.Fill()
+  gfx.ResetScissor()
+  draw_cursor(x + w/2, y +diffHeight/2, timer * math.pi, diffHeight / 1.5)
+end
+
+set_diff = function(oldDiff, newDiff)
+    --game.PlaySample("click-02")
+    doffset = doffset + oldDiff - newDiff
+end;
+
 render = function(deltaTime)
     resx,resy = game.GetResolution();
     mposx,mposy = game.GetMousePos();
+
+    doffset = doffset * 0.9
+    timer = (timer + deltaTime)
+    timer = timer % 2
     
     hovered = nil;
 
@@ -315,35 +430,37 @@ render = function(deltaTime)
         gfx.FillColor(255,255,255)
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
         gfx.FontSize(70)
-        gfx.Text("Room "..selected_room.name, resx/2, 100)
-        gfx.Text("Users", resx/4, 200)
+        gfx.Text("Room "..selected_room.name, resx/2, 50)
+        gfx.Text("Users", resx/4, 100)
 
-        buttonY = 275;
+        buttonY = 125 + userHeight/2
         for i, user in ipairs(lobby_users) do
             draw_user(user, resx / 4, buttonY, i)
-            buttonY = buttonY + 75
+            buttonY = buttonY + userHeight
         end
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
         gfx.FillColor(255,255,255)
 
         gfx.FontSize(60)
-        gfx.Text("Selected Song:", resx*3/4, 200)
+        gfx.Text("Selected Song:", resx*3/4, 100)
         gfx.FontSize(40)
         if selected_song == nil then
             if host == user_id then
-                gfx.Text("Select song:", resx*3/4, 275)
+                gfx.Text("Select song:", resx*3/4, 175)
             else
                 if missing_song then
-                    gfx.Text("Missing song!!!!", resx*3/4, 275)
+                    gfx.Text("Missing song!!!!", resx*3/4, 175)
                 else
-                    gfx.Text("Host is selecting song", resx*3/4, 275)
+                    gfx.Text("Host is selecting song", resx*3/4, 175)
                 end
             end
             if jacket == 0 then
                 jacket = gfx.CreateSkinImage("song_select/loading.png", 0)
             end
         else
-            gfx.Text(selected_song.title..' ['..selected_song.level..']', resx*3/4, 275)
+            gfx.Text(selected_song.title, resx*3/4, 175)
+            draw_diffs(selected_song.all_difficulties, resx*3/4 - 150, 200, 300, 100, selected_song.diff_index+1)
+            
             if selected_song.jacket == nil then
                 selected_song.jacket = gfx.CreateImage(selected_song.jacketPath, 0)
                 jacket = selected_song.jacket
@@ -393,7 +510,7 @@ render = function(deltaTime)
             end
         end
 
-        draw_checkbox("Excessive Gauge", resx*3/4 - 150 + 30, 375+size + 70, toggle_hard, hard_mode, host == user_id and not start_game_soon)
+        draw_checkbox("Excessive Gauge", resx*3/4 - 150 + 30, 375+size + 70, toggle_hard, hard_mode, not start_game_soon)
         draw_checkbox("Rotate Host", resx*3/4 + 150 + 20, 375+size + 70, toggle_rotate, do_rotate, host == user_id and not start_game_soon)
     end
     render_loading();
@@ -407,7 +524,7 @@ end
 
 -- Toggle hard gauage
 function toggle_hard()
-    Tcp.SendLine(json.encode({topic="room.option.hard.toggle"}))
+    Tcp.SendLine(json.encode({topic="user.hard.toggle"}))
 end
 
 -- Toggle host rotation
@@ -494,7 +611,6 @@ function key_pressed(key)
         selected_room = nil;
         rooms = {};
         selected_song = nil;
-        loading = true;
         jacket = 0;
         Tcp.SendLine(json.encode({topic="room.leave"}));
     end

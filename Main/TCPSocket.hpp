@@ -76,14 +76,20 @@ public:
 
 	// Add a bound member function to call on socket close
 	template<typename Class>
-	void SetCloseHandler(Class* object, bool (Class::* func)(void))
+	void SetCloseHandler(Class* object, void (Class::* func)(void))
 	{
 		m_closeCallback = new ObjectBinding<Class, void>(object, func);
 	}
 
 	// Clear handles for a given topic
-	void ClearTopicHandler(String topic) {
+	void ClearTopicHandler(String topic)
+	{
 		m_topicHandlers.erase(topic);
+	}
+
+	bool IsOpen()
+	{
+		return m_open;
 	}
 
 private:

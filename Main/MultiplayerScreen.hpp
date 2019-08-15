@@ -33,7 +33,7 @@ public:
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
 	void PerformScoreTick(Scoring& scoring);
-	void SendFinalScore(Scoring& scoring);
+	void SendFinalScore(Scoring& scoring, int clearState);
 
 	TCPSocket& GetTCP()
 	{
@@ -53,10 +53,13 @@ private:
 	bool m_handleStartPacket(nlohmann::json& packet);
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
+	void m_handleSocketClose();
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
-	DifficultyIndex* m_getMapByShortPath(const std::string path, int32);
+	DifficultyIndex* m_getMapByShortPath(const String& path, int32);
+
+	void m_change_difficulty(int offset);
 
 	// Some lua util functions
 	void m_PushStringToTable(const char* name, const char* data)
@@ -81,6 +84,8 @@ private:
 	struct lua_State* m_lua = nullptr;
 	LuaBindable* m_bindable = nullptr;
 	bool m_suspended = false;
+
+
 
 	uint32 m_lastScoreSent = 0;
 	// TODO(itszn) have the server adjust this

@@ -1225,7 +1225,7 @@ public:
 
 		// Send the final scores to the server
 		if (m_multiplayer)
-			m_multiplayer->SendFinalScore(m_scoring);
+			m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
 
 		m_scoring.FinishGame();
 		m_ended = true;

@@ -23,6 +23,9 @@ TCPSocket::TCPSocket()
 
 TCPSocket::~TCPSocket()
 {
+	if (m_open)
+		Close();
+
 	// Clear bound states
 	for (auto& s : m_boundStates)
 	{
