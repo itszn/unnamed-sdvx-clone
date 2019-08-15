@@ -37,10 +37,15 @@ TCPSocket::~TCPSocket()
 }
 
 // Connect this TCP socket to a given host and port
-bool TCPSocket::Connect(String host, String port)
+bool TCPSocket::Connect(String host)
 {
 	if (m_open)
 		return false;
+
+	size_t port_index = host.find_first_of(":");
+	String port = host.substr(port_index+1, host.length());
+
+	host = host.substr(0, port_index);
 
 	Logf("[Socket] Connecting to %s:%s", Logger::Info, host.c_str(), port.c_str());
 
@@ -53,11 +58,12 @@ bool TCPSocket::Connect(String host, String port)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+
 	// Resolve the ip of the host
 	int res = getaddrinfo(host.c_str(), port.c_str(), &hints, &result);
 	if (res != 0)
 	{
-		Logf("[Socket] Unable to resolve address %s %d", Logger::Error, host.c_str(), res);
+		Logf("[Socket] Unable to resolve address %s:%s %d", Logger::Error, host.c_str(), port.c_str(), res);
 		return false;
 	}
 
@@ -84,7 +90,6 @@ bool TCPSocket::Connect(String host, String port)
 int TCPSocket::lConnect(struct lua_State* L)
 {
 	String host = luaL_checkstring(L, 2);
-	String port = luaL_checkstring(L, 3);
 
 	if (m_open)
 	{
@@ -92,7 +97,7 @@ int TCPSocket::lConnect(struct lua_State* L)
 		return 1;
 	}
 
-	bool res = Connect(host, port);
+	bool res = Connect(host);
 	lua_pushboolean(L, res);
 	return 1;
 }

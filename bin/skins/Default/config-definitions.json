@@ -42,27 +42,5 @@
 		"type": "color",
 		"label": "Color Test",
 		"default": "007FFFFF"
-	},
-	
-	"multi.nick": {
-		"type": "text",
-		"label": "[Multiplayer] Nick",
-		"default": "Guest"
-	},
-	"multi.server": {
-		"type": "text",
-		"label": "[Multiplayer] Server",
-		"default": "192.168.15.2"
-	},
-	"multi.port": {
-		"type": "text",
-		"label": "[Multiplayer] Port",
-		"default": "39079"
-	},
-
-	"multi.password": {
-		"type": "text",
-		"label": "[Multiplayer] Password for Server",
-		"default": "d3e5a1c17644e28fa156"
 	}
 }

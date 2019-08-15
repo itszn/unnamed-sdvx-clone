@@ -62,19 +62,16 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
 	
 	// TODO(itszn) better method for entering server and port
-	String server = g_skinConfig->GetEntry("multi.server")->As<StringConfigEntry>()->data;
-	String port = g_skinConfig->GetEntry("multi.port")->As<StringConfigEntry>()->data;
-	m_tcp.Connect(server, port);
+	String host = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
+	m_tcp.Connect(host);
 
-	String password = g_skinConfig->GetEntry("multi.password")->As<StringConfigEntry>()->data;
+	String password = g_gameConfig.GetString(GameConfigKeys::MultiplayerPassword);
 
 	// Find some name we can use
 	IConfigEntry* nickEntry = g_skinConfig->GetEntry("multi.user_name_key");
 	if (nickEntry)
 		nickEntry = g_skinConfig->GetEntry(nickEntry->As<StringConfigEntry>()->data);
 
-	if (!nickEntry)
-		nickEntry = g_skinConfig->GetEntry("multi.nick");
 	if (!nickEntry)
 		nickEntry = g_skinConfig->GetEntry("nick");
 	String name = nickEntry ? nickEntry->As<StringConfigEntry>()->data : "Guest";

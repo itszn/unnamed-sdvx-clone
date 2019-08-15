@@ -63,7 +63,7 @@ public:
 
 	void ProcessSocket();
 
-	bool Connect(String host, String port);
+	bool Connect(String host);
 	void Close();
 
 	// Add a new bound member function for a given topic

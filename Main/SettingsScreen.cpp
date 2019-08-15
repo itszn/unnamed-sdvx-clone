@@ -91,6 +91,10 @@ private:
 	float m_buttonheight = 30;
 	char m_songsPath[1024];
 	int m_pathlen = 0;
+	char m_multiplayerHost[1024];
+	int m_multiplayerHostLen = 0;
+	char m_multiplayerPassword[1024];
+	int m_multiplayerPasswordLen = 0;
 
 	std::queue<SDL_Event> eventQueue;
 
@@ -199,6 +203,16 @@ private:
 		songsPath.TrimBack('\n');
 		songsPath.TrimBack(' ');
 		g_gameConfig.Set(GameConfigKeys::SongFolder, songsPath);
+
+		String multiplayerHost = String(m_multiplayerHost, m_multiplayerHostLen);
+		multiplayerHost.TrimBack('\n');
+		multiplayerHost.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::MultiplayerHost, multiplayerHost);
+
+		String multiplayerPassword = String(m_multiplayerPassword, m_multiplayerPasswordLen);
+		multiplayerPassword.TrimBack('\n');
+		multiplayerPassword.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::MultiplayerPassword, multiplayerPassword);
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
 		{
@@ -382,6 +396,14 @@ public:
 		strcpy(m_songsPath, songspath.c_str());
 		m_pathlen = songspath.length();
 
+		String multiplayerHost = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
+		strcpy(m_multiplayerHost, multiplayerHost.c_str());
+		m_multiplayerHostLen = multiplayerHost.length();
+
+		String multiplayerPassword = g_gameConfig.GetString(GameConfigKeys::MultiplayerPassword);
+		strcpy(m_multiplayerPassword, multiplayerPassword.c_str());
+		m_multiplayerPasswordLen = multiplayerPassword.length();
+
 		return true;
 	}
 
@@ -529,6 +551,13 @@ public:
 
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
+
+			nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default);
+
+			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default);
+
 			nk_spacing(m_nctx, 1);
 			if (nk_button_label(m_nctx, "Skin Settings"))
 			{

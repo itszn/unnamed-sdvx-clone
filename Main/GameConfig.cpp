@@ -109,4 +109,8 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true);
+
+	// Multiplayer
+	Set(GameConfigKeys::MultiplayerHost, "192.168.15.2:39079");
+	Set(GameConfigKeys::MultiplayerPassword, "d3e5a1c17644e28fa156");
 }
