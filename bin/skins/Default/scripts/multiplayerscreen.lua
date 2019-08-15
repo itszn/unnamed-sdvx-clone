@@ -366,7 +366,7 @@ render = function(deltaTime)
             draw_button("Game starting...", resx*3/4, 375+size, 600, function() end);
         else
             if host == user_id then
-                if selected_song == nil then
+                if selected_song == nil or not selected_song.self_picked then
                     draw_button("Select song", resx*3/4, 375+size, 600, function() 
                         missing_song = false
                         mpScreen.SelectSong()
@@ -440,7 +440,7 @@ end
 
 -- Tell the server to start the game
 function start_game()
-    selected_song.selfPicked = false
+    selected_song.self_picked = false
     if (selected_song == nil) then
         return
     end
@@ -465,7 +465,7 @@ button_pressed = function(button)
             return
         end
         if host == user_id then
-            if selected_song and selected_song.selfPicked then
+            if selected_song and selected_song.self_picked then
                 if all_ready then
                     start_game()
                 elseif not user_ready then
