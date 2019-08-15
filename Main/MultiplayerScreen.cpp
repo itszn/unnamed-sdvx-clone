@@ -140,6 +140,9 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	MapIndex* map = m_mapDatabase.GetMap(m_selectedMapId);
 	DifficultyIndex* diff = map->difficulties[m_selectedDiffIndex];
 
+	// Reset score time before playing
+	m_lastScoreSent = 0;
+
 	Logf("[Multiplayer] Starting game: diff_id=%d mapId=%d path=%s", Logger::Info, diff->id, diff->mapId, diff->path.c_str());
 
 	// The server tells us if we are playing excessive or not
@@ -223,28 +226,28 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	// Get the current map from the database
 	MapIndex* map = m_mapDatabase.GetMap(mapid);
 	DifficultyIndex* diff = map->difficulties[diff_ind];
-	const BeatmapSettings& map_settings = diff->settings;
+	const BeatmapSettings& mapSettings = diff->settings;
 
 	// Find "short" path for the selected map
-	const size_t last_slash_idx = map->path.find_last_of("\\/");
-	m_selectedMapShortPath = map->path.substr(last_slash_idx + 1);
+	const size_t lastSlashIdx = map->path.find_last_of("\\/");
+	m_selectedMapShortPath = map->path.substr(lastSlashIdx + 1);
 
 	// Push a table of info to lua
 	lua_newtable(m_lua);
-	m_PushStringToTable("title", map_settings.title.c_str());
-	m_PushStringToTable("artist", map_settings.artist.c_str());
-	m_PushStringToTable("bpm", map_settings.bpm.c_str());
+	m_PushStringToTable("title", mapSettings.title.c_str());
+	m_PushStringToTable("artist", mapSettings.artist.c_str());
+	m_PushStringToTable("bpm", mapSettings.bpm.c_str());
 	m_PushIntToTable("id", map->id);
 	m_PushStringToTable("path", map->path.c_str());
 	m_PushStringToTable("short_path", m_selectedMapShortPath.c_str());
 
-	m_PushStringToTable("jacketPath", Path::Normalize(map->path + "/" + map_settings.jacketPath).c_str());
-	m_PushIntToTable("level", map_settings.level);
-	m_PushIntToTable("difficulty", map_settings.difficulty);
+	m_PushStringToTable("jacketPath", Path::Normalize(map->path + "/" + mapSettings.jacketPath).c_str());
+	m_PushIntToTable("level", mapSettings.level);
+	m_PushIntToTable("difficulty", mapSettings.difficulty);
 	m_PushIntToTable("diff_index", diff_ind);
 	m_PushIntToTable("self_picked", is_new);
-	m_PushStringToTable("effector", map_settings.effector.c_str());
-	m_PushStringToTable("illustrator", map_settings.illustrator.c_str());
+	m_PushStringToTable("effector", mapSettings.effector.c_str());
+	m_PushStringToTable("illustrator", mapSettings.illustrator.c_str());
 
 	lua_setglobal(m_lua, "selected_song");
 
