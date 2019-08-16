@@ -60,6 +60,8 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
 	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleAuthResponse);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
+	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
+
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 	
 	// TODO(itszn) better method for entering server and port
@@ -92,6 +94,14 @@ void MultiplayerScreen::m_handleSocketClose() {
 		return;
 	g_application->RemoveTickable(this);
 }
+
+// Save current room
+bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
+{
+	m_roomId = static_cast<String>(packet["room"]["id"]);
+	return true;
+}
+
 
 // Save the unique user id the server assigns us
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
@@ -227,7 +237,24 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 
 }
 
-void MultiplayerScreen::m_change_difficulty(int offset)
+void MultiplayerScreen::m_changeSelectedRoom(int offset)
+{
+	lua_getglobal(m_lua, "change_selected_room");
+	if (lua_isfunction(m_lua, -1))
+	{
+		lua_pushinteger(m_lua, offset);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_diff", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+	lua_settop(m_lua, 0);
+	
+}
+
+void MultiplayerScreen::m_changeDifficulty(int offset)
 {
 	MapIndex* map = m_mapDatabase.GetMap(this->m_selectedMapId);
 	int oldDiff = this->m_selectedDiffIndex;
@@ -358,6 +385,41 @@ void MultiplayerScreen::Tick(float deltaTime)
 
 	if (IsSuspended())
 		return;
+
+	// Lock mouse to screen when active
+	if (m_roomId == "" && 
+		g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse && g_gameWindow->IsActive())
+	{
+		if (!m_lockMouse)
+			m_lockMouse = g_input.LockMouse();
+	}
+	else
+	{
+		if (m_lockMouse)
+			m_lockMouse.Release();
+		g_gameWindow->SetCursorVisible(true);
+	}
+
+	// Change difficulty
+	if (m_hasSelectedMap)
+	{
+		float diff_input = g_input.GetInputLaserDir(0);
+		m_advanceDiff += diff_input;
+		int advanceDiffActual = (int)Math::Floor(m_advanceDiff * Math::Sign(m_advanceDiff)) * Math::Sign(m_advanceDiff);
+		if (advanceDiffActual != 0)
+			m_changeDifficulty(advanceDiffActual);
+		m_advanceDiff -= advanceDiffActual;
+	}
+
+	// Room selection
+	if (m_roomId == "") {
+		float room_input = g_input.GetInputLaserDir(1);
+		m_advanceRoom += room_input;
+		int advanceRoomActual = (int)Math::Floor(m_advanceRoom * Math::Sign(m_advanceRoom)) * Math::Sign(m_advanceRoom);
+		if (advanceRoomActual != 0)
+			m_changeSelectedRoom(advanceRoomActual);
+		m_advanceRoom -= advanceRoomActual;
+	}
 }
 
 void MultiplayerScreen::PerformScoreTick(Scoring& scoring)
@@ -429,18 +491,27 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 	}
 	lua_settop(m_lua, 0);
 	
-	if (key == SDLK_LEFT)
+	if (key == SDLK_LEFT && m_hasSelectedMap)
 	{
-		m_change_difficulty(-1);
+		m_changeDifficulty(-1);
 	}
-	else if (key == SDLK_RIGHT)
+	else if (key == SDLK_RIGHT && m_hasSelectedMap)
 	{
-		m_change_difficulty(1);
+		m_changeDifficulty(1);
 	}
-	else if (key == SDLK_ESCAPE)
+	else if (key == SDLK_UP && m_roomId == "")
 	{
-		if (m_hasSelectedMap)
-			m_hasSelectedMap = false;
+		m_changeSelectedRoom(-1);
+	}
+	else if (key == SDLK_DOWN && m_roomId == "")
+	{
+		m_changeSelectedRoom(1);
+	}
+	else if (key == SDLK_ESCAPE && m_hasSelectedMap)
+	{
+		m_hasSelectedMap = false;
+		if (m_roomId != "")
+			m_roomId = "";
 	}
 }
 
@@ -553,4 +624,7 @@ void MultiplayerScreen::OnSuspend()
 {
 	m_suspended = true;
 	m_mapDatabase.StopSearching();
+
+	if (m_lockMouse)
+		m_lockMouse.Release();
 }

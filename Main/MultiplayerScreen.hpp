@@ -53,13 +53,15 @@ private:
 	bool m_handleStartPacket(nlohmann::json& packet);
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
+	bool m_handleJoinRoom(nlohmann::json& packet);
 	void m_handleSocketClose();
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
 	DifficultyIndex* m_getMapByShortPath(const String& path, int32);
 
-	void m_change_difficulty(int offset);
+	void m_changeDifficulty(int offset);
+	void m_changeSelectedRoom(int offset);
 
 	// Some lua util functions
 	void m_PushStringToTable(const char* name, const char* data)
@@ -93,6 +95,7 @@ private:
 
 	// Unique id given to by the server on auth
 	String m_userId;
+	String m_roomId;
 
 	// Socket to talk to the server
 	TCPSocket m_tcp;
@@ -107,4 +110,8 @@ private:
 
 	// Instance of the database, used to look up songs
 	MapDatabase m_mapDatabase;
+
+	float m_advanceDiff = 0.0f;
+	float m_advanceRoom = 0.0f;
+	MouseLockHandle m_lockMouse;
 };

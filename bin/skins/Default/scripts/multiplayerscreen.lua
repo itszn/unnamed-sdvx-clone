@@ -9,7 +9,9 @@ local buttonWidth = resX*(3/4);
 local buttonHeight = 75;
 local buttonBorder = 2;
 
-local SERVER = game.GetSkinSetting("multiplayer_server")
+game.LoadSkinSample("click-02")
+game.LoadSkinSample("click-01")
+game.LoadSkinSample("menu_click")
 
 local loading = true;
 local rooms = {};
@@ -78,20 +80,25 @@ mouse_clipped = function(x,y,w,h)
     return mposx > x and mposy > y and mposx < x+w and mposy < y+h;
 end;
 
-draw_room = function(name, x, y, hoverindex)
+draw_room = function(name, x, y, selected, hoverindex)
     local buttonWidth = resX*(3/4);
     local rx = x - (buttonWidth / 2);
     local ty = y - (buttonHeight / 2);
+    local roomButtonBorder = buttonBorder;
     gfx.BeginPath();
     gfx.FillColor(0,128,255);
+    if selected then
+       gfx.FillColor(0,255,0);
+       roomButtonBorder = 4;
+    end
     if mouse_clipped(rx,ty, buttonWidth, buttonHeight) then
        hovered = hoverindex;
        gfx.FillColor(255,128,0);
     end
-    gfx.Rect(rx - buttonBorder,
-        ty - buttonBorder,
-        buttonWidth + (buttonBorder * 2),
-        buttonHeight + (buttonBorder * 2));
+    gfx.Rect(rx - roomButtonBorder,
+        ty - roomButtonBorder,
+        buttonWidth + (roomButtonBorder * 2),
+        buttonHeight + (roomButtonBorder * 2));
     gfx.Fill();
     gfx.BeginPath();
     gfx.FillColor(40,40,40);
@@ -105,6 +112,9 @@ draw_room = function(name, x, y, hoverindex)
 end;
 
 draw_button = function(name, x, y, buttonWidth, hoverindex)
+    draw_button_color(name, x, y, buttonWidth, hoverindex, 40,40,40)
+end
+draw_button_color = function(name, x, y, buttonWidth, hoverindex,r,g,b)
     local rx = x - (buttonWidth / 2);
     local ty = y - (buttonHeight / 2);
     gfx.BeginPath();
@@ -119,7 +129,7 @@ draw_button = function(name, x, y, buttonWidth, hoverindex)
         buttonHeight + (buttonBorder * 2));
     gfx.Fill();
     gfx.BeginPath();
-    gfx.FillColor(40,40,40);
+    gfx.FillColor(r,g,b);
     gfx.Rect(rx, ty, buttonWidth, buttonHeight);
     gfx.Fill();
     gfx.BeginPath();
@@ -388,15 +398,86 @@ draw_diffs = function(diffs, x, y, w, h, selectedDiff)
 end
 
 set_diff = function(oldDiff, newDiff)
-    --game.PlaySample("click-02")
+    game.PlaySample("click-02")
     doffset = doffset + oldDiff - newDiff
 end;
+
+local selected_room_index = 1;
+local ioffset = 0;
+
+function draw_rooms(y, h)
+    if #rooms == 0 then
+        return
+    end
+    local num_rooms_visible = math.floor(h / (buttonHeight + 10))
+
+    local first_half_rooms = math.floor(num_rooms_visible/2)
+    local second_half_rooms = math.ceil(num_rooms_visible/2) - 1
+
+    local start_offset = math.max(selected_room_index - first_half_rooms, 1);
+    local end_offset = math.min(selected_room_index + second_half_rooms + 2, #rooms);
+
+    local start_index_offset = 1;
+
+    -- If our selection is near the start or end we have to offset
+    if selected_room_index <= first_half_rooms then
+        start_index_offset = 0;
+        end_offset = math.min(#rooms, num_rooms_visible + 1)
+    end
+    if selected_room_index >= #rooms - second_half_rooms then
+        start_offset = math.max(1, #rooms - num_rooms_visible)
+        end_offset = #rooms
+    end
+
+    for i = start_offset, end_offset do
+        local room = rooms[i];
+        -- if selected room < halfvis then we start at 1
+        -- if sel > #rooms - halfvis then we start at -halfvis
+        local offset_index = (start_offset + first_half_rooms) - i + start_index_offset
+
+        local offsetY = (offset_index + ioffset) * (buttonHeight + 10);
+        local ypos = y + (h/2) - offsetY;
+        local status = room.current..'/'..room.max
+        if room.ingame then
+            status = status..' (In Game)'
+        end
+        draw_room(room.name .. ':  '.. status, resx / 2, ypos, i == selected_room_index, function()
+            join_room(room)
+        end)
+    end
+end
+
+change_selected_room = function(off)
+    local new_index = selected_room_index + off;
+    --selected_room_index = 2;
+    if new_index < 1 or new_index > #rooms then
+        return;
+    end
+
+    local h = resy - 290;
+
+    local num_rooms_visible = math.floor(h / (buttonHeight + 10))
+
+    local first_half_rooms = math.floor(num_rooms_visible/2)
+    local second_half_rooms = math.ceil(num_rooms_visible/2) - 1
+
+    if off > 0 and (selected_room_index < first_half_rooms or selected_room_index >= #rooms - second_half_rooms - 1) then
+    elseif off < 0 and (selected_room_index <= first_half_rooms or selected_room_index >= #rooms - second_half_rooms) then 
+    else
+        ioffset = ioffset - new_index + selected_room_index;
+    end
+
+    game.PlaySample("menu_click")
+
+    selected_room_index = new_index;
+end
 
 render = function(deltaTime)
     resx,resy = game.GetResolution();
     mposx,mposy = game.GetMousePos();
 
     doffset = doffset * 0.9
+    ioffset = ioffset * 0.9
     timer = (timer + deltaTime)
     timer = timer % 2
     
@@ -404,33 +485,39 @@ render = function(deltaTime)
 
     gfx.LoadSkinFont(normal_font);
 
+    do_sounds(deltaTime);
+
     -- Room Listing View
     if selected_room == nil then
+        draw_rooms(175, resy - 290);
+
+        -- Draw cover for rooms out of view
+        gfx.BeginPath()
+        gfx.FillColor(20, 20, 20)
+        gfx.Rect(0, 0, resx, 145)
+        gfx.Rect(0, resy-170, resx, 170)
+        gfx.Fill()
+        
+        gfx.BeginPath()
+        gfx.FillColor(60, 60, 60)
+        gfx.Rect(0, 145, resx, 2)
+        gfx.Rect(0, resy-170-2, resx, 2)
+        gfx.Fill()
+
         gfx.FillColor(255,255,255)
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
         gfx.FontSize(70)
         gfx.Text("Multiplayer Rooms", resx/2, 100)
 
-        buttonY = 175;
 
-        for i, room in ipairs(rooms) do
-            local l_room = room
-            local status = room.current..'/'..room.max
-            if room.ingame then
-                status = status..' (In Game)'
-            end
-            draw_room(room.name .. ':  '.. status, resx / 2, buttonY, function ()
-                join_room(l_room)
-            end);
-            buttonY = buttonY + 100
-        end
+        draw_button("Create new room", resx/2, resy-40-buttonHeight, resx*(3/4), new_room);
     
     -- Room Lobby View
     else
         gfx.FillColor(255,255,255)
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
         gfx.FontSize(70)
-        gfx.Text("Room "..selected_room.name, resx/2, 50)
+        gfx.Text(selected_room.name, resx/2, 50)
         gfx.Text("Users", resx/4, 100)
 
         buttonY = 125 + userHeight/2
@@ -484,10 +571,10 @@ render = function(deltaTime)
         else
             if host == user_id then
                 if selected_song == nil or not selected_song.self_picked then
-                    draw_button("Select song", resx*3/4, 375+size, 600, function() 
+                    draw_button_color("Select song", resx*3/4, 375+size, 600, function() 
                         missing_song = false
                         mpScreen.SelectSong()
-                    end);
+                    end, 0, math.min(255, 128 + math.floor(32 * math.cos(timer * math.pi))), 0);
                 elseif user_ready and all_ready then
                     draw_button("Start game", resx*3/4, 375+size, 600, start_game)
                 elseif user_ready and not all_ready then
@@ -527,6 +614,11 @@ function toggle_hard()
     Tcp.SendLine(json.encode({topic="user.hard.toggle"}))
 end
 
+function new_room()
+    host = user_id
+    Tcp.SendLine(json.encode({topic="server.room.new"}))
+end
+
 -- Toggle host rotation
 function toggle_rotate()
     Tcp.SendLine(json.encode({topic="room.option.rotation.toggle"}))
@@ -535,24 +627,6 @@ end
 -- Change lobby host
 function change_host(user)
     Tcp.SendLine(json.encode({topic="room.host.set", host=user.id}))
-end
-
--- Process the response from the server when the game is started
-function start_game_callback(response)
-    if (response.status ~= 200) then 
-        selected_room = nil
-        error() 
-        return 
-    end
-    loading = false
-    start_game_soon = true;
-
-    local jsondata = json.decode(response.text)
-    mpScreen.UpdateTime(jsondata.left)
-    if jsondata.left == 0 then
-        update_tick()
-        return
-    end
 end
 
 -- Tell the server to start the game
@@ -568,10 +642,9 @@ function start_game()
     Tcp.SendLine(json.encode({topic="room.game.start"}))
 end
 
-
-
 -- Join a given room
 function join_room(room)
+    host = user_id
     Tcp.SendLine(json.encode({topic="server.room.join", id=room.id}))
 end
 
@@ -581,7 +654,14 @@ button_pressed = function(button)
         if start_game_soon then
             return
         end
-        if host == user_id then
+        if selected_room == nil then
+            if #rooms == 0 then
+                new_room()
+            else
+                -- TODO navigate room selection
+                join_room(rooms[selected_room_index]) 
+            end
+        elseif host == user_id then
             if selected_song and selected_song.self_picked then
                 if all_ready then
                     start_game()
@@ -641,6 +721,35 @@ Tcp.SetTopicHandler("server.room.joined", function(data)
     selected_room = data.room
 end)
 
+local sound_time = 0;
+local sound_clip = nil;
+local sounds_left = 0;
+local sound_interval = 0;
+
+function repeat_sound(clip, times, interval)
+    sound_clip = clip;
+    sound_time = 0;
+    sounds_left = times - 1;
+    sound_interval = interval;
+    game.PlaySample(clip)
+end
+
+function do_sounds(deltaTime)
+    if sound_clip == nil then
+        return
+    end
+
+    sound_time = sound_time + deltaTime;
+    if sound_time > sound_interval then
+        sound_time = sound_time - sound_interval;
+        game.PlaySample(sound_clip);
+        sounds_left = sounds_left - 1
+        if sounds_left <= 0 then
+            sound_clip = nil
+        end
+    end
+end
+
 -- Update the current lobby
 Tcp.SetTopicHandler("room.update", function(data)
     -- Update the users in the lobby
@@ -656,9 +765,15 @@ Tcp.SetTopicHandler("room.update", function(data)
         end
     end
 
+    if data.host == user_id and host ~= user_id then
+        repeat_sound("click-02", 3, .1)
+    end
     host = data.host
     hard_mode = data.hard_mode
     do_rotate = data.do_rotate
+    if data.start_soon and not start_game_soon then
+        repeat_sound("click-01", 6, 1)
+    end
     start_game_soon = data.start_soon
 
 end)
