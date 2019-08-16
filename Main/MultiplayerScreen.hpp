@@ -58,7 +58,7 @@ private:
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
-	DifficultyIndex* m_getMapByShortPath(const String& path, int32);
+	DifficultyIndex* m_getMapByShortPath(const String& path, int32, int32);
 
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
@@ -96,6 +96,11 @@ private:
 	// Unique id given to by the server on auth
 	String m_userId;
 	String m_roomId;
+
+	// Did this client pick the current song
+	bool m_selfPicked = false;
+
+	bool m_inGame = false;
 
 	// Socket to talk to the server
 	TCPSocket m_tcp;

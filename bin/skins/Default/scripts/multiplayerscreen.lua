@@ -320,7 +320,7 @@ function render_info()
     gfx.Text("Multiplayer", 3, resY - 15)
     local xmin,ymin,xmax,ymax = gfx.TextBounds(3, resY - 3, "Multiplayer")
     gfx.FontSize(20)
-    gfx.Text('v0.10', xmax + 13, resY - 15)
+    gfx.Text('v0.11', xmax + 13, resY - 15)
     --gfx.Text('Server: '..'', xmax + 13, resY - 15)
     gfx.Restore()
 end
@@ -668,8 +668,9 @@ button_pressed = function(button)
             if selected_song and selected_song.self_picked then
                 if all_ready then
                     start_game()
-                elseif not user_ready then
-                    ready_up()
+                else
+                    missing_song = false
+                    mpScreen.SelectSong()
                 end
             else
                 missing_song = false
@@ -753,6 +754,8 @@ function do_sounds(deltaTime)
     end
 end
 
+local last_song = nil
+
 -- Update the current lobby
 Tcp.SetTopicHandler("room.update", function(data)
     -- Update the users in the lobby
@@ -775,6 +778,11 @@ Tcp.SetTopicHandler("room.update", function(data)
 
     if data.host == user_id and host ~= user_id then
         repeat_sound("click-02", 3, .1)
+    end
+
+    if data.song ~=nil and last_song ~=data.song then
+        game.PlaySample("menu_click")
+        last_song = data.song
     end
     host = data.host
     hard_mode = data.hard_mode

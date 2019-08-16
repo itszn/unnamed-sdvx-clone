@@ -126,7 +126,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], diff_ind);
+	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], diff_ind, packet["level"]);
 
 	if (new_diff == nullptr)
 	{
@@ -143,6 +143,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 		return true;
 	}
 
+	m_selfPicked = false;
 	m_updateSelectedMap(new_diff->mapId, diff_ind, false);
 
 	return true;
@@ -152,7 +153,9 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 {
 	if (!this->m_hasSelectedMap)
-		return 0;
+		return false;
+
+	m_inGame = true;
 
 	// Grab the map from the database
 	MapIndex* map = m_mapDatabase.GetMap(m_selectedMapId);
@@ -189,7 +192,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 }
 
 // Get a map from a given "short" path
-DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int32 diff_ind)
+DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int32 diff_ind, int32 level)
 {
 	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path.c_str(), diff_ind);
 	for (auto map : m_mapDatabase.FindMaps(path))
@@ -197,14 +200,28 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int3
 		// No haxing pls
 		if (map.second->difficulties.size() <= diff_ind)
 		{
-			Logf("[Multiplayer] Difficulty out of range!", Logger::Warning);
-			return nullptr;
+			if (level != 0 || map.second->difficulties.size() == 0) {
+				Logf("[Multiplayer] Difficulty out of range!", Logger::Warning);
+				continue;
+			}
+			// If we couldn't find the exact song, just take any diff
+			diff_ind = 0;
 		}
 
 		// Grab the correct map and diff from the database
 		DifficultyIndex* new_diff = map.second->difficulties[diff_ind];
+
+		// Check if this is the right map (the diff level matches up)
+		if (level != 0 && new_diff->settings.level != level) {
+			continue;
+		}
 		Logf("[Multiplayer] Found: diff_id=%d mapid=%d path=%s", Logger::Info, new_diff->id, new_diff->mapId, new_diff->path.c_str());
 		return new_diff;
+	}
+
+	if (level != 0) {
+		// We couldn't find an exact match, try to grab whatever song matches
+		return m_getMapByShortPath(path, diff_ind, 0);
 	}
 
 	Logf("[Multiplayer] Could not find song", Logger::Warning);
@@ -216,6 +233,8 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 {
 	const SongSelectIndex song(map, diff);
 
+
+
 	// Get the "short" path (basically the last part of the path)
 	const size_t last_slash_idx = song.GetMap()->path.find_last_of("\\/");
 	std::string short_path = song.GetMap()->path.substr(last_slash_idx + 1);
@@ -224,7 +243,7 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	int32 diff_index = (song.id % 10) - 1;
 
 	// Get the actual map id
-	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, diff_index);
+	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, diff_index, diff->settings.level);
 
 	if (new_diff == nullptr)
 	{
@@ -233,6 +252,7 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 		return;
 	}
 
+	m_selfPicked = true;
 	m_updateSelectedMap(new_diff->mapId, diff_index, true);
 
 }
@@ -283,7 +303,7 @@ void MultiplayerScreen::m_changeDifficulty(int offset)
 
 }
 
-void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new)
+void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool isNew)
 {
 	this->m_selectedMapId = mapid;
 	this->m_selectedDiffIndex = diff_ind;
@@ -311,9 +331,8 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_PushIntToTable("difficulty", mapSettings.difficulty);
 	m_PushIntToTable("diff_index", diff_ind);
 	lua_pushstring(m_lua, "self_picked");
-	lua_pushboolean(m_lua, is_new);
+	lua_pushboolean(m_lua, m_selfPicked);
 	lua_settable(m_lua, -3);
-	Logf("self_picked set to: %u", Logger::Error, is_new);
 	m_PushStringToTable("effector", mapSettings.effector.c_str());
 	m_PushStringToTable("illustrator", mapSettings.illustrator.c_str());
 
@@ -338,8 +357,9 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_hasSelectedMap = true;
 
 	// If we selected this song ourselves, we have to tell the server about it
-	if (is_new)
+	if (isNew)
 	{
+		
 		nlohmann::json packet;
 		packet["topic"] = "room.setsong";
 		packet["song"] = m_selectedMapShortPath;
@@ -619,9 +639,14 @@ void MultiplayerScreen::OnRestore()
 		return;
 	}
 
-	nlohmann::json packet;
-	packet["topic"] = "room.update.get";
-	m_tcp.SendJSON(packet);
+	// Retrive the lobby info now that we are out of the game
+	if (m_inGame) {
+		m_inGame = false;
+		m_selfPicked = false;
+		nlohmann::json packet;
+		packet["topic"] = "room.update.get";
+		m_tcp.SendJSON(packet);
+	}
 }
 
 void MultiplayerScreen::OnSuspend()
