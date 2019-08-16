@@ -310,7 +310,10 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_PushIntToTable("level", mapSettings.level);
 	m_PushIntToTable("difficulty", mapSettings.difficulty);
 	m_PushIntToTable("diff_index", diff_ind);
-	m_PushIntToTable("self_picked", is_new);
+	lua_pushstring(m_lua, "self_picked");
+	lua_pushboolean(m_lua, is_new);
+	lua_settable(m_lua, -3);
+	Logf("self_picked set to: %u", Logger::Error, is_new);
 	m_PushStringToTable("effector", mapSettings.effector.c_str());
 	m_PushStringToTable("illustrator", mapSettings.illustrator.c_str());
 
@@ -332,6 +335,8 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 
 	lua_setglobal(m_lua, "selected_song");
 
+	m_hasSelectedMap = true;
+
 	// If we selected this song ourselves, we have to tell the server about it
 	if (is_new)
 	{
@@ -350,7 +355,6 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		m_tcp.SendJSON(packet);
 	}
 
-	m_hasSelectedMap = true;
 }
 
 void MultiplayerScreen::m_clearLuaMap()

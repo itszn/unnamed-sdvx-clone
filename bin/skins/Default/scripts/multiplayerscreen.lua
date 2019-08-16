@@ -578,7 +578,10 @@ render = function(deltaTime)
                 elseif user_ready and all_ready then
                     draw_button("Start game", resx*3/4, 375+size, 600, start_game)
                 elseif user_ready and not all_ready then
-                    draw_button("Waiting for others", resx*3/4, 375+size, 600, function() end)
+                    draw_button("Waiting for others", resx*3/4, 375+size, 600, function() 
+                        missing_song = false
+                        mpScreen.SelectSong()
+                    end)
                 else
                     draw_button("Ready", resx*3/4, 375+size, 600, ready_up);
                 end
@@ -754,6 +757,7 @@ end
 Tcp.SetTopicHandler("room.update", function(data)
     -- Update the users in the lobby
     lobby_users = {}
+    local prev_all_ready = all_ready;
     all_ready = true
     for i, user in ipairs(data.users) do
         table.insert(lobby_users, user)
@@ -765,6 +769,10 @@ Tcp.SetTopicHandler("room.update", function(data)
         end
     end
 
+    if user_id == host and #data.users > 1 and all_ready and not prev_all_ready then
+        repeat_sound("click-02", 3, .1)
+    end
+
     if data.host == user_id and host ~= user_id then
         repeat_sound("click-02", 3, .1)
     end
@@ -772,7 +780,7 @@ Tcp.SetTopicHandler("room.update", function(data)
     hard_mode = data.hard_mode
     do_rotate = data.do_rotate
     if data.start_soon and not start_game_soon then
-        repeat_sound("click-01", 6, 1)
+        repeat_sound("click-01", 5, 1)
     end
     start_game_soon = data.start_soon
 
