@@ -113,9 +113,6 @@ struct ObjectTypeData_Button
 	// Playback volume of the sample
 	float sampleVolume = 1.0;
 
-	// Hide hit notes
-	bool isHidden = false;
-
 	static const ObjectType staticType = ObjectType::Single;
 };
 // A Hold button, extends a normal button with duration and effect type

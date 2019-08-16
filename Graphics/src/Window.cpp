@@ -45,7 +45,11 @@ namespace Graphics
 
 			m_clntSize = size;
 
-			m_caption = L"Window";
+#ifdef _DEBUG
+			m_caption = L"USC-Game Debug";
+#else
+			m_caption = L"USC-Game";
+#endif
 			String titleUtf8 = Utility::ConvertToUTF8(m_caption);
 
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, sampleCount);

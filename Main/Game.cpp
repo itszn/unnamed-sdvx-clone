@@ -3,6 +3,7 @@
 #include "Application.hpp"
 #include <array>
 #include <random>
+#include <unordered_set>
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
@@ -154,6 +155,7 @@ private:
 
 	Map<ScoreIndex*, ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
+	std::unordered_set<ObjectState*> m_hiddenObjects;
 
 public:
 	Game_Impl(const String& mapPath, GameFlags flags)
@@ -556,6 +558,10 @@ public:
 		m_track->ClearEffects();
 		m_particleSystem->Reset();
 		m_audioPlayback.SetPlaybackSpeed(1.0f);
+
+		//unhide notes
+		m_hiddenObjects.clear();
+
 	}
 	virtual void Tick(float deltaTime) override
 	{
@@ -645,7 +651,8 @@ public:
 
 		for(auto& object : m_currentObjectSet)
 		{
-			m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
+			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
+				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
 		}
 
 		// Use new camera for scoring overlay
@@ -1472,7 +1479,7 @@ public:
 
 			//set button invisible
 			if (st != nullptr)
-				st->isHidden = true;
+				m_hiddenObjects.insert(hitObject);
 
 			// Create hit effect particle
 			Color hitColor = (buttonIdx < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
@@ -1491,7 +1498,7 @@ public:
 		if (hitEffect)
 		{
 			ButtonObjectState* st = (ButtonObjectState*)object;
-			st->isHidden = true;
+			m_hiddenObjects.insert(object);
 			Color c = m_track->hitColors[0];
 			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 		}
