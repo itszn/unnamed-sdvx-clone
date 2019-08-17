@@ -320,7 +320,7 @@ function render_info()
     gfx.Text("Multiplayer", 3, resY - 15)
     local xmin,ymin,xmax,ymax = gfx.TextBounds(3, resY - 3, "Multiplayer")
     gfx.FontSize(20)
-    gfx.Text('v0.11', xmax + 13, resY - 15)
+    gfx.Text(MULTIPLAYER_VERSION, xmax + 13, resY - 15)
     --gfx.Text('Server: '..'', xmax + 13, resY - 15)
     gfx.Restore()
 end

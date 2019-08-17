@@ -54,6 +54,7 @@ private:
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
 	bool m_handleJoinRoom(nlohmann::json& packet);
+	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);

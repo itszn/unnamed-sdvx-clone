@@ -14,6 +14,8 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
+#define MULTIPLAYER_VERSION "v0.111"
+
 MultiplayerScreen::MultiplayerScreen()
 {
 }
@@ -48,6 +50,9 @@ bool MultiplayerScreen::Init()
 	m_bindable->AddFunction("SelectSong", this, &MultiplayerScreen::lSongSelect);
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
+
+	lua_pushstring(m_lua, MULTIPLAYER_VERSION);
+	lua_setglobal(m_lua, "MULTIPLAYER_VERSION");
 	
 	// Start the map database
 	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
@@ -61,6 +66,7 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleAuthResponse);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
+	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 	
@@ -83,6 +89,7 @@ bool MultiplayerScreen::Init()
 	packet["topic"] = "user.auth";
 	packet["password"] = password;
 	packet["name"] = name;
+	packet["version"] = MULTIPLAYER_VERSION;
 	m_tcp.SendJSON(packet);
 
     return true;
@@ -102,6 +109,15 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	return true;
 }
 
+bool MultiplayerScreen::m_handleError(nlohmann::json& packet)
+{
+	g_gameWindow->ShowMessageBox("Multiplayer server closed", packet.value("error", ""), 0);
+	
+	// Fatal error, so leave this view
+	m_suspended = true;
+	g_application->RemoveTickable(this);
+	return true;
+}
 
 // Save the unique user id the server assigns us
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
