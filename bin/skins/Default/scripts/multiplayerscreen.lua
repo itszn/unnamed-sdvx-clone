@@ -441,6 +441,9 @@ function draw_rooms(y, h)
         if room.ingame then
             status = status..' (In Game)'
         end
+        if room.password then
+            status = status..' <P>'
+        end
         draw_room(room.name .. ':  '.. status, resx / 2, ypos, i == selected_room_index, function()
             join_room(room)
         end)
@@ -448,6 +451,7 @@ function draw_rooms(y, h)
 end
 
 change_selected_room = function(off)
+
     local new_index = selected_room_index + off;
     --selected_room_index = 2;
     if new_index < 1 or new_index > #rooms then
@@ -472,12 +476,191 @@ change_selected_room = function(off)
     selected_room_index = new_index;
 end
 
+function render_lobby(deltaTime)
+
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text(selected_room.name, resx/2, 50)
+    gfx.Text("Users", resx/4, 100)
+
+    buttonY = 125 + userHeight/2
+    for i, user in ipairs(lobby_users) do
+        draw_user(user, resx / 4, buttonY, i)
+        buttonY = buttonY + userHeight
+    end
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
+    gfx.FillColor(255,255,255)
+
+    gfx.FontSize(60)
+    gfx.Text("Selected Song:", resx*3/4, 100)
+    gfx.FontSize(40)
+    if selected_song == nil then
+        if host == user_id then
+            gfx.Text("Select song:", resx*3/4, 175)
+        else
+            if missing_song then
+                gfx.Text("Missing song!!!!", resx*3/4, 175)
+            else
+                gfx.Text("Host is selecting song", resx*3/4, 175)
+            end
+        end
+        if jacket == 0 then
+            jacket = gfx.CreateSkinImage("song_select/loading.png", 0)
+        end
+    else
+        gfx.Text(selected_song.title, resx*3/4, 175)
+        draw_diffs(selected_song.all_difficulties, resx*3/4 - 150, 200, 300, 100, selected_song.diff_index+1)
+        
+        if selected_song.jacket == nil then
+            selected_song.jacket = gfx.CreateImage(selected_song.jacketPath, 0)
+            jacket = selected_song.jacket
+        end
+    end
+    gfx.Save()
+    gfx.BeginPath()
+    local size = math.min(resx/2, resy/2);
+    gfx.Translate(resx*3/4, 325+size/2)
+    gfx.ImageRect(-size/2,-size/2,size,size,jacket,1,0)
+    
+    if mouse_clipped(resx*3/4-size/2, 325, size,size) and host == user_id then
+        hovered = function() 
+            missing_song = false
+            mpScreen.SelectSong()
+        end
+    end
+    gfx.Restore()
+    if start_game_soon then
+        draw_button("Game starting...", resx*3/4, 375+size, 600, function() end);
+    else
+        if host == user_id then
+            if selected_song == nil or not selected_song.self_picked then
+                draw_button_color("Select song", resx*3/4, 375+size, 600, function() 
+                    missing_song = false
+                    mpScreen.SelectSong()
+                end, 0, math.min(255, 128 + math.floor(32 * math.cos(timer * math.pi))), 0);
+            elseif user_ready and all_ready then
+                draw_button("Start game", resx*3/4, 375+size, 600, start_game)
+            elseif user_ready and not all_ready then
+                draw_button("Waiting for others", resx*3/4, 375+size, 600, function() 
+                    missing_song = false
+                    mpScreen.SelectSong()
+                end)
+            else
+                draw_button("Ready", resx*3/4, 375+size, 600, ready_up);
+            end
+        elseif host == nil then
+            draw_button("Waiting for game to end", resx*3/4, 375+size, 600, function() end);
+        elseif missing_song then
+            draw_button("Missing Song!", resx*3/4, 375+size, 600, function() end);
+        elseif selected_song ~= nil then
+            if user_ready then
+                draw_button("Cancel", resx*3/4, 375+size, 600, ready_up);
+            else
+                draw_button("Ready", resx*3/4, 375+size, 600, ready_up);
+            end
+        else
+            draw_button("Waiting for host", resx*3/4, 375+size, 600, function() end);
+        end
+    end
+
+    draw_checkbox("Excessive Gauge", resx*3/4 - 150 + 30, 375+size + 70, toggle_hard, hard_mode, not start_game_soon)
+    draw_checkbox("Rotate Host", resx*3/4 + 150 + 20, 375+size + 70, toggle_rotate, do_rotate, host == user_id and not start_game_soon)
+end
+
+function render_room_list(deltaTime)
+    draw_rooms(175, resy - 290);
+
+    -- Draw cover for rooms out of view
+    gfx.BeginPath()
+    gfx.FillColor(20, 20, 20)
+    gfx.Rect(0, 0, resx, 145)
+    gfx.Rect(0, resy-170, resx, 170)
+    gfx.Fill()
+    
+    gfx.BeginPath()
+    gfx.FillColor(60, 60, 60)
+    gfx.Rect(0, 145, resx, 2)
+    gfx.Rect(0, resy-170-2, resx, 2)
+    gfx.Fill()
+
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("Multiplayer Rooms", resx/2, 100)
+
+
+    if not loading then
+        draw_button("Create new room", resx/2, resy-40-buttonHeight, resx*(3/4), new_room);
+    end
+end
+
+
+passwordErrorOffset = 0;
+function render_password_screen(deltaTime)
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("Joining "..selected_room.name.."...", resx/2, resy/4)
+
+    gfx.FillColor(50,50,50)
+    gfx.BeginPath() 
+    gfx.Rect(0, resy/2-10, resx, 40)
+    gfx.Fill(); 
+
+    gfx.FillColor(255,255,255)
+    gfx.Text("Please enter room password:", resx/2, resy/2-40)
+    gfx.Text(string.rep("*",#textInput.text), resx/2, resy/2+40) 
+    if passwordError then
+        
+        gfx.FillColor(255,50,50)
+        gfx.FontSize(60 + math.floor(passwordErrorOffset*20))
+        gfx.Text("Invalid password", resx/2, resy/2+80) 
+    end
+    draw_button("Join", resx/2, resy*3/4, resx/2,  mpScreen.JoinWithPassword);
+end
+
+function render_new_room_password(delta_time)
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("Create New Room", resx/2, resy/4)
+
+    gfx.FillColor(50,50,50)
+    gfx.BeginPath() 
+    gfx.Rect(0, resy/2-10, resx, 40)
+    gfx.Fill(); 
+
+    gfx.FillColor(255,255,255)
+    gfx.Text("Please enter room password (if or keep it empty):", resx/2, resy/2-40)
+    gfx.Text(string.rep("*",#textInput.text), resx/2, resy/2+40) 
+    draw_button("Create Room", resx/2, resy*3/4, resx/2, mpScreen.NewRoomStep);
+end
+
+function render_new_room_name(delta_time)
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("Create New Room", resx/2, resy/4)
+
+    gfx.FillColor(50,50,50)
+    gfx.BeginPath() 
+    gfx.Rect(0, resy/2-10, resx, 60)
+    gfx.Fill(); 
+
+    gfx.FillColor(255,255,255)
+    gfx.Text("Please enter room name:", resx/2, resy/2-40)
+    gfx.Text(textInput.text, resx/2, resy/2+40) 
+    draw_button("Next", resx/2, resy*3/4, resx/2, mpScreen.NewRoomStep);
+end
+
 render = function(deltaTime)
     resx,resy = game.GetResolution();
     mposx,mposy = game.GetMousePos();
 
     doffset = doffset * 0.9
     ioffset = ioffset * 0.9
+    passwordErrorOffset = passwordErrorOffset * 0.9
     timer = (timer + deltaTime)
     timer = timer % 2
     
@@ -488,125 +671,20 @@ render = function(deltaTime)
     do_sounds(deltaTime);
 
     -- Room Listing View
-    if selected_room == nil then
-        draw_rooms(175, resy - 290);
-
-        -- Draw cover for rooms out of view
-        gfx.BeginPath()
-        gfx.FillColor(20, 20, 20)
-        gfx.Rect(0, 0, resx, 145)
-        gfx.Rect(0, resy-170, resx, 170)
-        gfx.Fill()
-        
-        gfx.BeginPath()
-        gfx.FillColor(60, 60, 60)
-        gfx.Rect(0, 145, resx, 2)
-        gfx.Rect(0, resy-170-2, resx, 2)
-        gfx.Fill()
-
-        gfx.FillColor(255,255,255)
-        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
-        gfx.FontSize(70)
-        gfx.Text("Multiplayer Rooms", resx/2, 100)
-
-
-        if not loading then
-            draw_button("Create new room", resx/2, resy-40-buttonHeight, resx*(3/4), new_room);
-        end
-    
-    -- Room Lobby View
-    else
-        gfx.FillColor(255,255,255)
-        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
-        gfx.FontSize(70)
-        gfx.Text(selected_room.name, resx/2, 50)
-        gfx.Text("Users", resx/4, 100)
-
-        buttonY = 125 + userHeight/2
-        for i, user in ipairs(lobby_users) do
-            draw_user(user, resx / 4, buttonY, i)
-            buttonY = buttonY + userHeight
-        end
-        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
-        gfx.FillColor(255,255,255)
-
-        gfx.FontSize(60)
-        gfx.Text("Selected Song:", resx*3/4, 100)
-        gfx.FontSize(40)
-        if selected_song == nil then
-            if host == user_id then
-                gfx.Text("Select song:", resx*3/4, 175)
-            else
-                if missing_song then
-                    gfx.Text("Missing song!!!!", resx*3/4, 175)
-                else
-                    gfx.Text("Host is selecting song", resx*3/4, 175)
-                end
-            end
-            if jacket == 0 then
-                jacket = gfx.CreateSkinImage("song_select/loading.png", 0)
-            end
-        else
-            gfx.Text(selected_song.title, resx*3/4, 175)
-            draw_diffs(selected_song.all_difficulties, resx*3/4 - 150, 200, 300, 100, selected_song.diff_index+1)
-            
-            if selected_song.jacket == nil then
-                selected_song.jacket = gfx.CreateImage(selected_song.jacketPath, 0)
-                jacket = selected_song.jacket
-            end
-        end
-        gfx.Save()
-        gfx.BeginPath()
-        local size = math.min(resx/2, resy/2);
-        gfx.Translate(resx*3/4, 325+size/2)
-        gfx.ImageRect(-size/2,-size/2,size,size,jacket,1,0)
-        
-        if mouse_clipped(resx*3/4-size/2, 325, size,size) and host == user_id then
-            hovered = function() 
-                missing_song = false
-                mpScreen.SelectSong()
-            end
-        end
-        gfx.Restore()
-        if start_game_soon then
-            draw_button("Game starting...", resx*3/4, 375+size, 600, function() end);
-        else
-            if host == user_id then
-                if selected_song == nil or not selected_song.self_picked then
-                    draw_button_color("Select song", resx*3/4, 375+size, 600, function() 
-                        missing_song = false
-                        mpScreen.SelectSong()
-                    end, 0, math.min(255, 128 + math.floor(32 * math.cos(timer * math.pi))), 0);
-                elseif user_ready and all_ready then
-                    draw_button("Start game", resx*3/4, 375+size, 600, start_game)
-                elseif user_ready and not all_ready then
-                    draw_button("Waiting for others", resx*3/4, 375+size, 600, function() 
-                        missing_song = false
-                        mpScreen.SelectSong()
-                    end)
-                else
-                    draw_button("Ready", resx*3/4, 375+size, 600, ready_up);
-                end
-            elseif host == nil then
-                draw_button("Waiting for game to end", resx*3/4, 375+size, 600, function() end);
-            elseif missing_song then
-                draw_button("Missing Song!", resx*3/4, 375+size, 600, function() end);
-            elseif selected_song ~= nil then
-                if user_ready then
-                    draw_button("Cancel", resx*3/4, 375+size, 600, ready_up);
-                else
-                    draw_button("Ready", resx*3/4, 375+size, 600, ready_up);
-                end
-            else
-                draw_button("Waiting for host", resx*3/4, 375+size, 600, function() end);
-            end
-        end
-
-        draw_checkbox("Excessive Gauge", resx*3/4 - 150 + 30, 375+size + 70, toggle_hard, hard_mode, not start_game_soon)
-        draw_checkbox("Rotate Host", resx*3/4 + 150 + 20, 375+size + 70, toggle_rotate, do_rotate, host == user_id and not start_game_soon)
+    if screenState == "inRoom" then
+        render_lobby(deltaTime);
+    elseif screenState == "roomList" then
+        render_room_list(deltaTime);
+    elseif screenState == "passwordScreen" then
+        render_password_screen(deltaTime);
+    elseif screenState == "newRoomName" then
+        render_new_room_name()
+    elseif screenState == "newRoomPassword" then
+        render_new_room_password()
     end
     render_loading();
     render_info();
+
 end
 
 -- Ready up to play
@@ -621,7 +699,7 @@ end
 
 function new_room()
     host = user_id
-    Tcp.SendLine(json.encode({topic="server.room.new"}))
+    mpScreen.NewRoomStep()
 end
 
 -- Toggle host rotation
@@ -650,7 +728,12 @@ end
 -- Join a given room
 function join_room(room)
     host = user_id
-    Tcp.SendLine(json.encode({topic="server.room.join", id=room.id}))
+    selected_room = room;
+    if room.password then
+        mpScreen.JoinWithPassword(room.id)
+    else
+        mpScreen.JoinWithoutPassword(room.id)
+    end
 end
 
 -- Handle button presses to advance the UI
@@ -659,27 +742,29 @@ button_pressed = function(button)
         if start_game_soon then
             return
         end
-        if selected_room == nil then
+        if screenState == "roomList" then
             if #rooms == 0 then
                 new_room()
             else
                 -- TODO navigate room selection
                 join_room(rooms[selected_room_index]) 
             end
-        elseif host == user_id then
-            if selected_song and selected_song.self_picked then
-                if all_ready then
-                    start_game()
+        elseif screenState == "inRoom" then
+            if host == user_id then
+                if selected_song and selected_song.self_picked then
+                    if all_ready then
+                        start_game()
+                    else
+                        missing_song = false
+                        mpScreen.SelectSong()
+                    end
                 else
                     missing_song = false
                     mpScreen.SelectSong()
                 end
             else
-                missing_song = false
-                mpScreen.SelectSong()
+                ready_up()
             end
-        else
-            ready_up()
         end
     end
 end
@@ -687,18 +772,19 @@ end
 -- Handle the escape key around the UI
 function key_pressed(key)
     if key == 27 then --escape pressed
-        if selected_room == nil then
+        if screenState == "roomList" then
             did_exit = true;
             mpScreen.Exit();
             return
         end
 
         -- Reset room data
+        screenState = "roomList" -- have to update here
         selected_room = nil;
         rooms = {};
-        selected_song = nil;
+        selected_song = nil
+        selected_song_index = 1;
         jacket = 0;
-        Tcp.SendLine(json.encode({topic="room.leave"}));
     end
 
 end

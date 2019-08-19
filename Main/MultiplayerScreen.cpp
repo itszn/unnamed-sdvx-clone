@@ -15,7 +15,102 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.12"
+#define MULTIPLAYER_VERSION "v0.13"
+
+// XXX probably should be moved with the songselect one to its own class file?
+class TextInput
+{
+public:
+	WString input;
+	WString composition;
+	uint32 backspaceCount;
+	bool active = false;
+	Delegate<const WString&> OnTextChanged;
+	bool start_taking_input = false;
+
+	~TextInput()
+	{
+		g_gameWindow->OnTextInput.RemoveAll(this);
+		g_gameWindow->OnTextComposition.RemoveAll(this);
+		g_gameWindow->OnKeyRepeat.RemoveAll(this);
+		g_gameWindow->OnKeyPressed.RemoveAll(this);
+	}
+
+	void OnTextInput(const WString& wstr)
+	{
+		if (!start_taking_input)
+			return;
+		input += wstr;
+		OnTextChanged.Call(input);
+	}
+	void OnTextComposition(const Graphics::TextComposition& comp)
+	{
+		composition = comp.composition;
+	}
+	void OnKeyRepeat(int32 key)
+	{
+		if (key == SDLK_BACKSPACE)
+		{
+			if (input.empty())
+				backspaceCount++; // Send backspace
+			else
+			{
+				auto it = input.end(); // Modify input string instead
+				--it;
+				input.erase(it);
+				OnTextChanged.Call(input);
+			}
+		}
+	}
+	void OnKeyPressed(int32 key)
+	{
+		if (key == SDLK_v)
+		{
+			if (g_gameWindow->GetModifierKeys() == ModifierKeys::Ctrl)
+			{
+				if (g_gameWindow->GetTextComposition().composition.empty())
+				{
+					// Paste clipboard text into input buffer
+					input += g_gameWindow->GetClipboard();
+				}
+			}
+		}
+	}
+	void SetActive(bool state)
+	{
+		active = state;
+		if (state)
+		{
+			start_taking_input = false;
+
+			SDL_StartTextInput();
+			g_gameWindow->OnTextInput.Add(this, &TextInput::OnTextInput);
+			g_gameWindow->OnTextComposition.Add(this, &TextInput::OnTextComposition);
+			g_gameWindow->OnKeyRepeat.Add(this, &TextInput::OnKeyRepeat);
+			g_gameWindow->OnKeyPressed.Add(this, &TextInput::OnKeyPressed);
+		}
+		else
+		{
+			SDL_StopTextInput();
+			g_gameWindow->OnTextInput.RemoveAll(this);
+			g_gameWindow->OnTextComposition.RemoveAll(this);
+			g_gameWindow->OnKeyRepeat.RemoveAll(this);
+			g_gameWindow->OnKeyPressed.RemoveAll(this);
+		}
+	}
+	void Reset()
+	{
+		backspaceCount = 0;
+		input.clear();
+	}
+	void Tick()
+	{
+		// Wait until we release the start button
+		if (active && !start_taking_input && !g_input.GetButton(Input::Button::BT_S)) {
+			start_taking_input = true;
+		}
+	}
+};
 
 MultiplayerScreen::MultiplayerScreen()
 {
@@ -41,6 +136,7 @@ bool MultiplayerScreen::Init()
 	if (m_lua == nullptr)
 		return false;
 
+
 	g_input.OnButtonPressed.Add(this, &MultiplayerScreen::m_OnButtonPressed);
 	g_input.OnButtonReleased.Add(this, &MultiplayerScreen::m_OnButtonReleased);
 	g_gameWindow->OnMouseScroll.Add(this, &MultiplayerScreen::m_OnMouseScroll);
@@ -49,11 +145,20 @@ bool MultiplayerScreen::Init()
 	m_bindable = new LuaBindable(m_lua, "mpScreen");
 	m_bindable->AddFunction("Exit", this, &MultiplayerScreen::lExit);
 	m_bindable->AddFunction("SelectSong", this, &MultiplayerScreen::lSongSelect);
+	m_bindable->AddFunction("JoinWithPassword", this, &MultiplayerScreen::lJoinWithPassword);
+	m_bindable->AddFunction("JoinWithoutPassword", this, &MultiplayerScreen::lJoinWithoutPassword);
+	m_bindable->AddFunction("NewRoomStep", this, &MultiplayerScreen::lNewRoomStep);
+
+	
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
 
 	lua_pushstring(m_lua, MULTIPLAYER_VERSION);
 	lua_setglobal(m_lua, "MULTIPLAYER_VERSION");
+
+	m_screenState = MultiplayerScreenState::ROOM_LIST;
+	lua_pushstring(m_lua, "roomList");
+	lua_setglobal(m_lua, "screenState");
 	
 	// Start the map database
 	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
@@ -69,6 +174,7 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
+	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 	
@@ -85,14 +191,19 @@ bool MultiplayerScreen::Init()
 
 	if (!nickEntry)
 		nickEntry = g_skinConfig->GetEntry("nick");
-	String name = nickEntry ? nickEntry->As<StringConfigEntry>()->data : "Guest";
+	m_userName = nickEntry ? nickEntry->As<StringConfigEntry>()->data : "Guest";
 
 	nlohmann::json packet;
 	packet["topic"] = "user.auth";
 	packet["password"] = password;
-	packet["name"] = name;
+	packet["name"] = m_userName;
 	packet["version"] = MULTIPLAYER_VERSION;
 	m_tcp.SendJSON(packet);
+
+	m_textInput = Ref<TextInput>(new TextInput());
+
+
+
 
     return true;
 }
@@ -104,9 +215,25 @@ void MultiplayerScreen::m_handleSocketClose() {
 	g_application->RemoveTickable(this);
 }
 
-// Save current room
+bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
+{
+	lua_pushboolean(m_lua, true);
+	lua_setglobal(m_lua, "passwordError");
+
+	lua_pushnumber(m_lua, 1.0f);
+	lua_setglobal(m_lua, "passwordErrorOffset");
+	return true;
+}
+
+
 bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 {
+	if (m_textInput->active)
+		m_textInput->SetActive(false);
+
+	m_screenState = MultiplayerScreenState::IN_ROOM;
+	lua_pushstring(m_lua, "inRoom");
+	lua_setglobal(m_lua, "screenState");
 	m_roomId = static_cast<String>(packet["room"]["id"]);
 	return true;
 }
@@ -447,8 +574,14 @@ void MultiplayerScreen::Tick(float deltaTime)
 	if (IsSuspended())
 		return;
 
+	m_textInput->Tick();
+
+	lua_newtable(m_lua);
+	m_PushStringToTable("text", Utility::ConvertToUTF8(m_textInput->input).c_str());
+	lua_setglobal(m_lua, "textInput");
+
 	// Lock mouse to screen when active
-	if (m_roomId == "" && 
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST && 
 		g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse && g_gameWindow->IsActive())
 	{
 		if (!m_lockMouse)
@@ -473,7 +606,7 @@ void MultiplayerScreen::Tick(float deltaTime)
 	}
 
 	// Room selection
-	if (m_roomId == "") {
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST) {
 		float room_input = g_input.GetInputLaserDir(1);
 		m_advanceRoom += room_input;
 		int advanceRoomActual = (int)Math::Floor(m_advanceRoom * Math::Sign(m_advanceRoom)) * Math::Sign(m_advanceRoom);
@@ -554,7 +687,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 		}
 	}
 	lua_settop(m_lua, 0);
-	
+
 	if (key == SDLK_LEFT && m_hasSelectedMap)
 	{
 		m_changeDifficulty(-1);
@@ -563,19 +696,53 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 	{
 		m_changeDifficulty(1);
 	}
-	else if (key == SDLK_UP && m_roomId == "")
+	else if (key == SDLK_UP && m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
 		m_changeSelectedRoom(-1);
 	}
-	else if (key == SDLK_DOWN && m_roomId == "")
+	else if (key == SDLK_DOWN && m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
 		m_changeSelectedRoom(1);
 	}
-	else if (key == SDLK_ESCAPE && m_hasSelectedMap)
+	else if (key == SDLK_ESCAPE)
 	{
-		m_hasSelectedMap = false;
-		if (m_roomId != "")
+		if (m_screenState != MultiplayerScreenState::ROOM_LIST)
+		{
+			if (m_screenState == MultiplayerScreenState::IN_ROOM)
+			{
+				nlohmann::json packet;
+				packet["topic"] = "room.leave";
+				m_tcp.SendJSON(packet);
+			}
+			else
+			{
+				nlohmann::json packet;
+				packet["topic"] = "server.rooms";
+				m_tcp.SendJSON(packet);
+			}
+
+			if (m_textInput->active)
+				m_textInput->SetActive(false);
+
+			m_screenState = MultiplayerScreenState::ROOM_LIST;
+			lua_pushstring(m_lua, "roomList");
+			lua_setglobal(m_lua, "screenState");
+
 			m_roomId = "";
+			m_hasSelectedMap = false;
+		}
+	}
+	else if (key == SDLK_RETURN)
+	{
+		if (m_screenState == MultiplayerScreenState::JOIN_PASSWORD) 
+		{
+			lJoinWithPassword(NULL);
+		}
+		else if (m_screenState == MultiplayerScreenState::NEW_ROOM_NAME ||
+			m_screenState == MultiplayerScreenState::NEW_ROOM_PASSWORD)
+		{
+			lNewRoomStep(NULL);
+		}
 	}
 }
 
@@ -604,6 +771,9 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 	if (IsSuspended())
 		return;
 
+	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_textInput->active)
+		return;
+
 	lua_getglobal(m_lua, "button_pressed");
 	if (lua_isfunction(m_lua, -1))
 	{
@@ -620,6 +790,9 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 void MultiplayerScreen::m_OnButtonReleased(Input::Button buttonCode)
 {
 	if (IsSuspended())
+		return;
+
+	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_textInput->active)
 		return;
 
 	lua_getglobal(m_lua, "button_released");
@@ -711,4 +884,78 @@ bool MultiplayerScreen::ShouldSync()
 		return false;
 	}
 	return true;
+}
+
+int MultiplayerScreen::lJoinWithoutPassword(lua_State* L)
+{
+	m_roomToJoin = luaL_checkstring(L, 2);
+	nlohmann::json packet;
+	packet["topic"] = "server.room.join";
+	packet["id"] = m_roomToJoin;
+	m_tcp.SendJSON(packet);
+	return 0;
+}
+
+int MultiplayerScreen::lJoinWithPassword(lua_State* L)
+{
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST) {
+		Logf("In screen", Logger::Error);
+		m_roomToJoin = luaL_checkstring(L, 2);
+		m_textInput->Reset();
+		m_textInput->SetActive(true);
+		
+
+		m_screenState = MultiplayerScreenState::JOIN_PASSWORD;
+		lua_pushstring(m_lua, "passwordScreen");
+		lua_setglobal(m_lua, "screenState");
+
+		lua_pushboolean(m_lua, false);
+		lua_setglobal(m_lua, "passwordError");
+		return 0;
+	}
+
+	nlohmann::json packet;
+	packet["topic"] = "server.room.join";
+	packet["id"] = m_roomToJoin;
+	packet["password"] = Utility::ConvertToUTF8(m_textInput->input);
+	m_tcp.SendJSON(packet);
+
+	return 0;
+}
+
+int MultiplayerScreen::lNewRoomStep(lua_State* L)
+{
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST)
+	{
+		m_screenState = MultiplayerScreenState::NEW_ROOM_NAME;
+		lua_pushstring(m_lua, "newRoomName");
+		lua_setglobal(m_lua, "screenState");
+
+		m_textInput->Reset();
+		m_textInput->input = Utility::ConvertToWString(m_userName + "'s Room");
+		m_textInput->SetActive(true);
+	}
+	else if (m_screenState == MultiplayerScreenState::NEW_ROOM_NAME)
+	{
+		if (m_textInput->input.length() == 0) {
+			return 0;
+		}
+		m_newRoomName = Utility::ConvertToUTF8(m_textInput->input);
+		m_textInput->Reset();
+
+		m_screenState = MultiplayerScreenState::NEW_ROOM_PASSWORD;
+		lua_pushstring(m_lua, "newRoomPassword");
+		lua_setglobal(m_lua, "screenState");
+
+	}
+	else if (m_screenState == MultiplayerScreenState::NEW_ROOM_PASSWORD)
+	{
+		nlohmann::json packet;
+		packet["topic"] = "server.room.new";
+		packet["name"] = m_newRoomName;
+		packet["password"] = Utility::ConvertToUTF8(m_textInput->input);
+		m_tcp.SendJSON(packet);
+		m_textInput->Reset();
+	}
+	return 0;
 }

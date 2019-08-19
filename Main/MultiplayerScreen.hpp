@@ -16,6 +16,17 @@ enum SyncState {
 	SYNCED
 };
 
+enum MultiplayerScreenState {
+	ROOM_LIST,
+	JOIN_PASSWORD,
+	IN_ROOM,
+	NEW_ROOM_NAME,
+	NEW_ROOM_PASSWORD,
+	SET_USER_NAME,
+};
+
+class TextInput;
+
 class MultiplayerScreen : public IApplicationTickable
 {
 public:
@@ -35,6 +46,9 @@ public:
 
 	int lExit(struct lua_State* L);
 	int lSongSelect(struct lua_State* L);
+	int lNewRoomStep(struct lua_State* L);
+	int lJoinWithPassword(struct lua_State* L);
+	int lJoinWithoutPassword(struct lua_State* L);
 
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
@@ -63,6 +77,7 @@ private:
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
 	bool m_handleJoinRoom(nlohmann::json& packet);
+	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
 
@@ -130,4 +145,12 @@ private:
 	MouseLockHandle m_lockMouse;
 
 	SyncState m_syncState;
+
+	MultiplayerScreenState m_screenState;
+
+	Ref<TextInput> m_textInput;
+	String m_roomToJoin;
+
+	String m_userName;
+	String m_newRoomName;
 };
