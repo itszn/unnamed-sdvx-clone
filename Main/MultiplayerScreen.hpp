@@ -10,6 +10,12 @@
 #include "TCPSocket.hpp"
 #include <Scoring.hpp>
 
+enum SyncState {
+	LOADING,
+	SYNCING,
+	SYNCED
+};
+
 class MultiplayerScreen : public IApplicationTickable
 {
 public:
@@ -45,12 +51,15 @@ public:
 		return m_userId;
 	}
 
+	bool ShouldSync();
+
 private:
 	void m_OnButtonPressed(Input::Button buttonCode);
 	void m_OnButtonReleased(Input::Button buttonCode);
 	void m_OnMouseScroll(int32 steps);
 
 	bool m_handleStartPacket(nlohmann::json& packet);
+	bool m_handleSyncStartPacket(nlohmann::json& packet);
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
 	bool m_handleJoinRoom(nlohmann::json& packet);
@@ -89,7 +98,6 @@ private:
 	bool m_suspended = false;
 
 
-
 	uint32 m_lastScoreSent = 0;
 	// TODO(itszn) have the server adjust this
 	uint32 m_scoreInterval = 200;
@@ -120,4 +128,6 @@ private:
 	float m_advanceDiff = 0.0f;
 	float m_advanceRoom = 0.0f;
 	MouseLockHandle m_lockMouse;
+
+	SyncState m_syncState;
 };

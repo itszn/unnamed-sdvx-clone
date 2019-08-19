@@ -599,7 +599,7 @@ public:
 			}
 		}
 
-		if(!m_paused)
+		if(!m_paused && (m_multiplayer == nullptr ||!m_multiplayer->ShouldSync()))
 			TickGameplay(deltaTime);
 	}
 	virtual void Render(float deltaTime) override
@@ -1645,7 +1645,7 @@ public:
 
 	virtual void OnKeyPressed(int32 key) override
 	{
-		if(key == SDLK_PAUSE)
+		if(key == SDLK_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
@@ -1655,7 +1655,7 @@ public:
 			if(!SkipIntro())
 				SkipOutro();
 		}
-		else if(key == SDLK_PAGEUP)
+		else if(key == SDLK_PAGEUP && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.Advance(5000);
 		}
@@ -1667,7 +1667,7 @@ public:
 				m_manualExit = true;
 			FinishGame();
 		}
-		else if(key == SDLK_F5) // Restart map
+		else if(key == SDLK_F5 && m_multiplayer == nullptr) // Restart map
 		{
 			// Restart
 			Restart();
@@ -1727,6 +1727,10 @@ public:
 		MapTime skipTime = (*firstObj)->time - 1000;
 		if(skipTime > m_lastMapTime)
 		{
+			// In multiplayer mode we have to stay synced
+			if (m_multiplayer != nullptr)
+				return true;
+
 			m_audioPlayback.SetPosition(skipTime);
 			return true;
 		}

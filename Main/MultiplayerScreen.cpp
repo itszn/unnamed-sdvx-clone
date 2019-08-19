@@ -14,7 +14,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.111"
+#define MULTIPLAYER_VERSION "v0.12"
 
 MultiplayerScreen::MultiplayerScreen()
 {
@@ -63,6 +63,7 @@ bool MultiplayerScreen::Init()
 
 	// Add a handler for some socket events
 	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
+	m_tcp.SetTopicHandler("game.sync.start", this, &MultiplayerScreen::m_handleSyncStartPacket);
 	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleAuthResponse);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
@@ -172,6 +173,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 		return false;
 
 	m_inGame = true;
+	m_syncState = SyncState::LOADING;
 
 	// Grab the map from the database
 	MapIndex* map = m_mapDatabase.GetMap(m_selectedMapId);
@@ -205,6 +207,13 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	TransitionScreen* transistion = TransitionScreen::Create(game);
 	g_application->AddTickable(transistion);
 	return false;
+}
+
+
+bool MultiplayerScreen::m_handleSyncStartPacket(nlohmann::json& packet)
+{
+	m_syncState = SyncState::SYNCED;
+	return true;
 }
 
 // Get a map from a given "short" path
@@ -496,6 +505,9 @@ void MultiplayerScreen::SendFinalScore(Scoring& scoring, int clearState)
 	packet["combo"] = scoring.maxComboCounter;
 	packet["clear"] = clearState;
 	m_tcp.SendJSON(packet);
+
+	// In case we exit early
+	m_syncState = SyncState::SYNCED;
 }
 
 void MultiplayerScreen::Render(float deltaTime)
@@ -672,4 +684,19 @@ void MultiplayerScreen::OnSuspend()
 
 	if (m_lockMouse)
 		m_lockMouse.Release();
+}
+
+bool MultiplayerScreen::ShouldSync()
+{
+	if (m_syncState == SyncState::SYNCED)
+		return false;
+	if (m_syncState == SyncState::LOADING)
+	{
+		m_syncState = SyncState::SYNCING;
+		nlohmann::json packet;
+		packet["topic"] = "room.sync.ready";
+		m_tcp.SendJSON(packet);
+		return false;
+	}
+	return true;
 }
