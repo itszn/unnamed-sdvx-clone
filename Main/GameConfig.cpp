@@ -113,4 +113,5 @@ void GameConfig::InitDefaults()
 	// Multiplayer
 	Set(GameConfigKeys::MultiplayerHost, "127.0.0.1:39079");
 	Set(GameConfigKeys::MultiplayerPassword, "d3e5a1c17644e28fa156");
+	Set(GameConfigKeys::MultiplayerUsername, "");
 }

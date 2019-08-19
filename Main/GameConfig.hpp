@@ -101,7 +101,8 @@ DefineEnum(GameConfigKeys,
 
 	// Multiplayer
 	MultiplayerHost,
-	MultiplayerPassword
+	MultiplayerPassword,
+	MultiplayerUsername
 	);
 
 DefineEnum(SpeedMods,

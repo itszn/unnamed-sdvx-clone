@@ -22,7 +22,7 @@ enum MultiplayerScreenState {
 	IN_ROOM,
 	NEW_ROOM_NAME,
 	NEW_ROOM_PASSWORD,
-	SET_USER_NAME,
+	SET_USERNAME,
 };
 
 class TextInput;
@@ -49,6 +49,7 @@ public:
 	int lNewRoomStep(struct lua_State* L);
 	int lJoinWithPassword(struct lua_State* L);
 	int lJoinWithoutPassword(struct lua_State* L);
+	int lSaveUsername(struct lua_State* L);
 
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
@@ -80,6 +81,8 @@ private:
 	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
+
+	void m_authenticate();
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();

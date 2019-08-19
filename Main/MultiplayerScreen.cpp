@@ -149,7 +149,7 @@ bool MultiplayerScreen::Init()
 	m_bindable->AddFunction("JoinWithPassword", this, &MultiplayerScreen::lJoinWithPassword);
 	m_bindable->AddFunction("JoinWithoutPassword", this, &MultiplayerScreen::lJoinWithoutPassword);
 	m_bindable->AddFunction("NewRoomStep", this, &MultiplayerScreen::lNewRoomStep);
-
+	m_bindable->AddFunction("SaveUsername", this, &MultiplayerScreen::lSaveUsername);
 	
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
@@ -178,21 +178,39 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
-	
+
 	// TODO(itszn) better method for entering server and port
 	String host = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
 	m_tcp.Connect(host);
 
+	m_textInput = Ref<TextInput>(new TextInput());
+
+	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
+	if (m_userName == "")
+	{
+		m_screenState = MultiplayerScreenState::SET_USERNAME;
+		lua_pushstring(m_lua, "setUsername");
+		lua_setglobal(m_lua, "screenState");
+		m_textInput->Reset();
+		m_textInput->SetActive(true);
+	}
+	else
+	{
+		m_authenticate();
+	}
+
+    return true;
+}
+
+void MultiplayerScreen::m_authenticate()
+{
+	if (m_textInput->active)
+		m_textInput->SetActive(false);
+
 	String password = g_gameConfig.GetString(GameConfigKeys::MultiplayerPassword);
 
-	// Find some name we can use
-	IConfigEntry* nickEntry = g_skinConfig->GetEntry("multi.user_name_key");
-	if (nickEntry)
-		nickEntry = g_skinConfig->GetEntry(nickEntry->As<StringConfigEntry>()->data);
-
-	if (!nickEntry)
-		nickEntry = g_skinConfig->GetEntry("nick");
-	m_userName = nickEntry ? nickEntry->As<StringConfigEntry>()->data : "Guest";
+	if (m_userName == "")
+		m_userName = "Guest";
 
 	nlohmann::json packet;
 	packet["topic"] = "user.auth";
@@ -200,13 +218,6 @@ bool MultiplayerScreen::Init()
 	packet["name"] = m_userName;
 	packet["version"] = MULTIPLAYER_VERSION;
 	m_tcp.SendJSON(packet);
-
-	m_textInput = Ref<TextInput>(new TextInput());
-
-
-
-
-    return true;
 }
 
 void MultiplayerScreen::m_handleSocketClose()
@@ -715,6 +726,15 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 	{
 		if (m_screenState != MultiplayerScreenState::ROOM_LIST)
 		{
+
+			// Exiting from name setup
+			if (m_userName == "")
+			{
+				m_suspended = true;
+				g_application->RemoveTickable(this);
+				return;
+			}
+
 			if (m_screenState == MultiplayerScreenState::IN_ROOM)
 			{
 				nlohmann::json packet;
@@ -737,6 +757,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 
 			m_roomId = "";
 			m_hasSelectedMap = false;
+
 		}
 	}
 	else if (key == SDLK_RETURN)
@@ -749,6 +770,10 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 			m_screenState == MultiplayerScreenState::NEW_ROOM_PASSWORD)
 		{
 			lNewRoomStep(NULL);
+		}
+		else if (m_screenState == MultiplayerScreenState::SET_USERNAME)
+		{
+			lSaveUsername(NULL);
 		}
 	}
 }
@@ -901,6 +926,24 @@ int MultiplayerScreen::lJoinWithoutPassword(lua_State* L)
 	packet["topic"] = "server.room.join";
 	packet["id"] = m_roomToJoin;
 	m_tcp.SendJSON(packet);
+	return 0;
+}
+
+int MultiplayerScreen::lSaveUsername(lua_State* L)
+{
+	if (m_userName != "" || m_textInput->input.length() == 0)
+		return 0;
+
+	// Update username
+	m_userName = Utility::ConvertToUTF8(m_textInput->input);
+	g_gameConfig.Set(GameConfigKeys::MultiplayerUsername, m_userName);
+	m_textInput->SetActive(false);
+
+	m_screenState = MultiplayerScreenState::ROOM_LIST;
+	lua_pushstring(m_lua, "roomList");
+	lua_setglobal(m_lua, "screenState");
+
+	m_authenticate();
 	return 0;
 }
 

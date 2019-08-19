@@ -632,12 +632,12 @@ function render_new_room_password(delta_time)
     gfx.Fill(); 
 
     gfx.FillColor(255,255,255)
-    gfx.Text("Please enter room password (if or keep it empty):", resx/2, resy/2-40)
+    gfx.Text("Enter room password:", resx/2, resy/2-40)
     gfx.Text(string.rep("*",#textInput.text), resx/2, resy/2+40) 
     draw_button("Create Room", resx/2, resy*3/4, resx/2, mpScreen.NewRoomStep);
 end
 
-function render_new_room_name(delta_time)
+function render_new_room_name(deltaTime)
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
     gfx.FontSize(70)
@@ -652,6 +652,27 @@ function render_new_room_name(delta_time)
     gfx.Text("Please enter room name:", resx/2, resy/2-40)
     gfx.Text(textInput.text, resx/2, resy/2+40) 
     draw_button("Next", resx/2, resy*3/4, resx/2, mpScreen.NewRoomStep);
+end
+
+function render_set_username(deltaTime)
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER, gfx.TEXT_ALIGN_BOTTOM)
+    gfx.FontSize(70)
+    gfx.Text("First things first...", resx/2, resy/4)
+
+    gfx.FillColor(50,50,50)
+    gfx.BeginPath() 
+    gfx.Rect(0, resy/2-10, resx, 60)
+    gfx.Fill(); 
+
+    gfx.FillColor(255,255,255)
+    gfx.Text("Enter a display name:", resx/2, resy/2-40)
+    gfx.Text(textInput.text, resx/2, resy/2+40) 
+    draw_button("Join Multiplayer", resx/2, resy*3/4, resx/2, function()
+        loading = true;
+        mpScreen.SaveUsername()
+    end);
+
 end
 
 render = function(deltaTime)
@@ -681,6 +702,9 @@ render = function(deltaTime)
         render_new_room_name()
     elseif screenState == "newRoomPassword" then
         render_new_room_password()
+    elseif screenState == "setUsername" then
+        loading = false;
+        render_set_username()
     end
     render_loading();
     render_info();

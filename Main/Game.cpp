@@ -196,7 +196,8 @@ public:
 			delete m_background;
 		if (m_foreground)
 			delete m_foreground;
-		if (m_lua) {
+		if (m_lua)
+		{
 			g_application->DisposeLua(m_lua);
 			// Clear the state we stored in in the multiplayer's socket
 			if (m_multiplayer != nullptr)
@@ -422,7 +423,8 @@ public:
 			lua_pushboolean(m_lua, m_multiplayer != nullptr);
 			lua_settable(m_lua, -3);
 
-			if (m_multiplayer != nullptr) {
+			if (m_multiplayer != nullptr)
+			{
 				pushStringToTable("user_id", m_multiplayer->GetUserId());
 				Logf("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
 			}
@@ -1755,7 +1757,8 @@ public:
 		}
 	}
 
-	void MakeMultiplayer(MultiplayerScreen* multiplayer) {
+	void MakeMultiplayer(MultiplayerScreen* multiplayer)
+	{
 		m_multiplayer = multiplayer;
 	}
 
