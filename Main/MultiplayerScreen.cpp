@@ -11,6 +11,7 @@
 #include "SkinConfig.hpp"
 
 #include <ctime>
+#include <string>
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
@@ -64,7 +65,7 @@ bool MultiplayerScreen::Init()
 	// Add a handler for some socket events
 	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
 	m_tcp.SetTopicHandler("game.sync.start", this, &MultiplayerScreen::m_handleSyncStartPacket);
-	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleAuthResponse);
+	m_tcp.SetTopicHandler("server.info", this, &MultiplayerScreen::m_handleAuthResponse);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleSongChange);
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
@@ -123,7 +124,18 @@ bool MultiplayerScreen::m_handleError(nlohmann::json& packet)
 // Save the unique user id the server assigns us
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 {
+	double server_version = atof(static_cast<String>(packet.value("version", "0.0")).c_str()+1);
+	if (server_version < 0.12) {
+		g_gameWindow->ShowMessageBox("Multiplayer server closed", "This version of multiplayer (" MULTIPLAYER_VERSION ") does not support this server", 0);
+		// Fatal error, so leave this view
+		m_suspended = true;
+		g_application->RemoveTickable(this);
+		return false;
+	}
+
 	m_userId = static_cast<String>(packet["userid"]);
+	m_scoreInterval = packet.value("refresh_rate",1000);
+
 	return true;
 }
 

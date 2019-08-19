@@ -510,7 +510,9 @@ render = function(deltaTime)
         gfx.Text("Multiplayer Rooms", resx/2, 100)
 
 
-        draw_button("Create new room", resx/2, resy-40-buttonHeight, resx*(3/4), new_room);
+        if not loading then
+            draw_button("Create new room", resx/2, resy-40-buttonHeight, resx*(3/4), new_room);
+        end
     
     -- Room Lobby View
     else
@@ -710,10 +712,12 @@ mouse_pressed = function(button)
 end
 
 function init_tcp()
--- Update the list of rooms as well as get user_id for the client
-Tcp.SetTopicHandler("server.rooms", function(data)
+Tcp.SetTopicHandler("server.info", function(data)
     loading = false
     user_id = data.userid
+end)
+-- Update the list of rooms as well as get user_id for the client
+Tcp.SetTopicHandler("server.rooms", function(data)
 
     rooms = {}
     for i, room in ipairs(data.rooms) do
