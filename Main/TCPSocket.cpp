@@ -72,7 +72,8 @@ bool TCPSocket::Connect(String host)
 
 	// Create a TCP socket
 	m_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-	if (invalid_socket(m_socket)) {
+	if (invalid_socket(m_socket))
+	{
 		Logf("[Socket] Unable to create socket to address %s port %s", Logger::Error, host.c_str(), port.c_str());
 		return false;
 	}
@@ -116,7 +117,8 @@ int TCPSocket::lSendLine(struct lua_State* L)
 }
 
 // Send a line of data to the socket
-void TCPSocket::SendLine(String data) {
+void TCPSocket::SendLine(String data)
+{
 	// For now send a 0 to say it is line deliniated
 	char zeroByte = (char)TCPPacketMode::JSON_LINE;
 	send(m_socket, (char*)& zeroByte, 1, 0);
@@ -177,7 +179,8 @@ void TCPSocket::Close()
 	m_open = false;
 
 	// Reset buffering
-	if (m_dataBuff) {
+	if (m_dataBuff)
+	{
 		free(m_dataBuff);
 		m_dataBuff = nullptr;
 	}
@@ -187,7 +190,8 @@ void TCPSocket::Close()
 
 	Logf("[Socket] Socket closed", Logger::Info);
 
-	if (m_closeCallback != nullptr) {
+	if (m_closeCallback != nullptr)
+	{
 		m_closeCallback->Call();
 	}
 }
@@ -237,7 +241,8 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 		{
 			lua_rawgeti(handler->L, LUA_REGISTRYINDEX, handler->callback);
 			m_pushJsonObject(handler->L, jsonPacket);
-			if (lua_pcall(handler->L, 1, 0, 0) != 0) {
+			if (lua_pcall(handler->L, 1, 0, 0) != 0)
+			{
 				Logf("[Socket] Lua error on calling TCP handler: %s", Logger::Error, lua_tostring(handler->L, -1));
 			}
 			lua_settop(handler->L, 0);

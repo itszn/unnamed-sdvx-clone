@@ -106,7 +106,8 @@ public:
 	void Tick()
 	{
 		// Wait until we release the start button
-		if (active && !start_taking_input && !g_input.GetButton(Input::Button::BT_S)) {
+		if (active && !start_taking_input && !g_input.GetButton(Input::Button::BT_S))
+		{
 			start_taking_input = true;
 		}
 	}
@@ -208,7 +209,8 @@ bool MultiplayerScreen::Init()
     return true;
 }
 
-void MultiplayerScreen::m_handleSocketClose() {
+void MultiplayerScreen::m_handleSocketClose()
+{
 	// Don't exit if we are in game or selection
 	if (m_suspended)
 		return;
@@ -252,7 +254,8 @@ bool MultiplayerScreen::m_handleError(nlohmann::json& packet)
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 {
 	double server_version = atof(static_cast<String>(packet.value("version", "0.0")).c_str()+1);
-	if (server_version < 0.12) {
+	if (server_version < 0.12)
+	{
 		g_gameWindow->ShowMessageBox("Multiplayer server closed", "This version of multiplayer (" MULTIPLAYER_VERSION ") does not support this server", 0);
 		// Fatal error, so leave this view
 		m_suspended = true;
@@ -364,7 +367,8 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int3
 		// No haxing pls
 		if (map.second->difficulties.size() <= diff_ind)
 		{
-			if (level != 0 || map.second->difficulties.size() == 0) {
+			if (level != 0 || map.second->difficulties.size() == 0)
+			{
 				Logf("[Multiplayer] Difficulty out of range!", Logger::Warning);
 				continue;
 			}
@@ -376,14 +380,16 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int3
 		DifficultyIndex* new_diff = map.second->difficulties[diff_ind];
 
 		// Check if this is the right map (the diff level matches up)
-		if (level != 0 && new_diff->settings.level != level) {
+		if (level != 0 && new_diff->settings.level != level)
+		{
 			continue;
 		}
 		Logf("[Multiplayer] Found: diff_id=%d mapid=%d path=%s", Logger::Info, new_diff->id, new_diff->mapId, new_diff->path.c_str());
 		return new_diff;
 	}
 
-	if (level != 0) {
+	if (level != 0)
+	{
 		// We couldn't find an exact match, try to grab whatever song matches
 		return m_getMapByShortPath(path, diff_ind, 0);
 	}
@@ -606,7 +612,8 @@ void MultiplayerScreen::Tick(float deltaTime)
 	}
 
 	// Room selection
-	if (m_screenState == MultiplayerScreenState::ROOM_LIST) {
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST)
+	{
 		float room_input = g_input.GetInputLaserDir(1);
 		m_advanceRoom += room_input;
 		int advanceRoomActual = (int)Math::Floor(m_advanceRoom * Math::Sign(m_advanceRoom)) * Math::Sign(m_advanceRoom);
@@ -853,7 +860,8 @@ void MultiplayerScreen::OnRestore()
 	}
 
 	// Retrive the lobby info now that we are out of the game
-	if (m_inGame) {
+	if (m_inGame)
+	{
 		m_inGame = false;
 		m_selfPicked = false;
 		nlohmann::json packet;
@@ -898,7 +906,8 @@ int MultiplayerScreen::lJoinWithoutPassword(lua_State* L)
 
 int MultiplayerScreen::lJoinWithPassword(lua_State* L)
 {
-	if (m_screenState == MultiplayerScreenState::ROOM_LIST) {
+	if (m_screenState == MultiplayerScreenState::ROOM_LIST)
+	{
 		Logf("In screen", Logger::Error);
 		m_roomToJoin = luaL_checkstring(L, 2);
 		m_textInput->Reset();
@@ -937,7 +946,8 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 	}
 	else if (m_screenState == MultiplayerScreenState::NEW_ROOM_NAME)
 	{
-		if (m_textInput->input.length() == 0) {
+		if (m_textInput->input.length() == 0)
+		{
 			return 0;
 		}
 		m_newRoomName = Utility::ConvertToUTF8(m_textInput->input);

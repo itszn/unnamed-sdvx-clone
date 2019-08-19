@@ -535,7 +535,8 @@ private:
 	void m_SetLuaMaps(bool withAll)
 	{
 		m_SetLuaMaps("songs", m_SourceCollection());
-		if (withAll) {
+		if (withAll)
+		{
 			m_SetLuaMaps("allSongs", m_maps);
 		}
 
@@ -1158,7 +1159,8 @@ public:
 				MapIndex* map = m_selectionWheel->GetSelection();
 				if (map)
 				{
-					if (m_multiplayer != nullptr) {
+					if (m_multiplayer != nullptr)
+					{
 						// When we are in multiplayer, just report the song and exit instead
 						m_multiplayer->SetSelectedMap(map, m_selectionWheel->GetSelectedDifficulty());
 
@@ -1547,7 +1549,8 @@ public:
 
 	}
 
-	void MakeMultiplayer(MultiplayerScreen* multiplayer) {
+	void MakeMultiplayer(MultiplayerScreen* multiplayer)
+	{
 		m_multiplayer = multiplayer;
 	}
 };
