@@ -126,6 +126,7 @@ public:
 	}
 	~TitleScreen_Impl()
 	{
+		g_gameWindow->OnMousePressed.RemoveAll(this);
 	}
 
 	virtual void Render(float deltaTime)

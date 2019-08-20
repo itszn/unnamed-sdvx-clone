@@ -12,7 +12,7 @@ public:
 	~File();
 
 	bool OpenRead(const String& path);
-	bool OpenWrite(const String& path, bool append = false);
+	bool OpenWrite(const String& path, bool append = false, bool noLog = false);
 	void Close();
 	// Seek from file start
 	void Seek(size_t pos);
