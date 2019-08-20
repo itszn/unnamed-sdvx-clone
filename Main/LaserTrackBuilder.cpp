@@ -2,6 +2,7 @@
 #include "LaserTrackBuilder.hpp"
 #include <Beatmap/BeatmapPlayback.hpp>
 #include "Track.hpp"
+#include "GameConfig.hpp"
 #include <algorithm>
 
 using Shared::Rect;
@@ -320,7 +321,7 @@ void LaserTrackBuilder::m_RecalculateConstants()
 	realBorderSize = (actualLaserWidth - laserWidthNoBorder) * 0.5f;
 
 	// The length of the horizontal slam segments
-	slamDuration = 50;
+	slamDuration = 50 * g_gameConfig.GetFloat(GameConfigKeys::SlamThicknessMultiplier);
 
 	// The effective area in which the center point of the laser can move
 	effectiveWidth = m_trackWidth - m_laserWidth;

@@ -521,6 +521,9 @@ public:
 			nk_slider_float(m_nctx, 0, m_laserColors+1, 360, 0.1);
 
 			nk_layout_row_dynamic(m_nctx, 30, 1);
+
+			EnumSetting<Enum_AutoScoreScreenshot>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+
 #ifdef _WIN32
 			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32

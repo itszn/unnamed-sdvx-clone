@@ -246,60 +246,7 @@ public:
 		}
 		if (key == SDLK_F12)
 		{
-			auto luaPopInt = [this]
-			{
-				int a = lua_tonumber(m_lua, lua_gettop(m_lua));
-				lua_pop(m_lua, 1);
-				return a;
-			};
-			int x, y, w, h;
-			lua_getglobal(m_lua, "get_capture_rect");
-			if (lua_isfunction(m_lua, -1))
-			{
-				if (lua_pcall(m_lua, 0, 4, 0) != 0)
-				{
-					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
-					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				}
-				h = luaPopInt();
-				w = luaPopInt();
-				y = luaPopInt();
-				x = luaPopInt();
-				if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
-				{
-					x += g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
-				}
-			}
-			else
-			{
-				if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
-				{
-					x = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;;
-					y = 0;
-					w = g_resolution.x;
-					h = g_resolution.y;
-				}
-				else
-				{
-					x = 0;
-					y = 0;
-					w = g_resolution.x;
-					h = g_resolution.y;
-				}
-			}
-			Vector2i size(w, h);
-			Image screenshot = ImageRes::Screenshot(g_gl, size, { x,y });
-			String screenshotPath = "screenshots/" + Shared::Time::Now().ToString() + ".png";
-			screenshot->SavePNG(screenshotPath);
-			screenshot.Release();
-
-			lua_getglobal(m_lua, "screenshot_captured");
-			if (lua_isfunction(m_lua, -1))
-			{
-				lua_pushstring(m_lua, *screenshotPath);
-				lua_call(m_lua, 1, 0);
-			}
-			lua_settop(m_lua, 0);
+			Capture();
 		}
 		if (key == SDLK_F9)
 		{
@@ -342,6 +289,72 @@ public:
 	virtual void OnRestore()
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
+		
+		AutoScoreScreenshot screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshot>(GameConfigKeys::AutoScoreScreenshot);
+		if (screensetting == AutoScoreScreenshot::Always ||
+			(screensetting == AutoScoreScreenshot::Highscore && m_highScores.empty()) ||
+			(screensetting == AutoScoreScreenshot::Highscore && m_score > m_highScores.front()->score))
+		{
+			Capture();
+		}
+	}
+
+	void Capture()
+	{
+		auto luaPopInt = [this]
+		{
+			int a = lua_tonumber(m_lua, lua_gettop(m_lua));
+			lua_pop(m_lua, 1);
+			return a;
+		};
+		int x, y, w, h;
+		lua_getglobal(m_lua, "get_capture_rect");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 4, 0) != 0)
+			{
+				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			}
+			h = luaPopInt();
+			w = luaPopInt();
+			y = luaPopInt();
+			x = luaPopInt();
+			if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
+			{
+				x += g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
+			}
+		}
+		else
+		{
+			if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
+			{
+				x = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;;
+				y = 0;
+				w = g_resolution.x;
+				h = g_resolution.y;
+			}
+			else
+			{
+				x = 0;
+				y = 0;
+				w = g_resolution.x;
+				h = g_resolution.y;
+			}
+		}
+		Vector2i size(w, h);
+		Image screenshot = ImageRes::Screenshot(g_gl, size, { x,y });
+		String screenshotPath = "screenshots/" + Shared::Time::Now().ToString() + ".png";
+		screenshot->SavePNG(screenshotPath);
+		screenshot.Release();
+
+		lua_getglobal(m_lua, "screenshot_captured");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushstring(m_lua, *screenshotPath);
+			lua_call(m_lua, 1, 0);
+		}
+		lua_settop(m_lua, 0);
 	}
 
 };
