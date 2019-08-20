@@ -1125,11 +1125,7 @@ void Application::JoinMultiFromInvite(String secret)
 		RemoveTickable(tickable);
 	}
 
-	TCPSocket& tcp = mpScreen->GetTCP();
-	nlohmann::json joinReq;
-	joinReq["topic"] = "server.room.join";
-	joinReq["id"] = *secret;
-	tcp.SendJSON(joinReq);
+	mpScreen->JoinRoomWithToken(*secret);
 }
 
 void Application::LoadGauge(bool hard)

@@ -44,6 +44,8 @@ public:
 	virtual void OnSuspend();
 	virtual void OnRestore();
 
+	void JoinRoomWithToken(String token);
+
 	int lExit(struct lua_State* L);
 	int lSongSelect(struct lua_State* L);
 	int lNewRoomStep(struct lua_State* L);
@@ -94,6 +96,7 @@ private:
 	bool m_handleStartPacket(nlohmann::json& packet);
 	bool m_handleSyncStartPacket(nlohmann::json& packet);
 	bool m_handleAuthResponse(nlohmann::json& packet);
+	bool m_handleRoomList(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
 	bool m_handleRoomUpdate(nlohmann::json& packet);
 	bool m_handleJoinRoom(nlohmann::json& packet);
@@ -101,6 +104,8 @@ private:
 	bool m_handleError(nlohmann::json& packet);
 	bool m_handleAllFail(nlohmann::json& packet);
 	void m_handleSocketClose();
+
+	void m_joinRoomWithToken();
 
 	void m_authenticate();
 
@@ -176,6 +181,8 @@ private:
 
 	Ref<TextInput> m_textInput;
 	String m_roomToJoin;
+
+	String m_joinToken;
 
 	String m_userName;
 	String m_newRoomName;

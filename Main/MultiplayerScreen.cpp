@@ -172,6 +172,7 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
 	m_tcp.SetTopicHandler("game.sync.start", this, &MultiplayerScreen::m_handleSyncStartPacket);
 	m_tcp.SetTopicHandler("server.info", this, &MultiplayerScreen::m_handleAuthResponse);
+	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleRoomList);
 	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleRoomUpdate);
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
@@ -201,6 +202,22 @@ bool MultiplayerScreen::Init()
 	}
 
     return true;
+}
+
+void MultiplayerScreen::JoinRoomWithToken(String token)
+{
+	m_joinToken = token;
+	// Already authed
+	if (m_userId != "")
+		return m_joinRoomWithToken();
+}
+
+void MultiplayerScreen::m_joinRoomWithToken()
+{
+	nlohmann::json joinReq;
+	joinReq["topic"] = "server.room.join";
+	joinReq["token"] = m_joinToken;
+	m_tcp.SendJSON(joinReq);
 }
 
 void MultiplayerScreen::m_authenticate()
@@ -245,6 +262,11 @@ bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
 	return true;
 }
 
+bool MultiplayerScreen::m_handleRoomList(nlohmann::json& packet)
+{
+	g_application->DiscordPresenceMenu("Browsing multiplayer rooms");
+	return true;
+}
 
 bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 {
@@ -255,7 +277,8 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	lua_pushstring(m_lua, "inRoom");
 	lua_setglobal(m_lua, "screenState");
 	m_roomId = static_cast<String>(packet["room"]["id"]);
-	g_application->DiscordPresenceMulti(m_roomId, 1, 10);
+	m_joinToken = static_cast<String>(packet["room"]["join_token"]);
+	g_application->DiscordPresenceMulti(m_joinToken, 1, 10);
 	return true;
 }
 
@@ -286,13 +309,17 @@ bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 	m_userId = static_cast<String>(packet["userid"]);
 	m_scoreInterval = packet.value("refresh_rate",1000);
 
+	// If we are waiting to join a room, join now
+	if (m_joinToken != "")
+		m_joinRoomWithToken();
 	return true;
 }
 
 bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 {
 	int userCount = packet.at("users").size();
-	g_application->DiscordPresenceMulti(m_roomId, userCount, 10);
+	m_joinToken = packet.value("join_token", "");
+	g_application->DiscordPresenceMulti(m_joinToken, userCount, 10);
 	m_handleSongChange(packet);
 	return true;
 }
