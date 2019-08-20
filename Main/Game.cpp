@@ -1018,7 +1018,19 @@ public:
 		// Stop playing if gauge is on hard and at 0%
 		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
 		{
-			FinishGame();
+			// In multiplayer we don't stop, but we send the final score and disable buttons
+			if (m_multiplayer == nullptr || m_multiplayer->DidAllFail()) {
+				FinishGame();
+			} else if (!m_multiplayer->HasFailed()) {
+				m_multiplayer->Fail();
+				m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
+
+				// Disable buttons
+				g_input.OnButtonPressed.RemoveAll(&m_scoring);
+				g_input.OnButtonReleased.RemoveAll(&m_scoring);
+				//g_input.OnButtonPressed.RemoveAll(this);
+				//g_input.OnButtonReleased.RemoveAll(this);
+			}
 		}
 
 

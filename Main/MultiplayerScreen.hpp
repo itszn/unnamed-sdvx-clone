@@ -70,9 +70,21 @@ public:
 		return m_syncState == SyncState::SYNCED;
 	}
 
+	bool DidAllFail() {
+		return m_allFail;
+	}
+
 	void StartSync();
 
 	bool IsSyncing();
+
+	void Fail() {
+		m_failed = true;
+	}
+	
+	bool HasFailed() {
+		return m_failed;
+	}
 
 private:
 	void m_OnButtonPressed(Input::Button buttonCode);
@@ -86,6 +98,7 @@ private:
 	bool m_handleJoinRoom(nlohmann::json& packet);
 	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);
+	bool m_handleAllFail(nlohmann::json& packet);
 	void m_handleSocketClose();
 
 	void m_authenticate();
@@ -129,6 +142,9 @@ private:
 	// Unique id given to by the server on auth
 	String m_userId;
 	String m_roomId;
+
+	bool m_failed = false;
+	bool m_allFail = false;
 
 	// Did this client pick the current song
 	bool m_selfPicked = false;

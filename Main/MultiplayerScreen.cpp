@@ -176,6 +176,7 @@ bool MultiplayerScreen::Init()
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
+	m_tcp.SetTopicHandler("game.allfailed", this, &MultiplayerScreen::m_handleAllFail);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 
@@ -226,6 +227,12 @@ void MultiplayerScreen::m_handleSocketClose()
 	if (m_suspended)
 		return;
 	g_application->RemoveTickable(this);
+}
+
+bool MultiplayerScreen::m_handleAllFail(nlohmann::json& packet)
+{
+	m_allFail = true;
+	return true;
 }
 
 bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
@@ -326,6 +333,8 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 		return false;
 
 	m_inGame = true;
+	m_failed = false;
+	m_allFail = false;
 	m_syncState = SyncState::LOADING;
 
 	// Grab the map from the database
@@ -636,6 +645,9 @@ void MultiplayerScreen::Tick(float deltaTime)
 
 void MultiplayerScreen::PerformScoreTick(Scoring& scoring)
 {
+	if (m_failed)
+		return;
+
 	int lastScoreIndex = scoring.hitStats.size();
 	if (lastScoreIndex == 0)
 		return;
