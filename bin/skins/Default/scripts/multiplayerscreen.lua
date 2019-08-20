@@ -564,7 +564,9 @@ function render_lobby(deltaTime)
         end
     end
 
-    draw_checkbox("Excessive Gauge", resx*3/4 - 150 + 30, 375+size + 70, toggle_hard, hard_mode, not start_game_soon)
+    draw_checkbox("Excessive", resx*3/4 - 150, 375+size + 70, toggle_hard, hard_mode, not start_game_soon)
+    draw_checkbox("Mirror", resx*3/4, 375+size + 70, toggle_mirror, mirror_mode, not start_game_soon)
+    
     draw_checkbox("Rotate Host", resx*3/4 + 150 + 20, 375+size + 70, toggle_rotate, do_rotate, host == user_id and not start_game_soon)
 end
 
@@ -719,6 +721,11 @@ end
 -- Toggle hard gauage
 function toggle_hard()
     Tcp.SendLine(json.encode({topic="user.hard.toggle"}))
+end
+
+-- Toggle hard gauage
+function toggle_mirror()
+    Tcp.SendLine(json.encode({topic="user.mirror.toggle"}))
 end
 
 function new_room()
@@ -900,6 +907,7 @@ Tcp.SetTopicHandler("room.update", function(data)
     end
     host = data.host
     hard_mode = data.hard_mode
+    mirror_mode = data.mirror_mode
     do_rotate = data.do_rotate
     if data.start_soon and not start_game_soon then
         repeat_sound("click-01", 5, 1)
@@ -907,19 +915,4 @@ Tcp.SetTopicHandler("room.update", function(data)
     start_game_soon = data.start_soon
 
 end)
-end
-
--- Update the rooms
-
-
--- Perform pull requests or start the game
-update_tick_bad = function()
-    if start_game_soon then
-        mpScreen.UpdateTime(0)
-        mpScreen.StartGame(hard_mode)
-        return
-    end
-    if loading then
-        return
-    end
 end

@@ -357,12 +357,15 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 
 	// The server tells us if we are playing excessive or not
 	bool is_hard = packet["hard"];
+	bool is_mirror = packet.value("mirror", false);
 
 	GameFlags flags;
 	if (is_hard)
 		flags = GameFlags::Hard;
 	else
 		flags = GameFlags::None;
+	if (is_mirror)
+		flags = flags | GameFlags::Mirror;
 
 	// Create the game using the Create that takes the MultiplayerScreen class
 	Game* game = Game::Create(this, *(diff), flags);
