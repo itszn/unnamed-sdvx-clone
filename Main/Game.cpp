@@ -601,7 +601,7 @@ public:
 			}
 		}
 
-		if(!m_paused && (m_multiplayer == nullptr ||!m_multiplayer->ShouldSync()))
+		if(!m_paused && (m_multiplayer == nullptr ||!m_multiplayer->IsSyncing()))
 			TickGameplay(deltaTime);
 	}
 	virtual void Render(float deltaTime) override
@@ -969,6 +969,12 @@ public:
 	{
 		if(!m_started && m_introCompleted)
 		{
+			if (m_multiplayer != nullptr && !m_multiplayer->IsSynced()) {
+				// We are at the start of the song, so trigger a sync
+				m_multiplayer->StartSync();
+				return;
+			}
+
 			// Start playback of audio in first gameplay tick
 			m_audioPlayback.Play();
 			m_started = true;

@@ -66,7 +66,13 @@ public:
 		return m_userId;
 	}
 
-	bool ShouldSync();
+	bool IsSynced() {
+		return m_syncState == SyncState::SYNCED;
+	}
+
+	void StartSync();
+
+	bool IsSyncing();
 
 private:
 	void m_OnButtonPressed(Input::Button buttonCode);

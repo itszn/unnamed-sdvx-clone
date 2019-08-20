@@ -904,19 +904,17 @@ void MultiplayerScreen::OnSuspend()
 		m_lockMouse.Release();
 }
 
-bool MultiplayerScreen::ShouldSync()
+bool MultiplayerScreen::IsSyncing()
 {
-	if (m_syncState == SyncState::SYNCED)
-		return false;
-	if (m_syncState == SyncState::LOADING)
-	{
-		m_syncState = SyncState::SYNCING;
-		nlohmann::json packet;
-		packet["topic"] = "room.sync.ready";
-		m_tcp.SendJSON(packet);
-		return false;
-	}
-	return true;
+	return (m_syncState == SyncState::SYNCING);
+}
+
+void MultiplayerScreen::StartSync()
+{
+	m_syncState = SyncState::SYNCING;
+	nlohmann::json packet;
+	packet["topic"] = "room.sync.ready";
+	m_tcp.SendJSON(packet);
 }
 
 int MultiplayerScreen::lJoinWithoutPassword(lua_State* L)
