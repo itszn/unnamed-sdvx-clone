@@ -239,6 +239,7 @@ void __discordReady(const DiscordUser* user)
 
 void __discordJoinGame(const char * joins)
 {
+	g_application->JoinMultiFromInvite(joins);
 }
 
 void __discordSpecGame(const char * specs)
@@ -550,6 +551,9 @@ void Application::m_MainLoop()
 	m_lastRenderTime = 0.0f;
 	while(true)
 	{
+		//run discord callbacks
+		Discord_RunCallbacks();
+
 		// Process changes in the list of items
 		bool restoreTop = false;
 		for(auto& ch : g_tickableChanges)
@@ -1061,6 +1065,21 @@ void Application::DiscordPresenceMenu(String name)
 	Discord_UpdatePresence(&discordPresence);
 }
 
+void Application::DiscordPresenceMulti(String id, int partySize, int partyMax)
+{
+	DiscordRichPresence discordPresence;
+	memset(&discordPresence, 0, sizeof(discordPresence));
+	
+	discordPresence.state = "In Lobby";
+	discordPresence.details = "Waiting for multiplayer game to start.";
+	discordPresence.joinSecret = *id;
+	discordPresence.partySize = partySize;
+	discordPresence.partyMax = partyMax;
+	discordPresence.partyId = "test";
+
+	Discord_UpdatePresence(&discordPresence);
+}
+
 void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTime, int64 endTime)
 {
 	Vector<String> diffNames = { "NOV", "ADV", "EXH", "INF" };
@@ -1085,6 +1104,32 @@ void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTi
 	discordPresence.startTimestamp = startTime;
 	discordPresence.endTimestamp = endTime;
 	Discord_UpdatePresence(&discordPresence);
+}
+
+void Application::JoinMultiFromInvite(String secret)
+{
+	//Remove all tickables and add back a titlescreen as a base
+	MultiplayerScreen* mpScreen = new MultiplayerScreen();
+	if (!mpScreen->DoInit())
+	{
+		Log("Failed to initialize multiplayer screen.", Logger::Error);
+		return;
+	}
+	IApplicationTickable* title = (IApplicationTickable*)TitleScreen::Create();
+	title->m_Suspend();
+
+	AddTickable(title);
+	AddTickable(mpScreen);
+	for(IApplicationTickable* tickable : g_tickables)
+	{
+		RemoveTickable(tickable);
+	}
+
+	TCPSocket& tcp = mpScreen->GetTCP();
+	nlohmann::json joinReq;
+	joinReq["topic"] = "server.room.join";
+	joinReq["id"] = *secret;
+	tcp.SendJSON(joinReq);
 }
 
 void Application::LoadGauge(bool hard)

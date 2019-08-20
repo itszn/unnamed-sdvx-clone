@@ -95,6 +95,7 @@ private:
 	bool m_handleSyncStartPacket(nlohmann::json& packet);
 	bool m_handleAuthResponse(nlohmann::json& packet);
 	bool m_handleSongChange(nlohmann::json& packet);
+	bool m_handleRoomUpdate(nlohmann::json& packet);
 	bool m_handleJoinRoom(nlohmann::json& packet);
 	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);

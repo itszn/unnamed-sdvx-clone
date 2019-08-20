@@ -1,7 +1,6 @@
 #pragma once
 #include "Shared/String.hpp"
 #include "Shared/Unique.hpp"
-
 /* 
 	Logging utility class
 	formats loggin messages with time stamps and module names
@@ -33,7 +32,6 @@ public:
 	Logger();
 	~Logger();
 	static Logger& Get();
-
 	// Sets the foreground color of the output, if applicable
 	void SetColor(Color color);
 	// Log a string to the logging output, 

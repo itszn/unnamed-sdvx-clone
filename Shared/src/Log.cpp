@@ -12,6 +12,7 @@ class Logger_Impl
 private:
 	File m_logFile;
 	FileWriter m_writer;
+	bool m_failedToOpen;
 
 public:
 	Logger_Impl()
@@ -26,7 +27,12 @@ public:
 
 		// Log to file
 		String logPath = Path::Absolute(Utility::Sprintf("log_%s.txt", moduleName));
-		m_logFile.OpenWrite(logPath);
+		if (!m_logFile.OpenWrite(logPath, false, true))
+		{
+			m_failedToOpen = true;
+			return;
+		}
+		m_failedToOpen = false;
 		m_writer = FileWriter(m_logFile);
 	}
 
@@ -56,7 +62,8 @@ public:
 		OutputDebugStringA(*msg);
 #endif
 		printf("%s", msg.c_str());
-		TextStream::Write(m_writer, msg);
+		if(!m_failedToOpen)
+			TextStream::Write(m_writer, msg);
 	}
 
 #ifdef _WIN32
