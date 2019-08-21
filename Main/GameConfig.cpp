@@ -104,7 +104,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
 
-	SetEnum<Enum_AutoScoreScreenshot>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshot::Off);
+	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 
 	Set(GameConfigKeys::EditorPath, "PathToEditor");
 	Set(GameConfigKeys::EditorParamsFormat, "%s");

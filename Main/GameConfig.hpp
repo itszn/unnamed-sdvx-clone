@@ -109,7 +109,7 @@ DefineEnum(SpeedMods,
 	CMod
 	);
 
-DefineEnum(AutoScoreScreenshot,
+DefineEnum(AutoScoreScreenshotSettings,
 	Off,
 	Highscore,
 	Always)

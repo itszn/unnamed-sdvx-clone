@@ -290,10 +290,10 @@ public:
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
 		
-		AutoScoreScreenshot screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshot>(GameConfigKeys::AutoScoreScreenshot);
-		if (screensetting == AutoScoreScreenshot::Always ||
-			(screensetting == AutoScoreScreenshot::Highscore && m_highScores.empty()) ||
-			(screensetting == AutoScoreScreenshot::Highscore && m_score > m_highScores.front()->score))
+		AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
+		if (screensetting == AutoScoreScreenshotSettings::Always ||
+			(screensetting == AutoScoreScreenshotSettings::Highscore && m_highScores.empty()) ||
+			(screensetting == AutoScoreScreenshotSettings::Highscore && m_score > m_highScores.front()->score))
 		{
 			Capture();
 		}

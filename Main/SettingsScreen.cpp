@@ -522,7 +522,7 @@ public:
 
 			nk_layout_row_dynamic(m_nctx, 30, 1);
 
-			EnumSetting<Enum_AutoScoreScreenshot>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 
 #ifdef _WIN32
 			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
