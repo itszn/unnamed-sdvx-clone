@@ -1108,24 +1108,26 @@ void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTi
 
 void Application::JoinMultiFromInvite(String secret)
 {
-	//Remove all tickables and add back a titlescreen as a base
 	MultiplayerScreen* mpScreen = new MultiplayerScreen();
-	if (!mpScreen->DoInit())
-	{
-		Log("Failed to initialize multiplayer screen.", Logger::Error);
-		return;
-	}
 	IApplicationTickable* title = (IApplicationTickable*)TitleScreen::Create();
+	auto transition = TransitionScreen::Create(mpScreen);
+	String* token = new String(*secret);
+	auto tokenInput = [=](void* screen)
+	{
+		MultiplayerScreen* mpScreen = (MultiplayerScreen*)screen;
+		mpScreen->JoinRoomWithToken(*token);
+		delete token;
+	};
+	transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
 	title->m_Suspend();
 
+	//Remove all tickables and add back a titlescreen as a base
 	AddTickable(title);
-	AddTickable(mpScreen);
+	AddTickable(transition);
 	for(IApplicationTickable* tickable : g_tickables)
 	{
 		RemoveTickable(tickable);
 	}
-
-	mpScreen->JoinRoomWithToken(*secret);
 }
 
 void Application::LoadGauge(bool hard)

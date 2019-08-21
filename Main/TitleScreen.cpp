@@ -55,7 +55,8 @@ private:
 
 	int lMultiplayer(lua_State* L)
 	{
-		g_application->AddTickable(new MultiplayerScreen());
+		auto multiTransition = TransitionScreen::Create(new MultiplayerScreen());
+		g_application->AddTickable(multiTransition);
 		return 0;
 	}
 
@@ -124,7 +125,8 @@ public:
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);
 		return true;
 	}
-	~TitleScreen_Impl()
+	
+	TitleScreen_Impl()
 	{
 		g_gameWindow->OnMousePressed.RemoveAll(this);
 	}

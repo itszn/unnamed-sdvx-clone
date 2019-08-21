@@ -27,7 +27,7 @@ enum MultiplayerScreenState {
 
 class TextInput;
 
-class MultiplayerScreen : public IApplicationTickable
+class MultiplayerScreen : public IAsyncLoadableApplicationTickable
 {
 public:
 	MultiplayerScreen();
@@ -43,7 +43,8 @@ public:
 
 	virtual void OnSuspend();
 	virtual void OnRestore();
-
+	virtual bool AsyncLoad();
+	virtual bool AsyncFinalize();
 	void JoinRoomWithToken(String token);
 
 	int lExit(struct lua_State* L);

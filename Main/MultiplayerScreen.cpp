@@ -133,73 +133,7 @@ MultiplayerScreen::~MultiplayerScreen()
 
 bool MultiplayerScreen::Init()
 {
-	m_lua = g_application->LoadScript("multiplayerscreen");
-	if (m_lua == nullptr)
-		return false;
 
-
-	g_input.OnButtonPressed.Add(this, &MultiplayerScreen::m_OnButtonPressed);
-	g_input.OnButtonReleased.Add(this, &MultiplayerScreen::m_OnButtonReleased);
-	g_gameWindow->OnMouseScroll.Add(this, &MultiplayerScreen::m_OnMouseScroll);
-	g_gameWindow->OnMousePressed.Add(this, &MultiplayerScreen::MousePressed);
-
-	m_bindable = new LuaBindable(m_lua, "mpScreen");
-	m_bindable->AddFunction("Exit", this, &MultiplayerScreen::lExit);
-	m_bindable->AddFunction("SelectSong", this, &MultiplayerScreen::lSongSelect);
-	m_bindable->AddFunction("JoinWithPassword", this, &MultiplayerScreen::lJoinWithPassword);
-	m_bindable->AddFunction("JoinWithoutPassword", this, &MultiplayerScreen::lJoinWithoutPassword);
-	m_bindable->AddFunction("NewRoomStep", this, &MultiplayerScreen::lNewRoomStep);
-	m_bindable->AddFunction("SaveUsername", this, &MultiplayerScreen::lSaveUsername);
-	
-	m_bindable->Push();
-	lua_settop(m_lua, 0);
-
-	lua_pushstring(m_lua, MULTIPLAYER_VERSION);
-	lua_setglobal(m_lua, "MULTIPLAYER_VERSION");
-
-	m_screenState = MultiplayerScreenState::ROOM_LIST;
-	lua_pushstring(m_lua, "roomList");
-	lua_setglobal(m_lua, "screenState");
-	
-	// Start the map database
-	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
-	m_mapDatabase.StartSearching();
-
-	// Install the socket functions and call the lua init
-	m_tcp.PushFunctions(m_lua);
-
-	// Add a handler for some socket events
-	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
-	m_tcp.SetTopicHandler("game.sync.start", this, &MultiplayerScreen::m_handleSyncStartPacket);
-	m_tcp.SetTopicHandler("server.info", this, &MultiplayerScreen::m_handleAuthResponse);
-	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleRoomList);
-	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleRoomUpdate);
-	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
-	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
-	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
-	m_tcp.SetTopicHandler("game.allfailed", this, &MultiplayerScreen::m_handleAllFail);
-
-	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
-
-	// TODO(itszn) better method for entering server and port
-	String host = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
-	m_tcp.Connect(host);
-
-	m_textInput = Ref<TextInput>(new TextInput());
-
-	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
-	if (m_userName == "")
-	{
-		m_screenState = MultiplayerScreenState::SET_USERNAME;
-		lua_pushstring(m_lua, "setUsername");
-		lua_setglobal(m_lua, "screenState");
-		m_textInput->Reset();
-		m_textInput->SetActive(true);
-	}
-	else
-	{
-		m_authenticate();
-	}
 
     return true;
 }
@@ -944,6 +878,83 @@ void MultiplayerScreen::OnRestore()
 		packet["topic"] = "room.update.get";
 		m_tcp.SendJSON(packet);
 	}
+}
+
+bool MultiplayerScreen::AsyncLoad()
+{
+	// Add a handler for some socket events
+	m_tcp.SetTopicHandler("game.started", this, &MultiplayerScreen::m_handleStartPacket);
+	m_tcp.SetTopicHandler("game.sync.start", this, &MultiplayerScreen::m_handleSyncStartPacket);
+	m_tcp.SetTopicHandler("server.info", this, &MultiplayerScreen::m_handleAuthResponse);
+	m_tcp.SetTopicHandler("server.rooms", this, &MultiplayerScreen::m_handleRoomList);
+	m_tcp.SetTopicHandler("room.update", this, &MultiplayerScreen::m_handleRoomUpdate);
+	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
+	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
+	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
+	m_tcp.SetTopicHandler("game.allfailed", this, &MultiplayerScreen::m_handleAllFail);
+
+	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
+
+	// TODO(itszn) better method for entering server and port
+	String host = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
+	if (!m_tcp.Connect(host))
+		return false;
+
+	m_textInput = Ref<TextInput>(new TextInput());
+	return true;
+}
+
+bool MultiplayerScreen::AsyncFinalize()
+{
+	m_lua = g_application->LoadScript("multiplayerscreen");
+	if (m_lua == nullptr)
+		return false;
+
+	// Install the socket functions and call the lua init
+	m_tcp.PushFunctions(m_lua);
+
+	g_input.OnButtonPressed.Add(this, &MultiplayerScreen::m_OnButtonPressed);
+	g_input.OnButtonReleased.Add(this, &MultiplayerScreen::m_OnButtonReleased);
+	g_gameWindow->OnMouseScroll.Add(this, &MultiplayerScreen::m_OnMouseScroll);
+	g_gameWindow->OnMousePressed.Add(this, &MultiplayerScreen::MousePressed);
+
+	m_bindable = new LuaBindable(m_lua, "mpScreen");
+	m_bindable->AddFunction("Exit", this, &MultiplayerScreen::lExit);
+	m_bindable->AddFunction("SelectSong", this, &MultiplayerScreen::lSongSelect);
+	m_bindable->AddFunction("JoinWithPassword", this, &MultiplayerScreen::lJoinWithPassword);
+	m_bindable->AddFunction("JoinWithoutPassword", this, &MultiplayerScreen::lJoinWithoutPassword);
+	m_bindable->AddFunction("NewRoomStep", this, &MultiplayerScreen::lNewRoomStep);
+	m_bindable->AddFunction("SaveUsername", this, &MultiplayerScreen::lSaveUsername);
+
+	m_bindable->Push();
+	lua_settop(m_lua, 0);
+
+	lua_pushstring(m_lua, MULTIPLAYER_VERSION);
+	lua_setglobal(m_lua, "MULTIPLAYER_VERSION");
+
+	m_screenState = MultiplayerScreenState::ROOM_LIST;
+	lua_pushstring(m_lua, "roomList");
+	lua_setglobal(m_lua, "screenState");
+
+	// Start the map database
+	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
+	m_mapDatabase.StartSearching();
+
+	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
+	if (m_userName == "")
+	{
+		m_screenState = MultiplayerScreenState::SET_USERNAME;
+		lua_pushstring(m_lua, "setUsername");
+		lua_setglobal(m_lua, "screenState");
+		m_textInput->Reset();
+		m_textInput->SetActive(true);
+	}
+	else
+	{
+		m_authenticate();
+	}
+
+	return true;
 }
 
 void MultiplayerScreen::OnSuspend()
