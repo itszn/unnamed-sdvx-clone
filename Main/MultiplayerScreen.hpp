@@ -111,7 +111,7 @@ private:
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
-	DifficultyIndex* m_getMapByShortPath(const String& path, int32, int32);
+	DifficultyIndex* m_getMapByShortPath(const String& path, uint32*, int32);
 
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);

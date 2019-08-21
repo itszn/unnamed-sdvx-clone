@@ -339,7 +339,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], diff_ind, packet["level"]);
+	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], &diff_ind, packet["level"]);
 
 	if (new_diff == nullptr)
 	{
@@ -418,13 +418,13 @@ bool MultiplayerScreen::m_handleSyncStartPacket(nlohmann::json& packet)
 }
 
 // Get a map from a given "short" path
-DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int32 diff_ind, int32 level)
+DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint32* diff_ind, int32 level)
 {
-	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path.c_str(), diff_ind);
+	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path.c_str(), *diff_ind);
 	for (auto map : m_mapDatabase.FindMaps(path))
 	{
 		// No haxing pls
-		if (map.second->difficulties.size() <= diff_ind)
+		if (map.second->difficulties.size() <= *diff_ind)
 		{
 			if (level != 0 || map.second->difficulties.size() == 0)
 			{
@@ -432,11 +432,11 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, int3
 				continue;
 			}
 			// If we couldn't find the exact song, just take any diff
-			diff_ind = 0;
+			*diff_ind = 0;
 		}
 
 		// Grab the correct map and diff from the database
-		DifficultyIndex* new_diff = map.second->difficulties[diff_ind];
+		DifficultyIndex* new_diff = map.second->difficulties[*diff_ind];
 
 		// Check if this is the right map (the diff level matches up)
 		if (level != 0 && new_diff->settings.level != level)
@@ -469,10 +469,10 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	std::string short_path = song.GetMap()->path.substr(last_slash_idx + 1);
 
 	// Get the difficulty index into the selected map
-	int32 diff_index = (song.id % 10) - 1;
+	uint32 diff_index = (song.id % 10) - 1;
 
 	// Get the actual map id
-	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, diff_index, diff->settings.level);
+	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, &diff_index, diff->settings.level);
 
 	if (new_diff == nullptr)
 	{
