@@ -109,10 +109,14 @@ DefineEnum(SpeedMods,
 	CMod
 	);
 
+#ifdef Always
+#undef Always
+#endif
 DefineEnum(AutoScoreScreenshotSettings,
 	Off,
 	Highscore,
-	Always)
+	Always
+  );
 
 // Config for game settings
 class GameConfig : public Config<Enum_GameConfigKeys>
