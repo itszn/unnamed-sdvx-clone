@@ -52,7 +52,7 @@ bool File::OpenRead(const String& path)
 
 	return true;
 }
-bool File::OpenWrite(const String& path, bool append /*= false*/)
+bool File::OpenWrite(const String& path, bool append /*= false*/, bool noLog /*= false*/)
 {
 	Close();
 
@@ -62,7 +62,8 @@ bool File::OpenWrite(const String& path, bool append /*= false*/)
 	int handle = open(*path, flags, S_IRUSR | S_IWUSR | S_IROTH);
 	if(handle == -1)
 	{
-		Logf("Failed to open file for writing %s: %d", Logger::Warning, *path, errno);
+    if(!noLog)
+    		Logf("Failed to open file for writing %s: %d", Logger::Warning, *path, errno);
 		return false;
 	}
 

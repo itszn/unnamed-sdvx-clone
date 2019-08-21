@@ -210,8 +210,8 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	m_screenState = MultiplayerScreenState::IN_ROOM;
 	lua_pushstring(m_lua, "inRoom");
 	lua_setglobal(m_lua, "screenState");
-	m_roomId = static_cast<String>(packet["room"]["id"]);
-	m_joinToken = static_cast<String>(packet["room"]["join_token"]);
+	packet["room"]["id"].get_to(m_roomId);
+	packet["room"]["join_token"].get_to(m_joinToken);
 	g_application->DiscordPresenceMulti(m_joinToken, 1, 10);
 	return true;
 }
@@ -240,7 +240,7 @@ bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 	}
 
 	g_application->DiscordPresenceMenu("Browsing multiplayer rooms");
-	m_userId = static_cast<String>(packet["userid"]);
+	packet["userid"].get_to(m_userId);
 	m_scoreInterval = packet.value("refresh_rate",1000);
 
 	// If we are waiting to join a room, join now

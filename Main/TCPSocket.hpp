@@ -28,7 +28,7 @@
 
 #define invalid_socket(s) (s < 0)
 
-typedef SOCKET int;
+typedef int SOCKET;
 #endif
 
 enum TCPPacketMode

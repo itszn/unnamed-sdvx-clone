@@ -277,7 +277,9 @@ void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
 	}
 	else if (val.is_string())
 	{
-		lua_pushstring(L, static_cast<String>(val).c_str());
+    String valueString;
+    val.get_to(valueString);
+		lua_pushstring(L, *valueString);
 	}
 	else if (val.is_number_integer())
 	{
