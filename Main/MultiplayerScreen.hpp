@@ -25,7 +25,7 @@ enum MultiplayerScreenState {
 	SET_USERNAME,
 };
 
-class TextInput;
+class TextInputMultiplayer;
 
 class MultiplayerScreen : public IAsyncLoadableApplicationTickable
 {
@@ -112,7 +112,7 @@ private:
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
-	DifficultyIndex* m_getMapByShortPath(const String& path, uint32*, int32);
+	DifficultyIndex* m_getMapByShortPath(const String& path, uint32*, int32, bool);
 
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
@@ -180,7 +180,7 @@ private:
 
 	MultiplayerScreenState m_screenState;
 
-	Ref<TextInput> m_textInput;
+	Ref<TextInputMultiplayer> m_textInput;
 	String m_roomToJoin;
 
 	String m_joinToken;

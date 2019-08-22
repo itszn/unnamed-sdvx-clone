@@ -850,15 +850,9 @@ if mono_font == nil then
     mono_font = 'NovaMono.ttf'
 end
 
-local SERVER = game.GetSkinSetting("multi.server")
 local users = nil
 
 function init_tcp()
-    -- If not multiplayer, Tcp won't be defined and we'll crash
-    if not gameplay.multiplayer then
-        return
-    end
-
     Tcp.SetTopicHandler("game.scoreboard", function(data)
         users = {}
         for i, u in ipairs(data.users) do
@@ -867,20 +861,6 @@ function init_tcp()
     end)
 end
 
-if game.GetSkinSetting('multi.use_restore_hack') then
-    local draw_alerts_real = draw_alerts;
-    draw_alerts = function(deltaTime)
-        draw_alerts_real(deltaTime)
-        alertTimers[1] = math.max(alertTimers[1] - deltaTime,-2)
-        alertTimers[2] = math.max(alertTimers[2] - deltaTime,-2)
-        if alertTimers[1] > 0 then --draw left alert
-            gfx.Restore()
-        end
-        if alertTimers[2] > 0 then --draw right alert
-            gfx.Restore()
-        end
-    end
-end
 
 -- Hook the render function and draw the scoreboard
 local real_render = render

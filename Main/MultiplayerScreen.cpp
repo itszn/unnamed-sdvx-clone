@@ -18,7 +18,7 @@
 #define MULTIPLAYER_VERSION "v0.13"
 
 // XXX probably should be moved with the songselect one to its own class file?
-class TextInput
+class TextInputMultiplayer
 {
 public:
 	WString input;
@@ -28,7 +28,7 @@ public:
 	Delegate<const WString&> OnTextChanged;
 	bool start_taking_input = false;
 
-	~TextInput()
+	~TextInputMultiplayer()
 	{
 		g_gameWindow->OnTextInput.RemoveAll(this);
 		g_gameWindow->OnTextComposition.RemoveAll(this);
@@ -84,10 +84,10 @@ public:
 			start_taking_input = false;
 
 			SDL_StartTextInput();
-			g_gameWindow->OnTextInput.Add(this, &TextInput::OnTextInput);
-			g_gameWindow->OnTextComposition.Add(this, &TextInput::OnTextComposition);
-			g_gameWindow->OnKeyRepeat.Add(this, &TextInput::OnKeyRepeat);
-			g_gameWindow->OnKeyPressed.Add(this, &TextInput::OnKeyPressed);
+			g_gameWindow->OnTextInput.Add(this, &TextInputMultiplayer::OnTextInput);
+			g_gameWindow->OnTextComposition.Add(this, &TextInputMultiplayer::OnTextComposition);
+			g_gameWindow->OnKeyRepeat.Add(this, &TextInputMultiplayer::OnKeyRepeat);
+			g_gameWindow->OnKeyPressed.Add(this, &TextInputMultiplayer::OnKeyPressed);
 		}
 		else
 		{
@@ -273,7 +273,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], &diff_ind, packet["level"]);
+	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], &diff_ind, packet["level"], true);
 
 	if (new_diff == nullptr)
 	{
@@ -351,40 +351,55 @@ bool MultiplayerScreen::m_handleSyncStartPacket(nlohmann::json& packet)
 	return true;
 }
 
-// Get a map from a given "short" path
-DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint32* diff_ind, int32 level)
+// Get a map from a given "short" path, and level
+// The selected index will be written to diffIndex
+// diffIndex can be used as a hint to which song to pick
+DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint32* diffIndex, int32 level, bool useHint)
 {
-	Logf("[Multiplayer] looking up song '%s' difficulty index %u", Logger::Info, path.c_str(), *diff_ind);
+	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Info, path.c_str(), level, *diffIndex);
+
 	for (auto map : m_mapDatabase.FindMaps(path))
 	{
-		// No haxing pls
-		if (map.second->difficulties.size() <= *diff_ind)
+		DifficultyIndex* newDiff = NULL;
+
+		for (int ind = 0; ind < map.second->difficulties.size(); ind++)
 		{
-			if (level != 0 || map.second->difficulties.size() == 0)
+			DifficultyIndex* diff = map.second->difficulties[ind];
+
+			if (diff->settings.level == level)
 			{
-				Logf("[Multiplayer] Difficulty out of range!", Logger::Warning);
-				continue;
+				// First we try to get exact song (kinda) by matching index hint to level
+				if (useHint && *diffIndex != ind)
+					break;
+
+				// If we already searched the songs just take any level that matches
+				newDiff = diff;
+				*diffIndex = ind;
+				break;
 			}
-			// If we couldn't find the exact song, just take any diff
-			*diff_ind = 0;
 		}
 
-		// Grab the correct map and diff from the database
-		DifficultyIndex* new_diff = map.second->difficulties[*diff_ind];
-
-		// Check if this is the right map (the diff level matches up)
-		if (level != 0 && new_diff->settings.level != level)
+		// If we didn't find any matches and we are on our last try, just pick anything
+		if (newDiff == NULL && !useHint)
 		{
-			continue;
+			assert(map.second->difficulties.size() > 0);
+			*diffIndex = 0;
+			newDiff = map.second->difficulties[0];
 		}
-		Logf("[Multiplayer] Found: diff_id=%d mapid=%d path=%s", Logger::Info, new_diff->id, new_diff->mapId, new_diff->path.c_str());
-		return new_diff;
+
+
+		if (newDiff != NULL)
+		{
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newDiff->id, newDiff->mapId, *diffIndex, newDiff->path.c_str());
+			return newDiff;
+		}
 	}
 
-	if (level != 0)
+	// Search one more time, but ignore the hint this time
+	if (useHint)
 	{
-		// We couldn't find an exact match, try to grab whatever song matches
-		return m_getMapByShortPath(path, diff_ind, 0);
+		*diffIndex = 0;
+		return m_getMapByShortPath(path, diffIndex, level, false);
 	}
 
 	Logf("[Multiplayer] Could not find song", Logger::Warning);
@@ -396,8 +411,6 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 {
 	const SongSelectIndex song(map, diff);
 
-
-
 	// Get the "short" path (basically the last part of the path)
 	const size_t last_slash_idx = song.GetMap()->path.find_last_of("\\/");
 	std::string short_path = song.GetMap()->path.substr(last_slash_idx + 1);
@@ -406,7 +419,7 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	uint32 diff_index = (song.id % 10) - 1;
 
 	// Get the actual map id
-	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, &diff_index, diff->settings.level);
+	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, &diff_index, diff->settings.level, true);
 
 	if (new_diff == nullptr)
 	{
@@ -862,12 +875,12 @@ void MultiplayerScreen::OnRestore()
 	m_suspended = false;
 
 	// If we disconnected while playing or selecting wait until we get back before exiting
-	if (!m_tcp.IsOpen())
+	/*if (!m_tcp.IsOpen())
 	{
 		m_suspended = true;
 		g_application->RemoveTickable(this);
 		return;
-	}
+	}*/
 
 	// Retrive the lobby info now that we are out of the game
 	if (m_inGame)
@@ -900,7 +913,7 @@ bool MultiplayerScreen::AsyncLoad()
 	if (!m_tcp.Connect(host))
 		return false;
 
-	m_textInput = Ref<TextInput>(new TextInput());
+	m_textInput = Ref<TextInputMultiplayer>(new TextInputMultiplayer());
 	return true;
 }
 
