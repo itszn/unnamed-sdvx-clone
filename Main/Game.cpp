@@ -1015,6 +1015,9 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
+		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
+			m_scoring.currentGauge = 0.0f;
+		}
 		// Stop playing if gauge is on hard and at 0%
 		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
 		{
@@ -1026,8 +1029,10 @@ public:
 				m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
 
 				// Disable buttons
-				g_input.OnButtonPressed.RemoveAll(&m_scoring);
-				g_input.OnButtonReleased.RemoveAll(&m_scoring);
+				//g_input.OnButtonPressed.RemoveAll(&m_scoring);
+				//g_input.OnButtonReleased.RemoveAll(&m_scoring);
+				m_flags = m_flags & ~GameFlags::Hard;
+				m_scoring.SetFlags(m_flags);
 				//g_input.OnButtonPressed.RemoveAll(this);
 				//g_input.OnButtonReleased.RemoveAll(this);
 			}
