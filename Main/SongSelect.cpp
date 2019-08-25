@@ -1108,8 +1108,12 @@ public:
 
 	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
 	{
+		String mapRootPath = diff->path.substr(0, diff->path.find_last_of(Path::sep));
+
 		// Set current preview audio
-		String audioPath = diff->path.substr(0, diff->path.find_last_of(Path::sep)) + Path::sep + diff->settings.audioNoFX;
+		String audioPath = diff->settings.previewFile.length() > 0 ?
+			mapRootPath + Path::sep + diff->settings.previewFile :
+			mapRootPath + Path::sep + diff->settings.audioNoFX;
 
 		AudioStream previewAudio = g_audio->CreateStream(audioPath);
 		if (previewAudio)
@@ -1121,10 +1125,14 @@ public:
 			 * same. So, if the audio file is different but offset and duration equal the previously
 			 * playing preview, we know that it was just a change to a different difficulty of the
 			 * same chart. To avoid restarting the preview when changing difficulty, we say that
-			 * charts with this setup all have the same preview. */
-			bool newPreview = mapChanged 
-				? m_previewParams != params 
-				: (m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
+			 * charts with this setup all have the same preview. 
+			 *
+			 * Note that if the chart is using the `previewfile` field, then all this is ignored. */
+			bool newPreview = diff->settings.previewFile.length() > 0 ?
+				m_previewParams.filepath != audioPath :
+			    mapChanged ?
+				   m_previewParams != params :
+			      (m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
 
 			if (newPreview) {
 				previewAudio->SetPosition(diff->settings.previewOffset);
