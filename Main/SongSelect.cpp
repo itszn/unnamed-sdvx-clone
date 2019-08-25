@@ -111,47 +111,55 @@ class PreviewPlayer
 public:
 	void FadeTo(AudioStream stream)
 	{
-		// Already existing transition?
-		if(m_nextStream)
-		{
-			if(m_currentStream)
-			{
-				m_currentStream.Destroy();
-			}
-			m_currentStream = m_nextStream;
-		}
+		// Has the preview not begun fading out yet?
+		if (m_fadeOutTimer >= m_fadeDuration)
+			m_fadeOutTimer = 0.0f;
+
+		m_fadeDelayTimer = 0.0f;
 		m_nextStream = stream;
-		m_nextSet = true;
-		if(m_nextStream)
-		{
-			m_nextStream->SetVolume(0.0f);
-			m_nextStream->Play();
-		}
-		m_fadeTimer = 0.0f;
 	}
 	void Update(float deltaTime)
 	{
-		if(m_nextSet)
-		{
-			m_fadeTimer += deltaTime;
-			if(m_fadeTimer >= m_fadeDuration)
-			{
-				if(m_currentStream)
-				{
-					m_currentStream.Destroy();
+		if (m_fadeDelayTimer < m_fadeDelayDuration) {
+			m_fadeDelayTimer += deltaTime;
+
+			// Is the delay time over?
+			if (m_fadeDelayTimer >= m_fadeDelayDuration) {
+				// Start playing the next stream.				
+				m_fadeInTimer = 0.0f;
+				if (m_nextStream) {
+					m_nextStream->SetVolume(0.0f);
+					m_nextStream->Play();
 				}
+			}
+		}
+
+		if(m_fadeOutTimer <= m_fadeDuration)
+		{
+			m_fadeOutTimer += deltaTime;
+			float fade = m_fadeOutTimer / m_fadeDuration;
+			if (m_currentStream)
+				m_currentStream->SetVolume(1.0f - fade);
+
+			if(m_fadeOutTimer >= m_fadeDuration)
+				if (m_currentStream)
+					m_currentStream.Destroy();
+		}
+
+		if(m_fadeDelayTimer >= m_fadeDelayDuration && m_fadeInTimer < m_fadeDuration)
+		{
+			m_fadeInTimer += deltaTime;
+			if(m_fadeInTimer >= m_fadeDuration)
+			{
 				m_currentStream = m_nextStream;
 				if(m_currentStream)
 					m_currentStream->SetVolume(1.0f);
 				m_nextStream.Release();
-				m_nextSet = false;
 			}
 			else
 			{
-				float fade = m_fadeTimer / m_fadeDuration;
+				float fade = m_fadeInTimer / m_fadeDuration;
 
-				if(m_currentStream)
-					m_currentStream->SetVolume(1.0f - fade);
 				if(m_nextStream)
 					m_nextStream->SetVolume(fade);
 			}
@@ -174,12 +182,15 @@ public:
 
 private:
 	static const float m_fadeDuration;
-	float m_fadeTimer = 0.0f;
+	static const float m_fadeDelayDuration;
+	float m_fadeInTimer = 0.0f;
+	float m_fadeOutTimer = 0.0f;
+	float m_fadeDelayTimer = 0.0f;
 	AudioStream m_nextStream;
 	AudioStream m_currentStream;
-	bool m_nextSet = false;
 };
 const float PreviewPlayer::m_fadeDuration = 0.5f;
+const float PreviewPlayer::m_fadeDelayDuration = 0.5f;
 
 /*
 	Song selection wheel
@@ -1080,33 +1091,23 @@ public:
 	// When a map is selected in the song wheel
 	void OnMapSelected(MapIndex* map)
 	{
-		if (map == m_currentPreviewAudio){
-			if (m_previewDelayTicks){
-				--m_previewDelayTicks;
-			}else if (!m_previewLoaded && !m_currentPreviewAudio->difficulties.empty()){
-				// Set current preview audio
-				DifficultyIndex* previewDiff = m_currentPreviewAudio->difficulties[0];
-				String audioPath = m_currentPreviewAudio->path + Path::sep + previewDiff->settings.audioNoFX;
+		if (!map->difficulties.empty()) {
+			// Set current preview audio
+			DifficultyIndex* previewDiff = map->difficulties[0];
+			String audioPath = map->path + Path::sep + previewDiff->settings.audioNoFX;
 
-				AudioStream previewAudio = g_audio->CreateStream(audioPath);
-				if (previewAudio)
-				{
-					previewAudio->SetPosition(previewDiff->settings.previewOffset);
-					m_previewPlayer.FadeTo(previewAudio);
-				}
-				else
-				{
-					Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
-					m_previewPlayer.FadeTo(AudioStream());
-				}
-				m_previewLoaded = true;
-				// m_previewPlayer.Restore();
+			AudioStream previewAudio = g_audio->CreateStream(audioPath);
+			if (previewAudio)
+			{
+				previewAudio->SetPosition(previewDiff->settings.previewOffset);
+				m_previewPlayer.FadeTo(previewAudio);
 			}
-		} else{
-			// Wait at least 15 ticks before attempting to load song to prevent loading songs while scrolling very fast
-			m_previewDelayTicks = 15;
-			m_currentPreviewAudio = map;
-			m_previewLoaded = false;
+			else
+			{
+				Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+				m_previewPlayer.FadeTo(AudioStream());
+			}
+			// m_previewPlayer.Restore();
 		}
 	}
 	// When a difficulty is selected in the song wheel
@@ -1422,12 +1423,7 @@ public:
 			m_previewPlayer.Update(deltaTime);
 			m_searchInput->Tick();
 			m_selectionWheel->SetSearchFieldLua(m_searchInput);
-			// Ugly hack to get previews working with the delaty
-			/// TODO: Move the ticking of the fade timer or whatever outside of onsongselected
-			OnMapSelected(m_currentPreviewAudio);
 		}
-
-
 	}
 
 	virtual void Render(float deltaTime)
