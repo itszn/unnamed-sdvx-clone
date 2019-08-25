@@ -482,6 +482,11 @@ public:
 			return map->GetDifficulties()[m_currentlySelectedDiff];
 		return nullptr;
 	}
+
+	int GetSelectedDifficultyIndex() const
+	{
+		return m_currentlySelectedDiff;
+	}
 	void SetSearchFieldLua(Ref<TextInput> search)
 	{
 		lua_getglobal(m_lua, "songwheel");
@@ -1001,6 +1006,17 @@ private:
 class SongSelect_Impl : public SongSelect
 {
 private:
+	struct PreviewParams {
+		String filepath;
+		uint32 offset;
+		uint32 duration;
+
+		bool operator !=(const PreviewParams& rhs)
+		{
+			return filepath != rhs.filepath || offset != rhs.offset || duration != rhs.duration;
+		}
+	} m_previewParams;
+
 	Timer m_dbUpdateTimer;
 	MapDatabase m_mapDatabase;
 
@@ -1073,6 +1089,8 @@ public:
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
 
+		m_previewParams = { "", 0, 0 };
+
 		return true;
 	}
 	~SongSelect_Impl()
@@ -1088,32 +1106,55 @@ public:
 			g_application->DisposeLua(m_lua);
 	}
 
+	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
+	{
+		// Set current preview audio
+		String audioPath = diff->path.substr(0, diff->path.find_last_of(Path::sep)) + Path::sep + diff->settings.audioNoFX;
+
+		AudioStream previewAudio = g_audio->CreateStream(audioPath);
+		if (previewAudio)
+		{
+			PreviewParams params = { audioPath, diff->settings.previewOffset, diff->settings.previewDuration };
+
+			/* A lot of pre-effected charts use different audio files for each difficulty; these
+			 * files differ only in their effects, so the preview offset and duration remain the
+			 * same. So, if the audio file is different but offset and duration equal the previously
+			 * playing preview, we know that it was just a change to a different difficulty of the
+			 * same chart. To avoid restarting the preview when changing difficulty, we say that
+			 * charts with this setup all have the same preview. */
+			bool newPreview = mapChanged 
+				? m_previewParams != params 
+				: (m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
+
+			if (newPreview) {
+				previewAudio->SetPosition(diff->settings.previewOffset);
+				m_previewPlayer.FadeTo(previewAudio);
+			}
+
+			m_previewParams = params;
+		}
+		else
+		{
+			PreviewParams params = { "", 0, 0 };
+
+			Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+			if (m_previewParams != params)
+				m_previewPlayer.FadeTo(AudioStream());
+
+			m_previewParams = params;
+		}
+	}
+
 	// When a map is selected in the song wheel
 	void OnMapSelected(MapIndex* map)
 	{
-		if (!map->difficulties.empty()) {
-			// Set current preview audio
-			DifficultyIndex* previewDiff = map->difficulties[0];
-			String audioPath = map->path + Path::sep + previewDiff->settings.audioNoFX;
-
-			AudioStream previewAudio = g_audio->CreateStream(audioPath);
-			if (previewAudio)
-			{
-				previewAudio->SetPosition(previewDiff->settings.previewOffset);
-				m_previewPlayer.FadeTo(previewAudio);
-			}
-			else
-			{
-				Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
-				m_previewPlayer.FadeTo(AudioStream());
-			}
-			// m_previewPlayer.Restore();
-		}
+		if (!map->difficulties.empty() && map->difficulties.size() > m_selectionWheel->GetSelectedDifficultyIndex())
+			m_updatePreview(map->difficulties[m_selectionWheel->GetSelectedDifficultyIndex()], true);
 	}
 	// When a difficulty is selected in the song wheel
 	void OnDifficultySelected(DifficultyIndex* diff)
 	{
-
+		m_updatePreview(diff, false);
 	}
 
 	/// TODO: Fix some conflicts between search field and filter selection
