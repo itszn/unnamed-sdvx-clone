@@ -1498,7 +1498,7 @@ public:
 		if (hitEffect)
 		{
 			ButtonObjectState* st = (ButtonObjectState*)object;
-			m_hiddenObjects.insert(object);
+			//m_hiddenObjects.insert(object);
 			Color c = m_track->hitColors[0];
 			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 		}
