@@ -116,7 +116,10 @@ public:
 			m_fadeOutTimer = 0.0f;
 
 		m_fadeDelayTimer = 0.0f;
+		if (m_nextStream)
+			m_nextStream.Destroy();
 		m_nextStream = stream;
+		stream.Release();
 	}
 	void Update(float deltaTime)
 	{
@@ -134,7 +137,7 @@ public:
 			}
 		}
 
-		if(m_fadeOutTimer <= m_fadeDuration)
+		if(m_fadeOutTimer < m_fadeDuration)
 		{
 			m_fadeOutTimer += deltaTime;
 			float fade = m_fadeOutTimer / m_fadeDuration;
@@ -151,6 +154,8 @@ public:
 			m_fadeInTimer += deltaTime;
 			if(m_fadeInTimer >= m_fadeDuration)
 			{
+				if (m_currentStream)
+					m_currentStream.Destroy();
 				m_currentStream = m_nextStream;
 				if(m_currentStream)
 					m_currentStream->SetVolume(1.0f);
@@ -1115,42 +1120,48 @@ public:
 			mapRootPath + Path::sep + diff->settings.previewFile :
 			mapRootPath + Path::sep + diff->settings.audioNoFX;
 
-		AudioStream previewAudio = g_audio->CreateStream(audioPath);
-		if (previewAudio)
+		PreviewParams params = { audioPath, diff->settings.previewOffset, diff->settings.previewDuration };
+
+		/* A lot of pre-effected charts use different audio files for each difficulty; these
+		 * files differ only in their effects, so the preview offset and duration remain the
+		 * same. So, if the audio file is different but offset and duration equal the previously
+		 * playing preview, we know that it was just a change to a different difficulty of the
+		 * same chart. To avoid restarting the preview when changing difficulty, we say that
+		 * charts with this setup all have the same preview.
+		 *
+		 * Note that if the chart is using the `previewfile` field, then all this is ignored. */
+		bool newPreview = diff->settings.previewFile.length() > 0 ?
+			m_previewParams.filepath != audioPath :
+			mapChanged ?
+			m_previewParams != params :
+			(m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
+
+		if (newPreview)
 		{
-			PreviewParams params = { audioPath, diff->settings.previewOffset, diff->settings.previewDuration };
+			AudioStream previewAudio = g_audio->CreateStream(audioPath);
+			if (previewAudio)
+			{
+				if (diff->settings.previewFile.length() == 0)
+					previewAudio->SetPosition(diff->settings.previewOffset);
+				else
+					previewAudio->SetPosition(0);
 
-			/* A lot of pre-effected charts use different audio files for each difficulty; these
-			 * files differ only in their effects, so the preview offset and duration remain the
-			 * same. So, if the audio file is different but offset and duration equal the previously
-			 * playing preview, we know that it was just a change to a different difficulty of the
-			 * same chart. To avoid restarting the preview when changing difficulty, we say that
-			 * charts with this setup all have the same preview. 
-			 *
-			 * Note that if the chart is using the `previewfile` field, then all this is ignored. */
-			bool newPreview = diff->settings.previewFile.length() > 0 ?
-				m_previewParams.filepath != audioPath :
-			    mapChanged ?
-				   m_previewParams != params :
-			      (m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
-
-			if (newPreview) {
-				previewAudio->SetPosition(diff->settings.previewOffset);
 				m_previewPlayer.FadeTo(previewAudio);
+
+				m_previewParams = params;
+			}
+			else
+			{
+				params = { "", 0, 0 };
+
+				Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+				if (m_previewParams != params)
+					m_previewPlayer.FadeTo(AudioStream());
 			}
 
 			m_previewParams = params;
 		}
-		else
-		{
-			PreviewParams params = { "", 0, 0 };
 
-			Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
-			if (m_previewParams != params)
-				m_previewPlayer.FadeTo(AudioStream());
-
-			m_previewParams = params;
-		}
 	}
 
 	// When a map is selected in the song wheel
