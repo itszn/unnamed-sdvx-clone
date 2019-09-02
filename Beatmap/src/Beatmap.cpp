@@ -207,7 +207,6 @@ BinaryStream& operator<<(BinaryStream& stream, BeatmapSettings& settings)
 
 	stream << settings.previewOffset;
 	stream << settings.previewDuration;
-	stream << settings.previewFile;
 
 	stream << settings.slamVolume;
 	stream << settings.laserEffectMix;

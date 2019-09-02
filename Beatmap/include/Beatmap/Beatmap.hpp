@@ -39,8 +39,6 @@ struct BeatmapSettings
 	MapTime previewOffset;
 	// Preview duration
 	MapTime previewDuration;
-	// Preview file (optional)
-	String previewFile;
 
 	// Initial audio settings
 	float slamVolume = 1.0f;

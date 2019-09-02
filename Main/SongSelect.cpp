@@ -1116,9 +1116,7 @@ public:
 		String mapRootPath = diff->path.substr(0, diff->path.find_last_of(Path::sep));
 
 		// Set current preview audio
-		String audioPath = diff->settings.previewFile.length() > 0 ?
-			mapRootPath + Path::sep + diff->settings.previewFile :
-			mapRootPath + Path::sep + diff->settings.audioNoFX;
+		String audioPath = mapRootPath + Path::sep + diff->settings.audioNoFX;
 
 		PreviewParams params = { audioPath, diff->settings.previewOffset, diff->settings.previewDuration };
 
@@ -1130,9 +1128,7 @@ public:
 		 * charts with this setup all have the same preview.
 		 *
 		 * Note that if the chart is using the `previewfile` field, then all this is ignored. */
-		bool newPreview = diff->settings.previewFile.length() > 0 ?
-			m_previewParams.filepath != audioPath :
-			mapChanged ?
+		bool newPreview = mapChanged ?
 			m_previewParams != params :
 			(m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
 
@@ -1141,10 +1137,7 @@ public:
 			AudioStream previewAudio = g_audio->CreateStream(audioPath);
 			if (previewAudio)
 			{
-				if (diff->settings.previewFile.length() == 0)
-					previewAudio->SetPosition(diff->settings.previewOffset);
-				else
-					previewAudio->SetPosition(0);
+				previewAudio->SetPosition(diff->settings.previewOffset);
 
 				m_previewPlayer.FadeTo(previewAudio);
 
