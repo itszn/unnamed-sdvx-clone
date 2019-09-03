@@ -208,6 +208,27 @@ public:
 		m_pendingChangesLock.unlock();
 		return std::move(changes);
 	}
+
+	Map<int32, MapIndex*> FindMapsByHash(const String& hash)
+	{
+		String stmt = "SELECT DISTINCT Maps.rowid FROM Maps INNER JOIN Difficulties ON Maps.rowid = Difficulties.mapid "
+					  "WHERE Difficulties.hash = ?";
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, hash);
+
+		Map<int32, MapIndex*> res;
+		while (search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			MapIndex** map = m_maps.Find(id);
+			if (map)
+			{
+				res.Add(id, *map);
+			}
+		}
+
+		return res;
+	}
 	
 	Map<int32, MapIndex*> FindMaps(const String& searchString)
 	{
@@ -762,8 +783,14 @@ private:
 
 						evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 					}
+					else
+					{
+						// If we can't open the file, the map isn't going to work, so remove it
+						mapValid = false;
+					}
 				}
-				else
+
+				if (!mapValid)
 				{
 					if(!existing) // Never added
 					{
