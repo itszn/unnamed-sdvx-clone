@@ -15,7 +15,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.13"
+#define MULTIPLAYER_VERSION "v0.14"
 
 // XXX probably should be moved with the songselect one to its own class file?
 class TextInputMultiplayer
@@ -230,7 +230,7 @@ bool MultiplayerScreen::m_handleError(nlohmann::json& packet)
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 {
 	double server_version = atof(static_cast<String>(packet.value("version", "0.0")).c_str()+1);
-	if (server_version < 0.12)
+	if (server_version < 0.13)
 	{
 		g_gameWindow->ShowMessageBox("Multiplayer server closed", "This version of multiplayer (" MULTIPLAYER_VERSION ") does not support this server", 0);
 		// Fatal error, so leave this view

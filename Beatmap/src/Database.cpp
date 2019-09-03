@@ -76,6 +76,14 @@ String DBStatement::StringColumn(int32 index /*= 0*/) const
 	assert(m_stmt && m_queryResult == SQLITE_ROW);
 	return String((char*)sqlite3_column_text(m_stmt, index));
 }
+String DBStatement::StringColumnEmptyOnNull(int32 index /*= 0*/) const
+{
+	assert(m_stmt && m_queryResult == SQLITE_ROW);
+	if (sqlite3_column_type(m_stmt, index) == SQLITE_NULL) {
+		return "";
+	}
+	return String((char*)sqlite3_column_text(m_stmt, index));
+}
 Buffer DBStatement::BlobColumn(int32 index /*= 0*/) const
 {
 	assert(m_stmt && m_queryResult == SQLITE_ROW);

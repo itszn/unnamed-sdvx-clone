@@ -2,6 +2,7 @@
 #include "MapDatabase.hpp"
 #include "Database.hpp"
 #include "Beatmap.hpp"
+#include "TinySHA1.hpp"
 #include "Shared/Profiling.hpp"
 #include "Shared/Files.hpp"
 #include <thread>
@@ -60,11 +61,12 @@ public:
 		int32 id;
 		// Scanned map data, for added/updated maps
 		BeatmapSettings* mapData = nullptr;
+		String hash;
 	};
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 10;
+	static const int32 m_version = 11;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
@@ -117,6 +119,11 @@ public:
 			{
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN timestamp INTEGER");
 				gotVersion = 10;
+			}
+			if (gotVersion == 10)  //upgrade from 10 to 11
+			{
+				m_database.Exec("ALTER TABLE Difficulties ADD COLUMN hash TEXT");
+				gotVersion = 11;
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 		}
@@ -266,9 +273,9 @@ public:
 		if(changes.empty())
 			return;
 
-		DBStatement addDiff = m_database.Query("INSERT INTO Difficulties(path,lwt,metadata,rowid,mapid) VALUES(?,?,?,?,?)");
+		DBStatement addDiff = m_database.Query("INSERT INTO Difficulties(path,lwt,metadata,rowid,mapid,hash) VALUES(?,?,?,?,?,?)");
 		DBStatement addMap = m_database.Query("INSERT INTO Maps(path,artist,title,tags,rowid) VALUES(?,?,?,?,?)");
-		DBStatement update = m_database.Query("UPDATE Difficulties SET lwt=?,metadata=? WHERE rowid=?");
+		DBStatement update = m_database.Query("UPDATE Difficulties SET lwt=?,metadata=?,hash=? WHERE rowid=?");
 		DBStatement removeDiff = m_database.Query("DELETE FROM Difficulties WHERE rowid=?");
 		DBStatement removeMap = m_database.Query("DELETE FROM Maps WHERE rowid=?");
 
@@ -324,6 +331,7 @@ public:
 				diff->mapId = map->id;
 				diff->path = e.path;
 				diff->settings = *e.mapData;
+				diff->hash = e.hash;
 				m_difficulties.Add(diff->id, diff);
 
 				// Add diff to map and resort
@@ -336,6 +344,7 @@ public:
 				addDiff.BindBlob(3, metadata);
 				addDiff.BindInt64(4, diff->id); // rowid
 				addDiff.BindInt64(5, diff->mapId); // mapid
+				addDiff.BindString(6, diff->hash);
 				addDiff.Step();
 				addDiff.Rewind();
 
@@ -357,7 +366,8 @@ public:
 
 				update.BindInt64(1, e.lwt);
 				update.BindBlob(2, metadata);
-				update.BindInt(3, e.id);
+				update.BindString(3, e.hash);
+				update.BindInt(4, e.id);
 				update.Step();
 				update.Rewind();
 				
@@ -366,6 +376,7 @@ public:
 
 				itDiff->second->lwt = e.lwt;
 				itDiff->second->settings = *e.mapData;
+				itDiff->second->hash = e.hash;
 
 				auto itMap = m_maps.find(itDiff->second->mapId);
 				assert(itMap != m_maps.end());
@@ -512,7 +523,7 @@ private:
 			"(artist TEXT, title TEXT, tags TEXT, path TEXT)");
 
 		m_database.Exec("CREATE TABLE Difficulties"
-			"(metadata BLOB, path TEXT, lwt INTEGER, mapid INTEGER,"
+			"(metadata BLOB, path TEXT, lwt INTEGER, mapid INTEGER, hash TEXT"
 			"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
 
 		m_database.Exec("CREATE TABLE Scores"
@@ -543,7 +554,7 @@ private:
 		m_nextMapId = m_maps.empty() ? 1 : (m_maps.rbegin()->first + 1);
 
 		// Select Difficulties
-		DBStatement diffScan = m_database.Query("SELECT rowid,path,lwt,metadata,mapid FROM Difficulties");
+		DBStatement diffScan = m_database.Query("SELECT rowid,path,lwt,metadata,mapid,hash FROM Difficulties");
 		while(diffScan.StepRow())
 		{
 			DifficultyIndex* diff = new DifficultyIndex();
@@ -554,14 +565,10 @@ private:
 			diff->mapId = diffScan.IntColumn(4);
 			MemoryReader metadataReader(metadata);
 			metadataReader.SerializeObject(diff->settings);
+			diff->hash = diffScan.StringColumnEmptyOnNull(5);
 
 			// Add existing diff
 			m_difficulties.Add(diff->id, diff);
-
-			SearchState::ExistingDifficulty existing;
-			existing.lwt = diff->lwt;
-			existing.id = diff->id;
-			m_searchState.difficulties.Add(diff->path, existing);
 
 			// Add difficulty to map and resort difficulties
 			auto mapIt = m_maps.find(diff->mapId);
@@ -572,7 +579,14 @@ private:
 			// Add to search state
 			SearchState::ExistingDifficulty ed;
 			ed.id = diff->id;
-			ed.lwt = diff->lwt;
+			if (diff->hash.length() == 0)
+			{
+				ed.lwt = 0;
+			}
+			else {
+				ed.lwt = diff->lwt;
+
+			}
 			m_searchState.difficulties.Add(diff->path, ed);
 		}
 
@@ -721,6 +735,33 @@ private:
 				if(mapValid)
 				{
 					evt.mapData = new BeatmapSettings(map.GetMapSettings());
+
+					ProfilerScope $("Chart Database - Hash Chart Audio");
+
+					// TODO should we cache maps here for when the same file is used 3 times?
+					const String audioFile = Path::Normalize(Path::RemoveLast(f.first) + Path::sep + evt.mapData->audioNoFX);
+
+					File audioFileStream;
+					if (audioFileStream.OpenRead(audioFile))
+					{
+						char data_buffer[0x8000];
+						uint32_t digest[5];
+						sha1::SHA1 s;
+
+						size_t amount_read = 0;
+						size_t read_size;
+						do
+						{
+							read_size = audioFileStream.Read(data_buffer + amount_read, sizeof(data_buffer) - amount_read);
+							amount_read += read_size;
+						}
+						while (amount_read < sizeof(data_buffer) && read_size != 0);
+						
+						s.processBytes(data_buffer, amount_read);
+						s.getDigest(digest);
+
+						evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+					}
 				}
 				else
 				{

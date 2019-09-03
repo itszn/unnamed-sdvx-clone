@@ -46,8 +46,8 @@ struct DifficultyIndex
 	BeatmapSettings settings;
 	// Map scores
 	Vector<ScoreIndex*> scores;
-
-
+	// Hash of the song file
+	String hash;
 };
 
 // Map located in database
