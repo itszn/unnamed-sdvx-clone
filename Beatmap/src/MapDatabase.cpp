@@ -839,6 +839,10 @@ Map<int32, MapIndex*> MapDatabase::FindMaps(const String& search)
 {
 	return m_impl->FindMaps(search);
 }
+Map<int32, MapIndex*> MapDatabase::FindMapsByHash(const String& hash)
+{
+	return m_impl->FindMapsByHash(hash);
+}
 Map<int32, MapIndex*> MapDatabase::FindMapsByFolder(const String & folder)
 {
 	return m_impl->FindMapsByFolder(folder);

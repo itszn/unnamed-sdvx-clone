@@ -113,6 +113,7 @@ private:
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
 	DifficultyIndex* m_getMapByShortPath(const String& path, uint32*, int32, bool);
+	DifficultyIndex* m_getMapByHash(const String& hash, const String& path, uint32*, int32);
 
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
@@ -164,6 +165,7 @@ private:
 	// Database ids of the selected map
 	int32 m_selectedMapId = 0;
 	String m_selectedMapShortPath;
+	String m_selectedMapHash;
 
 	// Selected index into the map's difficulties
 	int32 m_selectedDiffIndex = 0;

@@ -15,7 +15,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.14"
+#define MULTIPLAYER_VERSION "v0.15"
 
 // XXX probably should be moved with the songselect one to its own class file?
 class TextInputMultiplayer
@@ -263,8 +263,15 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	if (packet["song"].is_null())
 		return true;
 
+	const String& hash = packet.value("hash", "");
+	const String& song = packet.value("song", "");
+
+	// Fallback case for no hash provided from the server
+	if (m_hasSelectedMap && hash.length() == 0 && song == m_selectedMapShortPath)
+		return true;
+
 	// Case for same song as before
-	if (m_hasSelectedMap && packet["song"] == m_selectedMapShortPath)
+	if (m_hasSelectedMap && packet["hash"] == m_selectedMapHash)
 		return true;
 
 	// Clear jacket variable to force image reload
@@ -273,7 +280,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	DifficultyIndex* new_diff = m_getMapByShortPath(packet["song"], &diff_ind, packet["level"], true);
+	DifficultyIndex* new_diff = m_getMapByHash(hash, song, &diff_ind, packet["level"]);
 
 	if (new_diff == nullptr)
 	{
@@ -292,6 +299,9 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	m_selfPicked = false;
 	m_updateSelectedMap(new_diff->mapId, diff_ind, false);
+
+	m_selectedMapShortPath = song;
+	m_selectedMapHash = hash;
 
 	return true;
 }
@@ -349,6 +359,48 @@ bool MultiplayerScreen::m_handleSyncStartPacket(nlohmann::json& packet)
 {
 	m_syncState = SyncState::SYNCED;
 	return true;
+}
+
+// Get a song for given audio hash and level
+// If we find a match find a matching hash but not level, just go with any level
+DifficultyIndex* MultiplayerScreen::m_getMapByHash(const String& hash, const String& path, uint32* diffIndex, int32 level)
+{
+	// Fallback on an empty hash
+	if (hash.length() == 0)
+		return m_getMapByShortPath(path, diffIndex, level, true);
+	
+	Logf("[Multiplayer] looking up song hash '%s' level %u", Logger::Info, *hash, level);
+	for (auto map : m_mapDatabase.FindMapsByHash(hash))
+	{
+		DifficultyIndex* newDiff = NULL;
+
+		for (int ind = 0; ind < map.second->difficulties.size(); ind++)
+		{
+			DifficultyIndex* diff = map.second->difficulties[ind];
+			if (diff->settings.level == level)
+			{
+				// We found a matching level for this hash, good to go
+				newDiff = diff;
+				*diffIndex = ind;
+			}
+		}
+
+		// We didn't find the exact level, but we should still use this map anyway
+		if (newDiff == NULL)
+		{
+			assert(map.second->difficulties.size() > 0);
+			*diffIndex = 0;
+			newDiff = map.second->difficulties[0];
+		}
+
+		if (newDiff != NULL)
+		{
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newDiff->id, newDiff->mapId, *diffIndex, newDiff->path.c_str());
+			return newDiff;
+		}
+	}
+	Logf("[Multiplayer] Could not find song by hash, falling back to foldername", Logger::Warning);
+	return m_getMapByShortPath(path, diffIndex, level, true);
 }
 
 // Get a map from a given "short" path, and level
@@ -419,7 +471,7 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	uint32 diff_index = (song.id % 10) - 1;
 
 	// Get the actual map id
-	const DifficultyIndex* new_diff = m_getMapByShortPath(short_path, &diff_index, diff->settings.level, true);
+	const DifficultyIndex* new_diff = m_getMapByHash(diff->hash, short_path, &diff_index, diff->settings.level);
 
 	if (new_diff == nullptr)
 	{
@@ -431,6 +483,8 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	m_selfPicked = true;
 	m_updateSelectedMap(new_diff->mapId, diff_index, true);
 
+	m_selectedMapShortPath = short_path;
+	m_selectedMapHash = diff->hash;
 }
 
 void MultiplayerScreen::m_changeSelectedRoom(int offset)
@@ -491,7 +545,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 
 	// Find "short" path for the selected map
 	const size_t lastSlashIdx = map->path.find_last_of("\\/");
-	m_selectedMapShortPath = map->path.substr(lastSlashIdx + 1);
+	String shortPath = map->path.substr(lastSlashIdx + 1);
 
 	// Push a table of info to lua
 	lua_newtable(m_lua);
@@ -500,7 +554,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_PushStringToTable("bpm", mapSettings.bpm.c_str());
 	m_PushIntToTable("id", map->id);
 	m_PushStringToTable("path", map->path.c_str());
-	m_PushStringToTable("short_path", m_selectedMapShortPath.c_str());
+	m_PushStringToTable("short_path", *shortPath);
 
 	m_PushStringToTable("jacketPath", Path::Normalize(map->path + "/" + mapSettings.jacketPath).c_str());
 	m_PushIntToTable("level", mapSettings.level);
@@ -538,9 +592,10 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		
 		nlohmann::json packet;
 		packet["topic"] = "room.setsong";
-		packet["song"] = m_selectedMapShortPath;
+		packet["song"] = shortPath;
 		packet["diff"] = diff_ind;
 		packet["level"] = mapSettings.level;
+		packet["hash"] = diff->hash;
 		m_tcp.SendJSON(packet);
 	}
 	else
