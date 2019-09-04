@@ -798,6 +798,13 @@ button_pressed = function(button)
             end
         end
     end
+    
+    if button == game.BUTTON_FXL then
+        toggle_hard();
+    end
+    if button == game.BUTTON_FXR then
+        toggle_mirror();
+    end
 end
 
 -- Handle the escape key around the UI
