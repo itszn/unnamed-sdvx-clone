@@ -111,7 +111,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::OnlyRelease, true);
 
 	// Multiplayer
-	Set(GameConfigKeys::MultiplayerHost, "127.0.0.1:39079");
-	Set(GameConfigKeys::MultiplayerPassword, "d3e5a1c17644e28fa156");
+	Set(GameConfigKeys::MultiplayerHost, "usc-multi.drewol.me:39079");
+	Set(GameConfigKeys::MultiplayerPassword, "");
 	Set(GameConfigKeys::MultiplayerUsername, "");
 }
