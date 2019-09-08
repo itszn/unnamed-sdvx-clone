@@ -1015,26 +1015,22 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
+		// If failed in multiplayer, stop giving rate, so its clear you failed
 		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
 			m_scoring.currentGauge = 0.0f;
 		}
 		// Stop playing if gauge is on hard and at 0%
 		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
 		{
-			// In multiplayer we don't stop, but we send the final score and disable buttons
-			if (m_multiplayer == nullptr || m_multiplayer->DidAllFail()) {
+			// In multiplayer we don't stop, but we send the final score
+			if (m_multiplayer == nullptr) {
 				FinishGame();
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
-				m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
+				//m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
 
-				// Disable buttons
-				//g_input.OnButtonPressed.RemoveAll(&m_scoring);
-				//g_input.OnButtonReleased.RemoveAll(&m_scoring);
 				m_flags = m_flags & ~GameFlags::Hard;
 				m_scoring.SetFlags(m_flags);
-				//g_input.OnButtonPressed.RemoveAll(this);
-				//g_input.OnButtonReleased.RemoveAll(this);
 			}
 		}
 
@@ -1250,7 +1246,8 @@ public:
 
 		// Send the final scores to the server
 		if (m_multiplayer)
-			m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
+			m_multiplayer->SendFinalScore(m_scoring,
+				m_multiplayer->HasFailed()? 1 : m_getClearState());
 
 		m_scoring.FinishGame();
 		m_ended = true;

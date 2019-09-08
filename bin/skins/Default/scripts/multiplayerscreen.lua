@@ -191,14 +191,6 @@ draw_user = function(user, x, y, rank)
     gfx.BeginPath();
     gfx.FillColor(256,128,255);
 
-    
-    if user_id == host and mouse_clipped(rx,ty, buttonWidth, buttonHeight) then
-        hovered = function()
-            change_host(user)
-        end
-        gfx.FillColor(255,255,255);
-     end
-
     gfx.Rect(rx - buttonBorder,
         ty - buttonBorder,
         buttonWidth + (buttonBorder * 2),
@@ -487,6 +479,14 @@ function render_lobby(deltaTime)
     buttonY = 125 + userHeight/2
     for i, user in ipairs(lobby_users) do
         draw_user(user, resx / 4, buttonY, i)
+        if host == user_id and user.id ~= user_id then
+            draw_button("K",resx/4 + resX*(3/16)+10+25, buttonY, 50, function()
+                kick_user(user);
+            end)
+            draw_button("H",resx/4 + resX*(3/16)+10+25+60, buttonY, 50, function()
+                change_host(user);
+            end)
+        end
         buttonY = buttonY + userHeight
     end
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE);
@@ -741,6 +741,11 @@ end
 -- Change lobby host
 function change_host(user)
     Tcp.SendLine(json.encode({topic="room.host.set", host=user.id}))
+end
+
+-- Kick user
+function kick_user(user)
+    Tcp.SendLine(json.encode({topic="room.kick", id=user.id}))
 end
 
 -- Tell the server to start the game

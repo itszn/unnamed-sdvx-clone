@@ -15,7 +15,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.15"
+#define MULTIPLAYER_VERSION "v0.16"
 
 // XXX probably should be moved with the songselect one to its own class file?
 class TextInputMultiplayer
@@ -180,11 +180,6 @@ void MultiplayerScreen::m_handleSocketClose()
 	g_application->RemoveTickable(this);
 }
 
-bool MultiplayerScreen::m_handleAllFail(nlohmann::json& packet)
-{
-	m_allFail = true;
-	return true;
-}
 
 bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
 {
@@ -199,6 +194,16 @@ bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
 bool MultiplayerScreen::m_handleRoomList(nlohmann::json& packet)
 {
 	g_application->DiscordPresenceMenu("Browsing multiplayer rooms");
+
+	if (m_screenState != MultiplayerScreenState::ROOM_LIST) {
+		m_screenState = MultiplayerScreenState::ROOM_LIST;
+		lua_pushstring(m_lua, "roomList");
+		lua_setglobal(m_lua, "screenState");
+
+		m_roomId = "";
+		m_hasSelectedMap = false;
+	}
+
 	return true;
 }
 
@@ -230,7 +235,7 @@ bool MultiplayerScreen::m_handleError(nlohmann::json& packet)
 bool MultiplayerScreen::m_handleAuthResponse(nlohmann::json& packet)
 {
 	double server_version = atof(static_cast<String>(packet.value("version", "0.0")).c_str()+1);
-	if (server_version < 0.13)
+	if (server_version < 0.16)
 	{
 		g_gameWindow->ShowMessageBox("Multiplayer server closed", "This version of multiplayer (" MULTIPLAYER_VERSION ") does not support this server", 0);
 		// Fatal error, so leave this view
@@ -314,7 +319,6 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 
 	m_inGame = true;
 	m_failed = false;
-	m_allFail = false;
 	m_syncState = SyncState::LOADING;
 
 	// Grab the map from the database
@@ -810,7 +814,6 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 
 			m_roomId = "";
 			m_hasSelectedMap = false;
-
 		}
 	}
 	else if (key == SDLK_RETURN)
@@ -959,7 +962,6 @@ bool MultiplayerScreen::AsyncLoad()
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
-	m_tcp.SetTopicHandler("game.allfailed", this, &MultiplayerScreen::m_handleAllFail);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 
