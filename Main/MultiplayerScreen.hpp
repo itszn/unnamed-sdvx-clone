@@ -103,6 +103,8 @@ private:
 
 	void m_joinRoomWithToken();
 
+	void OnSearchStatusUpdated(String status);
+
 	void m_authenticate();
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
@@ -147,6 +149,10 @@ private:
 	String m_roomId;
 
 	bool m_failed = false;
+
+	Timer m_dbUpdateTimer;
+	String m_lastStatus = "aaaaaa";
+	std::mutex m_statusLock;
 
 	// Did this client pick the current song
 	bool m_selfPicked = false;
