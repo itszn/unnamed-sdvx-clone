@@ -544,7 +544,7 @@ private:
 			"(artist TEXT, title TEXT, tags TEXT, path TEXT)");
 
 		m_database.Exec("CREATE TABLE Difficulties"
-			"(metadata BLOB, path TEXT, lwt INTEGER, mapid INTEGER, hash TEXT"
+			"(metadata BLOB, path TEXT, lwt INTEGER, mapid INTEGER, hash TEXT, "
 			"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
 
 		m_database.Exec("CREATE TABLE Scores"
