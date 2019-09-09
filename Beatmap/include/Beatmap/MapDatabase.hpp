@@ -46,8 +46,8 @@ struct DifficultyIndex
 	BeatmapSettings settings;
 	// Map scores
 	Vector<ScoreIndex*> scores;
-
-
+	// Hash of the song file
+	String hash;
 };
 
 // Map located in database
@@ -82,6 +82,7 @@ public:
 	// Finds maps using the search query provided
 	// search artist/title/tags for maps for any space separated terms
 	Map<int32, MapIndex*> FindMaps(const String& search);
+	Map<int32, MapIndex*> FindMapsByHash(const String& hash);
 	Map<int32, MapIndex*> FindMapsByFolder(const String& folder);
 	MapIndex* GetMap(int32 idx);
 

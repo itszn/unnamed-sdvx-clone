@@ -88,7 +88,9 @@ public:
 	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
+	void DiscordPresenceMulti(String id, int partySize, int partyMax);
 	void DiscordPresenceSong(const struct BeatmapSettings& song, int64 startTime, int64 endTime);
+	void JoinMultiFromInvite(String secret);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
 	void ForceRender();
@@ -153,3 +155,5 @@ public:
 	bool web = false;
 	Application::CachedJacketImage* target;
 };
+
+void __discordJoinGame(const char* joins);

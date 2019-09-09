@@ -100,7 +100,12 @@ DefineEnum(GameConfigKeys,
 	WASAPI_Exclusive,
 
 	CheckForUpdates,
-	OnlyRelease
+	OnlyRelease,
+
+	// Multiplayer
+	MultiplayerHost,
+	MultiplayerPassword,
+	MultiplayerUsername
 	);
 
 DefineEnum(SpeedMods,

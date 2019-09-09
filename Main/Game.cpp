@@ -18,9 +18,11 @@
 #include "ScoreScreen.hpp"
 #include "TransitionScreen.hpp"
 #include "AsyncAssetLoader.hpp"
+#include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
 #include "SDL2/SDL_keycode.h"
+#include "json.hpp"
 
 extern "C"
 {
@@ -72,6 +74,8 @@ private:
 	bool m_transitioning = false;
 
 	bool m_renderDebugHUD = false;
+
+	MultiplayerScreen* m_multiplayer = nullptr;
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
@@ -195,7 +199,12 @@ public:
 		if (m_foreground)
 			delete m_foreground;
 		if (m_lua)
+		{
 			g_application->DisposeLua(m_lua);
+			// Clear the state we stored in in the multiplayer's socket
+			if (m_multiplayer != nullptr)
+				m_multiplayer->GetTCP().ClearState(m_lua);
+		}
 		// Save hispeed
 		g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
 
@@ -359,6 +368,8 @@ public:
 		if (!m_lua)
 			return false;
 
+
+
 		auto pushStringToTable = [&](const char* name, String data)
 		{
 			lua_pushstring(m_lua, name);
@@ -409,8 +420,22 @@ public:
 			}
 			lua_settable(m_lua, -3); // cursors -> critLine
 			lua_settable(m_lua, -3); // critLine -> gameplay
+
+			lua_pushstring(m_lua, "multiplayer");
+			lua_pushboolean(m_lua, m_multiplayer != nullptr);
+			lua_settable(m_lua, -3);
+
+			if (m_multiplayer != nullptr)
+			{
+				pushStringToTable("user_id", m_multiplayer->GetUserId());
+				Logf("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
+			}
 			lua_setglobal(m_lua, "gameplay");
 		}
+
+		// For multiplayer we also bind the TCP in
+		if (m_multiplayer != nullptr)
+			m_multiplayer->GetTCP().PushFunctions(m_lua);
 
 		// Background 
 		/// TODO: Load this async
@@ -582,7 +607,7 @@ public:
 			}
 		}
 
-		if(!m_paused)
+		if(!m_paused && (m_multiplayer == nullptr ||!m_multiplayer->IsSyncing()))
 			TickGameplay(deltaTime);
 	}
 	virtual void Render(float deltaTime) override
@@ -951,6 +976,12 @@ public:
 	{
 		if(!m_started && m_introCompleted)
 		{
+			if (m_multiplayer != nullptr && !m_multiplayer->IsSynced()) {
+				// We are at the start of the song, so trigger a sync
+				m_multiplayer->StartSync();
+				return;
+			}
+
 			// Start playback of audio in first gameplay tick
 			m_audioPlayback.Play();
 			m_started = true;
@@ -991,10 +1022,23 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
+		// If failed in multiplayer, stop giving rate, so its clear you failed
+		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
+			m_scoring.currentGauge = 0.0f;
+		}
 		// Stop playing if gauge is on hard and at 0%
 		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
 		{
-			FinishGame();
+			// In multiplayer we don't stop, but we send the final score
+			if (m_multiplayer == nullptr) {
+				FinishGame();
+			} else if (!m_multiplayer->HasFailed()) {
+				m_multiplayer->Fail();
+				//m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
+
+				m_flags = m_flags & ~GameFlags::Hard;
+				m_scoring.SetFlags(m_flags);
+			}
 		}
 
 
@@ -1034,9 +1078,9 @@ public:
 		// Update song info display
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
 
-		
 
-
+		if (m_multiplayer != nullptr)
+			m_multiplayer->PerformScoreTick(m_scoring);
 
 		//set lua
 		lua_getglobal(m_lua, "gameplay");
@@ -1207,6 +1251,11 @@ public:
 		if(m_ended)
 			return;
 
+		// Send the final scores to the server
+		if (m_multiplayer)
+			m_multiplayer->SendFinalScore(m_scoring,
+				m_multiplayer->HasFailed()? 1 : m_getClearState());
+
 		m_scoring.FinishGame();
 		m_ended = true;
 	}
@@ -1366,6 +1415,7 @@ public:
 		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Score: %d (Max: %d)", m_scoring.currentHitScore, m_scoring.mapTotals.maxScore), textPos).y;
+		
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
@@ -1630,7 +1680,7 @@ public:
 
 	virtual void OnKeyPressed(int32 key) override
 	{
-		if(key == SDLK_PAUSE)
+		if(key == SDLK_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
@@ -1640,7 +1690,7 @@ public:
 			if(!SkipIntro())
 				SkipOutro();
 		}
-		else if(key == SDLK_PAGEUP)
+		else if(key == SDLK_PAGEUP && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.Advance(5000);
 		}
@@ -1652,7 +1702,7 @@ public:
 				m_manualExit = true;
 			FinishGame();
 		}
-		else if(key == SDLK_F5) // Restart map
+		else if(key == SDLK_F5 && m_multiplayer == nullptr) // Restart map
 		{
 			// Restart
 			Restart();
@@ -1712,6 +1762,10 @@ public:
 		MapTime skipTime = (*firstObj)->time - 1000;
 		if(skipTime > m_lastMapTime)
 		{
+			// In multiplayer mode we have to stay synced
+			if (m_multiplayer != nullptr)
+				return true;
+
 			m_audioPlayback.SetPosition(skipTime);
 			return true;
 		}
@@ -1734,6 +1788,11 @@ public:
 		{
 			FinishGame();
 		}
+	}
+
+	void MakeMultiplayer(MultiplayerScreen* multiplayer)
+	{
+		m_multiplayer = multiplayer;
 	}
 
 	virtual bool IsPlaying() const override
@@ -1816,6 +1875,13 @@ public:
 Game* Game::Create(const DifficultyIndex& difficulty, GameFlags flags)
 {
 	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	return impl;
+}
+
+Game* Game::Create(MultiplayerScreen* multiplayer, const DifficultyIndex& difficulty, GameFlags flags)
+{
+	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	impl->MakeMultiplayer(multiplayer);
 	return impl;
 }
 

@@ -239,6 +239,7 @@ void __discordReady(const DiscordUser* user)
 
 void __discordJoinGame(const char * joins)
 {
+	g_application->JoinMultiFromInvite(joins);
 }
 
 void __discordSpecGame(const char * specs)
@@ -550,6 +551,9 @@ void Application::m_MainLoop()
 	m_lastRenderTime = 0.0f;
 	while(true)
 	{
+		//run discord callbacks
+		Discord_RunCallbacks();
+
 		// Process changes in the list of items
 		bool restoreTop = false;
 		for(auto& ch : g_tickableChanges)
@@ -1061,6 +1065,21 @@ void Application::DiscordPresenceMenu(String name)
 	Discord_UpdatePresence(&discordPresence);
 }
 
+void Application::DiscordPresenceMulti(String id, int partySize, int partyMax)
+{
+	DiscordRichPresence discordPresence;
+	memset(&discordPresence, 0, sizeof(discordPresence));
+	
+	discordPresence.state = "In Lobby";
+	discordPresence.details = "Waiting for multiplayer game to start.";
+	discordPresence.joinSecret = *id;
+	discordPresence.partySize = partySize;
+	discordPresence.partyMax = partyMax;
+	discordPresence.partyId = "test";
+
+	Discord_UpdatePresence(&discordPresence);
+}
+
 void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTime, int64 endTime)
 {
 	Vector<String> diffNames = { "NOV", "ADV", "EXH", "INF" };
@@ -1085,6 +1104,30 @@ void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTi
 	discordPresence.startTimestamp = startTime;
 	discordPresence.endTimestamp = endTime;
 	Discord_UpdatePresence(&discordPresence);
+}
+
+void Application::JoinMultiFromInvite(String secret)
+{
+	MultiplayerScreen* mpScreen = new MultiplayerScreen();
+	IApplicationTickable* title = (IApplicationTickable*)TitleScreen::Create();
+	auto transition = TransitionScreen::Create(mpScreen);
+	String* token = new String(*secret);
+	auto tokenInput = [=](void* screen)
+	{
+		MultiplayerScreen* mpScreen = (MultiplayerScreen*)screen;
+		mpScreen->JoinRoomWithToken(*token);
+		delete token;
+	};
+	transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
+	title->m_Suspend();
+
+	//Remove all tickables and add back a titlescreen as a base
+	AddTickable(title);
+	AddTickable(transition);
+	for(IApplicationTickable* tickable : g_tickables)
+	{
+		RemoveTickable(tickable);
+	}
 }
 
 void Application::LoadGauge(bool hard)

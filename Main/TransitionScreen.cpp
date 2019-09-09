@@ -151,8 +151,20 @@ public:
 		auto rq = g_application->GetRenderQueueBase();
 		if (m_transition == Out || m_transition == End)
 		{
-			if(m_tickableToLoad)
+			if (m_tickableToLoad)
+			{
 				m_tickableToLoad->Render(deltaTime);
+			}
+			else
+			{
+				Transform t;
+				MaterialParameterSet params;
+				params.SetParameter("mainTex", m_fromTexture);
+				params.SetParameter("color", Vector4(1.0f));
+				rq->Draw(t, m_bgMesh, g_application->GetGuiTexMaterial(), params);
+				g_application->ForceRender();
+			}
+
 			g_application->ForceRender();
 			
 			//draw lua

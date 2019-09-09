@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ApplicationTickable.hpp"
+#include "MultiplayerScreen.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 struct SongSelectIndex
@@ -59,4 +60,5 @@ protected:
 public:
 	virtual ~SongSelect() = default;
 	static SongSelect* Create();
+	static SongSelect* Create(MultiplayerScreen*);
 };
