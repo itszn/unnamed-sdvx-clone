@@ -52,26 +52,8 @@ local badges = {
     gfx.CreateSkinImage("badges/perfect.png", 0)
 }
 
-local user_name_key = game.GetSkinSetting('multi.user_name_key')
-if user_name_key == nil then
-  user_name_key = 'nick'
-end
-local name = game.GetSkinSetting(user_name_key)
-if name == nil or name == '' then
-    name = 'Guest'
-end
-
-local normal_font = game.GetSkinSetting('multi.normal_font')
-if normal_font == nil then
-    normal_font = 'NotoSans-Regular.ttf'
-end
-local mono_font = game.GetSkinSetting('multi.mono_font')
-if mono_font == nil then
-    mono_font = 'NovaMono.ttf'
-end
-
-local SERVER = game.GetSkinSetting("multi.server")
-
+normal_font = 'NotoSans-Regular.ttf'
+mono_font = 'NovaMono.ttf'
 
 
 
