@@ -642,6 +642,12 @@ void MultiplayerScreen::Tick(float deltaTime)
 	// Tick the tcp socket even if we are suspended
 	m_tcp.ProcessSocket();
 
+	if (m_dbUpdateTimer.Milliseconds() > 500)
+	{
+		m_mapDatabase.Update();
+		m_dbUpdateTimer.Restart();
+	}
+
 	if (IsSuspended())
 		return;
 
@@ -735,8 +741,14 @@ void MultiplayerScreen::Render(float deltaTime)
     if (IsSuspended())
 		return;
 
+	m_statusLock.lock();
+	lua_pushstring(m_lua, *m_lastStatus);
+	lua_setglobal(m_lua, "searchStatus");
+	m_statusLock.unlock();
+
 	lua_getglobal(m_lua, "render");
 	lua_pushnumber(m_lua, deltaTime);
+
 
 	if (lua_pcall(m_lua, 1, 0, 0) != 0)
 	{
@@ -744,6 +756,13 @@ void MultiplayerScreen::Render(float deltaTime)
 		g_gameWindow->ShowMessageBox("Lua Error in render", lua_tostring(m_lua, -1), 0);
 		g_application->RemoveTickable(this);
 	}
+}
+
+void MultiplayerScreen::OnSearchStatusUpdated(String status)
+{
+	m_statusLock.lock();
+	m_lastStatus = status;
+	m_statusLock.unlock();
 }
 
 void MultiplayerScreen::OnKeyPressed(int32 key)
@@ -940,6 +959,8 @@ void MultiplayerScreen::OnRestore()
 		return;
 	}*/
 
+	m_mapDatabase.StartSearching();
+
 	// Retrive the lobby info now that we are out of the game
 	if (m_inGame)
 	{
@@ -1008,6 +1029,7 @@ bool MultiplayerScreen::AsyncFinalize()
 
 	// Start the map database
 	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
+	m_mapDatabase.OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
 	m_mapDatabase.StartSearching();
 
 	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);

@@ -315,6 +315,14 @@ function render_info()
     gfx.Text(MULTIPLAYER_VERSION, xmax + 13, resY - 15)
     --gfx.Text('Server: '..'', xmax + 13, resY - 15)
     gfx.Restore()
+
+	if searchStatus then
+		gfx.BeginPath()
+		gfx.FillColor(255,255,255)
+		gfx.FontSize(20);
+		gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+		gfx.Text(searchStatus, 3, 3)
+	end
 end
 
 draw_diff_icon = function(diff, x, y, w, h, selected)
