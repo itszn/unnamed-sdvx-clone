@@ -153,7 +153,7 @@ public:
 		{
 			if (m_tickableToLoad)
 			{
-				m_tickableToLoad->Render(deltaTime);
+				m_tickableToLoad->ForceRender(deltaTime);
 			}
 			else
 			{

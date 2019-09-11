@@ -180,6 +180,25 @@ void MultiplayerScreen::m_handleSocketClose()
 	g_application->RemoveTickable(this);
 }
 
+void MultiplayerScreen::m_render(float deltaTime)
+{
+	m_statusLock.lock();
+	lua_pushstring(m_lua, *m_lastStatus);
+	lua_setglobal(m_lua, "searchStatus");
+	m_statusLock.unlock();
+
+	lua_getglobal(m_lua, "render");
+	lua_pushnumber(m_lua, deltaTime);
+
+
+	if (lua_pcall(m_lua, 1, 0, 0) != 0)
+	{
+		Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+		g_gameWindow->ShowMessageBox("Lua Error in render", lua_tostring(m_lua, -1), 0);
+		g_application->RemoveTickable(this);
+	}
+}
+
 
 bool MultiplayerScreen::m_handleBadPassword(nlohmann::json& packet)
 {
@@ -648,14 +667,15 @@ void MultiplayerScreen::Tick(float deltaTime)
 		m_dbUpdateTimer.Restart();
 	}
 
-	if (IsSuspended())
-		return;
 
 	m_textInput->Tick();
 
 	lua_newtable(m_lua);
 	m_PushStringToTable("text", Utility::ConvertToUTF8(m_textInput->input).c_str());
 	lua_setglobal(m_lua, "textInput");
+
+	if (IsSuspended())
+		return;
 
 	// Lock mouse to screen when active
 	if (m_screenState == MultiplayerScreenState::ROOM_LIST && 
@@ -738,24 +758,13 @@ void MultiplayerScreen::SendFinalScore(Scoring& scoring, int clearState)
 
 void MultiplayerScreen::Render(float deltaTime)
 {
-    if (IsSuspended())
-		return;
+	if (!IsSuspended())
+		m_render(deltaTime);
+}
 
-	m_statusLock.lock();
-	lua_pushstring(m_lua, *m_lastStatus);
-	lua_setglobal(m_lua, "searchStatus");
-	m_statusLock.unlock();
-
-	lua_getglobal(m_lua, "render");
-	lua_pushnumber(m_lua, deltaTime);
-
-
-	if (lua_pcall(m_lua, 1, 0, 0) != 0)
-	{
-		Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
-		g_gameWindow->ShowMessageBox("Lua Error in render", lua_tostring(m_lua, -1), 0);
-		g_application->RemoveTickable(this);
-	}
+void MultiplayerScreen::ForceRender(float deltaTime)
+{
+	m_render(deltaTime);
 }
 
 void MultiplayerScreen::OnSearchStatusUpdated(String status)

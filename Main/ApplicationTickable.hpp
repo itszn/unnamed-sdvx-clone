@@ -11,7 +11,7 @@ public:
 	// Tick for tickable
 	virtual void Tick(float deltaTime) {};
 	virtual void Render(float deltaTime) {};
-
+	virtual void ForceRender(float deltaTime) { Render(deltaTime); };
 	virtual void OnKeyPressed(int32 key) {};
 	virtual void OnKeyReleased(int32 key) {};
 	// Called when focus of this item is lost

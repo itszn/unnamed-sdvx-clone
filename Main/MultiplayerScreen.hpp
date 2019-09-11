@@ -36,6 +36,7 @@ public:
 	bool Init() override;
 	void Tick(float deltaTime) override;
 	void Render(float deltaTime) override;
+	void ForceRender(float deltaTime) override;
 
 	void OnKeyPressed(int32 key) override;
 	void OnKeyReleased(int32 key) override;
@@ -100,6 +101,8 @@ private:
 	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
+
+	void m_render(float deltaTime);
 
 	void m_joinRoomWithToken();
 
