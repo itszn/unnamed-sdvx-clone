@@ -34,7 +34,7 @@ public:
 class SkinSettingsScreen : public IApplicationTickable
 {
 public:
-	SkinSettingsScreen(String skin, class nk_context* ctx);
+	SkinSettingsScreen(String skin, struct nk_context* ctx);
 	~SkinSettingsScreen();
 	void Tick(float deltatime) override;
 	void Render(float deltaTime) override;
@@ -49,7 +49,7 @@ private:
 	void Exit();
 
 	class SkinConfig* m_skinConfig;
-	class nk_context* m_nctx;
+	struct nk_context* m_nctx;
 	String m_skin;
 	Map<String, bool> m_hsvMap;
 };

@@ -917,13 +917,16 @@ public:
 		{
 			if (default_sfx.Contains(samples[i]))
 			{
-				CheckedLoad(m_fxSamples[i] = g_application->LoadSample(samples[i]));
+				m_fxSamples[i] = g_application->LoadSample(samples[i]);
 			}
 			else
 			{
-				CheckedLoad(m_fxSamples[i] = g_application->LoadSample(m_mapRootPath + "/" + samples[i], true));
+				m_fxSamples[i] = g_application->LoadSample(m_mapRootPath + "/" + samples[i], true);
 			}
-
+			if (!m_fxSamples[i])
+			{
+				Logf("Failed to load FX chip sample: \"%s\"", Logger::Warning, samples[i]);
+			}
 		}
 
 		return true;
@@ -1506,8 +1509,11 @@ public:
 
 		if (st != nullptr && st->hasSample)
 		{
-			m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume);
-			m_fxSamples[st->sampleIndex]->Play();
+			if (m_fxSamples[st->sampleIndex])
+			{
+				m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume);
+				m_fxSamples[st->sampleIndex]->Play();
+			}
 		}
 
 		if(rating != ScoreHitRating::Idle)

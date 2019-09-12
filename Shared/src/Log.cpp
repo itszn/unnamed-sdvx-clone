@@ -6,6 +6,7 @@
 #include "TextStream.hpp"
 #include <ctime>
 #include <map>
+#include <mutex>
 
 class Logger_Impl
 {
@@ -13,6 +14,7 @@ private:
 	File m_logFile;
 	FileWriter m_writer;
 	bool m_failedToOpen;
+	std::mutex m_lock;
 
 public:
 	Logger_Impl()
@@ -34,6 +36,16 @@ public:
 		}
 		m_failedToOpen = false;
 		m_writer = FileWriter(m_logFile);
+	}
+
+	void Lock()
+	{
+		m_lock.lock();
+	}
+
+	void Unlock()
+	{
+		m_lock.unlock();
 	}
 
 	void WriteHeader(Logger::Severity severity)
@@ -141,9 +153,11 @@ void Logger::Log(const String& msg, Logger::Severity severity)
 		break;
 	}
 
+	m_impl->Lock();
 	m_impl->WriteHeader(severity);
 	m_impl->Write(msg);
 	m_impl->Write("\n");
+	m_impl->Unlock();
 }
 void Logger::WriteHeader(Severity severity)
 {

@@ -88,7 +88,7 @@ public:
 	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
-	void DiscordPresenceMulti(String id, int partySize, int partyMax);
+	void DiscordPresenceMulti(String secret, int partySize, int partyMax, String id);
 	void DiscordPresenceSong(const struct BeatmapSettings& song, int64 startTime, int64 endTime);
 	void JoinMultiFromInvite(String secret);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
@@ -141,6 +141,11 @@ private:
 	Timer m_jobTimer;
 	//gauge colors, 0 = normal fail, 1 = normal clear, 2 = hard lower, 3 = hard upper
 	Color m_gaugeColors[4] = { Colori(0, 204, 255), Colori(255, 102, 255), Colori(200, 50, 0), Colori(255, 100, 0) };
+
+	String m_multiRoomSecret;
+	String m_multiRoomId;
+	int m_multiRoomSize = 0;
+	int m_multiRoomCount = 0;
 };
 
 class JacketLoadingJob : public JobBase

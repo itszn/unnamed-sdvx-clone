@@ -1062,20 +1062,32 @@ void Application::DiscordPresenceMenu(String name)
 	memset(&discordPresence, 0, sizeof(discordPresence));
 	discordPresence.state = "In Menus";
 	discordPresence.details = name.c_str();
+
+	discordPresence.joinSecret = *m_multiRoomSecret;
+	discordPresence.partySize = m_multiRoomCount;
+	discordPresence.partyMax = m_multiRoomSize;
+	discordPresence.partyId = *m_multiRoomId;
+
 	Discord_UpdatePresence(&discordPresence);
 }
 
-void Application::DiscordPresenceMulti(String id, int partySize, int partyMax)
+void Application::DiscordPresenceMulti(String secret, int partySize, int partyMax, String id)
 {
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
 	
+	m_multiRoomCount = partySize;
+	m_multiRoomSize = partyMax;
+	m_multiRoomSecret = secret;
+	m_multiRoomId = id;
+
 	discordPresence.state = "In Lobby";
 	discordPresence.details = "Waiting for multiplayer game to start.";
-	discordPresence.joinSecret = *id;
-	discordPresence.partySize = partySize;
-	discordPresence.partyMax = partyMax;
-	discordPresence.partyId = "test";
+
+	discordPresence.joinSecret = *m_multiRoomSecret;
+	discordPresence.partySize = m_multiRoomCount;
+	discordPresence.partyMax = m_multiRoomSize;
+	discordPresence.partyId = *m_multiRoomId;
 
 	Discord_UpdatePresence(&discordPresence);
 }
@@ -1103,6 +1115,12 @@ void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTi
 	discordPresence.details = bufferDetails;
 	discordPresence.startTimestamp = startTime;
 	discordPresence.endTimestamp = endTime;
+
+	discordPresence.joinSecret = *m_multiRoomSecret;
+	discordPresence.partySize = m_multiRoomCount;
+	discordPresence.partyMax = m_multiRoomSize;
+	discordPresence.partyId = *m_multiRoomId;
+
 	Discord_UpdatePresence(&discordPresence);
 }
 

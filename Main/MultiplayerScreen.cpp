@@ -236,7 +236,7 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	lua_setglobal(m_lua, "screenState");
 	packet["room"]["id"].get_to(m_roomId);
 	packet["room"]["join_token"].get_to(m_joinToken);
-	g_application->DiscordPresenceMulti(m_joinToken, 1, 10);
+	g_application->DiscordPresenceMulti(m_joinToken, 1, 8, "test");
 	return true;
 }
 
@@ -277,7 +277,7 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 {
 	int userCount = packet.at("users").size();
 	m_joinToken = packet.value("join_token", "");
-	g_application->DiscordPresenceMulti(m_joinToken, userCount, 10);
+	g_application->DiscordPresenceMulti(m_joinToken, userCount, 8, "test");
 	m_handleSongChange(packet);
 	return true;
 }
@@ -839,7 +839,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 			m_screenState = MultiplayerScreenState::ROOM_LIST;
 			lua_pushstring(m_lua, "roomList");
 			lua_setglobal(m_lua, "screenState");
-
+			g_application->DiscordPresenceMulti("", 0, 0, "");
 			m_roomId = "";
 			m_hasSelectedMap = false;
 		}
