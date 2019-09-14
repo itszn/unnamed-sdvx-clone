@@ -321,6 +321,11 @@ void __updateChecker()
 		String current_hash;
 		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
 		
+		if (commits.contains("message"))
+		{
+			//some error message was sent
+			return;
+		}
 
 		int commit = 0;
 		while (commit < 30)
@@ -778,7 +783,14 @@ void Application::m_Cleanup()
 	//	m_skinHtpp = nullptr;
 	//}
 
+	for (auto img : m_jacketImages)
+	{
+		delete img.second;
+	}
+
 	Discord_Shutdown();
+
+	nvgDeleteGL3(g_guiState.vg);
 
 	if(m_updateThread.joinable())
 		m_updateThread.join();

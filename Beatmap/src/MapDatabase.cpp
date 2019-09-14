@@ -529,6 +529,12 @@ private:
 		}
 		for(auto m : m_difficulties)
 		{
+			for (auto s : m.second->scores)
+			{
+				s->hitStats.clear();
+				delete s;
+			}
+			m.second->scores.clear();
 			delete m.second;
 		}
 		m_maps.clear();
@@ -635,8 +641,12 @@ private:
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_difficulties.find(score->diffid);
-			if(diffIt == m_difficulties.end()) // If for whatever reason the diff that the score is attatched to is not in the db, ignore the score.
+			if (diffIt == m_difficulties.end()) // If for whatever reason the diff that the score is attatched to is not in the db, ignore the score.
+			{
+				score->hitStats.clear();
+				delete score;
 				continue;
+			}
 
 			diffIt->second->scores.Add(score);
 			m_SortScores(diffIt->second);

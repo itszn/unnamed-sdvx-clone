@@ -64,8 +64,11 @@ public:
 	{
 		T* tempObj = &obj;
 		bool r = T::StaticSerialize(*this, tempObj);
-		if(IsReading())
+		if (IsReading())
+		{
 			obj = *tempObj;
+			delete tempObj;
+		}
 		return r;
 	}
 
@@ -130,7 +133,7 @@ bool BinaryStream::SerializeObject(Vector<T>& obj)
 			T v;
 			bool ok = SerializeObject(v);
 			assert(ok);
-			obj.Add(v);
+			obj.push_back(v);
 		}
 	}
 	else

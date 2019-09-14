@@ -50,6 +50,12 @@ public:
 	{
 		Deregister();
 		mp3_done(m_decoder);
+
+		for (size_t i = 0; i < m_numChannels; i++)
+		{
+			delete[] m_readBuffer[i];
+		}
+		delete[] m_readBuffer;
 	}
 	bool Init(Audio* audio, const String& path, bool preload)
 	{

@@ -660,6 +660,8 @@ public:
 	{
 
 	}
+
+
 	bool Init()
 	{
 		SongFilter* lvFilter = new SongFilter();
@@ -694,8 +696,18 @@ public:
 	{
 		g_gameConfig.Set(GameConfigKeys::FolderFilter, m_currentFolderSelection);
 		g_gameConfig.Set(GameConfigKeys::LevelFilter, m_currentLevelSelection);
+
+		for (auto filter : m_levelFilters)
+		{
+			delete filter;
+		}
+		for (auto filter : m_folderFilters)
+		{
+			delete filter;
+		}
 		m_levelFilters.clear();
 		m_folderFilters.clear();
+
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
 	}

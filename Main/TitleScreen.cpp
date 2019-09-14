@@ -131,6 +131,16 @@ public:
 		g_gameWindow->OnMousePressed.RemoveAll(this);
 	}
 
+	~TitleScreen_Impl()
+	{
+		if (m_lua)
+		{
+			g_application->DisposeLua(m_lua);
+			m_lua = nullptr;
+		}
+		delete m_luaBinds;
+	}
+
 	virtual void Render(float deltaTime)
 	{
 		if (IsSuspended())

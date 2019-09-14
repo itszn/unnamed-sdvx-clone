@@ -15,6 +15,14 @@ public:
 	{
 		m_lua = L;
 	}
+	~LuaBindable()
+	{
+		for (auto b : Bindings)
+		{
+			delete b.second;
+		}
+	}
+
 	template<typename Class>
 	void AddFunction(String name, Class* object, int (Class::*func)(lua_State*))
 	{

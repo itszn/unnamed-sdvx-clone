@@ -117,6 +117,13 @@ public:
 	~AudioStreamWAV_Impl()
 	{
 		Deregister();
+
+		for (size_t i = 0; i < m_numChannels; i++)
+		{
+			delete[] m_readBuffer[i];
+		}
+		delete[] m_readBuffer;
+
 	}
 
 	bool Init(Audio* audio, const String& path, bool preload)
