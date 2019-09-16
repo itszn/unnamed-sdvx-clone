@@ -57,21 +57,21 @@ matrix:
         - cd ..
         
         
-    - os: osx 
-      osx_image: xcode9.3
-      addons:
-        homebrew:
-          update: true
-          packages:
-            - cmake
-            - freetype
-            - libvorbis
-            - sdl2
-            - libpng
-            - jpeg
-            - libarchive
-      before_script:
-        - brew link -f libarchive
+#    - os: osx 
+#      osx_image: xcode9.3
+#      addons:
+#        homebrew:
+#          update: true
+#          packages:
+#            - cmake
+#            - freetype
+#            - libvorbis
+#            - sdl2
+#            - libpng
+#            - jpeg
+#            - libarchive
+#      before_script:
+#        - brew link -f libarchive
 
 before_install:
   - "git submodule update --init --recursive"
