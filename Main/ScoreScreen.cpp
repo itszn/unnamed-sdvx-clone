@@ -197,6 +197,10 @@ public:
 		else
 			m_PushIntToTable("badge", Scoring::CalculateBadge(m_scoredata));
 
+		lua_pushstring(m_lua, "autoplay");
+		lua_pushboolean(m_lua, m_autoplay);
+		lua_settable(m_lua, -3);
+
 		//Push gauge samples
 		lua_pushstring(m_lua, "gaugeSamples");
 		lua_newtable(m_lua);

@@ -206,6 +206,14 @@ function render(deltaTime)
 	end
     draw_combo(deltaTime)
     draw_alerts(deltaTime)
+	
+	if gameplay.autoplay then
+		gfx.LoadSkinFont("NotoSans-Regular.ttf")
+		gfx.FontSize(30)
+		gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_CENTER)
+		gfx.FillColor(255,255,255)
+		gfx.Text("Autoplay", desw/2, yshift)
+	end
 end
 -- -------------------------------------------------------------------------- --
 -- SetUpCritTransform:                                                        --

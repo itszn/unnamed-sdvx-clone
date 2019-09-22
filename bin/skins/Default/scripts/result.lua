@@ -186,6 +186,13 @@ render = function(deltaTime, showStats)
     gfx.FontSize(20)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_MIDDLE)
     gfx.Text(string.format("%d%%", math.floor(result.gauge * 100)),410,390 - 90 * result.gauge)
+	
+	if result.autoplay then
+	    gfx.FontSize(50)
+		gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+		gfx.Text("Autoplay", 250, 345)
+	end
+	
     --Score data
     gfx.BeginPath()
     gfx.RoundedRect(120,400,500 - 240,60,30);

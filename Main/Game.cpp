@@ -430,6 +430,11 @@ public:
 				pushStringToTable("user_id", m_multiplayer->GetUserId());
 				Logf("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
 			}
+
+			lua_pushstring(m_lua, "autoplay");
+			lua_pushboolean(m_lua, m_scoring.autoplay);
+			lua_settable(m_lua, -3);
+
 			lua_setglobal(m_lua, "gameplay");
 		}
 
@@ -1088,6 +1093,10 @@ public:
 		//set lua
 		lua_getglobal(m_lua, "gameplay");
 
+		//set autoplay here as it's not set during the creation of the gameplay
+		lua_pushstring(m_lua, "autoplay");
+		lua_pushboolean(m_lua, m_scoring.autoplay);
+		lua_settable(m_lua, -3);
 
 		// Update score replays
 		lua_getfield(m_lua, -1, "scoreReplays");
