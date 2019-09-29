@@ -35,6 +35,7 @@ private:
 	float m_meanHitDelta;
 	MapTime m_medianHitDelta;
 	ScoreIndex m_scoredata;
+	bool m_restored = false;
 
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
@@ -62,6 +63,15 @@ private:
 		lua_pushinteger(m_lua, data);
 		lua_settable(m_lua, -3);
 	}
+	void m_OnButtonPressed(Input::Button button)
+	{
+		if (button == Input::Button::BT_S && m_restored)
+		{
+			g_application->RemoveTickable(this);
+		}
+	}
+
+
 
 public:
 	ScoreScreen_Impl(class Game* game)
@@ -154,6 +164,8 @@ public:
 	}
 	~ScoreScreen_Impl()
 	{
+		g_input.OnButtonPressed.RemoveAll(this);
+
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
 	}
@@ -234,6 +246,8 @@ public:
 
 		lua_setglobal(m_lua, "result");
 
+		g_input.OnButtonPressed.Add(this, &ScoreScreen_Impl::m_OnButtonPressed);
+
 		return true;
 	}
 	bool Init() override
@@ -274,26 +288,17 @@ public:
 	}
 	virtual void Tick(float deltaTime) override
 	{
-		// Check for button pressed here instead of adding to onbuttonpressed for stability reasons
-		//TODO: Change to onbuttonpressed
-		if(m_startPressed && !g_input.GetButton(Input::Button::BT_S))
-			g_application->RemoveTickable(this);
-
-		m_startPressed = g_input.GetButton(Input::Button::BT_S);
-
-		if (g_input.GetButton(Input::Button::FX_0))
-			m_showStats = true;
-		else
-			m_showStats = false;
+		m_showStats = g_input.GetButton(Input::Button::FX_0);
 	}
 
 	virtual void OnSuspend()
 	{
+		m_restored = false;
 	}
 	virtual void OnRestore()
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
-		
+		m_restored = true;
 		AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
 		if (screensetting == AutoScoreScreenshotSettings::Always ||
 			(screensetting == AutoScoreScreenshotSettings::Highscore && m_highScores.empty()) ||
