@@ -1086,9 +1086,8 @@ public:
 		// Update song info display
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
 
-
 		if (m_multiplayer != nullptr)
-			m_multiplayer->PerformScoreTick(m_scoring);
+			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
 
 		//set lua
 		lua_getglobal(m_lua, "gameplay");
