@@ -612,7 +612,7 @@ public:
 			}
 		}
 
-		if(!m_paused && (m_multiplayer == nullptr ||!m_multiplayer->IsSyncing()))
+		if(!m_paused)
 			TickGameplay(deltaTime);
 	}
 	virtual void Render(float deltaTime) override
@@ -982,7 +982,7 @@ public:
 	// Processes input and Updates scoring, also handles audio timing management
 	void TickGameplay(float deltaTime)
 	{
-		if(!m_started && m_introCompleted)
+		if(!m_started && m_introCompleted && (m_multiplayer == nullptr || !m_multiplayer->IsSyncing()))
 		{
 			if (m_multiplayer != nullptr && !m_multiplayer->IsSynced()) {
 				// We are at the start of the song, so trigger a sync
