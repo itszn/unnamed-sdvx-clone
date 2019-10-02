@@ -76,3 +76,12 @@ add_library(sqlite3
 )
 set_property(GLOBAL PROPERTY SQLITE3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
 target_include_directories(sqlite3 PUBLIC ${SQLITE3_ROOT})
+
+#minimp3
+add_library(minimp3
+	minimp3/minimp3.c
+	minimp3/minimp3.h
+	minimp3/libc.h
+)
+set_property(GLOBAL PROPERTY MINIMP3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/minimp3)
+target_include_directories(minimp3 PUBLIC MINIMP3_ROOT)
