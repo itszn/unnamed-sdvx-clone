@@ -121,3 +121,14 @@ add_library(soundtouch
 set_property(GLOBAL PROPERTY SOUNDTOUCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch)
 target_include_directories(soundtouch PUBLIC soundtouch/include)
 target_include_directories(soundtouch PUBLIC soundtouch/src)
+
+add_library(GLEW
+	glew/include/GL/glew.h
+	glew/include/GL/glxew.h
+	glew/include/GL/wglew.h
+	glew/src/glew.c
+)
+# GLEW is included statically and also doesn't need GLU(Which doesn't even exist on linux)
+target_compile_definitions(GLEW PUBLIC -DGLEW_NO_GLU -DGLEW_STATIC)
+set_property(GLOBAL PROPERTY GLEW_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/glew)
+target_include_directories(GLEW PUBLIC glew/include)
