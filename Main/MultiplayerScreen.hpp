@@ -57,7 +57,7 @@ public:
 
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
-	void PerformScoreTick(Scoring& scoring);
+	void PerformScoreTick(Scoring& scoring, MapTime time);
 	void SendFinalScore(Scoring& scoring, int clearState);
 
 	TCPSocket& GetTCP()
@@ -143,9 +143,9 @@ private:
 	bool m_suspended = false;
 
 
-	uint32 m_lastScoreSent = 0;
+	int32 m_lastScoreSent = 0;
 	// TODO(itszn) have the server adjust this
-	uint32 m_scoreInterval = 200;
+	int32 m_scoreInterval = 200;
 
 	// Unique id given to by the server on auth
 	String m_userId;
@@ -192,4 +192,5 @@ private:
 
 	String m_userName;
 	String m_newRoomName;
+
 };

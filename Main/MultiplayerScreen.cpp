@@ -714,30 +714,23 @@ void MultiplayerScreen::Tick(float deltaTime)
 	}
 }
 
-void MultiplayerScreen::PerformScoreTick(Scoring& scoring)
+void MultiplayerScreen::PerformScoreTick(Scoring& scoring, MapTime time)
 {
 	if (m_failed)
 		return;
 
-	int lastScoreIndex = scoring.hitStats.size();
-	if (lastScoreIndex == 0)
+	int scoreUpdateIndex = time / m_scoreInterval;
+
+	if (scoreUpdateIndex <= m_lastScoreSent)
 		return;
 
-	lastScoreIndex--;
-
-	HitStat* lastHit = scoring.hitStats[lastScoreIndex];
-	MapTime scoreTimestamp = lastHit->time;
-
-	if (scoreTimestamp <= m_lastScoreSent + m_scoreInterval)
-		return;
-
-	m_lastScoreSent = scoreTimestamp;
+	m_lastScoreSent = scoreUpdateIndex;
 
 	uint32 score = scoring.CalculateCurrentScore();
 
 	nlohmann::json packet;
 	packet["topic"] = "room.score.update";
-	packet["time"] = scoreTimestamp;
+	packet["index"] = scoreUpdateIndex;
 	packet["score"] = score;
 
 	m_tcp.SendJSON(packet);
