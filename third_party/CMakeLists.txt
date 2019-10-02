@@ -67,3 +67,12 @@ set_property(GLOBAL PROPERTY NLOHMANN_JSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/nloh
 #set(ENABLE_WERROR OFF CACHE BOOL "Treat warnings as errors - default is ON for Debug, OFF otherwise.")
 #add_subdirectory(libarchive)
 #target_include_directories(archive PUBLIC libarchive/libarchive)
+
+#sqlite
+add_library(sqlite3
+	sqlite3/sqlite3.c
+	sqlite3/sqlite3.h
+	sqlite3/sqlite3ext.h
+)
+set_property(GLOBAL PROPERTY SQLITE3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
+target_include_directories(sqlite3 PUBLIC ${SQLITE3_ROOT})
