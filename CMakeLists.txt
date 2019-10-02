@@ -121,6 +121,7 @@ if(MSVC)
     #set_target_properties(nuklear PROPERTIES FOLDER "Third Party")
     set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")
     set_target_properties(minimp3 PROPERTIES FOLDER "Third Party")
+    set_target_properties(soundtouch PROPERTIES FOLDER "Third Party")
     set_target_properties(lua PROPERTIES FOLDER "Third Party")
 	# My libraries in the libraries folder
 	set_target_properties(Shared PROPERTIES FOLDER Libraries)

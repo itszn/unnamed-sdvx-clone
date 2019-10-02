@@ -85,3 +85,39 @@ add_library(minimp3
 )
 set_property(GLOBAL PROPERTY MINIMP3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/minimp3)
 target_include_directories(minimp3 PUBLIC MINIMP3_ROOT)
+
+#soundtouch
+add_library(soundtouch
+	soundtouch/src/AAFilter.cpp
+	soundtouch/src/AAFilter.h
+	soundtouch/src/BPMDetect.cpp
+	soundtouch/include/BPMDetect.h
+	soundtouch/src/cpu_detect_x86.cpp
+	soundtouch/src/cpu_detect.h
+	soundtouch/src/FIFOSampleBuffer.cpp
+	soundtouch/include/FIFOSampleBuffer.h
+	soundtouch/include/FIFOSamplePipe.h
+	soundtouch/src/FIRFilter.cpp
+	soundtouch/src/FIRFilter.h
+	soundtouch/src/InterpolateCubic.cpp
+	soundtouch/src/InterpolateCubic.h
+	soundtouch/src/InterpolateLinear.cpp
+	soundtouch/src/InterpolateLinear.h
+	soundtouch/src/InterpolateShannon.cpp
+	soundtouch/src/InterpolateShannon.h
+	soundtouch/src/mmx_optimized.cpp
+	soundtouch/src/PeakFinder.cpp
+	soundtouch/src/PeakFinder.h
+	soundtouch/src/RateTransposer.cpp
+	soundtouch/src/RateTransposer.cpp
+	soundtouch/include/soundtouch_config.h
+	soundtouch/src/SoundTouch.cpp
+	soundtouch/include/SoundTouch.h
+	soundtouch/include/STTypes.h
+	soundtouch/src/sse_optimized.cpp
+	soundtouch/src/TDStretch.cpp
+	soundtouch/src/TDStretch.h
+)
+set_property(GLOBAL PROPERTY SOUNDTOUCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch)
+target_include_directories(soundtouch PUBLIC soundtouch/include)
+target_include_directories(soundtouch PUBLIC soundtouch/src)
