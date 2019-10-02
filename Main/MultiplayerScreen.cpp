@@ -730,7 +730,7 @@ void MultiplayerScreen::PerformScoreTick(Scoring& scoring, MapTime time)
 
 	nlohmann::json packet;
 	packet["topic"] = "room.score.update";
-	packet["index"] = scoreUpdateIndex;
+	packet["time"] = Math::Max(0, scoreUpdateIndex) * m_scoreInterval;
 	packet["score"] = score;
 
 	m_tcp.SendJSON(packet);
