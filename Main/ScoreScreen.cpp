@@ -36,6 +36,7 @@ private:
 	MapTime m_medianHitDelta;
 	ScoreIndex m_scoredata;
 	bool m_restored = false;
+	bool m_removed = false;
 
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
@@ -65,9 +66,10 @@ private:
 	}
 	void m_OnButtonPressed(Input::Button button)
 	{
-		if (button == Input::Button::BT_S && m_restored)
+		if (button == Input::Button::BT_S && m_restored && !m_removed)
 		{
 			g_application->RemoveTickable(this);
+			m_removed = true;
 		}
 	}
 
@@ -258,9 +260,10 @@ public:
 
 	virtual void OnKeyPressed(int32 key) override
 	{
-		if(key == SDLK_ESCAPE || key == SDLK_RETURN)
+		if((key == SDLK_ESCAPE || key == SDLK_RETURN) && !m_removed)
 		{
 			g_application->RemoveTickable(this);
+			m_removed = true;
 		}
 		if (key == SDLK_F12)
 		{
