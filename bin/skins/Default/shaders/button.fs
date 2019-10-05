@@ -7,6 +7,13 @@ layout(location=0) out vec4 target;
 uniform sampler2D mainTex;
 uniform bool hasSample;
 
+varying vec4 position;
+
+uniform float trackPos;
+uniform float trackScale;
+uniform float cutoff;
+uniform float fadeWindow;
+
 void main()
 {	
 	vec4 mainColor = texture(mainTex, fsTex.xy);
@@ -18,5 +25,11 @@ void main()
         addition *= 2.8;
         mainColor.xyzw += addition;
     }
-	target = mainColor;
+
+    target = mainColor;
+    float off = trackPos + position.y * trackScale;
+    float cutoffFade = cutoff - fadeWindow;
+    if (off < cutoff) {
+        target = target * max(0.0f, (off - cutoffFade) / fadeWindow);
+    }
 }

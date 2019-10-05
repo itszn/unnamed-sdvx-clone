@@ -379,6 +379,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			mesh = fxbuttonMesh;
 		}
 
+		params.SetParameter("trackPos", position);
+
 		if(isHold)
 		{
 			if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
@@ -397,14 +399,26 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		float scale = 1.0f;
 		if(isHold) // Hold Note?
 		{
-			scale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length  * trackLength;
+			float trackScale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length;
+			scale = trackScale * trackLength;
+
+			params.SetParameter("trackScale", trackScale);
 		}
+		else {
+			params.SetParameter("trackScale", 1.0f / trackLength);
+		}
+
+		params.SetParameter("cutoff", 0.5f); // Hidden cutoff (% of track)
+		params.SetParameter("fadeWindow", 0.2f); // Hidden cutoff (% of track)
+
+
 		buttonTransform *= Transform::Scale({ 1.0f, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
 	else if(obj->type == ObjectType::Laser) // Draw laser
 	{
 		
+
 		position = playback.TimeToViewDistance(obj->time);
 		float posmult = trackLength / (m_viewRange * laserSpeedOffset);
 		LaserObjectState* laser = (LaserObjectState*)obj;
@@ -413,6 +427,10 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		auto DrawSegment = [&](Mesh mesh, Texture texture, int part)
 		{
 			MaterialParameterSet laserParams;
+			laserParams.SetParameter("trackPos", posmult * position / trackLength);
+			laserParams.SetParameter("trackScale", 1.0f / trackLength);
+			laserParams.SetParameter("cutoff", 0.5f); // Hidden cutoff (% of track)
+			laserParams.SetParameter("fadeWindow", 0.2f); // Hidden cutoff (% of track)
 
 			// Make not yet hittable lasers slightly glowing
 			if (laser->GetRoot()->time > playback.GetLastTime())

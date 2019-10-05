@@ -8,6 +8,13 @@ uniform sampler2D mainTex;
 uniform vec4 color;
 uniform float objectGlow;
 
+varying vec4 position;
+
+uniform float trackPos;
+uniform float trackScale;
+uniform float cutoff;
+uniform float fadeWindow;
+
 // 20Hz flickering. 0 = Miss, 1 = Inactive, 2 & 3 = Active alternating.
 uniform int hitState;
 
@@ -22,7 +29,17 @@ void main()
     x /= laserSize;
     x += 0.5;
 	vec4 mainColor = texture(mainTex, vec2(x,fsTex.y));
+
+	
+
 	target = mainColor * color;
+
+    float off = trackPos + position.y * trackScale;
+    float cutoffFade = cutoff - fadeWindow;
+    if (off < cutoff) {
+        target = target * max(0.0f, (off - cutoffFade) / fadeWindow);
+    }
+
 	float brightness = (target.x + target.y + target.z) / 3;
 	target.xyz = target.xyz * (0 + objectGlow * 1.2);
 }
