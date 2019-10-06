@@ -14,6 +14,7 @@ uniform float trackPos;
 uniform float trackScale;
 uniform float cutoff;
 uniform float fadeWindow;
+uniform float hiddenMode;
 
 // 20Hz flickering. 0 = Miss, 1 = Inactive, 2 & 3 = Active alternating.
 uniform int hitState;
@@ -35,9 +36,9 @@ void main()
 	target = mainColor * color;
 
     float off = trackPos + position.y * trackScale;
-    float cutoffFade = cutoff - fadeWindow;
-    if (off < cutoff) {
-        target = target * max(0.0f, (off - cutoffFade) / fadeWindow);
+    float cutoffFade = cutoff - hiddenMode*fadeWindow;
+    if (hiddenMode*off < hiddenMode*cutoff) {
+        target = target * max(0.0f, (hiddenMode*off - hiddenMode*cutoffFade) / fadeWindow);
     }
 
 	float brightness = (target.x + target.y + target.z) / 3;
