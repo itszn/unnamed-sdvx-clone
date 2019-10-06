@@ -20,24 +20,43 @@ uniform float suddenFadeWindow;
 uniform int hitState;
 
 void main()
-{	
-	vec4 mainColor = texture(mainTex, fsTex.xy);
+{    
+    vec4 mainColor = texture(mainTex, fsTex.xy);
 
-	target = mainColor;
+    target = mainColor;
 
     float off = trackPos + position.y * trackScale;
     
-    float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;
-    if (off < hiddenCutoff) {
-        target = target * max(0.0f, (off - hiddenCutoffFade) / hiddenFadeWindow);
+    if(hiddenCutoff < suddenCutoff)
+    {
+        float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;
+        if (off < hiddenCutoff) {
+            target = target * max(0.0f, (off - hiddenCutoffFade) / hiddenFadeWindow);
+        }
+
+        float suddenCutoffFade = suddenCutoff + suddenFadeWindow;
+        if (off > suddenCutoff) {
+            target = target * max(0.0f, (suddenCutoffFade - off) / suddenFadeWindow);
+        }
+    }
+    else
+    {
+        float hiddenCutoffFade = hiddenCutoff + hiddenFadeWindow;
+        if (off > hiddenCutoff) {
+            target = target * clamp((off - hiddenCutoffFade) / hiddenFadeWindow, 0.0f, 1.0f);
+        }
+
+        float suddenCutoffFade = suddenCutoff - suddenFadeWindow;
+        if (off < suddenCutoff) {
+            target = target * clamp((suddenCutoffFade - off) / suddenFadeWindow, 0.0f, 1.0f);
+        }
+
+        if (off > suddenCutoff && off < hiddenCutoff) {
+            target = target * 0;
+        }
     }
 
-    float suddenCutoffFade = suddenCutoff + suddenFadeWindow;
-    if (off > suddenCutoff) {
-        target = target * max(0.0f, (suddenCutoffFade - off) / suddenFadeWindow);
-    }
 
-
-	target.xyz = target.xyz * (1.0f + objectGlow * 0.3f);
-	target.a = min(1, target.a + target.a * objectGlow * 0.9);
+    target.xyz = target.xyz * (1.0f + objectGlow * 0.3f);
+    target.a = min(1, target.a + target.a * objectGlow * 0.9);
 }

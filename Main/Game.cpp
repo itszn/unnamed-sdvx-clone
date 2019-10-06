@@ -614,6 +614,45 @@ public:
 
 		if(!m_paused)
 			TickGameplay(deltaTime);
+
+
+		// Update hispeed or hidden range
+		if (g_input.GetButton(Input::Button::BT_S))
+		{
+			if (g_input.GetButton(Input::Button::BT_1))
+			{
+				float change = g_input.GetInputLaserDir(0) / 10.0f;
+				m_track->hiddenCutoff = Math::Clamp(m_track->hiddenCutoff + change, 0.f, 1.f);
+
+				change = g_input.GetInputLaserDir(1) / 10.0f;
+				m_track->suddenCutoff = Math::Clamp(m_track->suddenCutoff + change, 0.f, 1.f);
+			}
+			else if (g_input.GetButton(Input::Button::BT_2))
+			{
+				float change = g_input.GetInputLaserDir(0) / 30.0f;
+				m_track->hiddenFadewindow = Math::Clamp(m_track->hiddenFadewindow + change, 0.f, 1.f);
+
+
+				change = g_input.GetInputLaserDir(1) / 30.0f;
+				m_track->suddenFadewindow = Math::Clamp(m_track->suddenFadewindow + change, 0.f, 1.f);
+			}
+			else
+			{
+				for (int i = 0; i < 2; i++)
+				{
+					float change = g_input.GetInputLaserDir(i) / 3.0f;
+					m_hispeed += change;
+					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
+					if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
+					{
+						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
+						m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
+						m_playback.cModSpeed = m_modSpeed;
+					}
+				}
+			}
+		}
+
 	}
 	virtual void Render(float deltaTime) override
 	{
@@ -1066,33 +1105,6 @@ public:
 		m_currentTiming = &m_playback.GetCurrentTimingPoint();
 
 
-		// Update hispeed or hidden range
-		if (g_input.GetButton(Input::Button::BT_S))
-		{
-			if (g_input.GetButton(Input::Button::BT_1))
-			{
-				float change = g_input.GetInputLaserDir(0) / 10.0f;
-				m_track->hiddenCutoff = Math::Clamp(m_track->hiddenCutoff + change, 0.f, 1.f);
-
-				change = g_input.GetInputLaserDir(1) / 10.0f;
-				m_track->hiddenFadewindow = Math::Clamp(m_track->hiddenFadewindow + change, 0.f, 1.f);
-			}
-			else
-			{
-				for (int i = 0; i < 2; i++)
-				{
-					float change = g_input.GetInputLaserDir(i) / 3.0f;
-					m_hispeed += change;
-					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
-					if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
-					{
-						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
-						m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
-						m_playback.cModSpeed = m_modSpeed;
-					}
-				}
-			}
-		}
 
 		// Update song info display
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
