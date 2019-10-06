@@ -723,6 +723,7 @@ public:
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
 				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
 		}
+		m_track->DrawTrackCover(renderQueue);
 
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to

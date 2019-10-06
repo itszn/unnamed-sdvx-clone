@@ -107,6 +107,14 @@ bool Track::AsyncFinalize()
 	delete loader;
 	loader = nullptr;
 
+	// Load track cover material & texture here for skin back-compat
+	trackCoverMaterial = g_application->LoadMaterial("trackCover");
+	trackCoverTexture = g_application->LoadTexture("trackCover.png");
+	if (trackCoverMaterial.IsValid())
+	{
+		trackCoverMaterial->opaque = false;
+	}
+
 	// Set Texture states
 	trackTexture->SetMipmaps(false);
 	trackTexture->SetFilter(true, true, 16.0f);
@@ -172,6 +180,7 @@ bool Track::AsyncFinalize()
 
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
+	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
 	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth, trackTickLength));
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
 
@@ -543,6 +552,21 @@ void Track::DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale)
 		t *= Transform::Translation({ xpos, 0.3f, -0.004f});
 		t *= Transform::Scale({charWidth, charWidth, 1.0f});
 		rq.Draw(t, meshes[i], spriteMaterial, params);
+	}
+}
+
+void Track::DrawTrackCover(RenderQueue& rq)
+{
+	if (trackCoverMaterial.IsValid() && trackCoverTexture.IsValid())
+	{
+		Transform t = trackOrigin;
+		MaterialParameterSet p;
+		p.SetParameter("mainTex", trackCoverTexture);
+		p.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
+		p.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
+		p.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
+		p.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
+		rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
 	}
 }
 
