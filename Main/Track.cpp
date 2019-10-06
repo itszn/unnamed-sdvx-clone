@@ -408,8 +408,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 
-		params.SetParameter("cutoff", 0.5f); // Hidden cutoff (% of track)
-		params.SetParameter("fadeWindow", 0.2f); // Hidden cutoff (% of track)
+		params.SetParameter("cutoff", hiddenCutoff); // Hidden cutoff (% of track)
+		params.SetParameter("fadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
 
 
 		buttonTransform *= Transform::Scale({ 1.0f, scale, 1.0f });
@@ -429,8 +429,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			MaterialParameterSet laserParams;
 			laserParams.SetParameter("trackPos", posmult * position / trackLength);
 			laserParams.SetParameter("trackScale", 1.0f / trackLength);
-			laserParams.SetParameter("cutoff", 0.5f); // Hidden cutoff (% of track)
-			laserParams.SetParameter("fadeWindow", 0.2f); // Hidden cutoff (% of track)
+			laserParams.SetParameter("cutoff", hiddenCutoff); // Hidden cutoff (% of track)
+			laserParams.SetParameter("fadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
 
 			// Make not yet hittable lasers slightly glowing
 			if (laser->GetRoot()->time > playback.GetLastTime())

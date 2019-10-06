@@ -73,6 +73,8 @@ public:
 	bool lasersAreExtend[2] = { false, false };
 	float laserPointerOpacity[2] = { 1.0f };
 	float laserAlertOpacity[2] = { 1.0f };
+	float hiddenCutoff = 0.5f;
+	float hiddenFadewindow = 0.2f;
 
 	float laserSpeedOffset = 0.90;
 	Vector3 shakeOffset;
