@@ -11,9 +11,10 @@ varying vec4 position;
 
 uniform float trackPos;
 uniform float trackScale;
-uniform float cutoff;
-uniform float fadeWindow;
-uniform float hiddenMode;
+uniform float hiddenCutoff;
+uniform float hiddenFadeWindow;
+uniform float suddenCutoff;
+uniform float suddenFadeWindow;
 
 void main()
 {	
@@ -28,9 +29,16 @@ void main()
     }
 
     target = mainColor;
+    
     float off = trackPos + position.y * trackScale;
-    float cutoffFade = cutoff - hiddenMode*fadeWindow;
-    if (hiddenMode*off < hiddenMode*cutoff) {
-        target = target * max(0.0f, (hiddenMode*off - hiddenMode*cutoffFade) / fadeWindow);
+    
+    float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;
+    if (off < hiddenCutoff) {
+        target = target * max(0.0f, (off - hiddenCutoffFade) / hiddenFadeWindow);
+    }
+
+    float suddenCutoffFade = suddenCutoff + suddenFadeWindow;
+    if (off > suddenCutoff) {
+        target = target * max(0.0f, (suddenCutoffFade - off) / suddenFadeWindow);
     }
 }
