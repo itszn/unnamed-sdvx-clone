@@ -368,7 +368,10 @@ public:
 		if (!m_lua)
 			return false;
 
-
+		m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
+		m_track->suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
+		m_track->hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
+		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
 
 		auto pushStringToTable = [&](const char* name, String data)
 		{
@@ -626,15 +629,20 @@ public:
 
 				change = g_input.GetInputLaserDir(1) / 10.0f;
 				m_track->suddenCutoff = Math::Clamp(m_track->suddenCutoff + change, 0.f, 1.f);
+
+				g_gameConfig.Set(GameConfigKeys::HiddenCutoff, m_track->hiddenCutoff);
+				g_gameConfig.Set(GameConfigKeys::SuddenCutoff, m_track->suddenCutoff);
 			}
 			else if (g_input.GetButton(Input::Button::BT_2))
 			{
 				float change = g_input.GetInputLaserDir(0) / 30.0f;
 				m_track->hiddenFadewindow = Math::Clamp(m_track->hiddenFadewindow + change, 0.f, 1.f);
 
-
 				change = g_input.GetInputLaserDir(1) / 30.0f;
 				m_track->suddenFadewindow = Math::Clamp(m_track->suddenFadewindow + change, 0.f, 1.f);
+
+				g_gameConfig.Set(GameConfigKeys::HiddenFade, m_track->hiddenFadewindow);
+				g_gameConfig.Set(GameConfigKeys::SuddenFade, m_track->suddenFadewindow);
 			}
 			else
 			{

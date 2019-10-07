@@ -531,6 +531,24 @@ public:
 
 			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
+
+			nk_layout_row_dynamic(m_nctx, 185, 2);
+			if (nk_group_begin(m_nctx, "Hidden", 0))
+			{
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+				FloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff:", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade:", 0.0f, 1.0f);
+				nk_group_end(m_nctx);
+			}
+			if (nk_group_begin(m_nctx, "Sudden", 0))
+			{
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+				FloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff:", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade:", 0.0f, 1.0f);
+				nk_group_end(m_nctx);
+			}
+
+			nk_layout_row_dynamic(m_nctx, 30, 1);
 			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
 
 			nk_layout_row_dynamic(m_nctx, 30, 1);
