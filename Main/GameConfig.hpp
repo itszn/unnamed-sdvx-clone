@@ -43,6 +43,7 @@ DefineEnum(GameConfigKeys,
 	HiddenFade,
 	SuddenCutoff,
 	SuddenFade,
+	ShowCover,
 
 	// Input device setting per element
 	LaserInputDevice,

@@ -153,6 +153,7 @@ private:
 	Ref<ParticleEmitter> m_holdEmitters[6];
 	GameFlags m_flags;
 	bool m_manualExit = false;
+	bool m_showCover = true;
 
 	float m_shakeAmount = 3;
 	float m_shakeDuration = 0.083;
@@ -372,6 +373,7 @@ public:
 		m_track->suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
 		m_track->hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
+		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
 		auto pushStringToTable = [&](const char* name, String data)
 		{
@@ -731,7 +733,8 @@ public:
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
 				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
 		}
-		m_track->DrawTrackCover(renderQueue);
+		if(m_showCover)
+			m_track->DrawTrackCover(renderQueue);
 
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to

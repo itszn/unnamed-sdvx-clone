@@ -51,6 +51,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::HiddenFade, 0.2f);
 	Set(GameConfigKeys::SuddenCutoff, 1.0f);
 	Set(GameConfigKeys::SuddenFade, 0.2f);
+	Set(GameConfigKeys::ShowCover, true);
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
 
