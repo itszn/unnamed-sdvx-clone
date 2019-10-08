@@ -52,6 +52,7 @@ public:
 	// Draw a centered sprite at pos, relative from the track
 	void DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f);
 	void DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale = 1.0f);
+	void DrawTrackCover(RenderQueue& rq);
 
 	Vector3 TransformPoint(const Vector3& p);
 
@@ -73,6 +74,11 @@ public:
 	bool lasersAreExtend[2] = { false, false };
 	float laserPointerOpacity[2] = { 1.0f };
 	float laserAlertOpacity[2] = { 1.0f };
+	float hiddenCutoff = 0.0f;
+	float hiddenFadewindow = 0.2f;
+
+	float suddenCutoff = 0.5f;
+	float suddenFadewindow = 0.2f;
 
 	float laserSpeedOffset = 0.90;
 	Vector3 shakeOffset;
@@ -84,8 +90,10 @@ public:
 	/* Track base graphics */
 	Mesh trackMesh;
 	Mesh trackTickMesh;
+	Mesh trackCoverMesh;
 	Material trackMaterial; // Also used for buttons
 	Texture trackTexture;
+	Texture trackCoverTexture;
 	Texture trackTickTexture;
 
 	/* Object graphics */
@@ -97,6 +105,7 @@ public:
 	Texture fxbuttonHoldTexture;
 	Material holdButtonMaterial;
 	Material buttonMaterial;
+	Material trackCoverMaterial;
 	Texture laserTextures[2];
 	Texture laserTailTextures[4]; // Entry and exit textures, both sides
 	Material laserMaterial;

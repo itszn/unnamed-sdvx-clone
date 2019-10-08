@@ -107,6 +107,14 @@ bool Track::AsyncFinalize()
 	delete loader;
 	loader = nullptr;
 
+	// Load track cover material & texture here for skin back-compat
+	trackCoverMaterial = g_application->LoadMaterial("trackCover");
+	trackCoverTexture = g_application->LoadTexture("trackCover.png");
+	if (trackCoverMaterial.IsValid())
+	{
+		trackCoverMaterial->opaque = false;
+	}
+
 	// Set Texture states
 	trackTexture->SetMipmaps(false);
 	trackTexture->SetFilter(true, true, 16.0f);
@@ -172,6 +180,7 @@ bool Track::AsyncFinalize()
 
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
+	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
 	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth, trackTickLength));
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
 
@@ -379,6 +388,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			mesh = fxbuttonMesh;
 		}
 
+		params.SetParameter("trackPos", position);
+
 		if(isHold)
 		{
 			if(!active && mobj->hold.GetRoot()->time > playback.GetLastTime())
@@ -397,14 +408,28 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		float scale = 1.0f;
 		if(isHold) // Hold Note?
 		{
-			scale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length  * trackLength;
+			float trackScale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length;
+			scale = trackScale * trackLength;
+
+			params.SetParameter("trackScale", trackScale);
 		}
+		else {
+			params.SetParameter("trackScale", 1.0f / trackLength);
+		}
+
+		params.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
+		params.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
+		params.SetParameter("suddenCutoff", suddenCutoff); // Sudden cutoff (% of track)
+		params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
+
+
 		buttonTransform *= Transform::Scale({ 1.0f, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
 	else if(obj->type == ObjectType::Laser) // Draw laser
 	{
 		
+
 		position = playback.TimeToViewDistance(obj->time);
 		float posmult = trackLength / (m_viewRange * laserSpeedOffset);
 		LaserObjectState* laser = (LaserObjectState*)obj;
@@ -413,6 +438,12 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		auto DrawSegment = [&](Mesh mesh, Texture texture, int part)
 		{
 			MaterialParameterSet laserParams;
+			laserParams.SetParameter("trackPos", posmult * position / trackLength);
+			laserParams.SetParameter("trackScale", 1.0f / trackLength);
+			laserParams.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
+			laserParams.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
+			laserParams.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
+			laserParams.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
 
 			// Make not yet hittable lasers slightly glowing
 			if (laser->GetRoot()->time > playback.GetLastTime())
@@ -521,6 +552,21 @@ void Track::DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale)
 		t *= Transform::Translation({ xpos, 0.3f, -0.004f});
 		t *= Transform::Scale({charWidth, charWidth, 1.0f});
 		rq.Draw(t, meshes[i], spriteMaterial, params);
+	}
+}
+
+void Track::DrawTrackCover(RenderQueue& rq)
+{
+	if (trackCoverMaterial.IsValid() && trackCoverTexture.IsValid())
+	{
+		Transform t = trackOrigin;
+		MaterialParameterSet p;
+		p.SetParameter("mainTex", trackCoverTexture);
+		p.SetParameter("hiddenCutoff", hiddenCutoff); // Hidden cutoff (% of track)
+		p.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
+		p.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
+		p.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
+		rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
 	}
 }
 

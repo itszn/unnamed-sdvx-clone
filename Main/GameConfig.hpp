@@ -39,6 +39,12 @@ DefineEnum(GameConfigKeys,
 	GaugeDrainNormal,
 	GaugeDrainHalf,
 
+	HiddenCutoff,
+	HiddenFade,
+	SuddenCutoff,
+	SuddenFade,
+	ShowCover,
+
 	// Input device setting per element
 	LaserInputDevice,
 	ButtonInputDevice,
