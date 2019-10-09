@@ -479,120 +479,135 @@ public:
 
 		if (nk_begin(m_nctx, "Settings", nk_rect(x, 0, w, g_resolution.y), 0))
 		{
-
-			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
-			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
-			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetKey_ST();
-			if (nk_button_label(m_nctx, m_controllerLaserNames[1].c_str())) SetRL();
-
-			nk_layout_row_dynamic(m_nctx, m_buttonheight, 4);
-			if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) SetKey_BTA();
-			if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) SetKey_BTB();
-			if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) SetKey_BTC();
-			if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) SetKey_BTD();
-			nk_layout_row_dynamic(m_nctx, m_buttonheight, 2);
-			if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) SetKey_FXL();
-			if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) SetKey_FXR();
-
-			nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
-			if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) CalibrateSens();
-
-			GameConfigKeys laserSensKey;
-			switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice))
+			//Input settings
+			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", NK_MINIMIZED))
 			{
-			case InputDevice::Controller:
-				laserSensKey = GameConfigKeys::Controller_Sensitivity;
-				break;
-			case InputDevice::Mouse:
-				laserSensKey = GameConfigKeys::Mouse_Sensitivity;
-				break;
-			case InputDevice::Keyboard:
-			default:
-				laserSensKey = GameConfigKeys::Key_Sensitivity;
-				break;
+				nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
+				if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetKey_ST();
+				if (nk_button_label(m_nctx, m_controllerLaserNames[1].c_str())) SetRL();
+
+				nk_layout_row_dynamic(m_nctx, m_buttonheight, 4);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) SetKey_BTA();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) SetKey_BTB();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) SetKey_BTC();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) SetKey_BTD();
+				nk_layout_row_dynamic(m_nctx, m_buttonheight, 2);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) SetKey_FXL();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) SetKey_FXR();
+
+				nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
+				if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) CalibrateSens();
+
+				GameConfigKeys laserSensKey;
+				switch (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice))
+				{
+				case InputDevice::Controller:
+					laserSensKey = GameConfigKeys::Controller_Sensitivity;
+					break;
+				case InputDevice::Mouse:
+					laserSensKey = GameConfigKeys::Mouse_Sensitivity;
+					break;
+				case InputDevice::Keyboard:
+				default:
+					laserSensKey = GameConfigKeys::Key_Sensitivity;
+					break;
+				}
+
+				FloatSetting(laserSensKey, "Laser sensitivity (%f):", 0, 20, 0.001);
+				EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
+				EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
+
+				if (m_gamePads.size() > 0)
+				{
+					m_selectedGamepad = SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
+				}
+
+				IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
+				IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
+				IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
+				nk_tree_pop(m_nctx);
 			}
 
-			FloatSetting(laserSensKey, "Laser sensitivity (%f):", 0, 20, 0.001);
-			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
-			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
-
-			if (m_gamePads.size() > 0)
+			//Game settings
+			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", NK_MINIMIZED))
 			{
-				m_selectedGamepad = SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
+				EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
+				FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
+				FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
+
+				nk_layout_row_dynamic(m_nctx, 150, 2);
+				if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
+				{
+					nk_layout_row_dynamic(m_nctx, 30, 1);
+					FloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff:", 0.0f, 1.0f);
+					FloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade:", 0.0f, 1.0f);
+					nk_group_end(m_nctx);
+				}
+				if (nk_group_begin(m_nctx, "Sudden", NK_WINDOW_NO_SCROLLBAR))
+				{
+					nk_layout_row_dynamic(m_nctx, 30, 1);
+					FloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff:", 0.0f, 1.0f);
+					FloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade:", 0.0f, 1.0f);
+					nk_group_end(m_nctx);
+				}
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+				ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
+				ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
+				EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+
+				nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
+
+				if (m_skins.size() > 0)
+				{
+					StringSelectionSetting(GameConfigKeys::Skin, m_skins, "Selected Skin:");
+				}
+
+				nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_layout_row_dynamic(m_nctx, 30, 2);
+				if (nk_button_color(m_nctx, lcol))	m_laserColors[1] = fmodf(m_laserColors[0] + 180, 360);
+				if (nk_button_color(m_nctx, rcol))	m_laserColors[0] = fmodf(m_laserColors[1] + 180, 360);
+				nk_slider_float(m_nctx, 0, m_laserColors, 360, 0.1);
+				nk_slider_float(m_nctx, 0, m_laserColors + 1, 360, 0.1);
+
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+
+				nk_tree_pop(m_nctx);
 			}
 
-			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
-			IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
-			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
-			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
-
-
-			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
-
-			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
-			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
-
-			nk_layout_row_dynamic(m_nctx, 150, 2);
-			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
+			//System (audio/visual) settings
+			if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", NK_MINIMIZED))
 			{
 				nk_layout_row_dynamic(m_nctx, 30, 1);
-				FloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff:", 0.0f, 1.0f);
-				FloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade:", 0.0f, 1.0f);
-				nk_group_end(m_nctx);
-			}
-			if (nk_group_begin(m_nctx, "Sudden", NK_WINDOW_NO_SCROLLBAR))
-			{
-				nk_layout_row_dynamic(m_nctx, 30, 1);
-				FloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff:", 0.0f, 1.0f);
-				FloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade:", 0.0f, 1.0f);
-				nk_group_end(m_nctx);
-			}
-			nk_layout_row_dynamic(m_nctx, 30, 1);
-			ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
+				PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
+				ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
+				ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)");
+				ToggleSetting(GameConfigKeys::VSync, "VSync");
+				ToggleSetting(GameConfigKeys::ShowFps, "Show FPS");
 
-			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
-
-			nk_layout_row_dynamic(m_nctx, 30, 1);
-			ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
-			ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)");
-			ToggleSetting(GameConfigKeys::VSync, "VSync");
-			ToggleSetting(GameConfigKeys::ShowFps, "Show FPS");
-
-			SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti aliasing (requires restart):");
-
-			if (m_skins.size() > 0)
-			{
-				StringSelectionSetting(GameConfigKeys::Skin, m_skins, "Selected Skin:");
-			}
-
-			nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_layout_row_dynamic(m_nctx, 30, 2);
-			if (nk_button_color(m_nctx, lcol))	m_laserColors[1] = fmodf(m_laserColors[0] + 180, 360);
-			if (nk_button_color(m_nctx, rcol))	m_laserColors[0] = fmodf(m_laserColors[1] + 180, 360);
-			nk_slider_float(m_nctx, 0, m_laserColors, 360, 0.1);
-			nk_slider_float(m_nctx, 0, m_laserColors+1, 360, 0.1);
-
-			nk_layout_row_dynamic(m_nctx, 30, 1);
-
-			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
-
+				SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti aliasing (requires restart):");
 #ifdef _WIN32
-			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
+				ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
-			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
-			ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
+				ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
+				ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
 
-			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
+				nk_tree_pop(m_nctx);
+			}
 
-			nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default);
+			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", NK_MINIMIZED))
+			{
+				nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default);
 
-			nk_label(m_nctx, "Multiplayer Server Username:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerUsername, &m_multiplayerUsernameLen, 1024, nk_filter_default);
+				nk_label(m_nctx, "Multiplayer Server Username:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerUsername, &m_multiplayerUsernameLen, 1024, nk_filter_default);
 
-			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default);
+				nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default);
+				nk_tree_pop(m_nctx);
+			}
 
 			nk_spacing(m_nctx, 1);
 			if (nk_button_label(m_nctx, "Skin Settings"))
