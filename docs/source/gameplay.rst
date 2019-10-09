@@ -14,6 +14,13 @@ The following fields are available under the ``gameplay`` table:
     float hispeed
     float bpm
     float gauge
+	
+	//the following are all in the range 0.0 - 1.0
+    float hiddenCutoff
+    float suddenCutoff
+    float hiddenFade
+    float suddenFade
+	
     bool autoplay
     int gaugeType // 1 = hard, 0 = normal
     int comboState // 2 = puc, 1 = uc, 0 = normal

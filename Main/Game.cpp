@@ -387,6 +387,12 @@ public:
 			lua_pushinteger(m_lua, data);
 			lua_settable(m_lua, -3);
 		};
+		auto pushFloatToTable = [&](const char* name, float data)
+		{
+			lua_pushstring(m_lua, name);
+			lua_pushnumber(m_lua, data);
+			lua_settable(m_lua, -3);
+		};
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
@@ -439,6 +445,12 @@ public:
 			lua_pushstring(m_lua, "autoplay");
 			lua_pushboolean(m_lua, m_scoring.autoplay);
 			lua_settable(m_lua, -3);
+
+			//set hidden/sudden
+			pushFloatToTable("hiddenFade", m_track->hiddenFadewindow);
+			pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
+			pushFloatToTable("suddenFade", m_track->suddenFadewindow);
+			pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
 
 			lua_setglobal(m_lua, "gameplay");
 		}
@@ -1188,6 +1200,26 @@ public:
 		lua_pushstring(m_lua, "comboState");
 		lua_pushnumber(m_lua, m_scoring.comboState);
 		lua_settable(m_lua, -3);
+
+		//hidden/sudden
+		lua_pushstring(m_lua, "hiddenFade");
+		lua_pushnumber(m_lua, m_track->hiddenFadewindow);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "hiddenCutoff");
+		lua_pushnumber(m_lua, m_track->hiddenCutoff);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "suddenFade");
+		lua_pushnumber(m_lua, m_track->suddenFadewindow);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "suddenCutoff");
+		lua_pushnumber(m_lua, m_track->suddenCutoff);
+		lua_settable(m_lua, -3);
+
+
+
 		//critLine
 		{
 			lua_getfield(m_lua, -1, "critLine");
