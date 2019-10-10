@@ -41,7 +41,7 @@ public:
 private:
 	bool ToggleSetting(String key, String label);
 	float PercentSetting(String key, String label);
-	void TextSetting(String key, String label);
+	void TextSetting(String key, String label, bool secret);
 	void ColorSetting(String key, String label);
 	float FloatSetting(String key, String label, float min, float max, float step = 0.01);
 	void IntSetting(String key, String label, int min, int max, int step = 1, int perpixel = 1);

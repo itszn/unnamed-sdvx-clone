@@ -47,6 +47,10 @@ text
 
 - ``default`` : ``string value``
 
+Optional fields:
+
+- ``secret`` : ``true/false``
+
 color
 *****
 ``color`` entry type. Required fields:
@@ -138,5 +142,12 @@ It looks like this
 			"type": "color",
 			"label": "Color Test",
 			"default": "007FFFFF"
+		},
+
+		"secret_value" : {
+			"type" : "text",
+			"label" : "Secret value test",
+			"default" : "usc123",
+			"secret" : true
 		}
 	}

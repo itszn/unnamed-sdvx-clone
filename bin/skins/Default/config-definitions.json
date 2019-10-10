@@ -42,5 +42,12 @@
 		"type": "color",
 		"label": "Color Test",
 		"default": "007FFFFF"
+	},
+
+	"secret_value" : {
+		"type" : "text",
+		"label" : "Secret value test",
+		"default" : "usc123",
+		"secret" : true
 	}
 }

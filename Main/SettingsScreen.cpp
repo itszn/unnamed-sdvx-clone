@@ -976,15 +976,33 @@ float SkinSettingsScreen::PercentSetting(String key, String label)
 	return value;
 }
 
-void SkinSettingsScreen::TextSetting(String key, String label)
+void SkinSettingsScreen::TextSetting(String key, String label, bool secret)
 {
 	String value = m_skinConfig->GetString(key);
 	char display[1024];
 	strcpy(display, value.c_str());
 	int len = value.length();
-	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-	nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default);
+
+	if (secret) //https://github.com/vurtun/nuklear/issues/587#issuecomment-354421477
+	{
+		char buf[1024];
+		int old_len = len;
+		for (int i = 0; i < len; i++)
+			buf[i] = '*';
+
+		nk_edit_string(m_nctx, NK_EDIT_FIELD, buf, &len, 64, nk_filter_default);
+		if (old_len < len)
+		{
+			memcpy(&display[old_len], &buf[old_len], (nk_size)(len - old_len));
+		}
+	}
+	else
+	{
+		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+		nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default);
+	}
 	value = String(display, len);
+
 	m_skinConfig->Set(key, value);
 }
 
@@ -1106,7 +1124,7 @@ void SkinSettingsScreen::Render(float deltaTime)
 			}
 			else if (s.type == SkinSetting::Type::Text)
 			{
-				TextSetting(s.key, s.label);
+				TextSetting(s.key, s.label, s.textSetting.secret);
 			}
 			else if (s.type == SkinSetting::Type::Color)
 			{

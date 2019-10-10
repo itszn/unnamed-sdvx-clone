@@ -43,6 +43,7 @@ struct SkinSetting
 
 		struct {
 			char* def;
+			bool secret;
 		} textSetting;
 		
 		struct {

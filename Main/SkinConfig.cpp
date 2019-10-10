@@ -118,8 +118,13 @@ SkinConfig::SkinConfig(String skin)
 				break;
 
 			case SkinSetting::Type::Text:
+				newsetting.textSetting.secret = false;
 				values.at("default").get_to(def);
 				newsetting.textSetting.def = strdup(*def);
+				if (values.contains("secret"))
+				{
+					values.at("secret").get_to(newsetting.textSetting.secret);
+				}
 				break;
 
 			case SkinSetting::Type::Integer:
