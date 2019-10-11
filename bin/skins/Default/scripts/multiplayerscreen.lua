@@ -956,7 +956,11 @@ Tcp.SetTopicHandler("room.update", function(data)
         last_song = data.song
     end
     host = data.host
-    owner = data.owner
+    if data.owner then
+        owner = data.owner
+    else
+        owner = host
+    end
     hard_mode = data.hard_mode
     mirror_mode = data.mirror_mode
     do_rotate = data.do_rotate
