@@ -26,6 +26,7 @@ local hard_mode = false;
 local rotate_host = false;
 local start_game_soon = false;
 local host = nil;
+local owner = nil;
 local missing_song = false;
 local placeholderJacket = gfx.CreateSkinImage("song_select/loading.png", 0)
 local did_exit = false;
@@ -505,11 +506,15 @@ function render_lobby(deltaTime)
     buttonY = user_y_off + 125 + userHeight/2
     for i, user in ipairs(lobby_users) do
         draw_user(user, split/2, buttonY, split*3/4, i)
-        if host == user_id and user.id ~= user_id then
+        local side_button_off = 0
+        if owner == user_id and user.id ~= user_id then
             draw_button("K",split/2 + split*3/8+10+25, buttonY, 50, function()
                 kick_user(user);
             end)
-            draw_button("H",split/2 + split*3/8+10+25+60, buttonY, 50, function()
+            side_button_off = 60;
+        end
+        if (owner == user_id or host == user_id) and user.id ~= host then
+            draw_button("H",split/2 + split*3/8+10+25+side_button_off, buttonY, 50, function()
                 change_host(user);
             end)
         end
@@ -595,7 +600,8 @@ function render_lobby(deltaTime)
     draw_checkbox("Excessive", split/2 + song_x_off - 150, 375+jacket_size + 70, toggle_hard, hard_mode, not start_game_soon)
     draw_checkbox("Mirror", split/2 + song_x_off, 375+jacket_size + 70, toggle_mirror, mirror_mode, not start_game_soon)
     
-    draw_checkbox("Rotate Host", split/2 + song_x_off + 150 + 20, 375+jacket_size + 70, toggle_rotate, do_rotate, host == user_id and not start_game_soon)
+    draw_checkbox("Rotate Host", split/2 + song_x_off + 150 + 20, 375+jacket_size + 70, toggle_rotate, do_rotate,
+                    (owner == user_id or host == user_id) and not start_game_soon)
 end
 
 function render_room_list(deltaTime)
@@ -761,6 +767,7 @@ end
 
 function new_room()
     host = user_id
+    owner = user_id
     mpScreen.NewRoomStep()
 end
 
@@ -949,6 +956,11 @@ Tcp.SetTopicHandler("room.update", function(data)
         last_song = data.song
     end
     host = data.host
+    if data.owner then
+        owner = data.owner
+    else
+        owner = host
+    end
     hard_mode = data.hard_mode
     mirror_mode = data.mirror_mode
     do_rotate = data.do_rotate
