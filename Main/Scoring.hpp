@@ -122,7 +122,7 @@ public:
 
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))
-	Delegate<Input::Button, ScoreHitRating, ObjectState*, bool> OnButtonHit;
+	Delegate<Input::Button, ScoreHitRating, ObjectState*, MapTime> OnButtonHit;
 	// Called when a miss is recorded on a given button index
 	Delegate<Input::Button, bool, ObjectState*> OnButtonMiss;
 

@@ -1573,7 +1573,7 @@ public:
 		ex->position = Vector3(laserPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
 	}
-	void OnButtonHit(Input::Button button, ScoreHitRating rating, ObjectState* hitObject, bool late)
+	void OnButtonHit(Input::Button button, ScoreHitRating rating, ObjectState* hitObject, MapTime delta)
 	{
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
@@ -1601,7 +1601,7 @@ public:
 				//m_track->timedHitEffect->late = late;
 				//m_track->timedHitEffect->Reset(0.75f);
 				lua_getglobal(m_lua, "near_hit");
-				lua_pushboolean(m_lua, late);
+				lua_pushboolean(m_lua, delta > 0);
 				if (lua_pcall(m_lua, 1, 0, 0) != 0)
 				{
 					Logf("Lua error on calling near_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -1622,6 +1622,19 @@ public:
 			emitter->position = m_track->TransformPoint(emitter->position);
 		}
 
+		//call lua button_hit if it exists
+		lua_getglobal(m_lua, "button_hit");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushnumber(m_lua, buttonIdx);
+			lua_pushnumber(m_lua, (int)rating);
+			lua_pushnumber(m_lua, delta);
+			if (lua_pcall(m_lua, 3, 0, 0) != 0)
+			{
+				Logf("Lua error on calling button_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
 	{
@@ -1634,6 +1647,20 @@ public:
 			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 		}
 		m_track->AddEffect(new ButtonHitRatingEffect(buttonIdx, ScoreHitRating::Miss));
+
+
+		lua_getglobal(m_lua, "button_hit");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushnumber(m_lua, buttonIdx);
+			lua_pushnumber(m_lua, (int)ScoreHitRating::Miss);
+			lua_pushnumber(m_lua, 0);
+			if (lua_pcall(m_lua, 3, 0, 0) != 0)
+			{
+				Logf("Lua error on calling button_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
 	void OnComboChanged(uint32 newCombo)
 	{

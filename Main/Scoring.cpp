@@ -814,7 +814,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 	{
 		stat->delta = delta;
 		stat->rating = tick->GetHitRatingFromDelta(delta);
-		OnButtonHit.Call((Input::Button)index, stat->rating, tick->object, Math::Sign(delta) > 0);
+		OnButtonHit.Call((Input::Button)index, stat->rating, tick->object, delta);
 
 		if (stat->rating == ScoreHitRating::Perfect)
 		{
@@ -1148,7 +1148,7 @@ void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 		if(!obj)
 		{
 			// Fire event for idle hits
-			OnButtonHit.Call(buttonCode, ScoreHitRating::Idle, nullptr, false);
+			OnButtonHit.Call(buttonCode, ScoreHitRating::Idle, nullptr, 0);
 		}
 	}
 	else if (buttonCode > Input::Button::BT_S)

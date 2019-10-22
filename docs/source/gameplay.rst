@@ -96,6 +96,24 @@ near_hit(wasLate)
 ^^^^^^^^^^^^^^^^^
 For updating early/late display.
 
+button_hit(button, rating, delta)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Can be used for a number of things, such as starting custom hit animations or more advanced early/late displays.
+``button`` uses the same values as the ``game.BUTTON_*`` values.
+``delta`` is the hit time from perfect, positive values = late, negative values = early.
+
+``rating`` is the hit rating and the values are:
+
+.. code-block:: c
+
+    0 = Miss
+    1 = Near
+    2 = Crit
+    3 = Idle
+
+Idle and Miss are special cases that do not have any delta (delta always 0). Idle is triggered when the player
+hits the button when there is no note object in range on that lane.
+
 laser_alert(isRight)
 ^^^^^^^^^^^^^^^^^^^^
 For starting laser alert animations::
