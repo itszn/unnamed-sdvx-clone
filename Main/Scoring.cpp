@@ -650,7 +650,7 @@ void Scoring::m_UpdateTicks()
 		for(uint32 i = 0; i < ticks.size(); i++)
 		{
 			ScoreTick* tick = ticks[i];
-			MapTime delta = currentTime - ticks[i]->time;
+			MapTime delta = currentTime - ticks[i]->time + m_inputOffset;
 			bool shouldMiss = abs(delta) > tick->GetHitWindow();
 			bool processed = false;
 			if(delta >= 0)
