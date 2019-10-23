@@ -4,6 +4,8 @@
 #include <Shared/Thread.hpp>
 #include "SkinHttp.hpp"
 
+#define PLAYBACK
+
 #define DISCORD_APPLICATION_ID "514489760568573952"
 
 extern class OpenGL* g_gl;

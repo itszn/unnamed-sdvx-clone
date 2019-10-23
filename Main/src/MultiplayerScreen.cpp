@@ -404,7 +404,15 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_suspended = true;
 
 	// Switch to the new tickable
+#ifndef PLAYBACK
 	g_transition->TransitionTo(game);
+#else
+	game->SetWindowIndex(GetWindowIndex());
+	TransitionScreen* transition = TransitionScreen::Create();
+	transition->SetWindowIndex(GetWindowIndex());
+	transition->TransitionTo(game);
+	g_application->AddTickable(transition);
+#endif
 	return false;
 }
 

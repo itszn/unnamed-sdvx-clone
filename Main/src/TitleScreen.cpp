@@ -38,7 +38,15 @@ private:
 
 	void Start()
 	{
+#ifndef PLAYBACK
 		g_transition->TransitionTo(SongSelect::Create());
+#else
+
+		TransitionScreen* transition = TransitionScreen::Create();
+		transition->SetWindowIndex(GetWindowIndex());
+		transition->TransitionTo(SongSelect::Create());
+		g_application->AddTickable(transition);
+#endif
 	}
 
 	int lStart(lua_State* L)
@@ -55,7 +63,15 @@ private:
 
 	int lMultiplayer(lua_State* L)
 	{
+#ifndef PLAYBACK
 		g_transition->TransitionTo(new MultiplayerScreen());
+#else
+		auto multiScreen = new MultiplayerScreen();
+		auto multiTransition = TransitionScreen::Create();
+		multiTransition->SetWindowIndex(GetWindowIndex());
+		multiTransition->TransitionTo(multiScreen);
+		g_application->AddTickable(multiTransition);
+#endif
 		return 0;
 	}
 
@@ -167,9 +183,10 @@ public:
 
 	virtual void Render(float deltaTime)
 	{
-		if (IsSuspended())
+		if (IsSuspended()) {
 			return;
-
+		}
+		
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)

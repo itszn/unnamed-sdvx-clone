@@ -43,11 +43,18 @@ OpenGL *g_gl = nullptr;
 Graphics::Window *g_gameWindow = nullptr;
 Application *g_application = nullptr;
 JobSheduler *g_jobSheduler = nullptr;
+#ifndef PLAYBACK
 TransitionScreen *g_transition = nullptr;
+#endif
 Input g_input;
 
+#define NUM_WINDOWS 2
 // Tickable queue
+#ifdef PLAYBACK
+static Vector<IApplicationTickable*> g_tickables[NUM_WINDOWS];
+#else
 static Vector<IApplicationTickable *> g_tickables;
+#endif
 
 struct TickableChange
 {
@@ -158,7 +165,16 @@ int32 Application::Run()
 				AddTickable(ss);
 			}
 			else // Start regular game, goto title screen
-				AddTickable(TitleScreen::Create());
+			{
+				//AddTickable(TitleScreen::Create());
+
+				TitleScreen* second = TitleScreen::Create();
+				second->SetWindowIndex(1);
+				AddTickable(second);
+				second = TitleScreen::Create();
+				second->SetWindowIndex(0);
+				AddTickable(second);
+			}
 		}
 	}
 
@@ -862,7 +878,10 @@ void Application::m_MainLoop()
 
 		// Process changes in the list of items
 		bool restoreTop = false;
-		for (auto &ch : g_tickableChanges)
+#ifdef PLAYBACK
+		Set<int> restoreWindows;
+#endif
+		for(auto& ch : g_tickableChanges)
 		{
 			if (ch.mode == TickableChange::Added)
 			{
@@ -874,6 +893,7 @@ void Application::m_MainLoop()
 					continue;
 				}
 
+#ifndef PLAYBACK
 				if (!g_tickables.empty())
 					g_tickables.back()->m_Suspend();
 
@@ -890,20 +910,52 @@ void Application::m_MainLoop()
 				g_tickables.insert(insertionPoint, ch.tickable);
 
 				restoreTop = true;
+#else
+				auto& windowTickables = g_tickables[ch.tickable->GetWindowIndex()];
+				if(!windowTickables.empty())
+					windowTickables.back()->m_Suspend();
+
+
+				auto insertionPoint = windowTickables.end();
+				if(ch.insertBefore)
+				{
+					// Find insertion point
+					for(insertionPoint = windowTickables.begin(); insertionPoint != windowTickables.end(); insertionPoint++)
+					{
+						if (*insertionPoint == ch.insertBefore)
+							break;
+					}
+				}
+				windowTickables.insert(insertionPoint, ch.tickable);
+				
+				restoreWindows.insert(ch.tickable->GetWindowIndex());
+#endif
 			}
 			else if (ch.mode == TickableChange::Removed || ch.mode == TickableChange::RemovedNoDelete)
 			{
 				// Remove focus
 				ch.tickable->m_Suspend();
 
+#ifndef PLAYBACK
 				assert(!g_tickables.empty());
 				if (g_tickables.back() == ch.tickable)
 					restoreTop = true;
 				g_tickables.Remove(ch.tickable);
 				if (ch.mode == TickableChange::Removed)
 					delete ch.tickable;
+#else
+				auto& windowTickables = g_tickables[ch.tickable->GetWindowIndex()];
+
+				assert(!windowTickables.empty());
+				if(windowTickables.back() == ch.tickable)
+					restoreWindows.insert(ch.tickable->GetWindowIndex());
+
+				windowTickables.Remove(ch.tickable);
+				delete ch.tickable;
+#endif
 			}
 		}
+#ifndef PLAYBACK
 		if (restoreTop && !g_tickables.empty())
 			g_tickables.back()->m_Restore();
 
@@ -913,19 +965,58 @@ void Application::m_MainLoop()
 			Log("No more IApplicationTickables, shutting down", Logger::Severity::Warning);
 			return;
 		}
+#else
+		for (int window : restoreWindows) {
+			if (g_tickables[window].empty()) {
+				continue;
+			}
+			g_tickables[window].back()->m_Restore();
+		}
+
+		// Application should end, no more active screens
+		bool has_tickable = false;
+		for (int window = 0; window < NUM_WINDOWS; window++) {
+			if (g_tickables[window].empty())
+				continue;
+			has_tickable = true;
+			break;
+		}
+		if(!g_tickableChanges.empty() && !has_tickable)
+		{
+			Log("No more IApplicationTickables, shutting down", Logger::Severity::Warning);
+			return;
+		}
+#endif
 		g_tickableChanges.clear();
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
 		float targetRenderTime = 0.0f;
+#ifndef PLAYBACK
 		for (auto tickable : g_tickables)
 		{
 			int32 tempTarget = 0;
 			if (tickable->GetTickRate(tempTarget))
 			{
-				targetFPS = tempTarget;
+				int32 tempTarget = 0;
+				if (tickable->GetTickRate(tempTarget))
+				{
+					targetFPS = tempTarget;
+				}
 			}
 		}
+#else
+		for (int window = 0; window < NUM_WINDOWS; window++) {
+			for (auto tickable : g_tickables[window])
+			{
+				int32 tempTarget = 0;
+				if (tickable->GetTickRate(tempTarget))
+				{
+					targetFPS = tempTarget;
+				}
+			}
+		}
+#endif
 		if (targetFPS > 0)
 			targetRenderTime = 1.0f / (float)targetFPS;
 
@@ -978,29 +1069,27 @@ void Application::m_Tick()
 	m_skinHttp.ProcessCallbacks();
 
 	// Tick all items
-	for (auto &tickable : g_tickables)
+#ifndef PLAYBACK
+	for (auto& tickable : g_tickables)
 	{
 		tickable->Tick(m_deltaTime);
 	}
+#else
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (auto& tickable : g_tickables[window])
+		{
+			tickable->Tick(m_deltaTime);
+		}
+	}
+#endif
 
 	// Not minimized / Valid resolution
 	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-		nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
-		m_renderQueueBase = RenderQueue(g_gl, m_renderStateBase);
-		g_guiState.rq = &m_renderQueueBase;
-		g_guiState.t = Transform();
-		g_guiState.fontMaterial = &m_fontMaterial;
-		g_guiState.fillMaterial = &m_fillMaterial;
-		g_guiState.resolution = g_resolution;
 
-		if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
-			g_guiState.scissorOffset = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
-		else
-			g_guiState.scissorOffset = 0;
-
+#ifndef PLAYBACK
 		g_guiState.scissor = Rect(0, 0, -1, -1);
 		g_guiState.imageTint = nvgRGB(255, 255, 255);
 		// Render all items
@@ -1021,8 +1110,70 @@ void Application::m_Tick()
 			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
 			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
 		}
-		nvgEndFrame(g_guiState.vg);
-		m_renderQueueBase.Process();
+#else
+		auto realRes = g_resolution;
+
+		for (int windowIndex = 0; windowIndex < 2; windowIndex++) {
+			// Reset viewport
+
+			g_resolution = Vector2i(realRes.x/NUM_WINDOWS, realRes.y);
+			g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
+			g_gameConfig.Set(GameConfigKeys::ScreenWidth, g_resolution.x);
+			g_gameConfig.Set(GameConfigKeys::ScreenHeight, g_resolution.y);
+
+			m_renderStateBase.aspectRatio = g_aspectRatio;
+			m_renderStateBase.viewportSize = g_resolution;
+			//float left = realRes.x / 2 - g_resolution.x / 2;
+			float left = g_resolution.x * windowIndex;
+			float top = 0;
+			float right = left + g_resolution.x;
+			float bottom = g_resolution.y;
+			g_gl->SetViewport(Rect(left, top, right, bottom));
+			glScissor(0, 0, g_resolution.x, g_resolution.y);
+			// End Reset viewport
+
+			nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
+
+			m_renderQueueBase = RenderQueue(g_gl, m_renderStateBase);
+			g_guiState.rq = &m_renderQueueBase;
+			g_guiState.t = Transform();
+			g_guiState.fontMaterial = &m_fontMaterial;
+			g_guiState.fillMaterial = &m_fillMaterial;
+			g_guiState.resolution = g_resolution;
+
+			g_guiState.scissorOffset = left;
+
+			g_guiState.scissor = Rect(0, 0, -1, -1);
+			g_guiState.imageTint = nvgRGB(255, 255, 255);
+			// Render all items
+			for (int window = 0; window < NUM_WINDOWS; window++) {
+				for (auto& tickable : g_tickables[window])
+				{
+					Logf("Checking %p with index %u", Logger::Severity::Info, tickable, tickable->GetWindowIndex());
+					if (tickable->GetWindowIndex() != windowIndex)
+						continue;
+					tickable->Render(m_deltaTime);
+				}
+			}
+			m_renderStateBase.projectionTransform = GetGUIProjection();
+			if (m_showFps)
+			{
+				nvgReset(g_guiState.vg);
+				nvgBeginPath(g_guiState.vg);
+				nvgFontFace(g_guiState.vg, "fallback");
+				nvgFontSize(g_guiState.vg, 20);
+				nvgTextAlign(g_guiState.vg, NVG_ALIGN_RIGHT);
+				nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
+				String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
+				nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+			}
+			nvgEndFrame(g_guiState.vg);
+			m_renderQueueBase.Process();
+		}
+		g_resolution = realRes;
+#endif
+
+		g_gl->SetViewport(g_resolution);
 		glCullFace(GL_FRONT);
 		// Swap buffers
 		g_gl->SwapBuffers();
@@ -1039,11 +1190,20 @@ void Application::m_Cleanup()
 {
 	ProfilerScope $("Application Cleanup");
 
+#ifndef PLAYBACK
 	for (auto it : g_tickables)
 	{
 		delete it;
 	}
-	g_tickables.clear();
+#else
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (auto it : g_tickables[window])
+		{
+			delete it;
+		}
+		g_tickables[window].clear();
+	}
+#endif
 
 	if (g_audio)
 	{
@@ -1362,6 +1522,17 @@ void Application::ReloadScript(const String &name, lua_State *L)
 
 void Application::ReloadSkin()
 {
+#ifdef PLAYBACK
+	//remove all tickables
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (auto* t: g_tickables[window])
+		{
+			t->m_Suspend();
+			delete t;
+		}
+		g_tickables[window].clear();
+	}
+#else
 	//remove all tickables
 	for (auto* t : g_tickables)
 	{
@@ -1369,6 +1540,7 @@ void Application::ReloadSkin()
 		delete t;
 	}
 	g_tickables.clear();
+#endif
 	g_tickableChanges.clear();
 
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
@@ -1390,11 +1562,13 @@ void Application::ReloadSkin()
 	}
 	m_samples.clear();
 
+#ifndef PLAYBACK
 	if (g_transition)
 	{
 		delete g_transition;
 		g_transition = TransitionScreen::Create();
 	}
+#endif
 
 //#ifdef EMBEDDED
 //	nvgDeleteGLES2(g_guiState.vg);
@@ -1526,17 +1700,29 @@ void Application::JoinMultiFromInvite(String secret)
 		mpScreen->JoinRoomWithToken(*token);
 		delete token;
 	};
-	auto handle = g_transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
-	g_transition->RemoveOnComplete(handle);
+	TransitionScreen* transition = TransitionScreen::Create();
+	auto handle = transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
+	transition->RemoveOnComplete(handle);
 	title->m_Suspend();
 
 	//Remove all tickables and add back a titlescreen as a base
 	AddTickable(title);
+#ifndef PLAYBACK
 	g_transition->TransitionTo(mpScreen);
-	for (IApplicationTickable *tickable : g_tickables)
+	for (IApplicationTickable* tickable : g_tickables)
 	{
 		RemoveTickable(tickable);
 	}
+#else
+	transition->TransitionTo(mpScreen);
+	AddTickable(transition);
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (IApplicationTickable* tickable : g_tickables[window])
+		{
+			RemoveTickable(tickable);
+		}
+	}
+#endif
 }
 
 void Application::LoadGauge(bool hard)
@@ -1684,19 +1870,39 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 	}
 
 	// Pass key to application
+#ifndef PLAYBACK
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
 		(*it)->OnKeyPressed(code);
 		break;
 	}
+#else
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
+		{
+			(*it)->OnKeyPressed(code);
+			break;
+		}
+	}
+#endif
 }
 void Application::m_OnKeyReleased(SDL_Scancode code)
 {
+#ifndef PLAYBACK
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
 		(*it)->OnKeyReleased(code);
 		break;
 	}
+#else
+	for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
+		{
+			(*it)->OnKeyReleased(code);
+			break;
+		}
+	}
+#endif
 }
 void Application::m_OnWindowResized(const Vector2i &newSize)
 {
@@ -1801,7 +2007,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 static int lGetMousePos(lua_State *L)
 {
 	Vector2i pos = g_gameWindow->GetMousePos();
-	float left = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
+	float left = g_guiState.scissorOffset;
 	lua_pushnumber(L, pos.x - left);
 	lua_pushnumber(L, pos.y);
 	return 2;

@@ -158,6 +158,7 @@ public:
 
 	virtual void TransitionTo(IAsyncLoadableApplicationTickable *next, bool noCancel, IApplicationTickable* before)
 	{
+		next->SetWindowIndex(this->GetWindowIndex());
 		m_isGame = false;
 		m_InitTransition(next);
 		m_canCancel = !noCancel;
@@ -186,6 +187,7 @@ public:
 
 	virtual void TransitionTo(Game* next, IApplicationTickable* before)
 	{
+		game->SetWindowIndex(this->GetWindowIndex());
 		m_isGame = true;
 		m_canCancel = true;
 		m_InitTransition(next);
