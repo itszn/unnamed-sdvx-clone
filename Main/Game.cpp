@@ -451,7 +451,7 @@ public:
 			pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
 			pushFloatToTable("suddenFade", m_track->suddenFadewindow);
 			pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
-
+			m_setLuaHolds();
 			lua_setglobal(m_lua, "gameplay");
 		}
 
@@ -1138,6 +1138,8 @@ public:
 
 		//set lua
 		lua_getglobal(m_lua, "gameplay");
+
+		m_setLuaHolds();
 
 		//set autoplay here as it's not set during the creation of the gameplay
 		lua_pushstring(m_lua, "autoplay");
@@ -1857,6 +1859,31 @@ public:
 		scoreData.gauge = m_scoring.currentGauge;
 		scoreData.score = m_scoring.CalculateCurrentScore();
 		return Scoring::CalculateBadge(scoreData);
+	}
+
+	void m_setLuaHolds()
+	{
+		//button
+		lua_pushstring(m_lua, "noteHeld");
+		lua_newtable(m_lua);
+		for (size_t i = 0; i < 6; i++)
+		{
+			lua_pushnumber(m_lua, i + 1);
+			lua_pushboolean(m_lua, m_scoring.IsObjectHeld(i));
+			lua_settable(m_lua, -3);
+		}
+		lua_settable(m_lua, -3);
+
+		//laser
+		lua_pushstring(m_lua, "laserActive");
+		lua_newtable(m_lua);
+		for (size_t i = 0; i < 2; i++)
+		{
+			lua_pushnumber(m_lua, i + 1);
+			lua_pushboolean(m_lua, m_scoring.IsObjectHeld(6 + i));
+			lua_settable(m_lua, -3);
+		}
+		lua_settable(m_lua, -3);
 	}
 
 	// Skips ahead to the right before the first object in the map

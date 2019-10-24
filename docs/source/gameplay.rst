@@ -24,6 +24,8 @@ The following fields are available under the ``gameplay`` table:
     bool autoplay
     int gaugeType // 1 = hard, 0 = normal
     int comboState // 2 = puc, 1 = uc, 0 = normal
+	bool[6] noteHeld // Array indicating wether a hold note is being held, in order: ABCDLR
+	bool[2] laserActive // Array indicating if the laser cursor is on a laser, in order: LR
     ScoreReplay[] scoreReplays //Array of previous scores for the current song
     CritLine critLine // info about crit line and everything attached to it
     
