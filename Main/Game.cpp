@@ -475,6 +475,7 @@ public:
 		m_scoring.Reset(); // Initialize
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
+		g_input.OnButtonReleased.Add(this, &Game_Impl::m_OnButtonReleased);
 
 		if ((m_flags & GameFlags::Random) != GameFlags::None)
 		{
@@ -1831,6 +1832,12 @@ public:
 		else if(key == SDLK_F9)
 		{
 			g_application->ReloadScript("gameplay", m_lua);
+		}
+	}
+	void m_OnButtonReleased(Input::Button buttonCode) {
+		if (buttonCode < Input::Button::BT_S && m_multiplayer != NULL)
+		{
+			m_multiplayer->AddFrameData(MultiplayerDataSyncType::BUTTON_RELEASE, m_lastMapTime, (uint32_t)buttonCode);
 		}
 	}
 	void m_OnButtonPressed(Input::Button buttonCode)

@@ -738,6 +738,9 @@ void MultiplayerScreen::PerformScoreTick(Scoring& scoring, MapTime time)
 
 void MultiplayerScreen::PerformFrameTick(MapTime time)
 {
+	if (time > 0x7fffffff)
+		return;
+
 	int32_t frameIndex = time / m_frameInterval;
 
 	if (frameIndex <= m_lastFrameIndex)
