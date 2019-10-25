@@ -25,6 +25,17 @@ enum MultiplayerScreenState {
 	SET_USERNAME,
 };
 
+enum MultiplayerDataSyncType {
+	BUTTON_PRESS,
+	BUTTON_RELEASE,
+};
+
+struct MultiplayerData {
+	MultiplayerDataSyncType type;
+	uint32_t time;
+	uint32_t data;
+};
+
 class TextInputMultiplayer;
 
 class MultiplayerScreen : public IAsyncLoadableApplicationTickable
@@ -58,7 +69,10 @@ public:
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
+	void PerformFrameTick(MapTime time);
 	void SendFinalScore(Scoring& scoring, int clearState);
+
+	void AddFrameData(MultiplayerDataSyncType type, uint32_t time, uint32_t data);
 
 	TCPSocket& GetTCP()
 	{
@@ -118,6 +132,7 @@ private:
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
 
+
 	// Some lua util functions
 	void m_PushStringToTable(const char* name, const char* data)
 	{
@@ -144,7 +159,6 @@ private:
 
 
 	int32 m_lastScoreSent = 0;
-	// TODO(itszn) have the server adjust this
 	int32 m_scoreInterval = 200;
 
 	// Unique id given to by the server on auth
@@ -192,5 +206,10 @@ private:
 
 	String m_userName;
 	String m_newRoomName;
+
+
+	Vector<struct MultiplayerData> m_multiplayerFrame;
+	int32 m_frameInterval = 1000;
+	int32 m_lastFrameIndex = 0;
 
 };

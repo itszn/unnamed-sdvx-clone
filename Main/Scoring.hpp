@@ -206,6 +206,9 @@ public:
 	bool lasersAreExtend[2] = { false, false };
 	// Time since laser has been used
 	float timeSinceLaserUsed[2];
+
+	BeatmapPlayback* GetPlayback() { return m_playback; }
+
 private:
 	// Calculates the number of ticks for a given TP
 	double m_CalculateTicks(const TimingPoint* tp) const;

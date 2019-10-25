@@ -135,6 +135,22 @@ void TCPSocket::SendJSON(nlohmann::json packet)
 	SendLine(packet.dump());
 }
 
+void TCPSocket::SendLengthPrefix(const char* data, uint32_t length) {
+	// For now send a 0 to say it is line deliniated
+	char zeroByte = (char)TCPPacketMode::LENGTH_PREFIX;
+	send(m_socket, (char*)& zeroByte, 1, 0);
+
+	send(m_socket, (char*)&length, 4, 0);
+
+	uint32_t sent = 0;
+	while (sent < length) {
+		uint32_t toSend = length - sent;
+		toSend = (toSend > 0x1000) ? 0x1000 : toSend;
+		send(m_socket, &data[sent], toSend, 0);
+		sent += toSend;
+	}
+}
+
 // Lua function to close the socket
 int TCPSocket::lClose(struct lua_State* L)
 {

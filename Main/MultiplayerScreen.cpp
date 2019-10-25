@@ -736,6 +736,28 @@ void MultiplayerScreen::PerformScoreTick(Scoring& scoring, MapTime time)
 	m_tcp.SendJSON(packet);
 }
 
+void MultiplayerScreen::PerformFrameTick(MapTime time)
+{
+	int32_t frameIndex = time / m_frameInterval;
+
+	if (frameIndex <= m_lastFrameIndex)
+		return;
+
+	m_lastFrameIndex = frameIndex;
+
+	MultiplayerData* data = new MultiplayerData[m_multiplayerFrame.size()];
+	for (int i = 0; i < m_multiplayerFrame.size(); i++) {
+		data[i] = m_multiplayerFrame[i];
+	}
+
+	m_tcp.SendLengthPrefix((char*)data, m_multiplayerFrame.size()*sizeof(MultiplayerData));
+	m_multiplayerFrame.clear();
+}
+
+void MultiplayerScreen::AddFrameData(MultiplayerDataSyncType type, uint32_t time, uint32_t data) {
+	m_multiplayerFrame.push_back({ type, time, data });
+}
+
 void MultiplayerScreen::SendFinalScore(Scoring& scoring, int clearState)
 {
 	nlohmann::json packet;

@@ -1134,7 +1134,10 @@ public:
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
 
 		if (m_multiplayer != nullptr)
+		{
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
+			m_multiplayer->PerformFrameTick(m_lastMapTime);
+		}
 
 		//set lua
 		lua_getglobal(m_lua, "gameplay");
@@ -1843,6 +1846,10 @@ public:
 
 				FinishGame();
 			}
+		}
+		if (buttonCode < Input::Button::BT_S && m_multiplayer != NULL)
+		{
+			m_multiplayer->AddFrameData(MultiplayerDataSyncType::BUTTON_PRESS, m_lastMapTime, (uint32_t)buttonCode);
 		}
 	}
 	int m_getClearState()
