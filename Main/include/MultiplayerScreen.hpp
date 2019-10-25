@@ -30,6 +30,17 @@ enum MultiplayerScreenState {
 	SET_USERNAME,
 };
 
+enum MultiplayerDataSyncType {
+	BUTTON_PRESS,
+	BUTTON_RELEASE,
+};
+
+struct MultiplayerData {
+	MultiplayerDataSyncType type;
+	uint32_t time;
+	uint32_t data;
+};
+
 class TextInputMultiplayer;
 class ChatOverlay;
 
@@ -80,6 +91,8 @@ public:
 		return &m_finalStats;
 	}
 
+	void CheckPlaybackInput(MapTime time);
+
 	TCPSocket& GetTCP()
 	{
 		return m_tcp;
@@ -121,6 +134,7 @@ public:
 	{
 		return m_userName;
 	}
+	FakeInput PlaybackInput;
 
 private:
 	void m_OnButtonPressed(Input::Button buttonCode);
@@ -145,6 +159,9 @@ private:
 
 
 	void m_addFinalStat(nlohmann::json& data);
+
+	bool m_handleFrameData(char* data, uint32_t length);
+
 
 	void m_render(float deltaTime);
 
@@ -254,4 +271,6 @@ private:
 
 	PreviewPlayer m_previewPlayer;
 	PreviewParams m_previewParams;
+
+	std::queue<struct MultiplayerData> m_playbackData;
 };

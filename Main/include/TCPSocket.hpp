@@ -35,6 +35,7 @@ enum TCPPacketMode
 {
 	NOT_READING = 0,
 	JSON_LINE,
+	LENGTH_PREFIX,
 	UNKNOWN
 };
 
@@ -74,6 +75,13 @@ public:
 		m_topicHandlers.Add(topic, binding);
 	}
 
+	template<typename Class>
+	void SetRawDataHandler(Class* object, bool (Class::* func)(char*, uint32_t))
+	{
+		auto binding = new ObjectBinding<Class, bool, char*, uint32_t>(object, func);
+		m_rawDataHandler = binding;
+	}
+
 	// Add a bound member function to call on socket close
 	template<typename Class>
 	void SetCloseHandler(Class* object, void (Class::* func)(void))
@@ -109,6 +117,8 @@ private:
 	Map<String, LuaTCPHandler*> m_luaTopicHandlers;
 	IFunctionBinding<void>* m_closeCallback = nullptr;
 
+	IFunctionBinding<bool, char*, uint32_t>* m_rawDataHandler = nullptr;
+
 	// Underlying socket for the class
 	SOCKET m_socket;
 
@@ -120,4 +130,7 @@ private:
 	uint32 m_amountRead = 0;
 	char* m_dataBuff = nullptr;
 	TCPPacketMode m_readingMode = TCPPacketMode::NOT_READING;
+
+	bool m_readLengthPrefix = false;
+	uint32_t m_lengthPrefix;
 };

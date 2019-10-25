@@ -62,6 +62,9 @@ public:
 	Delegate<Button> OnButtonPressed;
 	Delegate<Button> OnButtonReleased;
 
+protected:
+	bool m_buttonStates[(size_t)Button::Length];
+
 private:
 	void m_InitKeyboardMapping();
 	void m_InitControllerMapping();
@@ -108,4 +111,14 @@ private:
 	Ref<Gamepad> m_gamepad;
 
 	Graphics::Window* m_window = nullptr;
+};
+
+
+class FakeInput : public Input {
+
+public:
+	FakeInput::FakeInput() {
+		memset(m_buttonStates, 0, sizeof(m_buttonStates));
+	}
+	void UpdateButton(uint32_t b, bool pressed);
 };

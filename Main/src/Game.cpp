@@ -441,7 +441,10 @@ public:
 		m_scoring.SetFlags(m_flags);
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
-		m_scoring.SetInput(&g_input);
+		if (m_multiplayer != nullptr)
+			m_scoring.SetInput(&m_multiplayer->PlaybackInput);
+		else
+			m_scoring.SetInput(&g_input);
 		m_scoring.Reset(); // Initialize
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
@@ -1141,8 +1144,10 @@ public:
 		// Update song info display
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
 
-		if (m_multiplayer != nullptr)
+		if (m_multiplayer != nullptr) {
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
+			m_multiplayer->CheckPlaybackInput(m_lastMapTime);
+		}
 
 		m_lastMapTime = playbackPositionMs;
 		SetGameplayLua(m_lua);

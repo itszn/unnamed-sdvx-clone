@@ -168,10 +168,13 @@ int32 Application::Run()
 			{
 				//AddTickable(TitleScreen::Create());
 
+				/*
 				TitleScreen* second = TitleScreen::Create();
 				second->SetWindowIndex(1);
 				AddTickable(second);
-				second = TitleScreen::Create();
+				*/
+				
+				TitleScreen *second = TitleScreen::Create();
 				second->SetWindowIndex(0);
 				AddTickable(second);
 			}

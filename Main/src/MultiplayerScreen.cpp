@@ -179,6 +179,7 @@ void MultiplayerScreen::m_authenticate()
 	nlohmann::json packet;
 	packet["topic"] = "user.auth";
 	packet["password"] = password;
+	packet["playback"] = true;
 	packet["name"] = m_userName;
 	packet["version"] = MULTIPLAYER_VERSION;
 	m_tcp.SendJSON(packet);
@@ -1239,6 +1240,44 @@ void MultiplayerScreen::OnRestore()
 	}
 }
 
+bool MultiplayerScreen::m_handleFrameData(char* data, uint32_t length)
+{	
+	int amount = length / sizeof(MultiplayerData);
+	Logf("Processing %u bytes for %u actions", Logger::Info, length, amount);
+	MultiplayerData* ptr = (MultiplayerData*)data;
+	for (int i = 0; i < amount; i++) {
+		m_playbackData.push(ptr[i]);
+	}
+}
+
+void MultiplayerScreen::CheckPlaybackInput(MapTime time) 
+{
+	if (time > 0x7fffffff) {
+		return;
+	}
+	while (m_playbackData.size() > 0) {
+		MultiplayerData* cur = &m_playbackData.front();
+
+		// Drop input before start of map
+		if (cur->time > 0x7fffffff) {
+			m_playbackData.pop();
+			continue;
+		}
+
+		Logf("Looking at time %u for %u", Logger::Info, cur->time, time);
+		if (cur->time > time)
+			break;
+
+		if (cur->type == MultiplayerDataSyncType::BUTTON_PRESS) {
+			PlaybackInput.UpdateButton(cur->data, true);
+		} else if (cur->type == MultiplayerDataSyncType::BUTTON_RELEASE) {
+			PlaybackInput.UpdateButton(cur->data, false);
+		}
+
+		m_playbackData.pop();
+	}
+}
+
 bool MultiplayerScreen::AsyncLoad()
 {
 	// Add a handler for some socket events
@@ -1251,6 +1290,8 @@ bool MultiplayerScreen::AsyncLoad()
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
 	m_tcp.SetTopicHandler("game.finalstats", this, &MultiplayerScreen::m_handleFinalStats);
+
+	m_tcp.SetRawDataHandler(this, &MultiplayerScreen::m_handleFrameData);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 

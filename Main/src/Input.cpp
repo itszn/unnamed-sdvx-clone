@@ -394,3 +394,22 @@ void Input::OnMouseMotion(int32 x, int32 y)
 	m_mousePos[0] += x;
 	m_mousePos[1] += y;
 }
+
+
+
+void FakeInput::UpdateButton(uint32_t b, bool pressed)
+{
+	bool& state = m_buttonStates[b];
+	if (state != pressed)
+	{
+		state = pressed;
+		if (state)
+		{
+			OnButtonPressed.Call((Button)b);
+		}
+		else
+		{
+			OnButtonReleased.Call((Button)b);
+		}
+	}
+}

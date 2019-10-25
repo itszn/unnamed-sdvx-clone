@@ -196,7 +196,6 @@ void TCPSocket::Close()
 	}
 }
 
-
 void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 {
 	String packetData = String(ptr, length);
@@ -249,6 +248,7 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 		}
 	}
 }
+
 
 // Push a single json value as a lua table
 void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
@@ -386,6 +386,58 @@ void TCPSocket::ProcessSocket()
 		// Parse out any packets in the buffer currently
 		while (m_readingMode != TCPPacketMode::NOT_READING)
 		{
+			if (m_readingMode == TCPPacketMode::LENGTH_PREFIX)
+			{
+				if (!m_readLengthPrefix && m_amountRead < 4)
+					// We don't even have the length yet, so wait
+					break;
+
+				if (!m_readLengthPrefix)
+				{
+					m_lengthPrefix = ((uint32_t*)m_dataBuff)[0];
+					m_readLengthPrefix = true;
+
+					if (m_lengthPrefix > 0x7fffffff)
+					{
+						Close();
+						return;
+					}
+				}
+
+				// XXX overflow but shouldn't matter because check above
+				if (m_amountRead < m_lengthPrefix + 4)
+					// We don't have enough data for a packet yet, so continue
+					break;
+
+				Logf("Got %u bytes from socket", Logger::Info, m_lengthPrefix);
+				// TODO do something with packet
+				if (m_rawDataHandler != nullptr)
+				{
+					Logf("Calling handler", Logger::Info);
+					IFunctionBinding<bool, char*, uint32_t>* f = m_rawDataHandler;
+					f->Call(&m_dataBuff[4], m_lengthPrefix);
+				}
+
+				m_lengthPrefix += 4;
+
+				// Check if we can have an extra byte in the buffer to start next packet
+				if (m_lengthPrefix + 1 <= m_amountRead)
+				{
+					unsigned char mode = m_dataBuff[m_lengthPrefix++];
+					m_readingMode = static_cast<TCPPacketMode>(
+						std::min(mode, (unsigned char)TCPPacketMode::UNKNOWN));
+				}
+				else
+				{
+					m_readingMode = TCPPacketMode::NOT_READING;
+				}
+
+				m_eraseBuffer(m_lengthPrefix);
+
+				newDataStart = 0;
+				m_readLengthPrefix = false;
+				continue;
+			}
 			if (m_readingMode == TCPPacketMode::JSON_LINE)
 			{
 				// Scan the new bytes for line break
@@ -454,7 +506,7 @@ void TCPSocket::ProcessSocket()
 	}
 }
 
-// This erases the data in the buffer up to start
+// This erases the data in the buffer up to end
 void TCPSocket::m_eraseBuffer(size_t end)
 {
 	// Copy data to start of buffer
