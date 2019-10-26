@@ -461,8 +461,8 @@ public:
 
 		// Background 
 		/// TODO: Load this async
-		CheckedLoad(m_background = CreateBackground(this));
-		CheckedLoad(m_foreground = CreateBackground(this, true));
+		m_background = CreateBackground(this);
+		m_foreground = CreateBackground(this, true);
 		g_application->LoadGauge((m_flags & GameFlags::Hard) != GameFlags::None);
 
 		particleMaterial->blendMode = MaterialBlendMode::Additive;
@@ -704,7 +704,8 @@ public:
 		RenderState rs = m_camera.CreateRenderState(true);
 
 		// Draw BG first
-		m_background->Render(deltaTime);
+		if(m_background)
+			m_background->Render(deltaTime);
 
 		// Main render queue
 		RenderQueue renderQueue(g_gl, rs);
@@ -867,7 +868,8 @@ public:
 			NVG_FLUSH();
 
 		// Render foreground
-		m_foreground->Render(deltaTime);
+		if(m_foreground)
+			m_foreground->Render(deltaTime);
 
 		// Render Lua HUD
 		lua_getglobal(m_lua, "render");
@@ -1976,6 +1978,10 @@ public:
 	virtual GameFlags GetFlags() override
 	{
 		return m_flags;
+	}
+	virtual lua_State* GetLuaState() override 
+	{
+		return m_lua;
 	}
 	virtual bool GetManualExit() override
 	{
