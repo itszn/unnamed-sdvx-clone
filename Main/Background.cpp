@@ -97,6 +97,7 @@ class TestBackground : public FullscreenBackground
 		bindable->AddFunction("SetParami", this, &TestBackground::SetParami);
 		bindable->AddFunction("SetParamf", this, &TestBackground::SetParamf);
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
+		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
 		bindable->Push();
 		lua_settop(lua, 0);
 		if (luaL_dofile(lua, Path::Normalize(folderPath + fname + ".lua").c_str()))
@@ -201,9 +202,15 @@ class TestBackground : public FullscreenBackground
 			fullscreenMaterialParams.SetParameter(texParam.first, texParam.second);
 		}
 
-		FullscreenBackground::Render(0);
 		g_application->ForceRender();
+		FullscreenBackground::Render(0);
 		return 0;
+	}
+
+	int GetPath(lua_State* L)
+	{
+		lua_pushstring(L, *folderPath);
+		return 1;
 	}
 
 	Material LoadBackgroundMaterial(const String &path)
