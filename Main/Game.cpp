@@ -418,6 +418,8 @@ public:
 			lua_pushstring(m_lua, "scoreReplays");
 			lua_newtable(m_lua);
 			lua_settable(m_lua, -3);
+
+
 			lua_pushstring(m_lua, "critLine");
 			lua_newtable(m_lua);
 			lua_pushstring(m_lua, "cursors");
@@ -430,6 +432,10 @@ public:
 				lua_seti(m_lua, -2, 1);
 			}
 			lua_settable(m_lua, -3); // cursors -> critLine
+
+			lua_pushstring(m_lua, "line");
+			lua_newtable(m_lua);
+			lua_settable(m_lua, -3); // line -> critLine
 			lua_settable(m_lua, -3); // critLine -> gameplay
 
 			lua_pushstring(m_lua, "multiplayer");
@@ -1227,8 +1233,8 @@ public:
 			lua_getfield(m_lua, -1, "critLine");
 
 			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
-			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-1, 0, 0)));
-			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(1, 0, 0)));
+			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
+			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
 			Vector2 line = rightPos - leftPos;
 
 			lua_pushstring(m_lua, "x"); // x screen position
@@ -1238,6 +1244,25 @@ public:
 			lua_pushstring(m_lua, "y"); // y screen position
 			lua_pushnumber(m_lua, critPos.y);
 			lua_settable(m_lua, -3);
+
+			//track x critline corners
+			lua_getfield(m_lua, -1, "line");
+			{
+				lua_pushstring(m_lua, "x1");
+				lua_pushnumber(m_lua, leftPos.x);
+				lua_settable(m_lua, -3);
+				lua_pushstring(m_lua, "y1");
+				lua_pushnumber(m_lua, leftPos.y);
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "x2");
+				lua_pushnumber(m_lua, rightPos.x);
+				lua_settable(m_lua, -3);
+				lua_pushstring(m_lua, "y2");
+				lua_pushnumber(m_lua, rightPos.y);
+				lua_settable(m_lua, -3);
+			}
+			lua_pop(m_lua, 1);
 
 			lua_pushstring(m_lua, "rotation"); // rotation based on laser roll
 			lua_pushnumber(m_lua, -atan2f(line.y, line.x));

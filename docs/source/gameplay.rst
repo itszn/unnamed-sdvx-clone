@@ -24,8 +24,8 @@ The following fields are available under the ``gameplay`` table:
     bool autoplay
     int gaugeType // 1 = hard, 0 = normal
     int comboState // 2 = puc, 1 = uc, 0 = normal
-	bool[6] noteHeld // Array indicating wether a hold note is being held, in order: ABCDLR
-	bool[2] laserActive // Array indicating if the laser cursor is on a laser, in order: LR
+    bool[6] noteHeld // Array indicating wether a hold note is being held, in order: ABCDLR
+    bool[2] laserActive // Array indicating if the laser cursor is on a laser, in order: LR
     ScoreReplay[] scoreReplays //Array of previous scores for the current song
     CritLine critLine // info about crit line and everything attached to it
     
@@ -69,6 +69,7 @@ A ``CritLine`` contains the following fields:
     int y //the y screen coordinate of the center of the critical line
     float rotation //the rotation of the critical line in radians
     Cursor[] cursors //the laser cursors, indexed 0 and 1 for left and right
+    Line line // Line going from the left corner of the track to the right
 
     
 Cursor
@@ -81,6 +82,16 @@ A ``Cursor`` contains the following fields:
     float alpha //the transparency of this cursor. 0 is transparent, 1 is opaque
     float skew //the x skew of this cursor to simulate a more 3d look
     
+Line
+****
+A ``Line`` contains the following fields:
+
+.. code-block:: c
+    
+    float x1 // start x coordinate
+    float y1 // start y coordinate
+    float x2 // end x coordinate
+    float y2 // end y coordinate
 
 Calls made to lua
 *****************
