@@ -50,6 +50,7 @@ public:
 	MaterialParameterSet fullscreenMaterialParams;
 	float clearTransition = 0.0f;
 	float offsyncTimer = 0.0f;
+	float speedMult = 1.0f;
 	bool foreground;
 	bool hasFbTex;
 	Vector<String> defaultBGs;
@@ -98,6 +99,7 @@ class TestBackground : public FullscreenBackground
 		bindable->AddFunction("SetParamf", this, &TestBackground::SetParamf);
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
+		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
 		bindable->Push();
 		lua_settop(lua, 0);
 		if (luaL_dofile(lua, Path::Normalize(folderPath + fname + ".lua").c_str()))
@@ -120,7 +122,7 @@ class TestBackground : public FullscreenBackground
 		const TimingPoint &tp = game->GetPlayback().GetCurrentTimingPoint();
 		timing.x = game->GetPlayback().GetBeatTime();
 		timing.z = game->GetPlayback().GetLastTime() / 1000.0f;
-		offsyncTimer += (deltaTime / tp.beatDuration) * 1000.0 * game->GetPlaybackSpeed();
+		offsyncTimer += (speedMult * deltaTime / tp.beatDuration) * 1000.0 * game->GetPlaybackSpeed();
 		offsyncTimer = fmodf(offsyncTimer, 1.0f);
 		timing.y = offsyncTimer;
 
@@ -204,6 +206,11 @@ class TestBackground : public FullscreenBackground
 
 		g_application->ForceRender();
 		FullscreenBackground::Render(0);
+		return 0;
+	}
+	int SetSpeedMult(lua_State* L)
+	{
+		speedMult = luaL_checknumber(L, 2);
 		return 0;
 	}
 
