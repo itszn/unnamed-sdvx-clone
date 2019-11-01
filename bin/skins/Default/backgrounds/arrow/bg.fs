@@ -13,17 +13,11 @@ uniform ivec2 viewport;
 uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
+uniform sampler2D mainTexClear;
 uniform float tilt;
 uniform float clearTransition;
 
-#define PI 3.14159265359
-#define TWO_PI 6.28318530718
-
-vec3 hsv2rgb(vec3 c) {
-  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
+#define pi 3.1415926535897932384626433832795
 
 vec2 rotate_point(vec2 cen,float angle,vec2 p)
 {
@@ -44,75 +38,38 @@ vec2 rotate_point(vec2 cen,float angle,vec2 p)
   return p;
 }
 
-
-// Reference to
-// http://thndl.com/square-shaped-shaders.html
-// https://thebookofshaders.com/07/
-
-float GetDistanceShape(vec2 st, int N){
-    vec3 color = vec3(0.0);
-    float d = 0.0;
-
-    // Angle and radius from the current pixel
-    float a = atan(st.x,st.y)+PI;
-    float r = TWO_PI/float(N);
-
-    // Shaping function that modulate the distance
-    d = cos(floor(.5+a/r)*r-a)*length(st);
-
-    return d;
-
+vec3 hsv2rgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-
-  // Number of sides of your shape
-  int N = 4;
-
-  // "Stretch" | lower = "Stretchier"
-  float Stretch = .3; 
-
-  // Speed
-  float speed = 1;
-
-  // Default rotation in radians
-  float BaseRotation = 0.0;
-
-  // Rotation of texture for alignment, in radians
-  float BaseTexRotation = 0.0;
-  
-  // Scale
-  vec2 Scale = vec2(1.0, 0.6);
 
 void main()
 {
     float ar = float(viewport.x) / viewport.y;
-    
-	vec2 uv = vec2(texVp.x / viewport.x, texVp.y / viewport.y);
-    uv.x *= ar;
-    
-    vec2 center = vec2(screenCenter) / vec2(viewport);
-    center.x *= ar;
-    
-    vec2 point = uv;
-    point = rotate_point(center, BaseRotation + (tilt * TWO_PI), point);
-    vec2 point_diff = center - point;
-    point_diff /= Scale;
-    float diff = GetDistanceShape(point_diff,N);
-    float thing2 = Stretch / (diff);
-	float fog = -1. / (diff * 10. * Scale.x) + 1.;
-    fog = clamp(fog, 0, 1);
-    float texY = thing2;
-    texY += timing.y * speed;
+    vec2 center = vec2(screenCenter);
+	vec2 uv = texVp.xy;
 
+    uv = rotate_point(center, tilt * 2.0 * pi, uv);
+    float thing = 1.8 / abs(center.x - uv.x);
+    float thing2 = abs(center.x - uv.x) * 2.0;
+    uv.y -= center.y;
+    uv.y *=  thing;
+    uv.y = (uv.y + 1.0) / 2.0;
+    uv.x *= thing / 3.0;
+    uv.x += timing.x * 1.0;
+	
+    vec4 col = texture2D(mainTex, uv);
+    vec4 clear_col = texture2D(mainTexClear, uv);
     
-    float rot = (atan(point_diff.x,point_diff.y) + BaseTexRotation) / TWO_PI;
+    col *= (1.0 - clearTransition);
+    col += clear_col * clearTransition * 1.1;
+    
+    if (abs(uv.y) > 1.0 || uv.y < 0.0)
+        col = vec4(0);
+    col.a *= 1.0 - (thing * 70.0);
 
-    vec4 col = texture(mainTex, vec2(rot,texY));
-    float hsvVal = (col.x + col.y + col.z) / 3.0;
-    vec4 clear_col = vec4(hsv2rgb(vec3(cos(rot * 10) + 0.4, 1.0, hsvVal)), col.a);
-
-    col.xyz *= (1.0 - clearTransition);
-    col.xyz += clear_col.xyz * clearTransition * 2;
-    target.xyz = col.xyz;
-    target.a = col.a * fog;
+	target = col;
+    
 }
