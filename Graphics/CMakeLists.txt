@@ -1,7 +1,9 @@
 # Graphics library
 
+get_property(GLEW_ROOT GLOBAL PROPERTY GLEW_ROOT)
+
 # Find files used for project
-file(GLOB Graphics_src "src/*.cpp" "src/glew.c" "include/Graphics/*.hpp")
+file(GLOB Graphics_src "src/*.cpp" "include/Graphics/*.hpp")
 
 # Platform specific source files
 if(WIN32)
@@ -19,17 +21,13 @@ file(GLOB Graphics_src ${Graphics_src} ${Platform_src})
 # Compiler stuff
 enable_cpp14()
 enable_precompiled_headers("${Graphics_src}" src/stdafx.cpp)
-precompiled_header_exclude("src/glew.c")
 
 # Look for static included GLEW before other directories
-include_directories(include include/Graphics src include/Graphics/glew)
+include_directories(include include/Graphics src)
 add_library(Graphics ${Graphics_src})
 
 # Public include paths for library
-target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include/Graphics/glew)
-	
-# GLEW is included statically and also doesn't need GLU(Which doesn't even exist on linux)
-add_definitions(-DGLEW_NO_GLU -DGLEW_STATIC)
+target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${GLEW_ROOT}/include)
 
 # Dependencies
 target_link_libraries(Graphics Shared)
@@ -40,6 +38,7 @@ target_link_libraries(Graphics ${FREETYPE_LIBRARIES})
 target_link_libraries(Graphics ${SDL2_LIBRARY})
 target_link_libraries(Graphics ${JPEG_LIBRARIES})
 target_link_libraries(Graphics ${PNG_LIBRARIES})
+target_link_libraries(Graphics GLEW)
 if(UNIX)
 	target_link_libraries(Graphics pthread) 
 	target_link_libraries(Graphics dl)
