@@ -404,6 +404,10 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 
 	m_suspended = true;
 
+	m_multiplayerFrame.clear();
+	m_hitstatIndex = 0;
+	m_lastFrameIndex = 0;
+
 	// Switch to the new tickable
 #ifndef PLAYBACK
 	g_transition->TransitionTo(game);
@@ -841,12 +845,8 @@ void MultiplayerScreen::Tick(float deltaTime)
 	// Tick the tcp socket even if we are suspended
 	m_tcp.ProcessSocket();
 
-	if (m_dbUpdateTimer.Milliseconds() > 500)
-	{
-		m_mapDatabase->Update();
-		m_dbUpdateTimer.Restart();
-	}
-
+	if (IsSuspended())
+		return;
 
 	m_textInput->Tick();
 
@@ -855,8 +855,12 @@ void MultiplayerScreen::Tick(float deltaTime)
 	lua_setglobal(m_lua, "textInput");
 
 
-	if (IsSuspended())
-		return;
+
+	if (m_dbUpdateTimer.Milliseconds() > 500)
+	{
+		m_mapDatabase->Update();
+		m_dbUpdateTimer.Restart();
+	}
 
 	m_chatOverlay->Tick(deltaTime);
 	m_previewPlayer.Update(deltaTime);
@@ -1198,7 +1202,14 @@ int MultiplayerScreen::lExit(lua_State * L)
 int MultiplayerScreen::lSongSelect(lua_State* L)
 {
 	m_suspended = true;
+#ifndef PLAYBACK
 	g_transition->TransitionTo(SongSelect::Create(this));
+#else
+	TransitionScreen* trans = TransitionScreen::Create();
+	trans->SetWindowIndex(this->GetWindowIndex());
+	trans->TransitionTo(SongSelect::Create(this));
+	g_application->AddTickable(trans);
+#endif
 	return 0;
 }
 
@@ -1243,39 +1254,150 @@ void MultiplayerScreen::OnRestore()
 bool MultiplayerScreen::m_handleFrameData(char* data, uint32_t length)
 {	
 	int amount = length / sizeof(MultiplayerData);
-	Logf("Processing %u bytes for %u actions", Logger::Info, length, amount);
+	Logf("Processing %u bytes for %u actions", Logger::Severity::Info, length, amount);
 	MultiplayerData* ptr = (MultiplayerData*)data;
 	for (int i = 0; i < amount; i++) {
-		m_playbackData.push(ptr[i]);
+		if (ptr[i].t.timed.type == MultiplayerDataSyncType::HITSTAT)
+			m_hitstatData.push_back(ptr[i]);
+		else
+			m_playbackData.push(ptr[i]);
 	}
+	return true;
 }
 
-void MultiplayerScreen::CheckPlaybackInput(MapTime time) 
+void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring)
 {
-	if (time > 0x7fffffff) {
+	if (scoring.multiplayer == nullptr)
+	{
+		// XXX kinda bad
+		scoring.multiplayer = this;
+	}
+
+	// Drop input before start of map
+	if (time < 0) {
 		return;
 	}
 	while (m_playbackData.size() > 0) {
 		MultiplayerData* cur = &m_playbackData.front();
 
 		// Drop input before start of map
-		if (cur->time > 0x7fffffff) {
+		if (cur->t.timed.time > 10000000) {
 			m_playbackData.pop();
 			continue;
 		}
 
-		Logf("Looking at time %u for %u", Logger::Info, cur->time, time);
-		if (cur->time > time)
+		//Logf("Looking at time %u for %u", Logger::Info, cur->t.timed.time, time);
+		if (cur->t.timed.time > time)
 			break;
 
-		if (cur->type == MultiplayerDataSyncType::BUTTON_PRESS) {
-			PlaybackInput.UpdateButton(cur->data, true);
-		} else if (cur->type == MultiplayerDataSyncType::BUTTON_RELEASE) {
-			PlaybackInput.UpdateButton(cur->data, false);
+		if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_PRESS) {
+			//Logf("Button %u", Logger::Info, cur->t.button.index);
+			PlaybackInput.UpdateButton(cur->t.button.index, true);
+		} else if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_RELEASE) {
+			//Logf("Button %u", Logger::Info, cur->t.button.index);
+			PlaybackInput.UpdateButton(cur->t.button.index, false);
+		}
+		else if (cur->t.timed.type == MultiplayerDataSyncType::LASER_MOVE) {
+			//Logf("Laser %u %f", Logger::Info, cur->t.laser.index, cur->t.laser.val);
+			PlaybackInput.SetLaserValue(cur->t.laser.index & 1, cur->t.laser.val);
 		}
 
 		m_playbackData.pop();
 	}
+	
+}
+
+void MultiplayerScreen::PerformFrameTick(MapTime time)
+{
+	if (time < 0)
+		return;
+
+	int32_t frameIndex = time / m_frameInterval;
+
+	if (frameIndex <= m_lastFrameIndex)
+		return;
+
+	m_lastFrameIndex = frameIndex;
+
+	MultiplayerData* data = new MultiplayerData[m_multiplayerFrame.size()];
+	for (int i = 0; i < m_multiplayerFrame.size(); i++) {
+		data[i] = m_multiplayerFrame[i];
+	}
+
+	m_tcp.SendLengthPrefix((char*)data, m_multiplayerFrame.size() * sizeof(MultiplayerData));
+	m_multiplayerFrame.clear();
+}
+
+void MultiplayerScreen::AddButtonFrame(MultiplayerDataSyncType type, uint32_t time, uint32_t data) {
+	MultiplayerData packet = { 0 };
+	packet.t.button.type = type;
+	packet.t.button.time = time;
+	packet.t.button.index = data;
+	m_multiplayerFrame.push_back(packet);
+}
+
+void MultiplayerScreen::AddLaserFrame(uint32_t time, int ind, float val) {
+	if (val == m_oldLaserStates[ind])
+		return;
+	m_oldLaserStates[ind] = val;
+
+	MultiplayerData packet = { 0 };
+	packet.t.laser.type = MultiplayerDataSyncType::LASER_MOVE;
+	packet.t.laser.time = time;
+	packet.t.laser.val = val;
+	packet.t.laser.index = ind;
+	m_multiplayerFrame.push_back(packet);
+}
+
+void MultiplayerScreen::AddHitstatFrame(ObjectState* obj, MapTime delta, bool hit)
+{
+	MultiplayerData packet = { 0 };
+	packet.t.hitstat.type = MultiplayerDataSyncType::HITSTAT;
+
+	if (obj->type == ObjectType::Single)
+		packet.t.hitstat.index = ((ButtonObjectState*)obj)->index & 0xf;
+	else if(obj->type == ObjectType::Hold)
+		packet.t.hitstat.index = ((HoldObjectState*)obj)->index & 0xf;
+	else if (obj->type == ObjectType::Laser)
+		packet.t.hitstat.index = ((LaserObjectState*)obj)->index & 0xf;
+	else
+		Logf("Unknown tick type %u", Logger::Severity::Warning, obj->type);
+
+	packet.t.hitstat.hit = hit;
+	packet.t.hitstat.time = obj->time;
+	packet.t.hitstat.delta = delta;
+	m_multiplayerFrame.push_back(packet);
+}
+
+bool MultiplayerScreen::ConsumePlaybackForTick(ScoreTick* tick, MultiplayerData& out)
+{
+	const ObjectState* obj = tick->object;
+	
+	int index;
+	if (obj->type == ObjectType::Single)
+		index = ((ButtonObjectState*)obj)->index & 0xf;
+	else if (obj->type == ObjectType::Hold)
+		index = ((HoldObjectState*)obj)->index & 0xf;
+	else if (obj->type == ObjectType::Laser)
+		index = ((LaserObjectState*)obj)->index & 0xf;
+	else
+		Logf("Unknown tick type %u", Logger::Severity::Warning, obj->type);
+
+	for (auto it = m_hitstatData.begin(); it != m_hitstatData.end(); ++it)
+	{
+		MultiplayerData& data = *it;
+		if (data.t.hitstat.time != obj->time)
+			continue;
+
+		if (data.t.hitstat.index != index)
+			continue;
+
+		out = data;
+		m_hitstatData.erase(it);
+		return true;
+	}
+
+	return false;
 }
 
 bool MultiplayerScreen::AsyncLoad()
@@ -1291,7 +1413,9 @@ bool MultiplayerScreen::AsyncLoad()
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
 	m_tcp.SetTopicHandler("game.finalstats", this, &MultiplayerScreen::m_handleFinalStats);
 
-	m_tcp.SetRawDataHandler(this, &MultiplayerScreen::m_handleFrameData);
+	if (g_isPlayback) {
+		m_tcp.SetRawDataHandler(this, &MultiplayerScreen::m_handleFrameData);
+	}
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 

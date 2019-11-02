@@ -64,6 +64,7 @@ public:
 
 protected:
 	bool m_buttonStates[(size_t)Button::Length];
+	float m_laserStates[2] = { 0.0f };
 
 private:
 	void m_InitKeyboardMapping();
@@ -121,4 +122,5 @@ public:
 		memset(m_buttonStates, 0, sizeof(m_buttonStates));
 	}
 	void UpdateButton(uint32_t b, bool pressed);
+	void SetLaserValue(int ind, float val);
 };

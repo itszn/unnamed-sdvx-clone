@@ -48,10 +48,12 @@ TransitionScreen *g_transition = nullptr;
 #endif
 Input g_input;
 
-#define NUM_WINDOWS 2
+int g_numWindows = 1;
+bool g_isPlayback = false;
+
 // Tickable queue
 #ifdef PLAYBACK
-static Vector<IApplicationTickable*> g_tickables[NUM_WINDOWS];
+static Vector<IApplicationTickable*> g_tickables[MAX_WINDOWS];
 #else
 static Vector<IApplicationTickable *> g_tickables;
 #endif
@@ -166,17 +168,27 @@ int32 Application::Run()
 			}
 			else // Start regular game, goto title screen
 			{
-				//AddTickable(TitleScreen::Create());
+				if (m_commandLine.Contains("-playback")) {
+					g_numWindows = 1;
+					g_isPlayback = true;
+					//AddTickable(TitleScreen::Create());
 
-				/*
-				TitleScreen* second = TitleScreen::Create();
-				second->SetWindowIndex(1);
-				AddTickable(second);
-				*/
-				
-				TitleScreen *second = TitleScreen::Create();
-				second->SetWindowIndex(0);
-				AddTickable(second);
+					/*
+					TitleScreen* second = TitleScreen::Create();
+					second->SetWindowIndex(1);
+					AddTickable(second);
+					*/
+
+					TitleScreen* second = TitleScreen::Create();
+					second->SetWindowIndex(0);
+					AddTickable(second);
+				}
+				else {
+					g_numWindows = 1;
+					TitleScreen* second = TitleScreen::Create();
+					second->SetWindowIndex(0);
+					AddTickable(second);
+				}
 			}
 		}
 	}
@@ -860,7 +872,9 @@ bool Application::m_Init()
 
 	{
 		ProfilerScope $("Load Transition Screens");
+#ifndef PLAYBACK
 		g_transition = TransitionScreen::Create();
+#endif
 	}
 
 	///TODO: check if directory exists already?
@@ -978,7 +992,7 @@ void Application::m_MainLoop()
 
 		// Application should end, no more active screens
 		bool has_tickable = false;
-		for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (int window = 0; window < g_numWindows; window++) {
 			if (g_tickables[window].empty())
 				continue;
 			has_tickable = true;
@@ -1009,7 +1023,7 @@ void Application::m_MainLoop()
 			}
 		}
 #else
-		for (int window = 0; window < NUM_WINDOWS; window++) {
+		for (int window = 0; window < g_numWindows; window++) {
 			for (auto tickable : g_tickables[window])
 			{
 				int32 tempTarget = 0;
@@ -1078,7 +1092,7 @@ void Application::m_Tick()
 		tickable->Tick(m_deltaTime);
 	}
 #else
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (auto& tickable : g_tickables[window])
 		{
 			tickable->Tick(m_deltaTime);
@@ -1119,7 +1133,7 @@ void Application::m_Tick()
 		for (int windowIndex = 0; windowIndex < 2; windowIndex++) {
 			// Reset viewport
 
-			g_resolution = Vector2i(realRes.x/NUM_WINDOWS, realRes.y);
+			g_resolution = Vector2i(realRes.x/g_numWindows, realRes.y);
 			g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, g_resolution.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, g_resolution.y);
@@ -1149,7 +1163,7 @@ void Application::m_Tick()
 			g_guiState.scissor = Rect(0, 0, -1, -1);
 			g_guiState.imageTint = nvgRGB(255, 255, 255);
 			// Render all items
-			for (int window = 0; window < NUM_WINDOWS; window++) {
+			for (int window = 0; window < g_numWindows; window++) {
 				for (auto& tickable : g_tickables[window])
 				{
 					Logf("Checking %p with index %u", Logger::Severity::Info, tickable, tickable->GetWindowIndex());
@@ -1199,7 +1213,7 @@ void Application::m_Cleanup()
 		delete it;
 	}
 #else
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (auto it : g_tickables[window])
 		{
 			delete it;
@@ -1246,11 +1260,13 @@ void Application::m_Cleanup()
 		delete m_gauge;
 		m_gauge = nullptr;
 	}
+#ifndef PLAYBACK
 	if (g_transition)
 	{
 		delete g_transition;
 		g_transition = nullptr;
 	}
+#endif
 
 	//if (m_skinHtpp)
 	//{
@@ -1290,7 +1306,9 @@ void Application::m_Cleanup()
 class Game *Application::LaunchMap(const String &mapPath)
 {
 	Game *game = Game::Create(mapPath, GameFlags::None);
+#ifndef PLAYBACK
 	g_transition->TransitionTo(game);
+#endif
 	return game;
 }
 void Application::Shutdown()
@@ -1527,7 +1545,7 @@ void Application::ReloadSkin()
 {
 #ifdef PLAYBACK
 	//remove all tickables
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (auto* t: g_tickables[window])
 		{
 			t->m_Suspend();
@@ -1719,7 +1737,7 @@ void Application::JoinMultiFromInvite(String secret)
 #else
 	transition->TransitionTo(mpScreen);
 	AddTickable(transition);
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (IApplicationTickable* tickable : g_tickables[window])
 		{
 			RemoveTickable(tickable);
@@ -1880,7 +1898,7 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 		break;
 	}
 #else
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
 		{
 			(*it)->OnKeyPressed(code);
@@ -1898,7 +1916,7 @@ void Application::m_OnKeyReleased(SDL_Scancode code)
 		break;
 	}
 #else
-	for (int window = 0; window < NUM_WINDOWS; window++) {
+	for (int window = 0; window < g_numWindows; window++) {
 		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
 		{
 			(*it)->OnKeyReleased(code);

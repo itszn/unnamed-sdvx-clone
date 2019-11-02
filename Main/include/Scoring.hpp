@@ -211,6 +211,9 @@ public:
 	bool lasersAreExtend[2] = { false, false };
 	// Time since laser has been used
 	float timeSinceLaserUsed[2];
+
+	class MultiplayerScreen* multiplayer = nullptr;
+
 private:
 	// Calculates the number of ticks for a given TP
 	double m_CalculateTicks(const TimingPoint* tp) const;
@@ -222,6 +225,8 @@ private:
 	void m_OnObjectEntered(ObjectState* obj);
 	void m_OnObjectLeaved(ObjectState* obj);
 	void m_OnFXBegin(HoldObjectState* obj);
+
+	bool m_ConsumePlaybackTick(ScoreTick* tick, uint32, MapTime delta, bool);
 
 	// Button event handlers
 	void m_OnButtonPressed(Input::Button buttonCode);

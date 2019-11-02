@@ -33,12 +33,40 @@ enum MultiplayerScreenState {
 enum MultiplayerDataSyncType {
 	BUTTON_PRESS,
 	BUTTON_RELEASE,
+	LASER_MOVE,
+	HITSTAT,
 };
 
 struct MultiplayerData {
-	MultiplayerDataSyncType type;
-	uint32_t time;
-	uint32_t data;
+	union {
+		struct {
+			uint8_t type;
+			uint8_t padding[3];
+			uint32_t time;
+			uint8_t padding2[4];
+		} timed;
+		struct {
+			uint8_t type;
+			uint8_t padding[3];
+			uint32_t time;
+			uint32_t index;
+		} button;
+		struct {
+			uint8_t type;
+			uint8_t index;
+			uint8_t padding[2];
+			uint32_t time;
+			float val;
+		} laser;
+		struct {
+			uint8_t type;
+			uint8_t index;
+			uint8_t hit;
+			uint8_t padding;
+			uint32_t time;
+			uint32_t delta;
+		} hitstat;
+	} t;
 };
 
 class TextInputMultiplayer;
@@ -90,8 +118,15 @@ public:
 	{
 		return &m_finalStats;
 	}
+	void PerformFrameTick(MapTime time);
 
-	void CheckPlaybackInput(MapTime time);
+	void AddButtonFrame(MultiplayerDataSyncType type, uint32_t time, uint32_t data);
+	void AddLaserFrame(uint32_t time, int ind, float val);
+	void AddHitstatFrame(ObjectState* obj, MapTime delta, bool hit);
+
+	bool ConsumePlaybackForTick(ScoreTick* tick, MultiplayerData& out);
+
+	void CheckPlaybackInput(MapTime time, Scoring&);
 
 	TCPSocket& GetTCP()
 	{
@@ -273,4 +308,13 @@ private:
 	PreviewParams m_previewParams;
 
 	std::queue<struct MultiplayerData> m_playbackData;
+	List<struct MultiplayerData> m_hitstatData;
+
+	Vector<struct MultiplayerData> m_multiplayerFrame;
+	int32 m_frameInterval = 2000;
+	int32 m_lastFrameIndex = 0;
+
+	float m_oldLaserStates[2] = { 0.0f };
+
+	uint32_t m_hitstatIndex = 0;
 };

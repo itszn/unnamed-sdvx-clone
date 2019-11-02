@@ -3,6 +3,8 @@
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <math.h>
 #include "GameConfig.hpp"
+#include "MultiplayerScreen.hpp"
+#include "Application.hpp"
 
 const MapTime Scoring::missHitTime = 250;
 const MapTime Scoring::holdHitTime = 138;
@@ -678,11 +680,13 @@ void Scoring::m_UpdateTicks()
 					assert(buttonCode < 6);
 					if (m_IsBeingHold(tick) || autoplay || autoplayButtons)
 					{
-						m_TickHit(tick, buttonCode);
-						HitStat* stat = new HitStat(tick->object);
-						stat->time = currentTime;
-						stat->rating = ScoreHitRating::Perfect;
-						hitStats.Add(stat);
+						if (m_ConsumePlaybackTick(tick, buttonCode, 0, true))
+						{
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Perfect;
+							hitStats.Add(stat);
+						}
 
 						m_prevHoldHit[buttonCode] = true;
 					}
@@ -708,12 +712,14 @@ void Scoring::m_UpdateTicks()
 						}
 						if (dirSign == inputSign && delta > -10)
 						{
-							m_TickHit(tick, buttonCode);
-							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
-							stat->rating = ScoreHitRating::Perfect;
-							hitStats.Add(stat);
-							processed = true;
+							if (m_ConsumePlaybackTick(tick, buttonCode, 0, true))
+							{
+								HitStat* stat = new HitStat(tick->object);
+								stat->time = currentTime;
+								stat->rating = ScoreHitRating::Perfect;
+								hitStats.Add(stat);
+								processed = true;
+							}
 						}
 					}
 					else
@@ -731,12 +737,14 @@ void Scoring::m_UpdateTicks()
 
 						if (laserDelta < laserDistanceLeniency)
 						{
-							m_TickHit(tick, buttonCode);
-							HitStat* stat = new HitStat(tick->object);
-							stat->time = currentTime;
-							stat->rating = ScoreHitRating::Perfect;
-							hitStats.Add(stat);
-							processed = true;
+							if (m_ConsumePlaybackTick(tick, buttonCode, 0, true))
+							{
+								HitStat* stat = new HitStat(tick->object);
+								stat->time = currentTime;
+								stat->rating = ScoreHitRating::Perfect;
+								hitStats.Add(stat);
+								processed = true;
+							}
 						}
 					}
 				}
@@ -749,18 +757,20 @@ void Scoring::m_UpdateTicks()
 				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
 				if (dirSign == inputSign)
 				{
-					m_TickHit(tick, buttonCode);
-					HitStat* stat = new HitStat(tick->object);
-					stat->time = currentTime;
-					stat->rating = ScoreHitRating::Perfect;
-					hitStats.Add(stat);
-					processed = true;
+					if (m_ConsumePlaybackTick(tick, buttonCode, 0, true))
+					{
+						HitStat* stat = new HitStat(tick->object);
+						stat->time = currentTime;
+						stat->rating = ScoreHitRating::Perfect;
+						hitStats.Add(stat);
+						processed = true;
+					}
 				}
 			}
 
 			if (delta > Scoring::goodHitTime && !processed)
 			{
-				m_TickMiss(tick, buttonCode, delta);
+				m_ConsumePlaybackTick(tick, buttonCode, delta, false);
 				processed = true;
 			}
 
@@ -778,6 +788,34 @@ void Scoring::m_UpdateTicks()
 		}
 	}
 }
+
+bool Scoring::m_ConsumePlaybackTick(ScoreTick* tick, uint32 buttonCode, MapTime delta /*= 0*/, bool didHit)
+{
+	if (g_isPlayback && multiplayer != nullptr)
+	{
+		const ObjectState* obj = tick->object;
+
+		MultiplayerData data;
+
+		if (!multiplayer->ConsumePlaybackForTick(tick, data))
+		{
+			Logf("Could not find hitstat delta for %u", Logger::Severity::Warning, obj->time);
+		}
+		else
+		{
+			Logf("Found hitstat delta for %u of %u", Logger::Severity::Info, obj->time, delta);
+			delta = data.t.hitstat.delta;
+			didHit = data.t.hitstat.hit;
+		}
+	}
+
+	if (didHit)
+		m_TickHit(tick, buttonCode, delta);
+	else
+		m_TickMiss(tick, buttonCode, delta);
+	return didHit;
+}
+
 ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 {
 	const MapTime currentTime = m_playback->GetLastTime() + m_inputOffset;
@@ -802,10 +840,7 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
-		if (abs(delta) <= Scoring::goodHitTime)
-			m_TickHit(tick, buttonCode, delta);
-		else
-			m_TickMiss(tick, buttonCode, delta);
+		m_ConsumePlaybackTick(tick, buttonCode, delta, abs(delta) <= Scoring::goodHitTime);
 		delete tick;
 		m_ticks[buttonCode].Remove(tick, false);
 
@@ -826,6 +861,9 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
 	if (tick->HasFlag(TickFlags::Button))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, delta, true);
+
 		stat->delta = delta;
 		stat->rating = tick->GetHitRatingFromDelta(delta);
 		OnButtonHit.Call((Input::Button)index, stat->rating, tick->object, delta);
@@ -847,6 +885,9 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, 0, true);
+
 		HoldObjectState* hold = (HoldObjectState*)tick->object;
 		if (hold->time + hold->duration > m_playback->GetLastTime()) // Only set active hold object if object hasn't passed yet
 			m_SetHoldObject(tick->object, index);
@@ -858,6 +899,9 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 	}
 	else if (tick->HasFlag(TickFlags::Laser))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, 0, true);
+
 		LaserObjectState* object = (LaserObjectState*)tick->object;
 		LaserObjectState* rootObject = ((LaserObjectState*)tick->object)->GetRoot();
 		if (tick->HasFlag(TickFlags::Slam))
@@ -893,6 +937,9 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 	}
 	if (tick->HasFlag(TickFlags::Button))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, delta, false);
+
 		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > goodHitTime, tick->object);
 		stat->rating = ScoreHitRating::Miss;
 		stat->delta = delta;
@@ -900,12 +947,18 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, 0, false);
+
 		m_ReleaseHoldObject(index);
 		currentGauge -= shortMissDrain / 4.f;
 		stat->rating = ScoreHitRating::Miss;
 	}
 	else if (tick->HasFlag(TickFlags::Laser))
 	{
+		if (!g_isPlayback && multiplayer != nullptr)
+			multiplayer->AddHitstatFrame(tick->object, 0, false);
+
 		LaserObjectState* obj = (LaserObjectState*)tick->object;
 
 		if (tick->HasFlag(TickFlags::Slam))

@@ -506,6 +506,22 @@ void TCPSocket::ProcessSocket()
 	}
 }
 
+void TCPSocket::SendLengthPrefix(const char* data, uint32_t length) {
+	// For now send a 0 to say it is line deliniated
+	char zeroByte = (char)TCPPacketMode::LENGTH_PREFIX;
+	send(m_socket, (char*)& zeroByte, 1, 0);
+
+	send(m_socket, (char*)& length, 4, 0);
+
+	uint32_t sent = 0;
+	while (sent < length) {
+		uint32_t toSend = length - sent;
+		toSend = (toSend > 0x1000) ? 0x1000 : toSend;
+		send(m_socket, &data[sent], toSend, 0);
+		sent += toSend;
+	}
+}
+
 // This erases the data in the buffer up to end
 void TCPSocket::m_eraseBuffer(size_t end)
 {

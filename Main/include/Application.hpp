@@ -17,7 +17,19 @@ extern class Application* g_application;
 extern class JobSheduler* g_jobSheduler;
 extern class Input g_input;
 extern class SkinConfig* g_skinConfig;
+#ifndef PLAYBACK
 extern class TransitionScreen* g_transition;
+#else
+
+extern int g_numWindows;
+extern bool g_isPlayback;
+#define MAX_WINDOWS 4
+
+
+#define VERSION_MAJOR 0
+#define VERSION_MINOR 3
+#define VERSION_PATCH 1
+#endif
 
 class Application
 {

@@ -58,6 +58,7 @@ public:
 
 	void SendLine(String);
 	void SendJSON(nlohmann::json packet);
+	void SendLengthPrefix(const char* data, uint32_t length);
 
 	void PushFunctions(struct lua_State* L);
 	void ClearState(struct lua_State* L);

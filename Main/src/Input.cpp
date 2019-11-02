@@ -413,3 +413,8 @@ void FakeInput::UpdateButton(uint32_t b, bool pressed)
 		}
 	}
 }
+
+void FakeInput::SetLaserValue(int ind, float val)
+{
+	m_laserStates[ind] = val;
+}

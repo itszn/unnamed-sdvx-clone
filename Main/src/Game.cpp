@@ -173,6 +173,7 @@ public:
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 		m_flags = flags;
+		m_multiplayer = nullptr;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
@@ -220,7 +221,7 @@ public:
 		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
 		g_input.OnButtonPressed.RemoveAll(this);
-		g_transition->OnLoadingComplete.RemoveAll(this);
+		g_input.OnButtonReleased.RemoveAll(this);
 	}
 
 
@@ -441,13 +442,20 @@ public:
 		m_scoring.SetFlags(m_flags);
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
-		if (m_multiplayer != nullptr)
+		if (m_multiplayer != nullptr && g_isPlayback)
+		{
 			m_scoring.SetInput(&m_multiplayer->PlaybackInput);
+		}
 		else
 			m_scoring.SetInput(&g_input);
+
+		if (m_multiplayer != nullptr && !g_isPlayback)
+			m_scoring.multiplayer = m_multiplayer;
+
 		m_scoring.Reset(); // Initialize
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
+		g_input.OnButtonReleased.Add(this, &Game_Impl::m_OnButtonReleased);
 
 		if ((m_flags & GameFlags::Random) != GameFlags::None)
 		{
@@ -1146,7 +1154,16 @@ public:
 
 		if (m_multiplayer != nullptr) {
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
-			m_multiplayer->CheckPlaybackInput(m_lastMapTime);
+			if (g_isPlayback)
+			{
+				m_multiplayer->CheckPlaybackInput(m_lastMapTime, m_scoring);
+			}
+			else
+			{
+				m_multiplayer->PerformFrameTick(m_lastMapTime);
+				m_multiplayer->AddLaserFrame(m_lastMapTime, 0, g_input.GetInputLaserDir(0));
+				m_multiplayer->AddLaserFrame(m_lastMapTime, 1, g_input.GetInputLaserDir(1));
+			}
 		}
 
 		m_lastMapTime = playbackPositionMs;
@@ -1158,8 +1175,10 @@ public:
 		}
 		if (m_outroCompleted && !m_transitioning)
 		{
+#ifndef PLAYBACK
 			g_transition->OnLoadingComplete.RemoveAll(this);
 			g_transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
+#endif
 			if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
 				(m_manualExit && m_demo))
 			{
@@ -1179,7 +1198,11 @@ public:
 				game->SetSongDB(m_db);
 
 				// Transition to game
+#ifndef PLAYBACK
 				g_transition->TransitionTo(game);
+#else
+				g_application->AddTickable(game);
+#endif
 				m_transitioning = true;
 			}
 			else
@@ -1187,13 +1210,30 @@ public:
 				// Transition to score screen
 				if (IsMultiplayerGame())
 				{
+#ifndef PLAYBACK
 					g_transition->TransitionTo(ScoreScreen::Create(
 						this, m_multiplayer->GetUserId(), 
                         m_multiplayer->GetFinalStats(), m_multiplayer));
+#else
+					TransitionScreen* trans = TransitionScreen::Create();
+					trans->SetWindowIndex(this->GetWindowIndex());
+					trans->TransitionTo(
+						ScoreScreen::Create(
+						this, m_multiplayer->GetUserId(), 
+                        m_multiplayer->GetFinalStats(), m_multiplayer));
+					g_application->AddTickable(trans);
+#endif
 				}
 				else
 				{
+#ifndef PLAYBACK
 					g_transition->TransitionTo(ScoreScreen::Create(this));
+#else
+					TransitionScreen* trans = TransitionScreen::Create();
+					trans->SetWindowIndex(this->GetWindowIndex());
+					trans->TransitionTo(ScoreScreen::Create(this));
+					g_application->AddTickable(trans);
+#endif
 				}
 				m_transitioning = true;
 			}
@@ -1229,7 +1269,11 @@ public:
 			game->SetSongDB(m_db);
 
 			// Transition to game
+#ifndef PLAYBACK
 			g_transition->TransitionTo(game);
+#else
+			g_application->AddTickable(game);
+#endif
 			m_transitioning = true;
 		}
 		else
@@ -1786,7 +1830,20 @@ public:
 				m_exitTriggerTimeSet = true;
 			}
 		}
+
+		if (!g_isPlayback && buttonCode < Input::Button::BT_S && m_multiplayer != NULL)
+		{
+			m_multiplayer->AddButtonFrame(MultiplayerDataSyncType::BUTTON_PRESS, m_lastMapTime, (uint32_t)buttonCode);
+		}
 	}
+
+	void m_OnButtonReleased(Input::Button buttonCode) {
+		if (!g_isPlayback && buttonCode < Input::Button::BT_S && m_multiplayer != NULL)
+		{
+			m_multiplayer->AddButtonFrame(MultiplayerDataSyncType::BUTTON_RELEASE, m_lastMapTime, (uint32_t)buttonCode);
+		}
+	}
+
 	int m_getClearState()
 	{
 		if (m_manualExit)
