@@ -13,7 +13,8 @@ uniform ivec2 viewport;
 uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
-uniform float tilt;
+uniform sampler2D backTex;
+uniform vec2 tilt;
 uniform float clearTransition;
 
 #define pi 3.1415926535897932384626433832795
@@ -35,12 +36,6 @@ vec2 rotate_point(vec2 cen,float angle,vec2 p)
   p.x = xnew + cen.x;
   p.y = ynew + cen.y;
   return p;
-}
-
-vec3 hsv2rgb(vec3 c) {
-  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 vec4 draw_a(vec2 uv, vec2 center)
@@ -73,11 +68,10 @@ vec4 draw_b(vec2 uv, vec2 center)
     float thing2 = abs(center.x - uv.x) * 2.0;
     uv.y -= center.y * 1.0;
     uv.y *=  thing;
-    uv.y = (uv.y + 1.3) / 2.7;
+    uv.y = (uv.y + 0.7) / 2.7;
     uv.x *= thing / 2.0;
     uv.x += timing.y * 1.0;
-	uv.y = -uv.y + 1.0;
-	float alpha = texture2D(mainTex, uv).a;
+	float alpha = texture2D(backTex, uv).a;
     vec4 col = vec4(1.0, 0.2, 0.2, alpha);
     vec4 clear_col = vec4(1.0, 0.2, 1.0, alpha);
     
@@ -97,7 +91,8 @@ void main()
     float ar = float(viewport.x) / viewport.y;
     vec2 center = vec2(screenCenter);
 	vec2 uv = texVp.xy;
-    uv = rotate_point(center, tilt * 2.0 * pi, uv);
+	float rot = dot(tilt, vec2(0.5, 1.0));
+    uv = rotate_point(center, rot * 2.0 * pi, uv);
 
 	target = draw_a(uv, center) + draw_b(uv, center);
     

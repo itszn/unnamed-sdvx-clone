@@ -13,7 +13,7 @@ uniform ivec2 viewport;
 uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
-uniform float tilt;
+uniform vec2 tilt;
 uniform float clearTransition;
 
 #define pi 3.1415926535897932384626433832795
@@ -104,7 +104,8 @@ void main()
     float ar = float(viewport.x) / viewport.y;
     vec2 center = vec2(screenCenter);
 	vec2 uv = texVp.xy;
-    uv = rotate_point(center, tilt * 2.0 * pi, uv);
+	float rot = dot(tilt, vec2(0.5, 1.0));
+    uv = rotate_point(center, rot * 2.0 * pi, uv);
 	vec4 cola = draw_a(uv, center);
 	vec4 colb = draw_b(uv, center);
 	

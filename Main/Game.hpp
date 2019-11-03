@@ -74,6 +74,9 @@ public:
 	virtual void SetSongDB(class MapDatabase* db) = 0;
 	// The folder that contians the map
 	virtual const String& GetMapRootPath() const = 0;
+	// Setup and set gameplay lua
+	virtual void SetInitialGameplayLua(struct lua_State* L) = 0;
+	virtual void SetGameplayLua(struct lua_State* L) = 0;
 	// Full path to map
 	virtual const String& GetMapPath() const = 0;
 };

@@ -94,6 +94,7 @@ public:
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
 	void ForceRender();
+	void SetLuaBindings(struct lua_State* state);
 	struct NVGcontext* GetVGContext();
 
 	//if empty: no update avaiable
@@ -111,7 +112,6 @@ private:
 	void m_OnKeyPressed(int32 key);
 	void m_OnKeyReleased(int32 key);
 	void m_OnWindowResized(const Vector2i& newSize);
-	void m_SetNvgLuaBindings(struct lua_State* state);
 
 	RenderState m_renderStateBase;
 	RenderQueue m_renderQueueBase;

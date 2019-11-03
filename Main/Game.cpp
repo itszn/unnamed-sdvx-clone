@@ -375,24 +375,7 @@ public:
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
-		auto pushStringToTable = [&](const char* name, String data)
-		{
-			lua_pushstring(m_lua, name);
-			lua_pushstring(m_lua, data.c_str());
-			lua_settable(m_lua, -3);
-		};
-		auto pushIntToTable = [&](const char* name, int data)
-		{
-			lua_pushstring(m_lua, name);
-			lua_pushinteger(m_lua, data);
-			lua_settable(m_lua, -3);
-		};
-		auto pushFloatToTable = [&](const char* name, float data)
-		{
-			lua_pushstring(m_lua, name);
-			lua_pushnumber(m_lua, data);
-			lua_settable(m_lua, -3);
-		};
+
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
@@ -402,58 +385,7 @@ public:
 
 		String jacketPath = m_mapRootPath + "/" + mapSettings.jacketPath;
 		//Set gameplay table
-		{
-			lua_newtable(m_lua);
-			pushStringToTable("jacketPath", jacketPath);
-			pushStringToTable("title", mapSettings.title);
-			pushStringToTable("artist", mapSettings.artist);
-
-			lua_pushstring(m_lua, "demoMode");
-			lua_pushboolean(m_lua, m_demo);
-			lua_settable(m_lua, -3);
-
-			pushIntToTable("difficulty", mapSettings.difficulty);
-			pushIntToTable("level", mapSettings.level);
-			pushIntToTable("gaugeType", (m_flags & GameFlags::Hard) != GameFlags::None ? 1 : 0);
-			lua_pushstring(m_lua, "scoreReplays");
-			lua_newtable(m_lua);
-			lua_settable(m_lua, -3);
-			lua_pushstring(m_lua, "critLine");
-			lua_newtable(m_lua);
-			lua_pushstring(m_lua, "cursors");
-			lua_newtable(m_lua);
-			{
-				lua_newtable(m_lua);
-				lua_seti(m_lua, -2, 0);
-
-				lua_newtable(m_lua);
-				lua_seti(m_lua, -2, 1);
-			}
-			lua_settable(m_lua, -3); // cursors -> critLine
-			lua_settable(m_lua, -3); // critLine -> gameplay
-
-			lua_pushstring(m_lua, "multiplayer");
-			lua_pushboolean(m_lua, m_multiplayer != nullptr);
-			lua_settable(m_lua, -3);
-
-			if (m_multiplayer != nullptr)
-			{
-				pushStringToTable("user_id", m_multiplayer->GetUserId());
-				Log("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
-			}
-
-			lua_pushstring(m_lua, "autoplay");
-			lua_pushboolean(m_lua, m_scoring.autoplay);
-			lua_settable(m_lua, -3);
-
-			//set hidden/sudden
-			pushFloatToTable("hiddenFade", m_track->hiddenFadewindow);
-			pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
-			pushFloatToTable("suddenFade", m_track->suddenFadewindow);
-			pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
-			m_setLuaHolds();
-			lua_setglobal(m_lua, "gameplay");
-		}
+		SetInitialGameplayLua(m_lua);
 
 		// For multiplayer we also bind the TCP in
 		if (m_multiplayer != nullptr)
@@ -1126,11 +1058,8 @@ public:
 			m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
 		}
 
-
 		// Get the current timing point
 		m_currentTiming = &m_playback.GetCurrentTimingPoint();
-
-
 
 		// Update song info display
 		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
@@ -1138,154 +1067,8 @@ public:
 		if (m_multiplayer != nullptr)
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
 
-		//set lua
-		lua_getglobal(m_lua, "gameplay");
-
-		m_setLuaHolds();
-
-		//set autoplay here as it's not set during the creation of the gameplay
-		lua_pushstring(m_lua, "autoplay");
-		lua_pushboolean(m_lua, m_scoring.autoplay);
-		lua_settable(m_lua, -3);
-
-		// Update score replays
-		lua_getfield(m_lua, -1, "scoreReplays");
-		int replayCounter = 1;
-		for (ScoreIndex* index : m_diffIndex.scores)
-		{
-			m_scoreReplays[index].maxScore = index->score;
-			if (index->hitStats.size() > 0)
-			{
-				while (m_scoreReplays[index].nextHitStat < index->hitStats.size()
-					&& index->hitStats[m_scoreReplays[index].nextHitStat].time < m_lastMapTime)
-				{
-					SimpleHitStat shs = index->hitStats[m_scoreReplays[index].nextHitStat];
-					if (shs.rating < 3)
-					{
-						m_scoreReplays[index].currentScore += shs.rating;
-					}
-					m_scoreReplays[index].nextHitStat++;
-				}
-			}
-			lua_pushnumber(m_lua, replayCounter);
-			lua_newtable(m_lua);
-
-			lua_pushstring(m_lua, "maxScore");
-			lua_pushnumber(m_lua, index->score);
-			lua_settable(m_lua, -3);
-
-			lua_pushstring(m_lua, "currentScore");
-			lua_pushnumber(m_lua, m_scoring.CalculateScore(m_scoreReplays[index].currentScore));
-			lua_settable(m_lua, -3);
-
-			lua_settable(m_lua, -3);
-			replayCounter++;
-		}
-		lua_setfield(m_lua, -1, "scoreReplays");
-
-
-		//progress
-		lua_pushstring(m_lua, "progress");
-		lua_pushnumber(m_lua, Math::Clamp((float)playbackPositionMs / m_endTime,0.f,1.f));
-		lua_settable(m_lua, -3);
-		//hispeed
-		lua_pushstring(m_lua, "hispeed");
-		lua_pushnumber(m_lua, m_hispeed);
-		lua_settable(m_lua, -3);
-		//bpm
-		lua_pushstring(m_lua, "bpm");
-		lua_pushnumber(m_lua, m_currentTiming->GetBPM());
-		lua_settable(m_lua, -3);
-		//gauge
-		lua_pushstring(m_lua, "gauge");
-		lua_pushnumber(m_lua, m_scoring.currentGauge);
-		lua_settable(m_lua, -3);
-		//combo state
-		lua_pushstring(m_lua, "comboState");
-		lua_pushnumber(m_lua, m_scoring.comboState);
-		lua_settable(m_lua, -3);
-
-		//hidden/sudden
-		lua_pushstring(m_lua, "hiddenFade");
-		lua_pushnumber(m_lua, m_track->hiddenFadewindow);
-		lua_settable(m_lua, -3);
-
-		lua_pushstring(m_lua, "hiddenCutoff");
-		lua_pushnumber(m_lua, m_track->hiddenCutoff);
-		lua_settable(m_lua, -3);
-
-		lua_pushstring(m_lua, "suddenFade");
-		lua_pushnumber(m_lua, m_track->suddenFadewindow);
-		lua_settable(m_lua, -3);
-
-		lua_pushstring(m_lua, "suddenCutoff");
-		lua_pushnumber(m_lua, m_track->suddenCutoff);
-		lua_settable(m_lua, -3);
-
-
-
-		//critLine
-		{
-			lua_getfield(m_lua, -1, "critLine");
-
-			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
-			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-1, 0, 0)));
-			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(1, 0, 0)));
-			Vector2 line = rightPos - leftPos;
-
-			lua_pushstring(m_lua, "x"); // x screen position
-			lua_pushnumber(m_lua, critPos.x);
-			lua_settable(m_lua, -3);
-
-			lua_pushstring(m_lua, "y"); // y screen position
-			lua_pushnumber(m_lua, critPos.y);
-			lua_settable(m_lua, -3);
-
-			lua_pushstring(m_lua, "rotation"); // rotation based on laser roll
-			lua_pushnumber(m_lua, -atan2f(line.y, line.x));
-			lua_settable(m_lua, -3);
-
-			auto setCursorData = [&](int ci)
-			{
-				lua_geti(m_lua, -1, ci);
-
-#define TPOINT(name, y) Vector2 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[ci] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
-				TPOINT(cPos, 0);
-				TPOINT(cPosUp, 1);
-				TPOINT(cPosDown, -1);
-#undef TPOINT
-
-				Vector2 cursorAngleVector = cPosUp - cPosDown;
-				float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[ci] < 0.5 ? -1 : 1);
-
-				float skewAngle = -atan2f(cursorAngleVector.y, cursorAngleVector.x) + 3.1415 / 2;
-				float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[ci] / 0.5f - 1.0f, 0, 1));
-
-				lua_pushstring(m_lua, "pos");
-				lua_pushnumber(m_lua, distFromCritCenter * (m_scoring.lasersAreExtend[ci] ? 2 : 1));
-				lua_settable(m_lua, -3);
-
-				lua_pushstring(m_lua, "alpha");
-				lua_pushnumber(m_lua, alpha);
-				lua_settable(m_lua, -3);
-
-				lua_pushstring(m_lua, "skew");
-				lua_pushnumber(m_lua, skewAngle);
-				lua_settable(m_lua, -3);
-
-				lua_pop(m_lua, 1);
-			};
-
-			lua_getfield(m_lua, -1, "cursors");
-			setCursorData(0);
-			setCursorData(1);
-
-			lua_pop(m_lua, 2); // cursors, critLine
-		}
-
-		lua_setglobal(m_lua, "gameplay");
-
 		m_lastMapTime = playbackPositionMs;
+		SetGameplayLua(m_lua);
 		
 		if(m_audioPlayback.HasEnded())
 		{
@@ -1863,29 +1646,29 @@ public:
 		return Scoring::CalculateBadge(scoreData);
 	}
 
-	void m_setLuaHolds()
+	void m_setLuaHolds(lua_State* L)
 	{
 		//button
-		lua_pushstring(m_lua, "noteHeld");
-		lua_newtable(m_lua);
+		lua_pushstring(L, "noteHeld");
+		lua_newtable(L);
 		for (size_t i = 0; i < 6; i++)
 		{
-			lua_pushnumber(m_lua, i + 1);
-			lua_pushboolean(m_lua, m_scoring.IsObjectHeld(i));
-			lua_settable(m_lua, -3);
+			lua_pushnumber(L, i + 1);
+			lua_pushboolean(L, m_scoring.IsObjectHeld(i));
+			lua_settable(L, -3);
 		}
-		lua_settable(m_lua, -3);
+		lua_settable(L, -3);
 
 		//laser
-		lua_pushstring(m_lua, "laserActive");
-		lua_newtable(m_lua);
+		lua_pushstring(L, "laserActive");
+		lua_newtable(L);
 		for (size_t i = 0; i < 2; i++)
 		{
-			lua_pushnumber(m_lua, i + 1);
-			lua_pushboolean(m_lua, m_scoring.IsObjectHeld(6 + i));
-			lua_settable(m_lua, -3);
+			lua_pushnumber(L, i + 1);
+			lua_pushboolean(L, m_scoring.IsObjectHeld(6 + i));
+			lua_settable(L, -3);
 		}
-		lua_settable(m_lua, -3);
+		lua_settable(L, -3);
 	}
 
 	// Skips ahead to the right before the first object in the map
@@ -2010,6 +1793,229 @@ public:
 	virtual void SetSongDB(MapDatabase* db)
 	{
 		m_db = db;
+	}
+	virtual void SetGameplayLua(lua_State* L)
+	{
+		//set lua
+		lua_getglobal(L, "gameplay");
+
+		m_setLuaHolds(L);
+
+		//set autoplay here as it's not set during the creation of the gameplay
+		lua_pushstring(L, "autoplay");
+		lua_pushboolean(L, m_scoring.autoplay);
+		lua_settable(L, -3);
+
+		// Update score replays
+		lua_getfield(L, -1, "scoreReplays");
+		int replayCounter = 1;
+		for (ScoreIndex* index : m_diffIndex.scores)
+		{
+			m_scoreReplays[index].maxScore = index->score;
+			if (index->hitStats.size() > 0)
+			{
+				while (m_scoreReplays[index].nextHitStat < index->hitStats.size()
+					&& index->hitStats[m_scoreReplays[index].nextHitStat].time < m_lastMapTime)
+				{
+					SimpleHitStat shs = index->hitStats[m_scoreReplays[index].nextHitStat];
+					if (shs.rating < 3)
+					{
+						m_scoreReplays[index].currentScore += shs.rating;
+					}
+					m_scoreReplays[index].nextHitStat++;
+				}
+			}
+			lua_pushnumber(L, replayCounter);
+			lua_newtable(L);
+
+			lua_pushstring(L, "maxScore");
+			lua_pushnumber(L, index->score);
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "currentScore");
+			lua_pushnumber(L, m_scoring.CalculateScore(m_scoreReplays[index].currentScore));
+			lua_settable(L, -3);
+
+			lua_settable(L, -3);
+			replayCounter++;
+		}
+		lua_setfield(L, -1, "scoreReplays");
+
+
+		//progress
+		lua_pushstring(L, "progress");
+		lua_pushnumber(L, Math::Clamp((float)m_lastMapTime / m_endTime, 0.f, 1.f));
+		lua_settable(L, -3);
+		//hispeed
+		lua_pushstring(L, "hispeed");
+		lua_pushnumber(L, m_hispeed);
+		lua_settable(L, -3);
+		//bpm
+		lua_pushstring(L, "bpm");
+		lua_pushnumber(L, m_currentTiming->GetBPM());
+		lua_settable(L, -3);
+		//gauge
+		lua_pushstring(L, "gauge");
+		lua_pushnumber(L, m_scoring.currentGauge);
+		lua_settable(L, -3);
+		//combo state
+		lua_pushstring(L, "comboState");
+		lua_pushnumber(L, m_scoring.comboState);
+		lua_settable(L, -3);
+
+		//hidden/sudden
+		lua_pushstring(L, "hiddenFade");
+		lua_pushnumber(L, m_track->hiddenFadewindow);
+		lua_settable(L, -3);
+
+		lua_pushstring(L, "hiddenCutoff");
+		lua_pushnumber(L, m_track->hiddenCutoff);
+		lua_settable(L, -3);
+
+		lua_pushstring(L, "suddenFade");
+		lua_pushnumber(L, m_track->suddenFadewindow);
+		lua_settable(L, -3);
+
+		lua_pushstring(L, "suddenCutoff");
+		lua_pushnumber(L, m_track->suddenCutoff);
+		lua_settable(L, -3);
+
+
+
+		//critLine
+		{
+			lua_getfield(L, -1, "critLine");
+
+			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-1, 0, 0)));
+			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(1, 0, 0)));
+			Vector2 line = rightPos - leftPos;
+
+			lua_pushstring(L, "x"); // x screen position
+			lua_pushnumber(L, critPos.x);
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "y"); // y screen position
+			lua_pushnumber(L, critPos.y);
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "rotation"); // rotation based on laser roll
+			lua_pushnumber(L, -atan2f(line.y, line.x));
+			lua_settable(L, -3);
+
+			auto setCursorData = [&](int ci)
+			{
+				lua_geti(L, -1, ci);
+
+#define TPOINT(name, y) Vector2 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[ci] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
+				TPOINT(cPos, 0);
+				TPOINT(cPosUp, 1);
+				TPOINT(cPosDown, -1);
+#undef TPOINT
+
+				Vector2 cursorAngleVector = cPosUp - cPosDown;
+				float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[ci] < 0.5 ? -1 : 1);
+
+				float skewAngle = -atan2f(cursorAngleVector.y, cursorAngleVector.x) + 3.1415 / 2;
+				float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[ci] / 0.5f - 1.0f, 0, 1));
+
+				lua_pushstring(L, "pos");
+				lua_pushnumber(L, distFromCritCenter * (m_scoring.lasersAreExtend[ci] ? 2 : 1));
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "alpha");
+				lua_pushnumber(L, alpha);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "skew");
+				lua_pushnumber(L, skewAngle);
+				lua_settable(L, -3);
+
+				lua_pop(L, 1);
+			};
+
+			lua_getfield(L, -1, "cursors");
+			setCursorData(0);
+			setCursorData(1);
+
+			lua_pop(L, 2); // cursors, critLine
+		}
+
+		lua_setglobal(L, "gameplay");
+	}
+	virtual void SetInitialGameplayLua(lua_State* L)
+	{
+		auto pushStringToTable = [&](const char* name, String data)
+		{
+			lua_pushstring(L, name);
+			lua_pushstring(L, data.c_str());
+			lua_settable(L, -3);
+		};
+		auto pushIntToTable = [&](const char* name, int data)
+		{
+			lua_pushstring(L, name);
+			lua_pushinteger(L, data);
+			lua_settable(L, -3);
+		};
+		auto pushFloatToTable = [&](const char* name, float data)
+		{
+			lua_pushstring(L, name);
+			lua_pushnumber(L, data);
+			lua_settable(L, -3);
+		};
+
+		auto mapSettings = GetBeatmap()->GetMapSettings();
+		lua_newtable(L);
+		String jacketPath = m_mapRootPath + "/" + mapSettings.jacketPath;
+		pushStringToTable("jacketPath", jacketPath);
+		pushStringToTable("title", mapSettings.title);
+		pushStringToTable("artist", mapSettings.artist);
+
+		lua_pushstring(L, "demoMode");
+		lua_pushboolean(L, m_demo);
+		lua_settable(L, -3);
+
+		pushIntToTable("difficulty", mapSettings.difficulty);
+		pushIntToTable("level", mapSettings.level);
+		pushIntToTable("gaugeType", (m_flags & GameFlags::Hard) != GameFlags::None ? 1 : 0);
+		lua_pushstring(L, "scoreReplays");
+		lua_newtable(L);
+		lua_settable(L, -3);
+		lua_pushstring(L, "critLine");
+		lua_newtable(L);
+		lua_pushstring(L, "cursors");
+		lua_newtable(L);
+		{
+			lua_newtable(L);
+			lua_seti(L, -2, 0);
+
+			lua_newtable(L);
+			lua_seti(L, -2, 1);
+		}
+		lua_settable(L, -3); // cursors -> critLine
+		lua_settable(L, -3); // critLine -> gameplay
+
+		lua_pushstring(L, "multiplayer");
+		lua_pushboolean(L, m_multiplayer != nullptr);
+		lua_settable(L, -3);
+
+		if (m_multiplayer != nullptr)
+		{
+			pushStringToTable("user_id", m_multiplayer->GetUserId());
+			Log("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
+		}
+
+		lua_pushstring(L, "autoplay");
+		lua_pushboolean(L, m_scoring.autoplay);
+		lua_settable(L, -3);
+
+		//set hidden/sudden
+		pushFloatToTable("hiddenFade", m_track->hiddenFadewindow);
+		pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
+		pushFloatToTable("suddenFade", m_track->suddenFadewindow);
+		pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
+		m_setLuaHolds(L);
+		lua_setglobal(L, "gameplay");
 	}
 };
 

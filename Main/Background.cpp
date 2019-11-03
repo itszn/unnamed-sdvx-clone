@@ -20,6 +20,11 @@ public:
 			delete bindable;
 			bindable = nullptr;
 		}
+		if (lua)
+		{
+			lua_close(lua);
+			lua = nullptr;
+		}
 	}
 
 	virtual bool Init(bool foreground) override
@@ -56,7 +61,9 @@ public:
 	Vector<String> defaultBGs;
 	LuaBindable *bindable = nullptr;
 	String folderPath;
-	lua_State *lua;
+	lua_State *lua = nullptr;
+	Vector3 timing;
+	Vector2 tilt;
 };
 
 class TestBackground : public FullscreenBackground
@@ -70,7 +77,25 @@ class TestBackground : public FullscreenBackground
 			Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/backgrounds/")));
 
 		String skin = g_gameConfig.GetString(GameConfigKeys::Skin);
-		lua = game->GetLuaState();
+		lua = luaL_newstate();
+
+		auto openLib = [this](char* name, lua_CFunction lib)
+		{
+			luaL_requiref(lua, name, lib, 1);
+			lua_pop(lua, 1);
+		};
+
+		//open libs
+		//TODO: not sure which should be included
+		openLib("_G", luaopen_base);
+		openLib(LUA_LOADLIBNAME, luaopen_package);
+		openLib(LUA_TABLIBNAME, luaopen_table);
+		openLib(LUA_STRLIBNAME, luaopen_string);
+		openLib(LUA_MATHLIBNAME, luaopen_math);
+
+		g_application->SetLuaBindings(lua);
+		game->SetInitialGameplayLua(lua);
+
 		String matPath = "";
 		String fname = foreground ? "fg" : "bg";
 		String bindName = foreground ? "foreground" : "background";
@@ -100,6 +125,10 @@ class TestBackground : public FullscreenBackground
 		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
 		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
 		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
+		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
+		bindable->AddFunction("GetTilt", this, &TestBackground::GetTilt);
+		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
+		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
 		bindable->Push();
 		lua_settop(lua, 0);
 		if (luaL_dofile(lua, Path::Normalize(folderPath + fname + ".lua").c_str()))
@@ -117,8 +146,7 @@ class TestBackground : public FullscreenBackground
 	virtual void Render(float deltaTime) override
 	{
 		UpdateRenderState(deltaTime);
-
-		Vector3 timing;
+		game->SetGameplayLua(lua);
 		const TimingPoint &tp = game->GetPlayback().GetCurrentTimingPoint();
 		timing.x = game->GetPlayback().GetBeatTime();
 		timing.z = game->GetPlayback().GetLastTime() / 1000.0f;
@@ -144,7 +172,7 @@ class TestBackground : public FullscreenBackground
 		Vector3 trackEndWorld = Vector3(0.0f, 25.0f, 0.0f);
 		Vector2i screenCenter = game->GetCamera().GetScreenCenter();
 
-		float tilt = game->GetCamera().GetActualRoll() + game->GetCamera().GetBackgroundSpin();
+		tilt = { game->GetCamera().GetActualRoll(), game->GetCamera().GetBackgroundSpin() };
 		fullscreenMaterialParams.SetParameter("clearTransition", clearTransition);
 		fullscreenMaterialParams.SetParameter("tilt", tilt);
 		fullscreenMaterialParams.SetParameter("screenCenter", screenCenter);
@@ -180,6 +208,35 @@ class TestBackground : public FullscreenBackground
 		filename = Path::Normalize(folderPath + Path::sep + filename);
 		textures.Add(uniformName, g_application->LoadTexture(filename, true));
 		return 0;
+	}
+
+	int GetTiming(lua_State* L)
+	{
+		lua_pushnumber(L, timing.x);
+		lua_pushnumber(L, timing.y);
+		lua_pushnumber(L, timing.z);
+		return 3;
+	}
+
+	int GetTilt(lua_State* L)
+	{
+		lua_pushnumber(L, tilt.x);
+		lua_pushnumber(L, tilt.y);
+		return 2;
+	}
+
+	int GetScreenCenter(lua_State* L)
+	{
+		auto c = game->GetCamera().GetScreenCenter();
+		lua_pushnumber(L, c.x);
+		lua_pushnumber(L, c.y);
+		return 2;
+	}
+
+	int GetClearTransition(lua_State* L)
+	{
+		lua_pushnumber(L, clearTransition);
+		return 1;
 	}
 
 	int SetParami(lua_State *L /*String param, int v*/)

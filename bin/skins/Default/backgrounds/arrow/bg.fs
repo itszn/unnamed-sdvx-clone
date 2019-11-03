@@ -14,7 +14,7 @@ uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
 uniform sampler2D mainTexClear;
-uniform float tilt;
+uniform vec2 tilt;
 uniform float clearTransition;
 
 #define pi 3.1415926535897932384626433832795
@@ -51,20 +51,21 @@ void main()
     vec2 center = vec2(screenCenter);
 	vec2 uv = texVp.xy;
 
-    uv = rotate_point(center, tilt * 2.0 * pi, uv);
+	float rot = dot(tilt, vec2(0.5, 1.0));
+    uv = rotate_point(center, rot * 2.0 * pi, uv);
     float thing = 1.8 / abs(center.x - uv.x);
     float thing2 = abs(center.x - uv.x) * 2.0;
     uv.y -= center.y;
     uv.y *=  thing;
     uv.y = (uv.y + 1.0) / 2.0;
     uv.x *= thing / 3.0;
-    uv.x += timing.x * 1.0;
+    uv.x += timing.y * 1.0;
 	
-    vec4 col = texture2D(mainTex, uv);
+    vec4 col = texture2D(mainTex, uv) * 0.75;
     vec4 clear_col = texture2D(mainTexClear, uv);
     
     col *= (1.0 - clearTransition);
-    col += clear_col * clearTransition * 1.1;
+    col += clear_col * clearTransition * 1.3;
     
     if (abs(uv.y) > 1.0 || uv.y < 0.0)
         col = vec4(0);

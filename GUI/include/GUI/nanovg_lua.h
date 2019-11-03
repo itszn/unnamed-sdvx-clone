@@ -792,7 +792,7 @@ static int lUpdateImagePattern(lua_State* L /*int paint, float ox, float oy, flo
 	p.extent[0] = ex;
 	p.extent[1] = ey;
 
-	p.innerColor = p.outerColor = nvgRGBAf(1, 1, 1, alpha);
+	p.innerColor.a = p.outerColor.a = alpha;
 	return 0;
 }
 
@@ -1003,5 +1003,11 @@ static int lGlobalCompositeBlendFuncSeparate(lua_State* L /* int srcRGB, int dst
 	int srcAlpha = luaL_checkinteger(L, 3);
 	int dstAlpha = luaL_checkinteger(L, 4);
 	nvgGlobalCompositeBlendFuncSeparate(g_guiState.vg, srcRGB, dstRGB, srcAlpha, dstAlpha);
+	return 0;
+}
+
+static int lGlobalAlpha(lua_State* L /*float alpha*/)
+{
+	nvgGlobalAlpha(g_guiState.vg, luaL_checknumber(L, 1));
 	return 0;
 }

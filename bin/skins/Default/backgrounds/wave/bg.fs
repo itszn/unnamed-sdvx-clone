@@ -13,7 +13,7 @@ uniform ivec2 viewport;
 uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
-uniform float tilt;
+uniform vec2 tilt;
 uniform float clearTransition;
 
 #define PI 3.14159265359
@@ -94,7 +94,8 @@ void main()
     center.x *= ar;
     
     vec2 point = uv;
-    point = rotate_point(center, BaseRotation + (tilt * TWO_PI), point);
+	float bgrot =  dot(tilt, vec2(0.5, 1.0));
+    point = rotate_point(center, BaseRotation + (bgrot * TWO_PI), point);
     vec2 point_diff = center - point;
     point_diff /= Scale;
     float diff = GetDistanceShape(point_diff,N);

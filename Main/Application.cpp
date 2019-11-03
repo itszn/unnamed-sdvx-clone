@@ -998,7 +998,7 @@ lua_State* Application::LoadScript(const String & name, bool noError)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
-	m_SetNvgLuaBindings(s);
+	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(s, -1));
@@ -1653,7 +1653,7 @@ static int lGetSkinSetting(lua_State* L /*String key*/)
 	}
 }
 
-void Application::m_SetNvgLuaBindings(lua_State * state)
+void Application::SetLuaBindings(lua_State * state)
 {
 	auto pushFuncToTable = [&](const char* name, int (*func)(lua_State*))
 	{
@@ -1746,6 +1746,7 @@ void Application::m_SetNvgLuaBindings(lua_State * state)
 		pushFuncToTable("GlobalCompositeOperation", lGlobalCompositeOperation);
 		pushFuncToTable("GlobalCompositeBlendFunc", lGlobalCompositeBlendFunc);
 		pushFuncToTable("GlobalCompositeBlendFuncSeparate", lGlobalCompositeBlendFuncSeparate);
+		pushFuncToTable("GlobalAlpha", lGlobalAlpha);
 		//constants
 		//Text align
 		pushIntToTable("TEXT_ALIGN_BASELINE",	NVGalign::NVG_ALIGN_BASELINE);
