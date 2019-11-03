@@ -58,6 +58,7 @@ public:
 	float speedMult = 1.0f;
 	bool foreground;
 	bool hasFbTex;
+	bool errored = false;
 	Vector<String> defaultBGs;
 	LuaBindable *bindable = nullptr;
 	String folderPath;
@@ -145,6 +146,8 @@ class TestBackground : public FullscreenBackground
 	}
 	virtual void Render(float deltaTime) override
 	{
+		if (errored)
+			return;
 		UpdateRenderState(deltaTime);
 		game->SetGameplayLua(lua);
 		const TimingPoint &tp = game->GetPlayback().GetCurrentTimingPoint();
@@ -195,6 +198,7 @@ class TestBackground : public FullscreenBackground
 			{
 				Logf("Lua error: %s", Logger::Error, lua_tostring(lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(lua, -1), 0);
+				errored = true;
 			}
 		}
 		lua_settop(lua, 0);

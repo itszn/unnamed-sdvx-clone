@@ -520,6 +520,11 @@ and if ``loopcount`` is set to something that isn't 0 then the animation will st
 
 Returns a numer that is used the same way a regular image is used.
 
+GlobalAlpha(float alpha)
+************************
+Sets a global alpha value for all nanovg drawing. Already transparent objects will have their tranparency
+adjusted relative to the global value.
+
 LoadSkinAnimation(char* path, float frametime, int loopcount = 0)
 *****************************************************************
 Same as LoadAnimation but prepends ``"skins/[skinfolder]/textures/"`` to the path.
