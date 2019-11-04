@@ -68,7 +68,7 @@ Set an integer value to a uniform variable in the shader.
 
 SetParamf(string name, float value)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Set an integer value to a uniform variable in the shader.
+Set a float value to a uniform variable in the shader.
 
 DrawShader()
 ^^^^^^^^^^^^
