@@ -558,6 +558,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 	int16 currentButtonEffectParams[4] = { -1 };
 	const uint32 maxEffectParamsPerButtons = 2;
 	float laserRanges[2] = { 1.0f, 1.0f };
+	MapTime lastLaserPointTime[2] = { 0, 0 };
 
 	ZoomControlPoint *firstControlPoints[4] = { nullptr };
 	MapTime lastMapTime = 0;
@@ -602,7 +603,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 		// flag set when a new effect parameter is set and a new hold notes should be created
 		bool splitupHoldNotes[2] = { false, false };
-
 		bool isManualTilt = false;
 
 		uint32 tickSettingIndex = 0;
@@ -1131,7 +1131,11 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					obj->flags |= LaserObjectState::flag_Extended;
 				}
 				// Threshold for laser segments to be considered instant
+				bool lastSlam = (state->last && (state->last->flags & LaserObjectState::flag_Instant) != 0); // Deal with super fast repeat slams
 				MapTime laserSlamThreshold = (MapTime)ceil(state->tpStart->beatDuration / 8.0);
+				if (lastSlam)
+					laserSlamThreshold *= 2;
+
 				if (obj->duration <= laserSlamThreshold && (obj->points[1] != obj->points[0]))
 				{
 					obj->flags |= LaserObjectState::flag_Instant;
@@ -1189,6 +1193,26 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					}
 					obj->prev->next = obj;
 
+				}
+
+				if ((obj->flags & LaserObjectState::flag_Instant) != 0 && lastSlam) //add short straight segment between the slams
+				{
+					auto midobj = new LaserObjectState();
+					midobj->flags = obj->prev->flags & ~LaserObjectState::flag_Instant;
+					midobj->points[0] = obj->points[0];
+					midobj->points[1] = obj->points[0];
+					midobj->time = obj->prev->time;
+					midobj->duration = lastLaserPointTime[i] - midobj->time;
+					midobj->index = obj->index;
+
+					obj->time = lastLaserPointTime[i];
+
+					midobj->prev = obj->prev;
+					obj->prev = midobj;
+					midobj->next = obj;
+					midobj->prev->next = midobj;
+
+					m_objectStates.Add(*midobj);
 				}
 
 				// Add to list of objects
@@ -1272,6 +1296,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 							state->spinDuration = state->spinDuration;
 					}
 				}
+
+				lastLaserPointTime[i] = mapTime;
 			}
 		}
 
