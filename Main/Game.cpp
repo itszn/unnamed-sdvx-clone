@@ -1886,8 +1886,8 @@ public:
 			lua_getfield(L, -1, "critLine");
 
 			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
-			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-1, 0, 0)));
-			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(1, 0, 0)));
+			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
+			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
 			Vector2 line = rightPos - leftPos;
 
 			lua_pushstring(L, "x"); // x screen position
@@ -1901,6 +1901,26 @@ public:
 			lua_pushstring(L, "rotation"); // rotation based on laser roll
 			lua_pushnumber(L, -atan2f(line.y, line.x));
 			lua_settable(L, -3);
+
+
+			//track x critline corners
+			lua_getfield(L, -1, "line");
+			{
+				lua_pushstring(L, "x1");
+				lua_pushnumber(L, leftPos.x);
+				lua_settable(L, -3);
+				lua_pushstring(L, "y1");
+				lua_pushnumber(L, leftPos.y);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "x2");
+				lua_pushnumber(L, rightPos.x);
+				lua_settable(L, -3);
+				lua_pushstring(L, "y2");
+				lua_pushnumber(L, rightPos.y);
+				lua_settable(L, -3);
+			}
+			lua_pop(L, 1);
 
 			auto setCursorData = [&](int ci)
 			{
@@ -1992,6 +2012,9 @@ public:
 			lua_seti(L, -2, 1);
 		}
 		lua_settable(L, -3); // cursors -> critLine
+		lua_pushstring(L, "line");
+		lua_newtable(L);
+		lua_settable(L, -3); // line -> critLine
 		lua_settable(L, -3); // critLine -> gameplay
 
 		lua_pushstring(L, "multiplayer");
