@@ -61,8 +61,8 @@ void main()
     uv.x *= thing / 3.0;
     uv.x += timing.y * 1.0;
 	
-    vec4 col = texture2D(mainTex, uv) * 0.75;
-    vec4 clear_col = texture2D(mainTexClear, uv);
+    vec4 col = texture(mainTex, uv) * 0.75;
+    vec4 clear_col = texture(mainTexClear, uv);
     
     col *= (1.0 - clearTransition);
     col += clear_col * clearTransition * 1.3;

@@ -48,7 +48,7 @@ vec4 draw_a(vec2 uv, vec2 center)
     uv.x *= thing / 20.0;
     uv.x += timing.y * 2.0;
 	
-	float alpha = texture2D(mainTex, uv).a;
+	float alpha = texture(mainTex, uv).a;
     vec4 col = vec4(0.2, 1.0, 0.0, alpha);
     vec4 clear_col = vec4(0.2, 1.0, 0.0, alpha);
     
@@ -73,7 +73,7 @@ vec4 draw_b(vec2 uv, vec2 center)
     uv.x += timing.y * 1.0;
 	uv.y = -uv.y + 1.0;
 	uv.x = -uv.x + 1.0;
-	float alpha = texture2D(mainTex, uv).a;
+	float alpha = texture(mainTex, uv).a;
     vec4 col = vec4(0.2, 0.2, 1.0, alpha);
     vec4 clear_col = vec4(0.2 + (1.0 - uv.y * 1.5), 1.0, 0.0, alpha);
     
