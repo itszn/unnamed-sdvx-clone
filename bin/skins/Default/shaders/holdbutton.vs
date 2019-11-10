@@ -3,7 +3,7 @@
 layout(location=0) in vec2 inPos;
 layout(location=1) in vec2 inTex;
 
-varying vec4 position;
+out vec4 position;
 
 out gl_PerVertex
 {

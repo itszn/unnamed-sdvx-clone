@@ -7,7 +7,7 @@ layout(location=0) out vec4 target;
 uniform sampler2D mainTex;
 uniform float objectGlow;
 
-varying vec4 position;
+in vec4 position;
 
 uniform float trackPos;
 uniform float trackScale;

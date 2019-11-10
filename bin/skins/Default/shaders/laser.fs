@@ -8,7 +8,7 @@ uniform sampler2D mainTex;
 uniform vec4 color;
 uniform float objectGlow;
 
-varying vec4 position;
+in vec4 position;
 
 uniform float trackPos;
 uniform float trackScale;
