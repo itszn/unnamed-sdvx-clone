@@ -97,6 +97,5 @@ To run from Visual Studio, go to Properties for Main > Debugging > Working Direc
 ### macOS
 1. Install dependencies
 	* [Homebrew](https://github.com/Homebrew/brew): `brew install cmake freetype libvorbis sdl2 libpng jpeg libarchive`
-    * `brew link -f libarchive`
-2. Run `cmake .` and then `make` from the root of the project.
+2. Run `mac-cmake.sh` and then `make` from the root of the project.
 3. Run the executable made in the 'bin' folder.

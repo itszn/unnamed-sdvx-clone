@@ -214,14 +214,14 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 
 	if (!jsonPacket.is_object())
 	{
-		Logf("[Socket] Not an object %s", Logger::Error, jsonPacket.dump());
+		Logf("[Socket] Not an object %s", Logger::Error, static_cast<String>(jsonPacket.dump()));
 		return;
 	}
 
 	String topic = jsonPacket.value("topic", "");
 	if (topic == "")
 	{
-		Logf("[Socket] No topic in %s", Logger::Error, jsonPacket.dump());
+		Logf("[Socket] No topic in %s", Logger::Error, static_cast<String>(jsonPacket.dump()));
 		return;
 	}
 

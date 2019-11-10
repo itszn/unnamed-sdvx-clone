@@ -1135,7 +1135,7 @@ public:
 		// Set current preview audio
 		String audioPath = mapRootPath + Path::sep + diff->settings.audioNoFX;
 
-		PreviewParams params = { audioPath, diff->settings.previewOffset, diff->settings.previewDuration };
+		PreviewParams params = { audioPath, static_cast<uint32>(diff->settings.previewOffset), static_cast<uint32>(diff->settings.previewDuration) };
 
 		/* A lot of pre-effected charts use different audio files for each difficulty; these
 		 * files differ only in their effects, so the preview offset and duration remain the
