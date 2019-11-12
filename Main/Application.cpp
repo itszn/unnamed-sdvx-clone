@@ -105,6 +105,7 @@ void Application::ApplySettings()
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
+	m_SaveConfig();
 
 }
 int32 Application::Run()
