@@ -68,7 +68,7 @@ struct GUIState
 
 GUIState g_guiState;
 
-static int LoadFont(const char* name, const char* filename)
+static int LoadFont(const char* name, const char* filename, lua_State* L)
 {
 	{
 		Graphics::Font* cached = g_guiState.fontCahce.Find(name);
@@ -80,6 +80,19 @@ static int LoadFont(const char* name, const char* filename)
 		{
 			String path = filename;
 			Graphics::Font newFont = FontRes::Create(g_gl, path);
+			if (!newFont.IsValid())
+			{
+				lua_Debug ar;
+				lua_getstack(L, 1, &ar);
+				lua_getinfo(L, "Snl", &ar);
+				String luaFilename;
+				String fontFilename;
+				Path::RemoveLast(filename, &fontFilename);
+				Path::RemoveLast(ar.source, &luaFilename);
+				lua_pushstring(L, *Utility::Sprintf("Failed to load font \"%s\" at line %d in \"%s\"", fontFilename, ar.currentline, luaFilename));
+				lua_error(L);
+				return 0;
+			}
 			g_guiState.fontCahce.Add(name, newFont);
 			g_guiState.currentFont = g_guiState.fontCahce.Find(name);
 		}
@@ -399,8 +412,7 @@ static int lLoadFont(lua_State* L /*const char* name, const char* filename*/)
 {
 	const char* name = luaL_checkstring(L, 1);
 	const char* filename = luaL_checkstring(L, 2);
-	LoadFont(name, filename);
-	return 0;
+	return LoadFont(name, filename, L);
 }
 static int lCreateLabel(lua_State* L /*const char* text, int size, bool monospace*/)
 {

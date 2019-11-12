@@ -1122,8 +1122,13 @@ public:
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_gameWindow->OnMouseScroll.RemoveAll(this);
-		m_selectionWheel.Destroy();
-		m_filterSelection.Destroy();
+
+		if(m_selectionWheel.IsValid())
+			m_selectionWheel.Destroy();
+
+		if(m_filterSelection.IsValid())
+			m_filterSelection.Destroy();
+
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
 	}

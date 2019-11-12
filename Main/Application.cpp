@@ -1470,8 +1470,7 @@ static int lLoadSkinFont(lua_State* L /*const char* name */)
 	const char* name = luaL_checkstring(L, 1);
 	String path = "skins/" + g_application->GetCurrentSkin() + "/fonts/" + name;
 	path = Path::Absolute(path);
-	LoadFont(name, path.c_str());
-	return 0;
+	return LoadFont(name, path.c_str(), L);
 }
 
 static int lLoadSkinSample(lua_State* L /*char* name */)
