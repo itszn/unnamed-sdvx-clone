@@ -74,6 +74,16 @@ private:
 		GameConfigKeys::Controller_FX1
 	};
 
+	Vector<GameConfigKeys> m_altKeyboardKeys = {
+		GameConfigKeys::Key_BTS,
+		GameConfigKeys::Key_BT0Alt,
+		GameConfigKeys::Key_BT1Alt,
+		GameConfigKeys::Key_BT2Alt,
+		GameConfigKeys::Key_BT3Alt,
+		GameConfigKeys::Key_FX0Alt,
+		GameConfigKeys::Key_FX1Alt
+	};
+
 	Vector<GameConfigKeys> m_controllerLaserKeys = {
 		GameConfigKeys::Controller_Laser0Axis,
 		GameConfigKeys::Controller_Laser1Axis,
@@ -81,7 +91,6 @@ private:
 	};
 
 	Texture m_whiteTex;
-
 
 	int m_selectedGamepad = 0;
 	float m_laserColors[2] = { 0.25f, 0.75f };
@@ -97,6 +106,10 @@ private:
 	int m_multiplayerPasswordLen = 0;
 	char m_multiplayerUsername[1024];
 	int m_multiplayerUsernameLen = 0;
+	Vector<GameConfigKeys>* m_activeBTKeys = &m_keyboardKeys;
+	bool m_useBTGamepad = false;
+	bool m_useLaserGamepad = false;
+	bool m_altBinds = false;
 
 	std::queue<SDL_Event> eventQueue;
 
@@ -106,57 +119,9 @@ private:
 	}
 
 	//TODO: Use argument instead of many functions if possible.
-
-
-
-	void SetKey_BTA()
+	void SetBTBind(GameConfigKeys key)
 	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT0, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT0));
-	}
-	void SetKey_BTB()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT1, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT1));
-	}
-	void SetKey_BTC()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT2, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT2));
-	}
-	void SetKey_BTD()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BT3, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BT3));
-	}
-	void SetKey_FXL()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_FX0, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_FX0));
-	}
-	void SetKey_FXR()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_FX1, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_FX1));
-	}
-	void SetKey_ST()
-	{
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_BTS, true, m_selectedGamepad));
-		else
-			g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Key_BTS));
+		g_application->AddTickable(ButtonBindingScreen::Create(key, m_useBTGamepad, m_selectedGamepad));
 	}
 
 	void SetLL()
@@ -437,7 +402,7 @@ public:
 			}
 			else
 			{
-				m_controllerButtonNames[i] = SDL_GetKeyName(g_gameConfig.GetInt(m_keyboardKeys[i]));
+				m_controllerButtonNames[i] = SDL_GetKeyName(g_gameConfig.GetInt((*m_activeBTKeys)[i]));
 			}
 		}
 		for (size_t i = 0; i < 2; i++)
@@ -455,7 +420,23 @@ public:
 				));
 			}
 		}
+
+		m_useBTGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller;
+		m_useLaserGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller;
+		if (m_useBTGamepad)
+		{
+			m_activeBTKeys = &m_controllerKeys;
+		}
+		else if (m_altBinds)
+		{
+			m_activeBTKeys = &m_altKeyboardKeys;
+		}
+		else
+		{
+			m_activeBTKeys = &m_keyboardKeys;
+		}
 	}
+
 
 	void Render(float deltatime)
 	{
@@ -484,17 +465,24 @@ public:
 			{
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 				if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
-				if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetKey_ST();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetBTBind((*m_activeBTKeys)[0]);
 				if (nk_button_label(m_nctx, m_controllerLaserNames[1].c_str())) SetRL();
 
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 4);
-				if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) SetKey_BTA();
-				if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) SetKey_BTB();
-				if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) SetKey_BTC();
-				if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) SetKey_BTD();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) SetBTBind((*m_activeBTKeys)[1]);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) SetBTBind((*m_activeBTKeys)[2]);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) SetBTBind((*m_activeBTKeys)[3]);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) SetBTBind((*m_activeBTKeys)[4]);
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 2);
-				if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) SetKey_FXL();
-				if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) SetKey_FXR();
+				if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) SetBTBind((*m_activeBTKeys)[5]);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) SetBTBind((*m_activeBTKeys)[6]);
+
+				if (!m_useBTGamepad)
+				{
+					if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
+					if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
+				}
+
 
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
 				if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) CalibrateSens();
