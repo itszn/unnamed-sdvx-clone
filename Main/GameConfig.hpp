@@ -108,6 +108,7 @@ DefineEnum(GameConfigKeys,
 
 	CheckForUpdates,
 	OnlyRelease,
+	LimitSettingsFont,
 
 	// Multiplayer
 	MultiplayerHost,

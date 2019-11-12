@@ -119,6 +119,7 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true);
+	Set(GameConfigKeys::LimitSettingsFont, false);
 
 	// Multiplayer
 	Set(GameConfigKeys::MultiplayerHost, "usc-multi.drewol.me:39079");
