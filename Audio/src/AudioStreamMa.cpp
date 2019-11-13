@@ -134,7 +134,7 @@ uint32 AudioStreamMa::GetSampleRate_Internal() const
 	return sample_rate;
 }
 
-Ref<AudioStream> CreateAudioStream_ma(class Audio* audio, const String& path, bool preload)
+Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, bool preload)
 {
 	AudioStreamMa* impl = new AudioStreamMa();
 	if (!impl->Init(audio, path, preload))

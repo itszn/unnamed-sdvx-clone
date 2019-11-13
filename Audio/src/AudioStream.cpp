@@ -1,12 +1,10 @@
 #include "stdafx.h"
 #include "AudioStream.hpp"
 #include "Audio.hpp"
-#include "Audio_Impl.hpp"
-
-Ref<AudioStream> CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);
-Ref<AudioStream> CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload);
-Ref<AudioStream> CreateAudioStream_wav(class Audio* audio, const String& path, bool preload);
-Ref<AudioStream> CreateAudioStream_ma(class Audio* audio, const String& path, bool preload);
+#include "AudioStreamMa.hpp"
+#include "AudioStreamMp3.hpp"
+#include "AudioStreamOgg.hpp"
+#include "AudioStreamWav.hpp"
 
 Ref<AudioStream> AudioStream::Create(class Audio* audio, const String& path, bool preload)
 {
@@ -15,11 +13,11 @@ Ref<AudioStream> AudioStream::Create(class Audio* audio, const String& path, boo
 	auto TryCreateType = [&](int32 type)
 	{
 		if (type == 0)
-			return CreateAudioStream_ogg(audio, path, preload);
+			return AudioStreamOgg::Create(audio, path, preload);
 		else if (type == 1)
-			return CreateAudioStream_mp3(audio, path, preload);
+			return AudioStreamMp3::Create(audio, path, preload);
 		else
-			return CreateAudioStream_ma(audio, path, preload);
+			return AudioStreamMa::Create(audio, path, preload);
 	};
 
 	int32 pref = 0;

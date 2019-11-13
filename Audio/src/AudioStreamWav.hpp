@@ -45,6 +45,5 @@ public:
 	int32 DecodeData_Internal() override;
 	float* GetPCM_Internal() override;
 	uint32 GetSampleRate_Internal() const override;
+	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };
-
-Ref<AudioStream> CreateAudioStream_wav(class Audio* audio, const String& path, bool preload);

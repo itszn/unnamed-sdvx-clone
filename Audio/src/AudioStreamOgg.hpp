@@ -24,6 +24,6 @@ private:
 	static size_t m_Read(void* ptr, size_t size, size_t nmemb, AudioStreamOgg* self);
 	static int m_Seek(AudioStreamOgg* self, int64 offset, int whence);
 	static long m_Tell(AudioStreamOgg* self);
+public:
+	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };
-
-Ref<AudioStream> CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);
