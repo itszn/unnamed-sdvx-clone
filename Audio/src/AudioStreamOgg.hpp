@@ -11,6 +11,7 @@ protected:
 	Vector<float> m_pcm;
 	int64 m_playPos;
 
+	AudioStreamOgg() = default;
 	~AudioStreamOgg();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	void SetPosition_Internal(int32 pos) override;

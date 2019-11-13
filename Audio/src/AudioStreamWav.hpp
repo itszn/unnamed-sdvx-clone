@@ -36,7 +36,8 @@ private:
 	uint64 m_dataPosition = 0;
 	uint32 m_decode_ms_adpcm(const Buffer& encoded, Buffer* decoded, uint64 pos);
 
-public:
+protected:
+	AudioStreamWav() = default;
 	~AudioStreamWav();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	int32 GetStreamPosition_Internal() override;
@@ -45,5 +46,6 @@ public:
 	int32 DecodeData_Internal() override;
 	float* GetPCM_Internal() override;
 	uint32 GetSampleRate_Internal() const override;
+public:
 	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };

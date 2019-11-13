@@ -13,6 +13,7 @@ private:
 	ma_decoder m_decoder;
 	int m_byteRate;
 protected:
+	AudioStreamMa() = default;
 	~AudioStreamMa();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	int32 GetStreamPosition_Internal() override;

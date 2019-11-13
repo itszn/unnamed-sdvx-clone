@@ -23,6 +23,7 @@ class AudioStreamMp3 : public AudioStreamBase
 	int m_unsynchsafe(int in);
 	int m_toLittleEndian(int num);
 protected:
+	AudioStreamMp3() = default;
 	~AudioStreamMp3();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	void SetPosition_Internal(int32 pos) override;
