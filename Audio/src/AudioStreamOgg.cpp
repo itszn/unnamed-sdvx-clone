@@ -219,7 +219,7 @@ long AudioStreamOgg::m_Tell(AudioStreamOgg* self)
 	return (long)self->Reader().Tell();
 }
 
-AudioStream* CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload)
+Ref<AudioStream> CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload)
 {
 	AudioStreamOgg* impl = new AudioStreamOgg();
 	if(!impl->Init(audio, path, preload))
@@ -227,5 +227,5 @@ AudioStream* CreateAudioStream_ogg(class Audio* audio, const String& path, bool 
 		delete impl;
 		impl = nullptr;
 	}
-	return impl;
+	return Ref<AudioStream>(impl);
 }

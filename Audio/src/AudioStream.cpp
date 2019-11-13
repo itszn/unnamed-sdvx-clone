@@ -3,14 +3,14 @@
 #include "Audio.hpp"
 #include "Audio_Impl.hpp"
 
-class AudioStream* CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);
-class AudioStream* CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload);
-class AudioStream* CreateAudioStream_wav(class Audio* audio, const String& path, bool preload);
-class AudioStream* CreateAudioStream_ma(class Audio* audio, const String& path, bool preload);
+Ref<AudioStream> CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);
+Ref<AudioStream> CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload);
+Ref<AudioStream> CreateAudioStream_wav(class Audio* audio, const String& path, bool preload);
+Ref<AudioStream> CreateAudioStream_ma(class Audio* audio, const String& path, bool preload);
 
 Ref<AudioStream> AudioStream::Create(class Audio* audio, const String& path, bool preload)
 {
-	AudioStream* impl = nullptr;
+	Ref<AudioStream> impl;
 
 	auto TryCreateType = [&](int32 type)
 	{
@@ -42,6 +42,6 @@ Ref<AudioStream> AudioStream::Create(class Audio* audio, const String& path, boo
 	if(!impl)
 		return Ref<AudioStream>();
 
-	audio->GetImpl()->Register(impl);
+	audio->GetImpl()->Register(impl.GetData());
 	return Ref<AudioStream>(impl);
 }

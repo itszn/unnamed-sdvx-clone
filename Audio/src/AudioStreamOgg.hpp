@@ -26,4 +26,4 @@ private:
 	static long m_Tell(AudioStreamOgg* self);
 };
 
-AudioStream* CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);
+Ref<AudioStream> CreateAudioStream_ogg(class Audio* audio, const String& path, bool preload);

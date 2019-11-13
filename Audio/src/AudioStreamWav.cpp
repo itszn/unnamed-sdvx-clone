@@ -438,7 +438,7 @@ uint32 AudioStreamWav::GetSampleRate_Internal() const
 	return m_format.nSampleRate;
 }
 
-AudioStream* CreateAudioStream_wav(class Audio* audio, const String& path, bool preload)
+Ref<AudioStream> CreateAudioStream_wav(class Audio* audio, const String& path, bool preload)
 {
 	AudioStreamWav* impl = new AudioStreamWav();
 	if (!impl->Init(audio, path, preload))
@@ -446,5 +446,5 @@ AudioStream* CreateAudioStream_wav(class Audio* audio, const String& path, bool 
 		delete impl;
 		impl = nullptr;
 	}
-	return impl;
+	return Ref<AudioStream>(impl);
 }

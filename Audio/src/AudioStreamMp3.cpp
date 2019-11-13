@@ -278,7 +278,7 @@ int32 AudioStreamMp3::DecodeData_Internal()
 	return samplesGotten;
 }
 
-AudioStream* CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload)
+Ref<AudioStream> CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload)
 {
 	AudioStreamMp3* impl = new AudioStreamMp3();
 	if (!impl->Init(audio, path, preload))
@@ -286,5 +286,5 @@ AudioStream* CreateAudioStream_mp3(class Audio* audio, const String& path, bool 
 		delete impl;
 		impl = nullptr;
 	}
-	return impl;
+	return Ref<AudioStream>(impl);
 }
