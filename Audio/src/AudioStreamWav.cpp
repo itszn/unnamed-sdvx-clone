@@ -281,7 +281,7 @@ bool AudioStreamWav::Init(Audio* audio, const String& path, bool preload)
 		}
 	}
 
-	InitSampling(m_format.nSampleRate);
+	m_initSampling(m_format.nSampleRate);
 	m_playbackPointer = 0;
 	return true;
 }

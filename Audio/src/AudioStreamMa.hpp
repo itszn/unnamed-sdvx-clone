@@ -7,15 +7,12 @@ class AudioStreamMa : public AudioStreamBase
 private:
 	Buffer m_Internaldata;
 	float* m_pcm = nullptr;
-
 	int64 m_playbackPointer = 0;
 	uint64 m_dataPosition = 0;
-
 	const int sample_rate = 48000;
 	ma_decoder m_decoder;
 	int m_byteRate;
-
-public:
+protected:
 	~AudioStreamMa();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	int32 GetStreamPosition_Internal() override;
@@ -24,5 +21,6 @@ public:
 	int32 DecodeData_Internal() override;
 	float* GetPCM_Internal() override;
 	uint32 GetSampleRate_Internal() const override;
+public:
 	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };

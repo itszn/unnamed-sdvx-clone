@@ -56,7 +56,7 @@ bool AudioStreamMa::Init(Audio* audio, const String& path, bool preload)
 		return false;
 	}
 
-	InitSampling(sample_rate);
+	m_initSampling(sample_rate);
 	return true;
 }
 int32 AudioStreamMa::GetStreamPosition_Internal()

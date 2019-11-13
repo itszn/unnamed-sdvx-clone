@@ -75,7 +75,7 @@ bool AudioStreamOgg::Init(Audio* audio, const String& path, bool preload)
 		ov_clear(&m_ovf);
 		m_playPos = 0;
 	}
-	InitSampling(m_info.rate);
+	m_initSampling(m_info.rate);
 	return true;
 }
 
@@ -198,17 +198,17 @@ int32 AudioStreamOgg::DecodeData_Internal()
 
 size_t AudioStreamOgg::m_Read(void* ptr, size_t size, size_t nmemb, AudioStreamOgg* self)
 {
-	return self->Reader().Serialize(ptr, nmemb*size);
+	return self->m_reader().Serialize(ptr, nmemb*size);
 }
 
 int AudioStreamOgg::m_Seek(AudioStreamOgg* self, int64 offset, int whence)
 {
 	if(whence == SEEK_SET)
-		self->Reader().Seek((size_t)offset);
+		self->m_reader().Seek((size_t)offset);
 	else if(whence == SEEK_CUR)
-		self->Reader().Skip((size_t)offset);
+		self->m_reader().Skip((size_t)offset);
 	else if(whence == SEEK_END)
-		self->Reader().SeekReverse((size_t)offset);
+		self->m_reader().SeekReverse((size_t)offset);
 	else
 		assert(false);
 	return 0;
@@ -216,7 +216,7 @@ int AudioStreamOgg::m_Seek(AudioStreamOgg* self, int64 offset, int whence)
 
 long AudioStreamOgg::m_Tell(AudioStreamOgg* self)
 {
-	return (long)self->Reader().Tell();
+	return (long)self->m_reader().Tell();
 }
 
 Ref<AudioStream> AudioStreamOgg::Create(class Audio* audio, const String& path, bool preload)

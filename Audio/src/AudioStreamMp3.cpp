@@ -42,7 +42,7 @@ bool AudioStreamMp3::Init(Audio* audio, const String& path, bool preload)
 	
 
 	// Always use preloaded data
-	m_mp3dataLength = Reader().GetSize();
+	m_mp3dataLength = m_reader().GetSize();
 	m_dataSource = m_data.data();
 	int32 tagSize = 0;
 
@@ -255,7 +255,7 @@ int32 AudioStreamMp3::DecodeData_Internal()
 	if(m_firstFrame)
 	{
 		m_bufferSize = MP3_MAX_SAMPLES_PER_FRAME / 2;
-		InitSampling(m_samplingRate = info.sample_rate);
+		m_initSampling(m_samplingRate = info.sample_rate);
 		m_firstFrame = false;
 	}
 

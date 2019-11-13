@@ -22,7 +22,7 @@ class AudioStreamMp3 : public AudioStreamBase
 	bool m_firstFrame = true;
 	int m_unsynchsafe(int in);
 	int m_toLittleEndian(int num);
-public:
+protected:
 	~AudioStreamMp3();
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	void SetPosition_Internal(int32 pos) override;
@@ -31,5 +31,6 @@ public:
 	uint32 GetSampleRate_Internal() const override;
 	float* GetPCM_Internal() override;
 	int32 DecodeData_Internal() override;
+public:
 	static Ref<AudioStream> Create(Audio* audio, const String& path, bool preload);
 };
