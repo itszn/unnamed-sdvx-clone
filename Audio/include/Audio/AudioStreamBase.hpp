@@ -3,7 +3,7 @@
 #include "AudioStream.hpp"
 #include "Audio_Impl.hpp"
 
-class AudioStreamBase : public AudioStreamRes
+class AudioStreamBase : public AudioStream
 {
 protected:
 	// Fixed point format for sample positions (used in resampling)

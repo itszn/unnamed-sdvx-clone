@@ -26,4 +26,4 @@ public:
 	uint32 GetSampleRate_Internal() const override;
 };
 
-class AudioStreamRes* CreateAudioStream_ma(class Audio* audio, const String& path, bool preload);
+AudioStream* CreateAudioStream_ma(class Audio* audio, const String& path, bool preload);

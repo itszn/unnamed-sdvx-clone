@@ -33,4 +33,4 @@ public:
 	int32 DecodeData_Internal() override;
 };
 
-class AudioStreamRes* CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload);
+AudioStream* CreateAudioStream_mp3(class Audio* audio, const String& path, bool preload);

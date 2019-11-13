@@ -21,7 +21,7 @@ public:
 
 struct SwitchableAudio {
 	bool m_enabled;
-	AudioStream m_audio;
+	Ref<AudioStream> m_audio;
 };
 
 /* 
@@ -85,7 +85,7 @@ public:
 
 private:
 	// Returns the track that should have effects applied to them
-	AudioStream m_GetDSPTrack();
+	Ref<AudioStream> m_GetDSPTrack();
 	void m_CleanupDSP(class DSP*& ptr);
 	void m_SetLaserEffectParameter(float input);
 
@@ -95,8 +95,8 @@ private:
 	// Root path of where the map was loaded from
 	String m_beatmapRootPath;
 
-	AudioStream m_music;
-	AudioStream m_fxtrack;
+	Ref<AudioStream> m_music;
+	Ref<AudioStream> m_fxtrack;
 	Vector<SwitchableAudio> m_switchables;
 	Vector<int32> m_enabledSwitchables;
 	int32 m_laserSwitchable = -1;

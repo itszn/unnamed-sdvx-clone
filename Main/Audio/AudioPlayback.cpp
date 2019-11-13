@@ -287,7 +287,7 @@ float AudioPlayback::GetLaserEffectMix() const
 {
 	return m_laserEffectMix;
 }
-AudioStream AudioPlayback::m_GetDSPTrack()
+Ref<AudioStream> AudioPlayback::m_GetDSPTrack()
 {
     if(m_fxtrack)
         return m_fxtrack;
