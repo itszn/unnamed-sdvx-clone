@@ -36,7 +36,7 @@ Ref<AudioStreamRes> AudioStreamRes::Create(class Audio* audio, const String& pat
 		impl = TryCreateType(pref);
 		if(impl)
 			break;
-		pref = (pref + 1) % 2;
+		pref = (pref + 1) % 3;
 	}
 
 	if(!impl)
