@@ -1,45 +1,47 @@
 #include "stdafx.h"
 #include "AudioStream.hpp"
-#include "Audio.hpp"
 #include "AudioStreamMa.hpp"
 #include "AudioStreamMp3.hpp"
 #include "AudioStreamOgg.hpp"
 #include "AudioStreamWav.hpp"
+#include <unordered_map>
 
-Ref<AudioStream> AudioStream::Create(class Audio* audio, const String& path, bool preload)
+using CreateFunc = Ref<AudioStream>(Audio *, const String &, bool);
+
+static std::unordered_map<std::string, CreateFunc &> decoders = {
+	{"mp3", AudioStreamMp3::Create},
+	{"ogg", AudioStreamOgg::Create},
+	{"wav", AudioStreamMa::Create},
+	//{"wav", AudioStreamWav::Create},
+};
+
+static Ref<AudioStream> FindImplementation(Audio* audio, const String& path, bool preload)
 {
 	Ref<AudioStream> impl;
-
-	auto TryCreateType = [&](int32 type)
-	{
-		if (type == 0)
-			return AudioStreamOgg::Create(audio, path, preload);
-		else if (type == 1)
-			return AudioStreamMp3::Create(audio, path, preload);
-		else
-			return AudioStreamMa::Create(audio, path, preload);
-	};
-
-	int32 pref = 0;
-	String ext = Path::GetExtension(path);
-	if (ext == "mp3")
-		pref = 1;
-	else if (ext == "ogg")
-		pref = 0;
-	else if (ext == "wav")
-		pref = 3;
-
-	for(uint32 i = 0; i < 3; i++)
-	{
-		impl = TryCreateType(pref);
-		if(impl)
-			break;
-		pref = (pref + 1) % 3;
+	// Try decoder based on extension
+	auto fav = decoders.find(Path::GetExtension(path));
+	if (fav != decoders.end()) {
+		impl = fav->second(audio, path, preload);
+		if (impl) {
+			return impl;
+		}
 	}
+	// Fallback on trying each other method
+	for (auto it = decoders.begin(); it != decoders.end(); it++) {
+		if (fav == it)
+			continue;
+		impl = it->second(audio, path, preload);
+		if (impl) {
+			return impl;
+		}
+	}
+	return impl;
+}
 
-	if(!impl)
-		return Ref<AudioStream>();
-
-	audio->GetImpl()->Register(impl.GetData());
-	return Ref<AudioStream>(impl);
+Ref<AudioStream> AudioStream::Create(Audio* audio, const String& path, bool preload)
+{
+	Ref<AudioStream> impl = FindImplementation(audio, path, preload);
+	if(impl)
+		audio->GetImpl()->Register(impl.GetData());
+	return impl;
 }
