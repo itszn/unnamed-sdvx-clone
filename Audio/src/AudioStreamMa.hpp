@@ -1,14 +1,5 @@
 #include "stdafx.h"
 #include "AudioStreamBase.hpp"
-
-#define DR_WAV_IMPLEMENTATION
-#include "extras/dr_wav.h"   // Enables WAV decoding.
-#define DR_FLAC_IMPLEMENTATION
-#include "extras/dr_flac.h"  // Enables FLAC decoding.
-#define DR_MP3_IMPLEMENTATION
-#include "extras/dr_mp3.h"   // Enables MP3 decoding.
-
-#define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
 class AudioStreamMa : public AudioStreamBase

@@ -7,7 +7,7 @@ get_property(SOUNDTOUCH_ROOT GLOBAL PROPERTY SOUNDTOUCH_ROOT)
 
 
 # Find files used for project
-file(GLOB Audio_src "src/*.cpp" "include/Audio/*.hpp")
+file(GLOB Audio_src "src/*.cpp" "src/*.hpp" "include/Audio/*.hpp")
 
 # Platform specific source files
 if(WIN32)
@@ -30,7 +30,6 @@ include_directories(
 	${SOUNDTOUCH_ROOT}/include
 	${MINIMP3_ROOT}
 	${MA_ROOT}
-	${MA_ROOT}/extras
 )
 add_library(Audio ${Audio_src})
 
