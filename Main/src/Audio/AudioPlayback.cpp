@@ -14,7 +14,7 @@ AudioPlayback::~AudioPlayback()
 	m_CleanupDSP(m_buttonDSPs[1]);
 	m_CleanupDSP(m_laserDSP);
 }
-bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootPath)
+bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootPath, bool mute)
 {
 	// Cleanup exising DSP's
 	m_currentHoldEffects[0] = nullptr;
@@ -46,7 +46,10 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 		return false;
 	}
 
-	m_musicVolume = mapSettings.musicVolume;
+	if (mute)
+		m_musicVolume = 0.0f;
+	else
+		m_musicVolume = mapSettings.musicVolume;
 	m_music->SetVolume(m_musicVolume);
 
 	// Load FX track

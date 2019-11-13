@@ -35,10 +35,12 @@ enum MultiplayerDataSyncType {
 	BUTTON_RELEASE,
 	LASER_MOVE,
 	HITSTAT,
+	SCORE,
 };
 
 struct MultiplayerData {
 	union {
+		uint8_t type;
 		struct {
 			uint8_t type;
 			uint8_t padding[3];
@@ -66,8 +68,18 @@ struct MultiplayerData {
 			uint32_t time;
 			uint32_t delta;
 		} hitstat;
+		struct {
+			uint32_t type : 8;
+			uint32_t score : 24;
+			uint16_t combo;
+			uint16_t max_combo;
+			float gauge;
+		} score;
 	} t;
 };
+
+static_assert(sizeof(struct MultiplayerData) == sizeof(uint32_t) * 3,
+	"MultiplayerData structure size is wrong");
 
 class TextInputMultiplayer;
 class ChatOverlay;
@@ -118,7 +130,7 @@ public:
 	{
 		return &m_finalStats;
 	}
-	void PerformFrameTick(MapTime time);
+	void PerformFrameTick(MapTime time, Scoring& scoring);
 
 	void AddButtonFrame(MultiplayerDataSyncType type, uint32_t time, uint32_t data);
 	void AddLaserFrame(uint32_t time, int ind, float val);
@@ -141,6 +153,11 @@ public:
 	String GetUserId()
 	{
 		return m_userId;
+	}
+
+	String GetUserName()
+	{
+		return m_userName;
 	}
 
 	bool IsSynced() {

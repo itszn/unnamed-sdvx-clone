@@ -182,6 +182,7 @@ void MultiplayerScreen::m_authenticate()
 	packet["playback"] = true;
 	packet["name"] = m_userName;
 	packet["version"] = MULTIPLAYER_VERSION;
+	packet["playback"] = g_isPlayback;
 	m_tcp.SendJSON(packet);
 }
 
@@ -302,7 +303,10 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 	m_joinToken = packet.value("join_token", "");
 	g_application->DiscordPresenceMulti(m_joinToken, userCount, 8, "test");
 	m_handleSongChange(packet);
-
+	if (g_isPlayback) {
+		// We take the name of our replay user
+		m_userName = packet.value("replay_name", "");
+	}
 	return true;
 }
 bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
@@ -1280,34 +1284,47 @@ void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring)
 	while (m_playbackData.size() > 0) {
 		MultiplayerData* cur = &m_playbackData.front();
 
-		// Drop input before start of map
-		if (cur->t.timed.time > 10000000) {
-			m_playbackData.pop();
-			continue;
+		if (cur->t.type == MultiplayerDataSyncType::SCORE)
+		{
+			scoring.currentHitScore = cur->t.score.score;
+			scoring.currentComboCounter = cur->t.score.combo;
+			scoring.maxComboCounter = cur->t.score.max_combo;
+			scoring.currentGauge = cur->t.score.gauge;
 		}
 
-		//Logf("Looking at time %u for %u", Logger::Info, cur->t.timed.time, time);
-		if (cur->t.timed.time > time)
+		// Timed types follow
+		else if (cur->t.timed.time > 100000000)
+		{
+			// Drop input before start of map, NOP
+		}
+		else if (cur->t.timed.time > time)
+		{
+			// Stop processing packets
 			break;
-
-		if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_PRESS) {
+		}
+		else if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_PRESS)
+		{
 			//Logf("Button %u", Logger::Info, cur->t.button.index);
 			PlaybackInput.UpdateButton(cur->t.button.index, true);
-		} else if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_RELEASE) {
+		}
+		else if (cur->t.timed.type == MultiplayerDataSyncType::BUTTON_RELEASE)
+		{
 			//Logf("Button %u", Logger::Info, cur->t.button.index);
 			PlaybackInput.UpdateButton(cur->t.button.index, false);
 		}
-		else if (cur->t.timed.type == MultiplayerDataSyncType::LASER_MOVE) {
+		else if (cur->t.timed.type == MultiplayerDataSyncType::LASER_MOVE)
+		{
 			//Logf("Laser %u %f", Logger::Info, cur->t.laser.index, cur->t.laser.val);
 			PlaybackInput.SetLaserValue(cur->t.laser.index & 1, cur->t.laser.val);
 		}
+		
 
 		m_playbackData.pop();
 	}
 	
 }
 
-void MultiplayerScreen::PerformFrameTick(MapTime time)
+void MultiplayerScreen::PerformFrameTick(MapTime time, Scoring& scoring)
 {
 	if (time < 0)
 		return;
@@ -1318,6 +1335,14 @@ void MultiplayerScreen::PerformFrameTick(MapTime time)
 		return;
 
 	m_lastFrameIndex = frameIndex;
+
+	MultiplayerData score_packet = { 0 };
+	score_packet.t.score.type = MultiplayerDataSyncType::SCORE;
+	score_packet.t.score.combo = scoring.currentComboCounter;
+	score_packet.t.score.max_combo = scoring.maxComboCounter;
+	score_packet.t.score.score = scoring.currentHitScore;
+	score_packet.t.score.gauge = scoring.currentGauge;
+	m_multiplayerFrame.push_back(score_packet);
 
 	MultiplayerData* data = new MultiplayerData[m_multiplayerFrame.size()];
 	for (int i = 0; i < m_multiplayerFrame.size(); i++) {

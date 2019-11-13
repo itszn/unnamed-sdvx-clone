@@ -169,19 +169,14 @@ int32 Application::Run()
 			else // Start regular game, goto title screen
 			{
 				if (m_commandLine.Contains("-playback")) {
-					g_numWindows = 1;
+					g_numWindows = 2;
 					g_isPlayback = true;
-					//AddTickable(TitleScreen::Create());
-
-					/*
-					TitleScreen* second = TitleScreen::Create();
-					second->SetWindowIndex(1);
-					AddTickable(second);
-					*/
-
-					TitleScreen* second = TitleScreen::Create();
-					second->SetWindowIndex(0);
-					AddTickable(second);
+					for (int i = 0; i < g_numWindows; i++)
+					{
+						TitleScreen* screen = TitleScreen::Create();
+						screen->SetWindowIndex(i);
+						AddTickable(screen);
+					}
 				}
 				else {
 					g_numWindows = 1;

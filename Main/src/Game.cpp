@@ -30,6 +30,8 @@ extern "C"
 
 #include "GUI/HealthGauge.hpp"
 
+uint32_t g_playbackScores[MAX_WINDOWS];
+
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
 {
@@ -336,7 +338,7 @@ public:
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, this->GetWindowIndex() != 0))
 			return false;
 
 		// Get fps limit
@@ -932,7 +934,8 @@ public:
 				{
 					float speed = Math::Clamp((float)lua_tonumber(m_lua, lua_gettop(m_lua)), 0.0f, 1.0f);
 					m_audioPlayback.SetPlaybackSpeed(speed);
-					m_audioPlayback.SetVolume(Math::Clamp(speed * 10.0f, 0.0f, 1.0f));
+					if (this->GetWindowIndex() == 0)
+						m_audioPlayback.SetVolume(Math::Clamp(speed * 10.0f, 0.0f, 1.0f));
 				}
 				lua_pop(m_lua, 1);
 				m_outroCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
@@ -1078,6 +1081,10 @@ public:
 
 			// Start playback of audio in first gameplay tick
 			m_audioPlayback.Play();
+
+			// Mute other tracks
+			if (this->GetWindowIndex() != 0)
+				m_audioPlayback.SetVolume(0.0f);
 			m_started = true;
 
 			if(g_application->GetAppCommandLine().Contains("-autoskip"))
@@ -1160,7 +1167,7 @@ public:
 			}
 			else
 			{
-				m_multiplayer->PerformFrameTick(m_lastMapTime);
+				m_multiplayer->PerformFrameTick(m_lastMapTime, m_scoring);
 				m_multiplayer->AddLaserFrame(m_lastMapTime, 0, g_input.GetInputLaserDir(0));
 				m_multiplayer->AddLaserFrame(m_lastMapTime, 1, g_input.GetInputLaserDir(1));
 			}
@@ -1221,6 +1228,7 @@ public:
 						ScoreScreen::Create(
 						this, m_multiplayer->GetUserId(), 
                         m_multiplayer->GetFinalStats(), m_multiplayer));
+					trans->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 					g_application->AddTickable(trans);
 #endif
 				}
@@ -1232,6 +1240,7 @@ public:
 					TransitionScreen* trans = TransitionScreen::Create();
 					trans->SetWindowIndex(this->GetWindowIndex());
 					trans->TransitionTo(ScoreScreen::Create(this));
+					trans->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 					g_application->AddTickable(trans);
 #endif
 				}
@@ -1543,7 +1552,8 @@ public:
 		{
 			if (m_fxSamples[st->sampleIndex])
 			{
-				m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume);
+				if (this->GetWindowIndex() == 0)
+					m_fxSamples[st->sampleIndex]->SetVolume(st->sampleVolume);
 				m_fxSamples[st->sampleIndex]->Play();
 			}
 		}
@@ -1712,7 +1722,8 @@ public:
 		}
 		else if(key == EventKey::SlamVolume)
 		{
-			m_slamSample->SetVolume(data.floatVal);
+			if (this->GetWindowIndex() == 0)
+				m_slamSample->SetVolume(data.floatVal);
 		}
 		else if (key == EventKey::ChartEnd)
 		{
@@ -2022,37 +2033,56 @@ public:
 		lua_pushboolean(L, m_scoring.autoplay);
 		lua_settable(L, -3);
 
+		g_playbackScores[this->GetWindowIndex()] = m_scoring.CalculateCurrentScore();
+
 		// Update score replays
 		lua_getfield(L, -1, "scoreReplays");
 		int replayCounter = 1;
-		for (auto& replay: m_scoreReplays)
+
+		if (g_isPlayback)
 		{
-			if (replay.replay.size() > 0)
-			{
-				while (replay.nextHitStat < replay.replay.size()
-					&& replay.replay[replay.nextHitStat].time < m_lastMapTime)
-				{
-					SimpleHitStat shs = replay.replay[replay.nextHitStat];
-					if (shs.rating < 3)
-					{
-						replay.currentScore += shs.rating;
-					}
-					replay.nextHitStat++;
-				}
-			}
-			lua_pushnumber(L, replayCounter);
-			lua_newtable(L);
+			lua_pushnumber(m_lua, replayCounter);
 
-			lua_pushstring(L, "maxScore");
-			lua_pushnumber(L, replay.maxScore);
-			lua_settable(L, -3);
+			lua_newtable(m_lua);
+			lua_pushstring(m_lua, "currentScore");
+			// TODO only works on two atm
+			lua_pushnumber(m_lua, g_playbackScores[this->GetWindowIndex()^1]);
+			lua_settable(m_lua, -3);
 
-			lua_pushstring(L, "currentScore");
-			lua_pushnumber(L, m_scoring.CalculateScore(replay.currentScore));
-			lua_settable(L, -3);
-
-			lua_settable(L, -3);
+			lua_settable(m_lua, -3);
 			replayCounter++;
+		}
+		else
+		{
+			for (auto& replay : m_scoreReplays)
+			{
+				if (replay.replay.size() > 0)
+				{
+					while (replay.nextHitStat < replay.replay.size()
+						&& replay.replay[replay.nextHitStat].time < m_lastMapTime)
+					{
+						SimpleHitStat shs = replay.replay[replay.nextHitStat];
+						if (shs.rating < 3)
+						{
+							replay.currentScore += shs.rating;
+						}
+						replay.nextHitStat++;
+					}
+				}
+				lua_pushnumber(L, replayCounter);
+				lua_newtable(L);
+
+				lua_pushstring(L, "maxScore");
+				lua_pushnumber(L, replay.maxScore);
+				lua_settable(L, -3);
+
+				lua_pushstring(L, "currentScore");
+				lua_pushnumber(L, m_scoring.CalculateScore(replay.currentScore));
+				lua_settable(L, -3);
+
+				lua_settable(L, -3);
+				replayCounter++;
+			}
 		}
 		lua_setfield(L, -1, "scoreReplays");
 
@@ -2244,6 +2274,11 @@ public:
 		{
 			pushStringToTable("user_id", m_multiplayer->GetUserId());
 			Log("[Multiplayer] Started game in multiplayer mode!", Logger::Severity::Info);
+			pushStringToTable("username", m_multiplayer->GetUserName());
+		}
+		else
+		{
+			pushStringToTable("username", "UNNAMED SDVX CLONE");
 		}
 
 		lua_pushstring(L, "autoplay");
@@ -2255,6 +2290,14 @@ public:
 		pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
 		pushFloatToTable("suddenFade", m_track->suddenFadewindow);
 		pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
+
+		lua_pushstring(m_lua, "isPlayback");
+		lua_pushboolean(m_lua, g_isPlayback);
+		lua_settable(m_lua, -3);
+		lua_pushstring(m_lua, "windowIndex");
+		lua_pushinteger(m_lua, this->GetWindowIndex());
+		lua_settable(m_lua, -3);
+
 		m_setLuaHolds(L);
 		lua_setglobal(L, "gameplay");
 	}
