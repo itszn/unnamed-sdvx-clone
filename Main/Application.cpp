@@ -1321,7 +1321,7 @@ void Application::m_OnWindowResized(const Vector2i& newSize)
 int Application::FastText(String inputText, float x, float y, int size, int align)
 {
 	WString text = Utility::ConvertToWString(inputText);
-	String fontpath = Path::Absolute(Path::Normalize("fonts/settings/NotoSans-Regular.ttf"));
+	String fontpath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));
 	Text te = g_application->LoadFont(fontpath, true)->CreateText(text, size);
 	Transform textTransform;
 	textTransform *= Transform::Translation(Vector2(x, y));
