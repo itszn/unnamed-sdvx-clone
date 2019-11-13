@@ -3,6 +3,7 @@
 #include "Shared/LuaBindable.hpp"
 #include "Input.hpp"
 #include "Shared/Thread.hpp"
+#include "GameConfig.hpp"
 #include "cpr/cpr.h"
 #include <queue>
 #include "Beatmap/MapDatabase.hpp"
@@ -59,6 +60,7 @@ public:
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
 	void SendFinalScore(Scoring& scoring, int clearState);
+	float GetMapBPMForSpeed(const String path, SpeedMods mod);
 
 	TCPSocket& GetTCP()
 	{
@@ -193,4 +195,8 @@ private:
 	String m_userName;
 	String m_newRoomName;
 
+	float m_hispeed;
+	float m_modSpeed;
+	SpeedMods m_speedMod;
+	float m_songBPM;
 };

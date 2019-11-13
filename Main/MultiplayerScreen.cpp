@@ -556,6 +556,96 @@ void MultiplayerScreen::m_changeDifficulty(int offset)
 
 }
 
+float MultiplayerScreen::GetMapBPMForSpeed(String path, SpeedMods mod)
+{
+	path = Path::Normalize(path);
+	if (!Path::FileExists(path))
+	{
+		Logf("Couldn't find map at %s", Logger::Error, path);
+		return 0.0f;
+	}
+
+	// Load map
+	Beatmap* newMap = new Beatmap();
+	File mapFile;
+	if (!mapFile.OpenRead(path))
+	{
+		Logf("Could not read path for beatmap: %s", Logger::Error, path);
+		delete newMap;
+		return 0.0f;
+	}
+	FileReader reader(mapFile);
+	if (!newMap->Load(reader))
+	{
+		delete newMap;
+		return 0.0f;
+	}
+
+
+	// Most of this code is copied from Game.cpp to match its calculations
+
+	double useBPM = -1;
+
+	const BeatmapSettings& mapSettings = newMap->GetMapSettings();
+
+	ObjectState* const* lastObj = &newMap->GetLinearObjects().back();
+	while ((*lastObj)->type == ObjectType::Event && lastObj != &newMap->GetLinearObjects().front())
+	{
+		lastObj--;
+	}
+
+	MapTime lastObjectTime = (*lastObj)->time;
+	if ((*lastObj)->type == ObjectType::Hold)
+	{
+		HoldObjectState* lastHold = (HoldObjectState*)(*lastObj);
+		lastObjectTime += lastHold->duration;
+	}
+	else if ((*lastObj)->type == ObjectType::Laser)
+	{
+		LaserObjectState* lastHold = (LaserObjectState*)(*lastObj);
+		lastObjectTime += lastHold->duration;
+	}
+
+	if (mod == SpeedMods::MMod) {
+
+		Map<double, MapTime> bpmDurations;
+		const Vector<TimingPoint*>& timingPoints = newMap->GetLinearTimingPoints();
+		MapTime lastMT = mapSettings.offset;
+		MapTime largestMT = -1;
+		double lastBPM = -1;
+		for (TimingPoint* tp : timingPoints)
+		{
+			double thisBPM = tp->GetBPM();
+			if (!bpmDurations.count(lastBPM))
+			{
+				bpmDurations[lastBPM] = 0;
+			}
+			MapTime timeSinceLastTP = tp->time - lastMT;
+			bpmDurations[lastBPM] += timeSinceLastTP;
+			if (bpmDurations[lastBPM] > largestMT)
+			{
+				useBPM = lastBPM;
+				largestMT = bpmDurations[lastBPM];
+			}
+			lastMT = tp->time;
+			lastBPM = thisBPM;
+		}
+		bpmDurations[lastBPM] += lastObjectTime - lastMT;
+
+		if (bpmDurations[lastBPM] > largestMT)
+		{
+			useBPM = lastBPM;
+		}
+	}
+	else
+	{
+		useBPM = newMap->GetLinearTimingPoints().front()->GetBPM();
+	}
+
+	delete newMap;
+	return useBPM;
+}
+
 void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool isNew)
 {
 	this->m_selectedMapId = mapid;
@@ -569,6 +659,18 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	// Find "short" path for the selected map
 	const size_t lastSlashIdx = map->path.find_last_of("\\/");
 	String shortPath = map->path.substr(lastSlashIdx + 1);
+
+	m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
+	m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+	m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
+
+	float bpm = GetMapBPMForSpeed(diff->path, m_speedMod);
+	m_songBPM = bpm;
+
+	if (m_speedMod == SpeedMods::MMod || m_speedMod == SpeedMods::CMod)
+	{
+		m_hispeed = m_modSpeed / bpm;
+	}
 
 	// Push a table of info to lua
 	lua_newtable(m_lua);
@@ -603,6 +705,14 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		m_PushIntToTable("difficulty", diffSettings.difficulty);
 		lua_settable(m_lua, -3);
 	}
+	lua_settable(m_lua, -3);
+
+	lua_pushstring(m_lua, "hispeed");
+	lua_pushnumber(m_lua, m_hispeed);
+	lua_settable(m_lua, -3);
+
+	lua_pushstring(m_lua, "speed_bpm");
+	lua_pushnumber(m_lua, bpm);
 	lua_settable(m_lua, -3);
 
 	lua_setglobal(m_lua, "selected_song");
@@ -694,12 +804,34 @@ void MultiplayerScreen::Tick(float deltaTime)
 	// Change difficulty
 	if (m_hasSelectedMap)
 	{
-		float diff_input = g_input.GetInputLaserDir(0);
-		m_advanceDiff += diff_input;
-		int advanceDiffActual = (int)Math::Floor(m_advanceDiff * Math::Sign(m_advanceDiff)) * Math::Sign(m_advanceDiff);
-		if (advanceDiffActual != 0)
-			m_changeDifficulty(advanceDiffActual);
-		m_advanceDiff -= advanceDiffActual;
+		if (g_input.GetButton(Input::Button::BT_0)) {
+			for (int i = 0; i < 2; i++) {
+				float change = g_input.GetInputLaserDir(i) / 3.0f;
+				m_hispeed += change;
+				m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
+				if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
+				{
+					g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * m_songBPM);
+					m_modSpeed = m_hispeed * m_songBPM;
+
+					lua_getglobal(m_lua, "selected_song");
+
+					lua_pushstring(m_lua, "hispeed");
+					lua_pushnumber(m_lua, m_hispeed);
+					lua_settable(m_lua, -3);
+
+					lua_setglobal(m_lua, "selected_song");
+				}
+			}
+		}
+		else {
+			float diff_input = g_input.GetInputLaserDir(0);
+			m_advanceDiff += diff_input;
+			int advanceDiffActual = (int)Math::Floor(m_advanceDiff * Math::Sign(m_advanceDiff)) * Math::Sign(m_advanceDiff);
+			if (advanceDiffActual != 0)
+				m_changeDifficulty(advanceDiffActual);
+			m_advanceDiff -= advanceDiffActual;
+		}
 	}
 
 	// Room selection
