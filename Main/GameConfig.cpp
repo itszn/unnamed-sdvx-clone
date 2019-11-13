@@ -53,7 +53,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::SuddenFade, 0.2f);
 	Set(GameConfigKeys::ShowCover, true);
 
-	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
+	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 
 	// Input settings
 	SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
