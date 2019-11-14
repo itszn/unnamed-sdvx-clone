@@ -3,7 +3,7 @@
 #include "AudioStream.hpp"
 #include "Audio_Impl.hpp"
 
-class AudioStreamBase : public AudioStreamRes
+class AudioStreamBase : public AudioStream
 {
 protected:
 	// Fixed point format for sample positions (used in resampling)
@@ -15,7 +15,7 @@ protected:
 	MemoryReader m_memoryReader;
 	FileReader m_fileReader;
 	bool m_preloaded = false;
-	BinaryStream& Reader();
+	BinaryStream& m_reader();
 
 	mutex m_lock;
 
@@ -45,23 +45,10 @@ protected:
 	bool m_ended = false;
 
 	float m_volume = 0.8f;
-
-public:
-	virtual bool Init(Audio* audio, const String& path, bool preload);
-	void InitSampling(uint32 sampleRate);
-
-	virtual void Play() override;
-	virtual void Pause() override;
-	virtual bool HasEnded() const override;
-	uint64 SecondsToSamples(double s) const;
-	double SamplesToSeconds(int64 s) const;
-	double GetPositionSeconds(bool allowFreezeSkip = true) const;
-	virtual int32 GetPosition() const override;
-	virtual void SetPosition(int32 pos) override;
-	virtual float* GetPCM() override;
-	virtual uint32 GetSampleRate() const override;
-	void RestartTiming();
-	virtual void Process(float* out, uint32 numSamples) override;
+	void m_initSampling(uint32 sampleRate);
+	uint64 m_secondsToSamples(double s) const;
+	void m_restartTiming();
+	double m_getPositionSeconds(bool allowFreezeSkip = true) const;
 
 	// Implementation specific set position
 	virtual void SetPosition_Internal(int32 pos) = 0;
@@ -73,4 +60,16 @@ public:
 	// Implementation specific decode
 	// return negative for end of stream or failure
 	virtual int32 DecodeData_Internal() = 0;
+	virtual bool Init(Audio* audio, const String& path, bool preload);
+public:
+	virtual void Play() override;
+	virtual void Pause() override;
+	virtual bool HasEnded() const override;
+	double SamplesToSeconds(int64 s) const;
+	virtual int32 GetPosition() const override;
+	virtual void SetPosition(int32 pos) override;
+	virtual float* GetPCM() override;
+	virtual uint32 GetSampleRate() const override;
+	virtual void Process(float* out, uint32 numSamples) override;
+
 };

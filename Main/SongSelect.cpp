@@ -110,7 +110,7 @@ public:
 class PreviewPlayer
 {
 public:
-	void FadeTo(AudioStream stream)
+	void FadeTo(Ref<AudioStream> stream)
 	{
 		// Has the preview not begun fading out yet?
 		if (m_fadeOutTimer >= m_fadeDuration)
@@ -192,8 +192,8 @@ private:
 	float m_fadeInTimer = 0.0f;
 	float m_fadeOutTimer = 0.0f;
 	float m_fadeDelayTimer = 0.0f;
-	AudioStream m_nextStream;
-	AudioStream m_currentStream;
+	Ref<AudioStream> m_nextStream;
+	Ref<AudioStream> m_currentStream;
 };
 const float PreviewPlayer::m_fadeDuration = 0.5f;
 const float PreviewPlayer::m_fadeDelayDuration = 0.5f;
@@ -1156,7 +1156,7 @@ public:
 
 		if (newPreview)
 		{
-			AudioStream previewAudio = g_audio->CreateStream(audioPath);
+			Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
 			if (previewAudio)
 			{
 				previewAudio->SetPosition(diff->settings.previewOffset);
@@ -1171,7 +1171,7 @@ public:
 
 				Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
 				if (m_previewParams != params)
-					m_previewPlayer.FadeTo(AudioStream());
+					m_previewPlayer.FadeTo(Ref<AudioStream>());
 			}
 
 			m_previewParams = params;

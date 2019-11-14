@@ -4,7 +4,7 @@ class TestMusicPlayer
 {
 public:
 	Audio* audio;
-	AudioStream song;
+	Ref<AudioStream> song;
 
 public:
 	TestMusicPlayer();

@@ -20,7 +20,7 @@ public:
 
 	// Opens a stream at path
 	//	settings preload loads the whole file into memory before playing
-	AudioStream CreateStream(const String& path, bool preload = false);
+	Ref<AudioStream> CreateStream(const String& path, bool preload = false);
 	// Open a wav file at path
 	Sample CreateSample(const String& path);
 
