@@ -2,10 +2,6 @@
 #pragma once
 
 // SDL header files
-#ifdef _WIN32
 #include <SDL2/SDL.h>
-#else
-#include <SDL2/SDL.h>
-#endif
 
 #include <Shared/Shared.hpp>

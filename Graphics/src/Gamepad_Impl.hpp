@@ -1,11 +1,7 @@
 #pragma once
 #include "Gamepad.hpp"
 
-#ifdef _WIN32
 #include "SDL2/SDL_joystick.h"
-#else
-#include "SDL2/SDL_joystick.h"
-#endif
 
 namespace Graphics
 {

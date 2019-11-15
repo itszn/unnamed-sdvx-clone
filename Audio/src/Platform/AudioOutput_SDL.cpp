@@ -5,13 +5,8 @@ using std::this_thread::yield;
 
 // This audio driver is an alternative for linux
 #ifndef _WIN32
-#ifdef _WIN32
-#include "SDL.h"
-#include "SDL_audio.h"
-#else
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
-#endif
 
 /* SDL audio instance singleton*/
 class SDLAudio
