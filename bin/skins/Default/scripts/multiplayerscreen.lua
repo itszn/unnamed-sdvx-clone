@@ -611,9 +611,17 @@ function render_lobby(deltaTime)
         gfx.FillColor(255,255,255)
         gfx.FontSize(20);
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_TOP)
-        gfx.Text(string.format("HiSpeed: %.0f x %.1f = %.0f",
-        selected_song.speed_bpm, selected_song.hispeed, selected_song.speed_bpm * selected_song.hispeed),
-        split/2 + song_x_off, 375+jacket_size + 70 + 30)
+        if selected_song.min_bpm ~= selected_song.max_bpm then
+            gfx.Text(string.format("BPM: %.0f-%.0f, Start BPM: %.0f, Hispeed: %.0f x %.1f = %.0f",
+                selected_song.min_bpm, selected_song.max_bpm, selected_song.start_bpm,
+                selected_song.speed_bpm, selected_song.hispeed, selected_song.speed_bpm * selected_song.hispeed),
+                split/2 + song_x_off, 375+jacket_size + 70 + 30)
+        else
+            gfx.Text(string.format("BPM: %.0f, Hispeed: %.0f x %.1f = %.0f",
+                selected_song.min_bpm,
+                selected_song.speed_bpm, selected_song.hispeed, selected_song.speed_bpm * selected_song.hispeed),
+                split/2 + song_x_off, 375+jacket_size + 70 + 30)
+        end
     end
 end
 
