@@ -107,6 +107,24 @@ private:
 		}
 	}
 
+	void m_OnButtonPressed(Input::Button buttonCode)
+	{
+		if (IsSuspended())
+			return;
+
+		lua_getglobal(m_lua, "button_pressed");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushnumber(m_lua, (int32)buttonCode);
+			if (lua_pcall(m_lua, 1, 0, 0) != 0)
+			{
+				Logf("Lua error on button_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on button_pressed", lua_tostring(m_lua, -1), 0);
+			}
+		}
+		lua_settop(m_lua, 0);
+	}
+
 public:
 	bool Init()
 	{
@@ -123,6 +141,7 @@ public:
 		m_luaBinds->Push();
 		lua_settop(m_lua, 0);
 		g_gameWindow->OnMousePressed.Add(this, &TitleScreen_Impl::MousePressed);
+		g_input.OnButtonPressed.Add(this, &TitleScreen_Impl::m_OnButtonPressed);
 		return true;
 	}
 	
@@ -133,6 +152,8 @@ public:
 
 	~TitleScreen_Impl()
 	{
+		g_gameWindow->OnMousePressed.RemoveAll(this);
+		g_input.OnButtonPressed.RemoveAll(this);
 		if (m_lua)
 		{
 			g_application->DisposeLua(m_lua);

@@ -66,7 +66,7 @@ private:
 	}
 	void m_OnButtonPressed(Input::Button button)
 	{
-		if (button == Input::Button::BT_S && m_restored && !m_removed)
+		if ((button == Input::Button::BT_S || button == Input::Button::Back) && m_restored && !m_removed)
 		{
 			g_application->RemoveTickable(this);
 			m_removed = true;
@@ -260,7 +260,7 @@ public:
 
 	virtual void OnKeyPressed(int32 key) override
 	{
-		if((key == SDLK_ESCAPE || key == SDLK_RETURN) && !m_removed)
+		if(key == SDLK_RETURN && !m_removed)
 		{
 			g_application->RemoveTickable(this);
 			m_removed = true;

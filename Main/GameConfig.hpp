@@ -44,6 +44,7 @@ DefineEnum(GameConfigKeys,
 	SuddenCutoff,
 	SuddenFade,
 	ShowCover,
+	UseBackCombo,
 
 	// Input device setting per element
 	LaserInputDevice,
@@ -72,6 +73,7 @@ DefineEnum(GameConfigKeys,
 	Key_Laser0Neg,
 	Key_Laser1Pos,
 	Key_Laser1Neg,
+	Key_Back,
 	Key_Sensitivity,
 	Key_LaserReleaseTime,
 
@@ -84,6 +86,7 @@ DefineEnum(GameConfigKeys,
 	Controller_BT3,
 	Controller_FX0,
 	Controller_FX1,
+	Controller_Back,
 	Controller_Laser0Axis,
 	Controller_Laser1Axis,
 	Controller_Deadzone,
@@ -130,6 +133,11 @@ DefineEnum(AutoScoreScreenshotSettings,
 	Highscore,
 	Always
   );
+
+DefineEnum(ButtonComboModeSettings,
+	Disabled,
+	Hold,
+	Instant)
 
 // Config for game settings
 class GameConfig : public Config<Enum_GameConfigKeys>

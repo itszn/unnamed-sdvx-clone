@@ -58,6 +58,7 @@ void GameConfig::InitDefaults()
 	// Input settings
 	SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
 	SetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, InputDevice::Keyboard);
+	SetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, ButtonComboModeSettings::Hold);
 
 	// Default keyboard bindings
 	Set(GameConfigKeys::Key_BTS, SDLK_1); // Start button on Dao controllers
@@ -77,6 +78,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Key_Laser0Pos, SDLK_e);
 	Set(GameConfigKeys::Key_Laser1Neg, SDLK_o);
 	Set(GameConfigKeys::Key_Laser1Pos, SDLK_p);
+	Set(GameConfigKeys::Key_Back, SDLK_ESCAPE);
 	Set(GameConfigKeys::Key_Sensitivity, 3.0f);
 	Set(GameConfigKeys::Key_LaserReleaseTime, 0.0f);
 
@@ -91,6 +93,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Controller_FX1, 6);
 	Set(GameConfigKeys::Controller_Laser0Axis, 0);
 	Set(GameConfigKeys::Controller_Laser1Axis, 1);
+	Set(GameConfigKeys::Controller_Back, -1);
 	Set(GameConfigKeys::Controller_Sensitivity, 1.0f);
 	Set(GameConfigKeys::Controller_Deadzone, 0.f);
 	Set(GameConfigKeys::Controller_DirectMode, false);

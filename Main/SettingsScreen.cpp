@@ -54,7 +54,8 @@ private:
 		GameConfigKeys::Key_BT2,
 		GameConfigKeys::Key_BT3,
 		GameConfigKeys::Key_FX0,
-		GameConfigKeys::Key_FX1
+		GameConfigKeys::Key_FX1,
+		GameConfigKeys::Key_Back
 	};
 
 	Vector<GameConfigKeys> m_keyboardLaserKeys = {
@@ -71,7 +72,8 @@ private:
 		GameConfigKeys::Controller_BT2,
 		GameConfigKeys::Controller_BT3,
 		GameConfigKeys::Controller_FX0,
-		GameConfigKeys::Controller_FX1
+		GameConfigKeys::Controller_FX1,
+		GameConfigKeys::Controller_Back
 	};
 
 	Vector<GameConfigKeys> m_altKeyboardKeys = {
@@ -81,7 +83,8 @@ private:
 		GameConfigKeys::Key_BT2Alt,
 		GameConfigKeys::Key_BT3Alt,
 		GameConfigKeys::Key_FX0Alt,
-		GameConfigKeys::Key_FX1Alt
+		GameConfigKeys::Key_FX1Alt,
+		GameConfigKeys::Key_Back
 	};
 
 	Vector<GameConfigKeys> m_controllerLaserKeys = {
@@ -94,7 +97,7 @@ private:
 
 	int m_selectedGamepad = 0;
 	float m_laserColors[2] = { 0.25f, 0.75f };
-	String m_controllerButtonNames[7];
+	String m_controllerButtonNames[8];
 	String m_controllerLaserNames[2];
 	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
 	float m_buttonheight = 30;
@@ -394,7 +397,7 @@ public:
 		}
 		nk_input_end(m_nctx);
 
-		for (size_t i = 0; i < 7; i++)
+		for (size_t i = 0; i < 8; i++)
 		{
 			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
 			{
@@ -482,9 +485,13 @@ public:
 					if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
 					if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
 				}
-
-
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
+				nk_label(m_nctx, "Back:", nk_text_alignment::NK_TEXT_LEFT);
+				if (nk_button_label(m_nctx, m_controllerButtonNames[7].c_str())) SetBTBind((*m_activeBTKeys)[7]);
+
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
+
 				if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) CalibrateSens();
 
 				GameConfigKeys laserSensKey;
@@ -503,6 +510,7 @@ public:
 				}
 
 				FloatSetting(laserSensKey, "Laser sensitivity (%f):", 0, 20, 0.001);
+				EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start = Back:");
 				EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
 				EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
 

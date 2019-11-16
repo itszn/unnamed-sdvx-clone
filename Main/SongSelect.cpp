@@ -1217,44 +1217,34 @@ public:
 
 	    if(buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
         {
-			// NOTE(local): if filter selection is active, back doesn't work.
-			// For now that sounds right, but maybe it shouldn't matter
-			if (g_input.Are3BTsHeld())
+			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
+			MapIndex* map = m_selectionWheel->GetSelection();
+			if (map)
 			{
-				m_suspended = true;
-				g_application->RemoveTickable(this);
-			}
-			else
-			{
-				bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
-				MapIndex* map = m_selectionWheel->GetSelection();
-				if (map)
+				if (m_multiplayer != nullptr)
 				{
-					if (m_multiplayer != nullptr)
-					{
-						// When we are in multiplayer, just report the song and exit instead
-						m_multiplayer->SetSelectedMap(map, m_selectionWheel->GetSelectedDifficulty());
+					// When we are in multiplayer, just report the song and exit instead
+					m_multiplayer->SetSelectedMap(map, m_selectionWheel->GetSelectedDifficulty());
 
-						m_suspended = true;
-						g_application->RemoveTickable(this);
-						return;
-					}
-
-					DifficultyIndex* diff = m_selectionWheel->GetSelectedDifficulty();
-
-					Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
-					if (!game)
-					{
-						Log("Failed to start game", Logger::Error);
-						return;
-					}
-					game->GetScoring().autoplay = autoplay;
 					m_suspended = true;
-
-					// Transition to game
-					TransitionScreen* transistion = TransitionScreen::Create(game);
-					g_application->AddTickable(transistion);
+					g_application->RemoveTickable(this);
+					return;
 				}
+
+				DifficultyIndex* diff = m_selectionWheel->GetSelectedDifficulty();
+
+				Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
+				if (!game)
+				{
+					Log("Failed to start game", Logger::Error);
+					return;
+				}
+				game->GetScoring().autoplay = autoplay;
+				m_suspended = true;
+
+				// Transition to game
+				TransitionScreen* transistion = TransitionScreen::Create(game);
+				g_application->AddTickable(transistion);
 			}
         }
 		else
@@ -1297,6 +1287,21 @@ public:
 				if (m_settingsWheel->Active)
 				{
 					m_settingsWheel->Active = false;
+				}
+				break;
+			case Input::Button::Back:
+				if (m_filterSelection->Active)
+				{
+					m_filterSelection->Active = false;
+				}
+				else if (m_settingsWheel->Active)
+				{
+					m_settingsWheel->Active = false;
+				}
+				else
+				{
+					m_suspended = true;
+					g_application->RemoveTickable(this);
 				}
 				break;
 			default:
@@ -1380,10 +1385,6 @@ public:
 			{
 				m_settingsWheel->ChangeSetting();
 			}
-			else if (key == SDLK_ESCAPE)
-			{
-				m_settingsWheel->Active = false;
-			}
 		}
 		else if (m_filterSelection->Active)
 		{
@@ -1395,10 +1396,6 @@ public:
 			else if (key == SDLK_UP)
 			{
 				m_filterSelection->AdvanceSelection(-1);
-			}
-			else if (key == SDLK_ESCAPE)
-			{
-				m_filterSelection->Active = !m_filterSelection->Active;
 			}
 		}
 		else
@@ -1473,11 +1470,6 @@ public:
 			else if (key == SDLK_F12)
 			{
 				Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);
-			}
-			else if (key == SDLK_ESCAPE)
-			{
-				m_suspended = true;
-				g_application->RemoveTickable(this);
 			}
 			else if (key == SDLK_TAB)
 			{
