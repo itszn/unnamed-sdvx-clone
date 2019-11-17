@@ -1588,14 +1588,6 @@ public:
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(key == SDLK_ESCAPE)
-		{
-			ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
-			MapTime timePastEnd = m_lastMapTime - m_endTime;
-			if (timePastEnd < 0)
-				m_manualExit = true;
-			FinishGame();
-		}
 		else if(key == SDLK_F5 && m_multiplayer == nullptr) // Restart map
 		{
 			// Restart
@@ -1618,17 +1610,14 @@ public:
 	}
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
-		if (buttonCode == Input::Button::BT_S)
+		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
 		{
-			if (g_input.Are3BTsHeld() && IsSuccessfullyInitialized())
-			{
-				ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
-				MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
-				if (timePastEnd < 0)
-					m_manualExit = true;
+			ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
+			MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
+			if (timePastEnd < 0)
+				m_manualExit = true;
 
-				FinishGame();
-			}
+			FinishGame();
 		}
 	}
 	int m_getClearState()

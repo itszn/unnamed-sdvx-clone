@@ -36,6 +36,8 @@ void Input::Init(Graphics::Window& wnd)
 	m_controllerSensitivity = g_gameConfig.GetFloat(GameConfigKeys::Controller_Sensitivity);
 	m_controllerDeadzone = g_gameConfig.GetFloat(GameConfigKeys::Controller_Deadzone);
 	m_controllerDirectMode = g_gameConfig.GetBool(GameConfigKeys::Controller_DirectMode);
+	m_backComboHold = g_gameConfig.GetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo) == ButtonComboModeSettings::Hold;
+	m_backComboInstant = g_gameConfig.GetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo) == ButtonComboModeSettings::Instant;
 
 	// Init controller mapping
 	if(m_laserDevice == InputDevice::Controller || m_buttonDevice == InputDevice::Controller)
@@ -165,6 +167,23 @@ void Input::Update(float deltaTime)
 
 	m_absoluteLaserStates[0] = fmodf(m_absoluteLaserStates[0] + m_laserStates[0], Math::pi * 2);
 	m_absoluteLaserStates[1] = fmodf(m_absoluteLaserStates[1] + m_laserStates[1], Math::pi * 2);
+
+
+	//back combo checks
+	if (m_backComboHold && m_buttonStates[(size_t)Button::BT_S] && Are3BTsHeld())
+	{
+		m_comboHoldTimer += deltaTime;
+		if (m_comboHoldTimer >= 0.5 && !m_backSent)
+		{
+			OnButtonPressed.Call(Button::Back);
+			m_backSent = true;
+		}
+	}
+	else
+	{
+		m_comboHoldTimer = 0.0f;
+		m_backSent = false;
+	}
 }
 
 bool Input::GetButton(Button button) const
@@ -245,6 +264,9 @@ void Input::m_InitKeyboardMapping()
 		m_buttonMap.Add(g_gameConfig.GetInt(GameConfigKeys::Key_FX1Alt), Button::FX_1);
 	}
 
+	//Always bind back button
+	m_buttonMap.Add(g_gameConfig.GetInt(GameConfigKeys::Key_Back), Button::Back);
+
 	if(m_laserDevice == InputDevice::Keyboard)
 	{
 		// Laser button mappings
@@ -267,6 +289,7 @@ void Input::m_InitControllerMapping()
 		m_controllerMap.Add(g_gameConfig.GetInt(GameConfigKeys::Controller_BT3), Button::BT_3);
 		m_controllerMap.Add(g_gameConfig.GetInt(GameConfigKeys::Controller_FX0), Button::FX_0);
 		m_controllerMap.Add(g_gameConfig.GetInt(GameConfigKeys::Controller_FX1), Button::FX_1);
+		m_controllerMap.Add(g_gameConfig.GetInt(GameConfigKeys::Controller_Back), Button::Back);
 	}
 }
 
@@ -278,7 +301,15 @@ void Input::m_OnButtonInput(Button b, bool pressed)
 		state = pressed;
 		if(state)
 		{
-			OnButtonPressed.Call(b);
+			if (b == Button::BT_S && m_backComboInstant && Are3BTsHeld())
+			{
+				OnButtonPressed.Call(Button::Back);
+			}
+			else if (b == Button::BT_S && m_backComboHold && Are3BTsHeld());
+			else
+			{
+				OnButtonPressed.Call(b);
+			}
 		}
 		else
 		{

@@ -123,10 +123,6 @@ end
 local lastKnobs = nil
 local knobProgress = 0
 function handle_controller()
-	if game.GetButton(game.BUTTON_STA) then
-		buttons[cursorIndex][2]()
-	end
-
 	if lastKnobs == nil then
 		lastKnobs = {game.GetKnob(0), game.GetKnob(1)}
 	else
@@ -207,4 +203,12 @@ mouse_pressed = function(button)
         hovered()
     end
     return 0
+end
+
+function button_pressed(button)
+    if button == game.BUTTON_STA then 
+        buttons[cursorIndex][2]()
+    elseif button == game.BUTTON_BCK then
+        Menu.Exit()
+    end
 end

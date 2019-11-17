@@ -28,6 +28,13 @@ enum MultiplayerScreenState {
 
 class TextInputMultiplayer;
 
+struct MultiplayerBPMInfo {
+	double start;
+	double min;
+	double max;
+	double mode;
+};
+
 class MultiplayerScreen : public IAsyncLoadableApplicationTickable
 {
 public:
@@ -60,7 +67,7 @@ public:
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
 	void SendFinalScore(Scoring& scoring, int clearState);
-	float GetMapBPMForSpeed(const String path, SpeedMods mod);
+	void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
 
 	TCPSocket& GetTCP()
 	{
@@ -198,5 +205,6 @@ private:
 	float m_hispeed;
 	float m_modSpeed;
 	SpeedMods m_speedMod;
-	float m_songBPM;
+	struct MultiplayerBPMInfo m_bpm;
+	float m_speedBPM;
 };

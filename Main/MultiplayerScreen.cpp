@@ -556,13 +556,15 @@ void MultiplayerScreen::m_changeDifficulty(int offset)
 
 }
 
-float MultiplayerScreen::GetMapBPMForSpeed(String path, SpeedMods mod)
+void  MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInfo& info)
 {
 	path = Path::Normalize(path);
 	if (!Path::FileExists(path))
 	{
 		Logf("Couldn't find map at %s", Logger::Error, path);
-		return 0.0f;
+
+		info = { 0 };
+		return;
 	}
 
 	// Load map
@@ -572,21 +574,24 @@ float MultiplayerScreen::GetMapBPMForSpeed(String path, SpeedMods mod)
 	{
 		Logf("Could not read path for beatmap: %s", Logger::Error, path);
 		delete newMap;
-		return 0.0f;
+		info = { 0 };
+		return;
 	}
 	FileReader reader(mapFile);
 	if (!newMap->Load(reader))
 	{
 		delete newMap;
-		return 0.0f;
+		info = { 0 };
+		return;
 	}
-
 
 	// Most of this code is copied from Game.cpp to match its calculations
 
 	double useBPM = -1;
 
 	const BeatmapSettings& mapSettings = newMap->GetMapSettings();
+
+	info.start = newMap->GetLinearTimingPoints().front()->GetBPM();
 
 	ObjectState* const* lastObj = &newMap->GetLinearObjects().back();
 	while ((*lastObj)->type == ObjectType::Event && lastObj != &newMap->GetLinearObjects().front())
@@ -606,16 +611,26 @@ float MultiplayerScreen::GetMapBPMForSpeed(String path, SpeedMods mod)
 		lastObjectTime += lastHold->duration;
 	}
 
-	if (mod == SpeedMods::MMod) {
-
+	{
 		Map<double, MapTime> bpmDurations;
 		const Vector<TimingPoint*>& timingPoints = newMap->GetLinearTimingPoints();
 		MapTime lastMT = mapSettings.offset;
 		MapTime largestMT = -1;
 		double lastBPM = -1;
+
+		info.min = -1;
+		info.max = -1;
+
 		for (TimingPoint* tp : timingPoints)
 		{
 			double thisBPM = tp->GetBPM();
+
+			if (info.max == -1 || thisBPM > info.max)
+				info.max = thisBPM;
+
+			if (info.min == -1 || thisBPM < info.min)
+				info.min = thisBPM;
+
 			if (!bpmDurations.count(lastBPM))
 			{
 				bpmDurations[lastBPM] = 0;
@@ -636,14 +651,10 @@ float MultiplayerScreen::GetMapBPMForSpeed(String path, SpeedMods mod)
 		{
 			useBPM = lastBPM;
 		}
-	}
-	else
-	{
-		useBPM = newMap->GetLinearTimingPoints().front()->GetBPM();
+		info.mode = useBPM;
 	}
 
 	delete newMap;
-	return useBPM;
 }
 
 void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool isNew)
@@ -664,13 +675,20 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 	m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 
-	float bpm = GetMapBPMForSpeed(diff->path, m_speedMod);
-	m_songBPM = bpm;
+	GetMapBPMForSpeed(diff->path, m_bpm);
 
-	if (m_speedMod == SpeedMods::MMod || m_speedMod == SpeedMods::CMod)
+
+	m_speedBPM = m_bpm.start;
+	if (m_speedMod == SpeedMods::MMod)
 	{
-		m_hispeed = m_modSpeed / bpm;
+		m_speedBPM = m_bpm.mode;
+		m_hispeed = m_modSpeed / m_speedBPM;
 	}
+	else if (m_speedMod == SpeedMods::CMod)
+	{
+		m_hispeed = m_modSpeed / m_speedBPM;
+	}
+
 
 	// Push a table of info to lua
 	lua_newtable(m_lua);
@@ -711,8 +729,20 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	lua_pushnumber(m_lua, m_hispeed);
 	lua_settable(m_lua, -3);
 
+	lua_pushstring(m_lua, "min_bpm");
+	lua_pushnumber(m_lua, m_bpm.min);
+	lua_settable(m_lua, -3);
+
+	lua_pushstring(m_lua, "max_bpm");
+	lua_pushnumber(m_lua, m_bpm.max);
+	lua_settable(m_lua, -3);
+
+	lua_pushstring(m_lua, "start_bpm");
+	lua_pushnumber(m_lua, m_bpm.start);
+	lua_settable(m_lua, -3);
+
 	lua_pushstring(m_lua, "speed_bpm");
-	lua_pushnumber(m_lua, bpm);
+	lua_pushnumber(m_lua, m_speedBPM);
 	lua_settable(m_lua, -3);
 
 	lua_setglobal(m_lua, "selected_song");
@@ -811,8 +841,8 @@ void MultiplayerScreen::Tick(float deltaTime)
 				m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
 				if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
 				{
-					g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * m_songBPM);
-					m_modSpeed = m_hispeed * m_songBPM;
+					g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * m_speedBPM);
+					m_modSpeed = m_hispeed * m_speedBPM;
 
 					lua_getglobal(m_lua, "selected_song");
 
