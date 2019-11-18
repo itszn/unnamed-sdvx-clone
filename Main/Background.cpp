@@ -69,6 +69,23 @@ public:
 
 class TestBackground : public FullscreenBackground
 {
+private:
+	bool m_init(String path)
+	{
+		if (luaL_dofile(lua, Path::Normalize(path + ".lua").c_str()))
+		{
+			Logf("Lua error: %s", Logger::Warning, lua_tostring(lua, -1));
+			return false;
+		}
+		String matPath = path + ".fs";
+
+		CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
+		fullscreenMaterial->opaque = false;
+		hasFbTex = fullscreenMaterial->HasUniform("fb_tex");
+		return true;
+	}
+
+public:
 	virtual bool Init(bool foreground) override
 	{
 		if (!FullscreenBackground::Init(foreground))
@@ -97,9 +114,25 @@ class TestBackground : public FullscreenBackground
 		g_application->SetLuaBindings(lua);
 		game->SetInitialGameplayLua(lua);
 
+		String bindName = foreground ? "foreground" : "background";
+
+		bindable = new LuaBindable(lua, bindName);
+		bindable->AddFunction("LoadTexture", this, &TestBackground::LoadTexture);
+		bindable->AddFunction("SetParami", this, &TestBackground::SetParami);
+		bindable->AddFunction("SetParamf", this, &TestBackground::SetParamf);
+		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
+		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
+		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
+		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
+		bindable->AddFunction("GetTilt", this, &TestBackground::GetTilt);
+		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
+		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
+		bindable->Push();
+		lua_settop(lua, 0);
+
+
 		String matPath = "";
 		String fname = foreground ? "fg" : "bg";
-		String bindName = foreground ? "foreground" : "background";
 		if (defaultBGs.Contains(game->GetBeatmap()->GetMapSettings().foregroundPath))
 		{
 			//default bg: load from skin path
@@ -119,30 +152,16 @@ class TestBackground : public FullscreenBackground
 			folderPath = Path::Absolute(folderPath);
 		}
 
-		bindable = new LuaBindable(lua, bindName);
-		bindable->AddFunction("LoadTexture", this, &TestBackground::LoadTexture);
-		bindable->AddFunction("SetParami", this, &TestBackground::SetParami);
-		bindable->AddFunction("SetParamf", this, &TestBackground::SetParamf);
-		bindable->AddFunction("DrawShader", this, &TestBackground::DrawShader);
-		bindable->AddFunction("GetPath", this, &TestBackground::GetPath);
-		bindable->AddFunction("SetSpeedMult", this, &TestBackground::SetSpeedMult);
-		bindable->AddFunction("GetTiming", this, &TestBackground::GetTiming);
-		bindable->AddFunction("GetTilt", this, &TestBackground::GetTilt);
-		bindable->AddFunction("GetScreenCenter", this, &TestBackground::GetScreenCenter);
-		bindable->AddFunction("GetClearTransition", this, &TestBackground::GetClearTransition);
-		bindable->Push();
-		lua_settop(lua, 0);
-		if (luaL_dofile(lua, Path::Normalize(folderPath + fname + ".lua").c_str()))
-		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(lua, -1));
-			return false;
-		}
-		matPath = folderPath + fname + ".fs";
+		String path = Path::Normalize(folderPath + fname);
+		if (m_init(path))
+			return true;
 
-		CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
-		fullscreenMaterial->opaque = false;
-		hasFbTex = fullscreenMaterial->HasUniform("fb_tex");
-		return true;
+		Logf("Failed to load %s at path: \"%s\" Attempting to load fallback instead.", Logger::Warning, foreground ? "foreground" : "background", folderPath);
+		path = Path::Absolute("skins/" + skin + "/backgrounds/fallback/");
+		folderPath = path;
+		path = Path::Normalize(path + fname);
+		return m_init(path);
+
 	}
 	virtual void Render(float deltaTime) override
 	{
