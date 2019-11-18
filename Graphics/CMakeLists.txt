@@ -1,36 +1,47 @@
 # Graphics library
 
-get_property(GLEW_ROOT GLOBAL PROPERTY GLEW_ROOT)
+set(INCROOT ${CMAKE_CURRENT_SOURCE_DIR}/include/Graphics/)
+set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
+
+file(GLOB INC "${INCROOT}/*.hpp")
+source_group("Public Headers" FILES ${INC})
+
+file(GLOB SRC "${SRCROOT}/*.cpp" "${SRCROOT}/*.hpp")
+source_group("Sources" FILES ${SRC})
 
 # Find files used for project
-file(GLOB Graphics_src "src/*.cpp" "include/Graphics/*.hpp")
+set(GRAPHICS_SRC ${SRC} ${INC})
 
-# Platform specific source files
-if(WIN32)
-	include_directories("src/Windows")
-	file(GLOB Platform_src "src/Windows/*.cpp" "src/Windows/*.hpp")
-	# Platform specific source group
-	source_group("Source Files\\Windows" FILES ${Platform_src})
-else(WIN32)
-	include_directories("src/Linux")
-	file(GLOB Platform_src "src/Linux/*.cpp")
-endif(WIN32)
-
-file(GLOB Graphics_src ${Graphics_src} ${Platform_src})
+set(PCH_SRC ${PCHROOT}/stdafx.cpp)
+set(PCH_INC ${PCHROOT}/stdafx.h)
+set(PCH_FILES ${PCH_SRC} ${PCH_INC})
+source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
 enable_cpp14()
-enable_precompiled_headers("${Graphics_src}" src/stdafx.cpp)
+enable_precompiled_headers("${GRAPHICS_SRC}" ${PCH_SRC})
 
-# Look for static included GLEW before other directories
-include_directories(include include/Graphics src)
-add_library(Graphics ${Graphics_src})
+add_library(Graphics ${GRAPHICS_SRC} ${PCH_FILES})
 
 # Public include paths for library
-target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${GLEW_ROOT}/include)
+target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(Graphics PRIVATE
+	${INCROOT}
+	${SRCROOT}
+	${PCHROOT}
+)
 
 # Dependencies
+## Local Dependencies
+
 target_link_libraries(Graphics Shared)
+
+## 3rd Party dependencies
+get_property(GLEW_ROOT GLOBAL PROPERTY GLEW_ROOT)
+
+target_include_directories(Graphics PRIVATE SYSTEM ${GLEW_ROOT}/include)
+target_include_directories(Graphics PRIVATE SYSTEM ${FREETYPE_INCLUDE_DIRS})
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
 include(FindLibraries)
@@ -52,5 +63,4 @@ if(UNIX)
 	endif(APPLE)
 endif(UNIX)
 
-include_directories(${FREETYPE_INCLUDE_DIRS})
 find_package(Freetype REQUIRED)
