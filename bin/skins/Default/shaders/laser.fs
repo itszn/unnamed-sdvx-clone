@@ -26,6 +26,10 @@ uniform int laserPart;
 void main()
 {    
     float x = fsTex.x;
+    if (x < 0.0 || x > 1.0)
+    {
+        return;
+    }
     float laserSize = 1.0; //0.0 to 1.0
     x -= 0.5;
     x /= laserSize;

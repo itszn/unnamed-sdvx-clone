@@ -35,10 +35,10 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		left = laser->points[0] * effectiveWidth - effectiveWidth * 0.5f;
 		right = laser->points[1] * effectiveWidth - effectiveWidth * 0.5f;
 		float halfWidth = actualLaserWidth * 0.5f;
-		offsetT = -halfWidth;
+		offsetT = -actualLaserWidth;
 		offsetB = -offsetT;
-		uvB = 1.0f;
-		uvT = 0.0f;
+		uvB = 1.5f;
+		uvT = -0.5f;
 
 
 		if ((laser->flags & LaserObjectState::flag_Extended) != 0)
@@ -60,17 +60,10 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			swapped = true;
 		}// else ------>
 
-		// Make place for corners
-
-		// Uv coordinates for center and borders
-		// More tight border in horizontal direction
-		Rect centerMiddleUv = Rect(textureBorder, textureBorder, invTextureBorder, invTextureBorder);
-		Rect centerUpperUv = Rect(textureBorder, 0.0f, invTextureBorder, textureBorder);
-		Rect centerLowerUv = Rect(textureBorder, invTextureBorder, invTextureBorder, 1.0f);
-
 		// Generate positions for middle top and bottom
 		float slamLength = playback.DurationToViewDistanceAtTime(laser->time, slamDuration) * laserLengthScale;
-		Rect3D centerMiddle = Rect3D(left, slamLength, right, 0.0f);
+		float halfLength = slamLength * 0.5;
+		Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
 		Rect3D centerBottom = centerMiddle;
 		centerBottom.size.y = realBorderSize;
 		centerBottom.pos.y = centerMiddle.Bottom() - centerBottom.size.y;
@@ -90,7 +83,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 		// Generate left corner
 		{
-			Rect3D leftCenter = Rect3D(left - halfWidth, centerMiddle.Top(), left + halfWidth, centerMiddle.Bottom());
+			Rect3D leftCenter = Rect3D(left - actualLaserWidth, centerMiddle.Top() - halfLength, left + halfWidth, centerMiddle.Bottom() + halfLength);
 			Rect3D leftCap = leftCenter;
 			leftCap.pos.y = leftCap.pos.y + leftCap.size.y;
 			leftCap.size.y = realBorderSize;
@@ -112,8 +105,8 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				leftVerts =
 				{
 					{ { leftCenter.Right(), leftCenter.Top(),  0.0f },{ 1.0f, 0.0f } }, // BR
-					{ { leftCenter.Left(), leftCenter.Top(),  0.0f },{ 0.0f, 0.0f } }, // BL
-					{ { leftCenter.Left(), leftCenter.Bottom(),  0.0f },{ 0.0f, 1.0f } }, // TL
+					{ { leftCenter.Left(), leftCenter.Top(),  0.0f },{ -0.5f, 0.0f } }, // BL
+					{ { leftCenter.Left(), leftCenter.Bottom() - halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
 				};
 
 			}
@@ -121,9 +114,9 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			{
 				leftVerts =
 				{
-					{ { leftCenter.Left(), leftCenter.Bottom(),  0.0f },{ 0.0f, 0.0f } }, // BL
+					{ { leftCenter.Left(), leftCenter.Bottom(),  0.0f },{ -0.5f, 0.0f } }, // BL
 					{ { leftCenter.Right(), leftCenter.Bottom(),  0.0f },{ 1.0f, 0.0f } }, // BR
-					{ { leftCenter.Left(), leftCenter.Top(),  0.0f },{ 0.0f, 1.0f } }, // TL
+					{ { leftCenter.Left(), leftCenter.Top() + halfLength,  0.0f },{ -0.5f, 1.0f } }, // TL
 				};
 			}
 			for (auto& v : leftVerts)
@@ -132,7 +125,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 
 		// Generate right corner
 		{
-			Rect3D rightCenter = Rect3D(right - halfWidth, centerMiddle.Top(), right + halfWidth, centerMiddle.Bottom());
+			Rect3D rightCenter = Rect3D(right - halfWidth, centerMiddle.Top() - halfLength, right + actualLaserWidth, centerMiddle.Bottom() + halfLength);
 			Rect3D rightCap = rightCenter;
 			rightCap.size.y = realBorderSize;
 			rightCap.size.x += realBorderSize;
@@ -152,16 +145,16 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 				rightVerts =
 				{
 					{ { rightCenter.Left(), rightCenter.Bottom(),  0.0f },{ 0.0f, 0.0f } }, // BL
-					{ { rightCenter.Right(), rightCenter.Bottom(),  0.0f },{ 1.0f, 1.0f } }, // BR
-					{ { rightCenter.Right(), rightCenter.Top(),  0.0f },{ 1.0f, 1.0f } }, // TR
+					{ { rightCenter.Right(), rightCenter.Bottom(),  0.0f },{ 1.5f, 1.0f } }, // BR
+					{ { rightCenter.Right(), rightCenter.Top() + halfLength,  0.0f },{ 1.5f, 1.0f } }, // TR
 				};
 			}
 			else
 			{
 				rightVerts =
 				{
-					{ { rightCenter.Right(), rightCenter.Bottom(),  0.0f },{ 1.0f, 1.0f } }, // TR
-					{ { rightCenter.Right(), rightCenter.Top(),  0.0f },{ 1.0f, 1.0f } }, // BR
+					{ { rightCenter.Right(), rightCenter.Bottom() - halfLength,  0.0f },{ 1.5f, 1.0f } }, // TR
+					{ { rightCenter.Right(), rightCenter.Top(),  0.0f },{ 1.5f, 1.0f } }, // BR
 					{ { rightCenter.Left(), rightCenter.Top(),  0.0f },{ 0.0f, 0.0f } }, // BL
 				};
 			}
@@ -193,22 +186,21 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			points[1] = Vector2((laser->points[1] * 2.0f - 0.5f) * effectiveWidth - effectiveWidth * 0.5f, length * laserLengthScale); // Top
 		}
 
-		float uMin = 0.0f;
-		float uMax = 1.0f;
+		float uMin = -0.5f;
+		float uMax = 1.5f;
 
 		float vMin = 0.0f;
 		float vMax = (int)((length * laserLengthScale) / actualLaserHeight);
 
-		float halfWidth = actualLaserWidth * 0.5f;
 		Vector<MeshGenerators::SimpleVertex> verts =
 		{
-			{ { points[0].x - halfWidth, points[0].y,  0.0f },{ uMin, vMax } }, // BL
-			{ { points[0].x + halfWidth, points[0].y,  0.0f },{ uMax, vMax } }, // BR
-			{ { points[1].x + halfWidth, points[1].y,  0.0f },{ uMax, vMin } }, // TR
+			{ { points[0].x - actualLaserWidth, points[0].y,  0.0f },{ uMin, vMax } }, // BL
+			{ { points[0].x + actualLaserWidth, points[0].y,  0.0f },{ uMax, vMax } }, // BR
+			{ { points[1].x + actualLaserWidth, points[1].y,  0.0f },{ uMax, vMin } }, // TR
 
-			{ { points[0].x - halfWidth, points[0].y,  0.0f },{ uMin, vMax } }, // BL
-			{ { points[1].x + halfWidth, points[1].y,  0.0f },{ uMax, vMin } }, // TR
-			{ { points[1].x - halfWidth, points[1].y,  0.0f },{ uMin, vMin } }, // TL
+			{ { points[0].x - actualLaserWidth, points[0].y,  0.0f },{ uMin, vMax } }, // BL
+			{ { points[1].x + actualLaserWidth, points[1].y,  0.0f },{ uMax, vMin } }, // TR
+			{ { points[1].x - actualLaserWidth, points[1].y,  0.0f },{ uMin, vMin } }, // TL
 		};
 
 
@@ -239,10 +231,9 @@ Mesh LaserTrackBuilder::GenerateTrackEntry(class BeatmapPlayback& playback, Lase
 	// Length of the tail
 	float length = (float)laserEntryTextureSize.y / (float)laserEntryTextureSize.x * actualLaserWidth;
 
-	float halfWidth = actualLaserWidth * 0.5f;
 	Vector<MeshGenerators::SimpleVertex> verts;
-	Rect3D pos = Rect3D(Vector2(startingX - halfWidth, -length), Vector2(halfWidth * 2, length));
-	Rect uv = Rect(0.0f, 0.0f, 1.0f, 1.0f);
+	Rect3D pos = Rect3D(Vector2(startingX - actualLaserWidth, -length), Vector2(actualLaserWidth * 2, length));
+	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
 
 	newMesh->SetData(verts);
@@ -280,10 +271,9 @@ Mesh LaserTrackBuilder::GenerateTrackExit(class BeatmapPlayback& playback, Laser
 		prevLength = playback.DurationToViewDistanceAtTime(laser->time, laser->duration) * laserLengthScale;
 	}
 
-	float halfWidth = actualLaserWidth * 0.5f;
 	Vector<MeshGenerators::SimpleVertex> verts;
-	Rect3D pos = Rect3D(Vector2(startingX - halfWidth, prevLength), Vector2(halfWidth * 2, length));
-	Rect uv = Rect(0.0f, 0.0f, 1.0f, 1.0f);
+	Rect3D pos = Rect3D(Vector2(startingX - actualLaserWidth, prevLength), Vector2(actualLaserWidth * 2, length));
+	Rect uv = Rect(-0.5f, 0.0f, 1.5f, 1.0f);
 	MeshGenerators::GenerateSimpleXYQuad(pos, uv, verts);
 
 	newMesh->SetData(verts);
