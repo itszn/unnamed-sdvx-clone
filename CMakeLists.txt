@@ -135,4 +135,6 @@ if(MSVC)
 	set_target_properties(Tests PROPERTIES FOLDER "Tests")
 	set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
 	set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
+
+	set(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "usc-game") 
 endif(MSVC)
