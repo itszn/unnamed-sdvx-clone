@@ -1157,7 +1157,7 @@ public:
 		if (newPreview)
 		{
 			Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
-			if (previewAudio)
+			if (previewAudio && previewAudio.GetData())
 			{
 				previewAudio->SetPosition(diff->settings.previewOffset);
 

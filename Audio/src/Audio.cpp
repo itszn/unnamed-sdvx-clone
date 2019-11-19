@@ -141,10 +141,13 @@ void Audio_Impl::Stop()
 }
 void Audio_Impl::Register(AudioBase* audio)
 {
-	lock.lock();
-	itemsToRender.AddUnique(audio);
-	audio->audio = this;
-	lock.unlock();
+	if (audio)
+	{
+		lock.lock();
+		itemsToRender.AddUnique(audio);
+		audio->audio = this;
+		lock.unlock();
+	}
 }
 void Audio_Impl::Deregister(AudioBase* audio)
 {
