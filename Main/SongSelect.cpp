@@ -1059,6 +1059,7 @@ private:
 	// Navigation variables
 	float m_advanceSong = 0.0f;
 	float m_advanceDiff = 0.0f;
+	float m_sensMult = 1.0f;
 	MouseLockHandle m_lockMouse;
 	bool m_suspended = false;
 	bool m_previewLoaded = true;
@@ -1110,6 +1111,7 @@ public:
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
+		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 
 		m_previewParams = { "", 0, 0 };
 
@@ -1546,8 +1548,8 @@ public:
         // Song navigation using laser inputs
 		/// TODO: Investigate strange behaviour further and clean up.
 
-        float diff_input = g_input.GetInputLaserDir(0);
-        float song_input = g_input.GetInputLaserDir(1);
+        float diff_input = g_input.GetInputLaserDir(0) * m_sensMult;
+        float song_input = g_input.GetInputLaserDir(1) * m_sensMult;
 
         m_advanceDiff += diff_input;
         m_advanceSong += song_input;

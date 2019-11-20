@@ -521,6 +521,7 @@ public:
 
 				IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
 				IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
+				FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier (%.1f):", 0.0f, 20.0f);
 				IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 				nk_tree_pop(m_nctx);
 			}

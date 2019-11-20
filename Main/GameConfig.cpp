@@ -46,6 +46,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Skin, "Default");
 	Set(GameConfigKeys::Laser0Color, 200.0f);
 	Set(GameConfigKeys::Laser1Color, 330.0f);
+	Set(GameConfigKeys::SongSelSensMult, 1.0f);
 
 	Set(GameConfigKeys::HiddenCutoff, 0.0f);
 	Set(GameConfigKeys::HiddenFade, 0.2f);

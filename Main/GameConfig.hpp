@@ -93,6 +93,7 @@ DefineEnum(GameConfigKeys,
 	Controller_DirectMode,
 	Controller_Sensitivity,
 	InputBounceGuard,
+	SongSelSensMult,
 
 	LastSelected,
 	LevelFilter,
