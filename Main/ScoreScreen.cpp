@@ -37,6 +37,8 @@ private:
 	ScoreIndex m_scoredata;
 	bool m_restored = false;
 	bool m_removed = false;
+	bool m_hasRendered = false;
+	bool m_hasScreenshot = false;
 
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
@@ -288,9 +290,22 @@ public:
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
+		m_hasRendered = true;
 	}
 	virtual void Tick(float deltaTime) override
 	{
+		if (!m_hasScreenshot && m_hasRendered)
+		{
+			AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
+			if (screensetting == AutoScoreScreenshotSettings::Always ||
+				(screensetting == AutoScoreScreenshotSettings::Highscore && m_highScores.empty()) ||
+				(screensetting == AutoScoreScreenshotSettings::Highscore && m_score > m_highScores.front()->score))
+			{
+				Capture();
+			}
+			m_hasScreenshot = true;
+		}
+
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 	}
 
@@ -302,13 +317,6 @@ public:
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
 		m_restored = true;
-		AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
-		if (screensetting == AutoScoreScreenshotSettings::Always ||
-			(screensetting == AutoScoreScreenshotSettings::Highscore && m_highScores.empty()) ||
-			(screensetting == AutoScoreScreenshotSettings::Highscore && m_score > m_highScores.front()->score))
-		{
-			Capture();
-		}
 	}
 
 	void Capture()
