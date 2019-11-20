@@ -294,7 +294,7 @@ public:
 	}
 	virtual void Tick(float deltaTime) override
 	{
-		if (!m_hasScreenshot && m_hasRendered)
+		if (!m_hasScreenshot && m_hasRendered && !IsSuspended())
 		{
 			AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
 			if (screensetting == AutoScoreScreenshotSettings::Always ||
