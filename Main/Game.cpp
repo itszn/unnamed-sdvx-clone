@@ -536,6 +536,7 @@ public:
 		m_track->ClearEffects();
 		m_particleSystem->Reset();
 		m_audioPlayback.SetPlaybackSpeed(1.0f);
+		m_audioPlayback.SetVolume(1.0f);
 
 		//unhide notes
 		m_hiddenObjects.clear();
