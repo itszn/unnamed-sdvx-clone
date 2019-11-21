@@ -22,7 +22,7 @@ public:
 		}
 		if (lua)
 		{
-			lua_close(lua);
+			g_application->DisposeLua(lua);
 			lua = nullptr;
 		}
 	}

@@ -698,7 +698,15 @@ public:
 		}
 		for (auto filter : m_folderFilters)
 		{
-			delete filter;
+			if (filter->GetType() == FilterType::Folder)
+			{
+				FolderFilter* f = (FolderFilter*)filter;
+				delete f;
+			}
+			else
+			{
+				delete filter;
+			}
 		}
 		m_levelFilters.clear();
 		m_folderFilters.clear();
@@ -801,7 +809,7 @@ public:
 		m_mapDB = db;
 		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
 		{
-			SongFilter* filter = new FolderFilter(p, m_mapDB);
+			FolderFilter* filter = new FolderFilter(p, m_mapDB);
 			if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
 				AddFilter(filter, FilterType::Folder);
 			else
