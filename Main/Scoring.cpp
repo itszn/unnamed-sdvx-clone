@@ -237,7 +237,7 @@ void Scoring::Tick(float deltaTime)
 float Scoring::GetLaserRollOutput(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
-	if (onSlam)
+	if (m_onSlam)
 	{
 		onSlam = false;
 		return 0;
@@ -855,7 +855,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 		if(tick->HasFlag(TickFlags::Slam))
 		{
 			OnLaserSlamHit.Call((LaserObjectState*)tick->object);
-			onSlam = true;
+			m_onSlam = true;
 			// Set laser pointer position after hitting slam
 			laserTargetPositions[object->index] = object->points[1];
 			laserPositions[object->index] = object->points[1];

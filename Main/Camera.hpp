@@ -105,11 +105,11 @@ private:
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremeties
-	bool slowTilt = false;
+	bool m_slowTilt = false;
 
 	// Laser slam rolls
 	// Does not track slams that have a next segment
-	float slamRoll[2] = { 0.0f };
+	float m_slamRoll[2] = { 0.0f };
 
 	// Spin variables
 	int32 m_spinDuration = 1;

@@ -262,7 +262,7 @@ private:
 
 	// True when a slam is hit
 	// When true, GetLaserRollOutput returns 0
-	bool onSlam = false;
+	bool m_onSlam = false;
 
 	// Lerp for laser output
 	float m_laserOutputSource = 0.0f;
