@@ -17,6 +17,8 @@ static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Controls how quickly a laser slam roll decays
 static const float SLAM_DECAY = 6;
+// Percent of m_rollIntensity where camera rolls at its slowest rate
+static const float SLOW_TILT_LOWER_BOUND = 1 / 12.f;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects

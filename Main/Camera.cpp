@@ -138,18 +138,21 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		else
 			// Roll slower when slowTilt == true
 			// Roll even slower when roll is less than 20% of max tilt
-			LerpTo(m_laserRoll, m_targetLaserRoll, !m_slowTilt ? speedlimit : speedlimit / (fabsf(m_laserRoll) > m_rollIntensity / 5 ? 2.5f : 6.f));
+			LerpTo(m_laserRoll, m_targetLaserRoll, !m_slowTilt ? speedlimit : speedlimit / (fabsf(m_laserRoll) > m_rollIntensity * SLOW_TILT_LOWER_BOUND ? 4.5f : 6.f));
 	}
 	
 	for (int index = 0; index < 2; ++index)
 	{
 		float slamDecayRatio;
-		if (rollCatchUp)
+		if (m_slamRoll[index] > 0.9)
+			// Decay slower so that camera roll can catch up at higher magnitudes
+			slamDecayRatio = 2.5;
+		else if (rollCatchUp)
 			// Decay quicker when catching up
 			slamDecayRatio = 0.8f;
 		else
 			// Decay slower when slow tilting
-			slamDecayRatio = !m_slowTilt ? 1 : fabsf(m_slamRoll[index]) > 0.2f ? 2.5f : 6.f;
+			slamDecayRatio = !m_slowTilt ? 1 : fabsf(m_slamRoll[index]) > SLOW_TILT_LOWER_BOUND ? 4.5f : 6.f;
 
 		LerpTo(m_slamRoll[index], 0, SLAM_DECAY / slamDecayRatio);
 	}
