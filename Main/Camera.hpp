@@ -15,6 +15,8 @@ struct CameraShake
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
+// Controls how quickly a laser slam roll decays
+static const float SLAM_DECAY = 6;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
@@ -33,6 +35,7 @@ public:
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
 	void SetRollIntensity(float val);
+	void SetSlamAmount(uint32 index, float amount);
 	void SetSlowTilt(bool tilt);
 	void SetLasersActive(bool lasersActive);
 	void SetTargetRoll(float target);
@@ -103,6 +106,10 @@ private:
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremeties
 	bool slowTilt = false;
+
+	// Laser slam rolls
+	// Does not track slams that have a next segment
+	float slamRoll[2] = { 0.0f };
 
 	// Spin variables
 	int32 m_spinDuration = 1;

@@ -122,13 +122,38 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedlimit = Math::Max(m_rollIntensity * 3, 14.0f / 360.0f);
+	// True when the roll amount is less than the one of the laser slam roll amounts
+	bool rollCatchUp = fabsf(m_actualRoll / (14.f / 360.f)) < fabsf(slamRoll[0]) || 
+				fabsf(m_actualRoll / (14.f / 360.f)) < fabsf(slamRoll[1]);
 
 	if (pManualTiltEnabled)
+	{
 		m_laserRoll = pLaneTilt;
+	}
 	else
-		// Roll slower when slowTilt == true
-		// Roll even slower when roll is less than 20% of max tilt
-		LerpTo(m_laserRoll, m_targetLaserRoll, !slowTilt ? speedlimit : speedlimit / (fabsf(m_laserRoll) > m_rollIntensity / 5 ? 2.5f : 6.f));
+	{
+		if (rollCatchUp)
+			// Catch up to the laser slam's roll position
+			LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
+		else
+			// Roll slower when slowTilt == true
+			// Roll even slower when roll is less than 20% of max tilt
+			LerpTo(m_laserRoll, m_targetLaserRoll, !slowTilt ? speedlimit : speedlimit / (fabsf(m_laserRoll) > m_rollIntensity / 5 ? 2.5f : 6.f));
+	}
+	
+	for (int index = 0; index < 2; ++index)
+	{
+		float slamDecayRatio;
+		if (rollCatchUp)
+			// Decay quicker when catching up
+			slamDecayRatio = 0.8f;
+		else
+			// Decay slower when slow tilting
+			slamDecayRatio = !slowTilt ? 1 : fabsf(slamRoll[index]) > 0.2f ? 2.5f : 6.f;
+
+		LerpTo(slamRoll[index], 0, SLAM_DECAY / slamDecayRatio);
+	}
+
 	//LerpTo(m_actualRoll, actualTargetRoll, 8);
 	m_actualRoll = m_laserRoll;
 
@@ -231,6 +256,17 @@ void Camera::SetSlowTilt(bool tilt)
 	slowTilt = tilt;
 }
 
+/*
+Sets laser slam amount
+@param index - index of the laser. 0 for blue laser, 1 for red laser
+@param amount - the "strength" of the slam. Should be the position of the slam's tail
+*/
+void Camera::SetSlamAmount(uint32 index, float amount)
+{
+	assert(index >= 0 && index <= 1);
+	slamRoll[index] = amount;
+}
+
 Vector2 Camera::Project(const Vector3& pos)
 {
 	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);
@@ -284,7 +320,7 @@ RenderState Camera::CreateRenderState(bool clipped)
 
 void Camera::SetTargetRoll(float target)
 {
-	float actualTarget = target * m_rollIntensity;
+	float actualTarget = Math::Clamp(target + slamRoll[0] + slamRoll[1], -1.f, 1.f) * m_rollIntensity;
 	if(!rollKeep)
 	{
 		m_targetLaserRoll = actualTarget;

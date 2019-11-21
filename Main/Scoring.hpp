@@ -134,6 +134,7 @@ public:
 	// Called when a laser slam was hit
 	// (Laser slam segment)
 	Delegate<LaserObjectState*> OnLaserSlamHit;
+	Delegate<LaserObjectState*> OnLaserSlamEnd;
 	// Called when the combo counter changed
 	// (New Combo)
 	Delegate<uint32> OnComboChanged;
@@ -258,6 +259,10 @@ private:
 
 	// Updates laser output with or without interpolation
 	bool m_interpolateLaserOutput = false;
+
+	// True when a slam is hit
+	// When true, GetLaserRollOutput returns 0
+	bool onSlam = false;
 
 	// Lerp for laser output
 	float m_laserOutputSource = 0.0f;

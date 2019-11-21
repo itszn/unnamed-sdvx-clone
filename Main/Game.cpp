@@ -960,6 +960,7 @@ public:
 		// Register input bindings
 		m_scoring.OnButtonMiss.Add(this, &Game_Impl::OnButtonMiss);
 		m_scoring.OnLaserSlamHit.Add(this, &Game_Impl::OnLaserSlamHit);
+		m_scoring.OnLaserSlamEnd.Add(this, &Game_Impl::OnLaserSlamEnd);
 		m_scoring.OnButtonHit.Add(this, &Game_Impl::OnButtonHit);
 		m_scoring.OnComboChanged.Add(this, &Game_Impl::OnComboChanged);
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
@@ -1336,6 +1337,18 @@ public:
 		//g_guiRenderer->End();
 	}
 
+	// Called during a laser slam tick
+	void OnLaserSlamEnd(LaserObjectState* object)
+	{
+		if (!object->next)
+		{
+			if (object->index == 0)
+				m_camera.SetSlamAmount(object->index, -object->points[1]);
+			if (object->index == 1)
+				m_camera.SetSlamAmount(object->index, 1.f - object->points[1]);
+		}
+	}
+
 	void OnLaserSlamHit(LaserObjectState* object)
 	{
 		float slamSize = (object->points[1] - object->points[0]);
@@ -1360,6 +1373,7 @@ public:
 		ex->position = Vector3(laserPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
 	}
+
 	void OnButtonHit(Input::Button button, ScoreHitRating rating, ObjectState* hitObject, MapTime delta)
 	{
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
