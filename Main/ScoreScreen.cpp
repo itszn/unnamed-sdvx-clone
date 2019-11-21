@@ -92,6 +92,7 @@ public:
 		m_flags = game->GetFlags();
 		m_highScores = game->GetDifficultyIndex().scores;
 		m_scoredata.score = m_score;
+		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_scoredata.crit = m_categorizedHits[2];
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
@@ -99,7 +100,6 @@ public:
 		m_scoredata.gameflags = (uint32)m_flags;
 		m_manualExit = game->GetManualExit();
 
-		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_meanHitDelta = scoring.GetMeanHitDelta();
 		m_medianHitDelta = scoring.GetMedianHitDelta();
 		for (HitStat* stat : scoring.hitStats)
