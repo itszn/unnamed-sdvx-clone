@@ -117,8 +117,6 @@ public:
 			m_fadeOutTimer = 0.0f;
 
 		m_fadeDelayTimer = 0.0f;
-		if (m_nextStream)
-			m_nextStream.Destroy();
 		m_nextStream = stream;
 		stream.Release();
 	}
@@ -147,7 +145,7 @@ public:
 
 			if(m_fadeOutTimer >= m_fadeDuration)
 				if (m_currentStream)
-					m_currentStream.Destroy();
+					m_currentStream.Release();
 		}
 
 		if(m_fadeDelayTimer >= m_fadeDelayDuration && m_fadeInTimer < m_fadeDuration)
@@ -155,8 +153,6 @@ public:
 			m_fadeInTimer += deltaTime;
 			if(m_fadeInTimer >= m_fadeDuration)
 			{
-				if (m_currentStream)
-					m_currentStream.Destroy();
 				m_currentStream = m_nextStream;
 				if(m_currentStream)
 					m_currentStream->SetVolume(1.0f);
@@ -1124,12 +1120,6 @@ public:
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_gameWindow->OnMouseScroll.RemoveAll(this);
-
-		if(m_selectionWheel.IsValid())
-			m_selectionWheel.Destroy();
-
-		if(m_filterSelection.IsValid())
-			m_filterSelection.Destroy();
 
 		if (m_lua)
 			g_application->DisposeLua(m_lua);

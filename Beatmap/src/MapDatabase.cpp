@@ -137,6 +137,14 @@ public:
 	{
 		StopSearching();
 		m_CleanupMapIndex();
+
+		//discard pending changes, probably should apply them(?)
+		auto changes = FlushChanges();
+		for (auto& c : changes)
+		{
+			if(c.mapData)
+				delete c.mapData;
+		}
 	}
 
 	void StartSearching()
@@ -807,6 +815,8 @@ private:
 					{
 						Logf("Skipping corrupted chart [%s]", Logger::Warning, f.first);
 						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted chart [%s]", f.first));
+						if(evt.mapData)
+							delete evt.mapData;
 						continue;
 					}
 					// Invalid maps get removed from the database

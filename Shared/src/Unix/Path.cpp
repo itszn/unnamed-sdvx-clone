@@ -177,6 +177,7 @@ Vector<String> Path::GetSubDirs(const String& path)
             }
         } while((ent = readdir(dir)));
     }
+    closedir(dir);
     return ret;
 }
 bool Path::ShowInFileBrowser(const String& path)

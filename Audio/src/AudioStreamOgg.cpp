@@ -12,6 +12,11 @@ AudioStreamOgg::~AudioStreamOgg()
 		delete[] m_readBuffer[i];
 	}
 	delete[] m_readBuffer;
+
+	if(!m_preloaded)
+	{
+		ov_clear(&m_ovf);
+	}
 }
 
 bool AudioStreamOgg::Init(Audio* audio, const String& path, bool preload)

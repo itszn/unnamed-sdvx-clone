@@ -138,7 +138,7 @@ private:
 
 	Sample m_slamSample;
 	Sample m_clickSamples[2];
-	Sample* m_fxSamples;
+	Sample* m_fxSamples = nullptr;
 
 	// Roll intensity, default = 1
 	float m_rollIntensity = 14 / 360.0;
@@ -206,12 +206,14 @@ public:
 			if (m_multiplayer != nullptr)
 				m_multiplayer->GetTCP().ClearState(m_lua);
 		}
+		if (m_fxSamples)
+			delete[] m_fxSamples;
 		// Save hispeed
 		g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
 
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>()); 
 
-		// In case the cursor was still hidden
+		// In case the cursor was still hid§n
 		g_gameWindow->SetCursorVisible(true); 
 		g_input.OnButtonPressed.RemoveAll(this);
 	}
