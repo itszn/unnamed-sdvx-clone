@@ -33,6 +33,7 @@ public:
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
 	void SetRollIntensity(float val);
+	void SetSlowTilt(bool tilt);
 	void SetLasersActive(bool lasersActive);
 	void SetTargetRoll(float target);
 	void SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback);
@@ -98,6 +99,10 @@ private:
 	// Roll force
 	float m_rollVelocity = 0.0f;
 	float m_rollIntensity;
+
+	// Controls if the camera rolls at a slow rate
+	// Activates when blue and red lasers are at the extremeties
+	bool slowTilt = false;
 
 	// Spin variables
 	int32 m_spinDuration = 1;

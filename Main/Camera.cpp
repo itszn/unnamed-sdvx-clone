@@ -126,8 +126,9 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	if (pManualTiltEnabled)
 		m_laserRoll = pLaneTilt;
 	else
-		LerpTo(m_laserRoll, m_targetLaserRoll, m_targetLaserRoll != 0.0f ? speedlimit : speedlimit / 2.f);
-
+		// Roll slower when slowTilt == true
+		// Roll even slower when roll is less than 20% of max tilt
+		LerpTo(m_laserRoll, m_targetLaserRoll, !slowTilt ? speedlimit : speedlimit / (fabsf(m_laserRoll) > m_rollIntensity / 5 ? 2.5f : 6.f));
 	//LerpTo(m_actualRoll, actualTargetRoll, 8);
 	m_actualRoll = m_laserRoll;
 
@@ -219,6 +220,15 @@ void Camera::AddRollImpulse(float dir, float strength)
 void Camera::SetRollIntensity(float val)
 {
 	m_rollIntensity = val;
+}
+
+/*
+Sets slow tilt state
+@param tilt - should be true when rollA && rollB == -1 and 1 respectively, or when rollA && rollB == 0
+*/
+void Camera::SetSlowTilt(bool tilt)
+{
+	slowTilt = tilt;
 }
 
 Vector2 Camera::Project(const Vector3& pos)

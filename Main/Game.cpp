@@ -621,6 +621,7 @@ public:
 		float rollB = m_scoring.GetLaserRollOutput(1);
 		m_camera.SetTargetRoll(rollA + rollB);
 		m_camera.SetRollIntensity(m_rollIntensity);
+		m_camera.SetSlowTilt((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0));
 
 		// Set track zoom
 
