@@ -676,7 +676,8 @@ public:
 			if (!m_gamepad)
 			{
 				Logf("Failed to open gamepad: %s", Logger::Error, m_gamepadIndex);
-				false;
+				g_gameWindow->ShowMessageBox("Warning", "Could not open selected gamepad.\nEnsure the controller is connected and in the correct mode (if applicable) and selected in the previous menu.", 1);
+				return false;
 			}
 			if (m_knobs)
 			{

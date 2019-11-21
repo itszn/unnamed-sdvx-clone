@@ -802,8 +802,10 @@ public:
 		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
 		{
 			SongFilter* filter = new FolderFilter(p, m_mapDB);
-			if(filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
+			if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
 				AddFilter(filter, FilterType::Folder);
+			else
+				delete filter;
 		}
 		m_SetLuaTable();
 	}
