@@ -239,7 +239,7 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	assert(index >= 0 && index <= 1);
 	if (m_onSlam)
 	{
-		onSlam = false;
+		m_onSlam = false;
 		return 0;
 	}
 	if(m_currentLaserSegments[index])
