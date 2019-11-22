@@ -963,7 +963,7 @@ public:
 		// Register input bindings
 		m_scoring.OnButtonMiss.Add(this, &Game_Impl::OnButtonMiss);
 		m_scoring.OnLaserSlamHit.Add(this, &Game_Impl::OnLaserSlamHit);
-		m_scoring.OnLaserSlamEnd.Add(this, &Game_Impl::OnLaserSlamEnd);
+		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnButtonHit.Add(this, &Game_Impl::OnButtonHit);
 		m_scoring.OnComboChanged.Add(this, &Game_Impl::OnComboChanged);
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
@@ -1341,7 +1341,7 @@ public:
 	}
 
 	// Called during a laser slam tick
-	void OnLaserSlamEnd(LaserObjectState* object)
+	void OnLaserSlam(LaserObjectState* object)
 	{
 		if (!object->next)
 		{

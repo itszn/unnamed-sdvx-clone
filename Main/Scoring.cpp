@@ -687,7 +687,7 @@ void Scoring::m_UpdateTicks()
 					LaserObjectState* laserObject = (LaserObjectState*)tick->object;
 					if(tick->HasFlag(TickFlags::Slam))
 					{
-						OnLaserSlamEnd.Call((LaserObjectState*) tick->object);
+						OnLaserSlam.Call((LaserObjectState*) tick->object);
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
