@@ -271,6 +271,17 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 	m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
 }
 
+/*
+Gets laser slam timer
+@param index - index of the laser. 0 for blue laser, 1 for red laser
+@return the slam timer for the given laser index
+*/
+float Camera::GetSlamTimer(uint32 index)
+{
+	assert(index >= 0 && index <= 1);
+	return m_slamRollTimer[index];
+}
+
 Vector2 Camera::Project(const Vector3& pos)
 {
 	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);

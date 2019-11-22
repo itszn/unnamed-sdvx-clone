@@ -622,6 +622,13 @@ public:
 		// Get render state from the camera
 		float rollA = m_scoring.GetLaserRollOutput(0);
 		float rollB = m_scoring.GetLaserRollOutput(1);
+		float timerA = m_camera.GetSlamTimer(0);
+		float timerB = m_camera.GetSlamTimer(1);
+		if (timerA != 0)
+			rollA = 0;
+		if (timerB != 0)
+			rollB = 0;
+			
 		m_camera.SetTargetRoll(rollA + rollB);
 		m_camera.SetRollIntensity(m_rollIntensity);
 		m_camera.SetSlowTilt((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0));

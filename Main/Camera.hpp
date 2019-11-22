@@ -51,6 +51,7 @@ public:
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
 	Vector3 GetShakeOffset();
+	float GetSlamTimer(uint32 index);
 
 	// Gets the spin angle for the background shader
 	float GetBackgroundSpin() const { return m_bgSpin; }
