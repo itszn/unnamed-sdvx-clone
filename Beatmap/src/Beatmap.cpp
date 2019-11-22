@@ -15,6 +15,8 @@ Beatmap::~Beatmap()
 		delete z;
 	for (auto z : m_laneTogglePoints)
 		delete z;
+	for (auto cs : m_chartStops)
+		delete cs;
 }
 Beatmap::Beatmap(Beatmap&& other)
 {
