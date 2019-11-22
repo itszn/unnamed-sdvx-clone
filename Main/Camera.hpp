@@ -16,7 +16,9 @@ struct CameraShake
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Controls how quickly a laser slam roll decays
-static const float SLAM_DECAY = 6;
+static const float SLAM_DECAY = 128;
+// Amount of time before the slam roll starts to decay
+static const float SLAM_SLOW_DECAY_TIMER = 0.1f;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOW_TILT_LOWER_BOUND = 1 / 12.f;
 
@@ -112,6 +114,8 @@ private:
 	// Laser slam rolls
 	// Does not track slams that have a next segment
 	float m_slamRoll[2] = { 0.0f };
+	// Keeps track of how long before a slam decays
+	float m_slamRollTimer[2] = { 0.0f };
 
 	// Spin variables
 	int32 m_spinDuration = 1;
