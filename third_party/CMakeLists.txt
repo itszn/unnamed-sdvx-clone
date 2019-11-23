@@ -39,15 +39,11 @@ target_include_directories(discord-rpc PUBLIC discord-rpc/include)
 #endif(WIN32)
 
 #nanovg
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/nanovg/src)
 add_library(nanovg nanovg/src/nanovg.c)
 target_include_directories(nanovg PUBLIC nanovg/src)
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
-include(FindLibraries)
 target_link_libraries(nanovg ${FREETYPE_LIBRARIES})
 include_directories(${FREETYPE_INCLUDE_DIRS})
-find_package(Freetype REQUIRED)
-add_definitions(-DFONS_USE_FREETYPE)
+target_compile_definitions(nanovg PRIVATE -DFONS_USE_FREETYPE)
 
 #miniaudio
 add_library(miniaudio INTERFACE)

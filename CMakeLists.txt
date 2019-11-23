@@ -42,6 +42,16 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 set(CMAKE_MACOSX_RPATH 1)
 
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+find_package(Freetype REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(SDL2 REQUIRED)
+find_package(PNG REQUIRED)
+find_package(JPEG REQUIRED)
+find_package(Vorbis REQUIRED)
+find_package(OGG REQUIRED)
+find_package(LibArchive REQUIRED)
+
 # All projects use unicode define
 #	this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)

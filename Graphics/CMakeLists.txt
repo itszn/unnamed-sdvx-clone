@@ -38,11 +38,8 @@ target_include_directories(Graphics PRIVATE
 target_link_libraries(Graphics Shared)
 
 ## 3rd Party dependencies
-
+target_include_directories(Graphics PUBLIC ${SDL2_INCLUDE_DIR})
 target_include_directories(Graphics PRIVATE SYSTEM ${FREETYPE_INCLUDE_DIRS})
-
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
-include(FindLibraries)
 target_link_libraries(Graphics ${FREETYPE_LIBRARIES})
 target_link_libraries(Graphics ${SDL2_LIBRARY})
 target_link_libraries(Graphics ${JPEG_LIBRARIES})
@@ -60,5 +57,3 @@ if(UNIX)
 		include_directories(${X11_INCLUDE_DIR})
 	endif(APPLE)
 endif(UNIX)
-
-find_package(Freetype REQUIRED)

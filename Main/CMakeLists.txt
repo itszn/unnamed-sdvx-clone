@@ -57,8 +57,6 @@ target_link_libraries(usc-game cpr)
 target_link_libraries(usc-game nlohmann_json)
 #target_link_libraries(usc-game archive)
 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party/)
-include(FindLibraries)
 target_link_libraries(usc-game ${SDL2_LIBRARY})
 target_link_libraries(usc-game ${LibArchive_LIBRARIES})
 

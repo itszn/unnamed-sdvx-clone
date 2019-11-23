@@ -18,9 +18,14 @@ endif(WIN32)
 enable_cpp14()
 enable_precompiled_headers("${Tests_src}" src/stdafx.cpp)
 
-include_directories(include include/Tests src)
-add_library(Tests ${Tests_src} ${Tests_include} ${Platform_src})
 
+add_library(Tests ${Tests_src} ${Tests_include} ${Platform_src})
+# Public include paths for library
+target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(Tests PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include/Tests
+	${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 if(MSVC)
 	# SEH and Debug
 	target_compile_options(Tests PUBLIC /EHa /Zi)
@@ -28,5 +33,3 @@ endif()
 
 target_link_libraries(Tests Shared)
 
-# Public include paths for library
-target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
