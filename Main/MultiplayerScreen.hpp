@@ -66,8 +66,13 @@ public:
 	void SetSelectedMap(MapIndex*, DifficultyIndex*);
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
-	void SendFinalScore(Scoring& scoring, int clearState);
+	void SendFinalScore(class Game* game, int clearState);
 	void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
+
+	Vector<nlohmann::json> const* GetFinalStats() const
+	{
+		return &m_finalStats;
+	}
 
 	TCPSocket& GetTCP()
 	{
@@ -110,6 +115,9 @@ private:
 	bool m_handleBadPassword(nlohmann::json& packet);
 	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
+	bool m_handleFinalStats(nlohmann::json& packet);
+
+	void m_addFinalStat(nlohmann::json& data);
 
 	void m_render(float deltaTime);
 
@@ -207,4 +215,6 @@ private:
 	SpeedMods m_speedMod;
 	struct MultiplayerBPMInfo m_bpm;
 	float m_speedBPM;
+
+	Vector<nlohmann::json> m_finalStats;
 };

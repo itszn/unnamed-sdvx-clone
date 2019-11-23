@@ -295,6 +295,8 @@ float Scoring::GetMeanHitDelta()
 		sum += hit->delta;
 		count++;
 	}
+	if (count == 0)
+		return 0.0f;
 	return sum / count;
 }
 int16 Scoring::GetMedianHitDelta()

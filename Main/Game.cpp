@@ -22,7 +22,6 @@
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
 #include "SDL2/SDL_keycode.h"
-#include "json.hpp"
 
 extern "C"
 {
@@ -213,10 +212,11 @@ public:
 
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>()); 
 
-		// In case the cursor was still hid§n
+		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
 		g_input.OnButtonPressed.RemoveAll(this);
 	}
+
 
 	AsyncAssetLoader loader;
 	virtual bool AsyncLoad() override
@@ -1050,7 +1050,6 @@ public:
 				FinishGame();
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
-				//m_multiplayer->SendFinalScore(m_scoring, m_getClearState());
 
 				m_flags = m_flags & ~GameFlags::Hard;
 				m_scoring.SetFlags(m_flags);
@@ -1087,7 +1086,8 @@ public:
 		}
 		if (m_outroCompleted && !m_transitioning)
 		{
-			if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore)) || (m_manualExit && m_demo))
+			if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
+				(m_manualExit && m_demo))
 			{
 				g_application->RemoveTickable(this);
 			}
@@ -1112,8 +1112,17 @@ public:
 			}
 			else
 			{
+				TransitionScreen* transition;
 				// Transition to score screen
-				TransitionScreen* transition = TransitionScreen::Create(ScoreScreen::Create(this));
+				if (IsMultiplayerGame())
+				{
+					transition = TransitionScreen::Create(ScoreScreen::Create(
+						this, m_multiplayer->GetUserId(), m_multiplayer->GetFinalStats()));
+				}
+				else
+				{
+					transition = TransitionScreen::Create(ScoreScreen::Create(this));
+				}
 				transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 				g_application->AddTickable(transition);
 				m_transitioning = true;
@@ -1129,8 +1138,7 @@ public:
 
 		// Send the final scores to the server
 		if (m_multiplayer)
-			m_multiplayer->SendFinalScore(m_scoring,
-				m_multiplayer->HasFailed()? 1 : m_getClearState());
+			m_multiplayer->SendFinalScore(this, m_getClearState());
 
 		m_scoring.FinishGame();
 		m_ended = true;
@@ -1794,6 +1802,10 @@ public:
 	virtual const String& GetMapPath() const
 	{
 		return m_mapPath;
+	}
+	virtual bool IsMultiplayerGame() const
+	{
+		return m_multiplayer != nullptr;
 	}
 	virtual const DifficultyIndex& GetDifficultyIndex() const
 	{
