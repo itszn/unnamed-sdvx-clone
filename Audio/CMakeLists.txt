@@ -44,21 +44,13 @@ target_link_libraries(Audio Shared)
 
 ## 3rd Party dependencies
 ### Find dependencies roots
-get_property(MA_ROOT GLOBAL PROPERTY MA_ROOT)
-get_property(MINIMP3_ROOT GLOBAL PROPERTY MINIMP3_ROOT)
-get_property(SOUNDTOUCH_ROOT GLOBAL PROPERTY SOUNDTOUCH_ROOT)
-
-### Add dependencies headers
-target_include_directories(Audio PUBLIC SYSTEM
-	${SOUNDTOUCH_ROOT}/include
-	${MINIMP3_ROOT}
-	${MA_ROOT}
-)
 
 ### Add dependencies to linkage
+target_link_libraries(Audio soundtouch)
+target_link_libraries(Audio minimp3)
+target_link_libraries(Audio miniaudio)
+
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
 include(FindLibraries)
-target_link_libraries(Audio minimp3)
-target_link_libraries(Audio soundtouch)
 target_link_libraries(Audio ${OGG_LIBRARIES})
 target_link_libraries(Audio ${VORBIS_LIBRARIES})

@@ -2,14 +2,13 @@
 
 # Find files used for project
 # Find miniaudio root
-get_property(NLOHMANN_JSON_ROOT GLOBAL PROPERTY NLOHMANN_JSON_ROOT)
 file(GLOB Audio_include "Audio/*.hpp")
 file(GLOB Audio_src "Audio/*.cpp")
 file(GLOB GUI_include "GUI/*.hpp")
 file(GLOB nuk_include "nuklear/*.h")
 file(GLOB GUI_src "GUI/*.cpp" "Audio/minimp3.c")
 file(GLOB Main_src "*.cpp" "*.hpp"  "Resource.rc" 
-	${Audio_include} ${Audio_src} ${GUI_src} ${GUI_include} ${nuk_include} ${NLOHMANN_JSON_HPP})
+	${Audio_include} ${Audio_src} ${GUI_src} ${GUI_include} ${nuk_include})
 
 # Project filters
 
@@ -24,7 +23,7 @@ enable_cpp14()
 enable_precompiled_headers("${Main_src}" stdafx.cpp)
 precompiled_header_exclude("Resource.rc")
 
-include_directories(Audio GUI . ${NLOHMANN_JSON_ROOT})
+include_directories(Audio GUI .)
 add_executable(usc-game ${Main_src} ${C_src})
 
 if(${CMAKE_VERSION} VERSION_GREATER "3.11")
@@ -55,6 +54,7 @@ target_link_libraries(usc-game nanovg)
 target_link_libraries(usc-game lua)
 target_link_libraries(usc-game discord-rpc)
 target_link_libraries(usc-game cpr)
+target_link_libraries(usc-game nlohmann_json)
 #target_link_libraries(usc-game archive)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party/)

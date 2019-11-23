@@ -50,10 +50,12 @@ find_package(Freetype REQUIRED)
 add_definitions(-DFONS_USE_FREETYPE)
 
 #miniaudio
-set_property(GLOBAL PROPERTY MA_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/miniaudio)
+add_library(miniaudio INTERFACE)
+target_include_directories(miniaudio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/miniaudio)
 
 #json for modern c++
-set_property(GLOBAL PROPERTY NLOHMANN_JSON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json)
+add_library(nlohmann_json INTERFACE)
+target_include_directories(nlohmann_json INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann_json)
 
 #libarchive
 #set(ENABLE_TEST OFF CACHE BOOL "Enable unit and regression tests")
@@ -74,8 +76,7 @@ add_library(sqlite3
 	sqlite3/sqlite3.h
 	sqlite3/sqlite3ext.h
 )
-set_property(GLOBAL PROPERTY SQLITE3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
-target_include_directories(sqlite3 PUBLIC ${SQLITE3_ROOT})
+target_include_directories(sqlite3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sqlite3)
 
 #minimp3
 add_library(minimp3
@@ -83,8 +84,7 @@ add_library(minimp3
 	minimp3/minimp3.h
 	minimp3/libc.h
 )
-set_property(GLOBAL PROPERTY MINIMP3_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/minimp3)
-target_include_directories(minimp3 PUBLIC MINIMP3_ROOT)
+target_include_directories(minimp3 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/minimp3)
 
 #soundtouch
 add_library(soundtouch
@@ -118,9 +118,8 @@ add_library(soundtouch
 	soundtouch/src/TDStretch.cpp
 	soundtouch/src/TDStretch.h
 )
-set_property(GLOBAL PROPERTY SOUNDTOUCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/soundtouch)
 target_include_directories(soundtouch PUBLIC soundtouch/include)
-target_include_directories(soundtouch PUBLIC soundtouch/src)
+target_include_directories(soundtouch PRIVATE soundtouch/src)
 
 add_library(GLEW
 	glew/include/GL/glew.h
@@ -130,5 +129,4 @@ add_library(GLEW
 )
 # GLEW is included statically and also doesn't need GLU(Which doesn't even exist on linux)
 target_compile_definitions(GLEW PUBLIC -DGLEW_NO_GLU -DGLEW_STATIC)
-set_property(GLOBAL PROPERTY GLEW_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/glew)
 target_include_directories(GLEW PUBLIC glew/include)

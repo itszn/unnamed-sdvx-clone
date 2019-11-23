@@ -38,6 +38,4 @@ target_include_directories(Beatmap PRIVATE
 target_link_libraries(Beatmap Shared)
 
 ## 3rd Party dependencies
-get_property(SQLITE3_ROOT GLOBAL PROPERTY SQLITE3_ROOT)
-target_include_directories(Beatmap PRIVATE SYSTEM ${SQLITE3_ROOT})
 target_link_libraries(Beatmap sqlite3)

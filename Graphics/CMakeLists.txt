@@ -38,9 +38,7 @@ target_include_directories(Graphics PRIVATE
 target_link_libraries(Graphics Shared)
 
 ## 3rd Party dependencies
-get_property(GLEW_ROOT GLOBAL PROPERTY GLEW_ROOT)
 
-target_include_directories(Graphics PRIVATE SYSTEM ${GLEW_ROOT}/include)
 target_include_directories(Graphics PRIVATE SYSTEM ${FREETYPE_INCLUDE_DIRS})
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
