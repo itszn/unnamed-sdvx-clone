@@ -2,6 +2,7 @@ local jacket = nil
 local resx,resy = game.GetResolution()
 local scale = math.min(resx / 800, resy /800)
 local gradeImg;
+local lastGrade=-1;
 local gradear = 1 --grade aspect ratio
 local desw = 800
 local desh = 800
@@ -89,10 +90,18 @@ draw_highscores = function()
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
         gfx.BeginPath()
         local ypos =  60 + (i - 1) * 80
-        gfx.RoundedRectVarying(510,ypos, 280, 70,0,0,35,0)
-        gfx.FillColor(15,15,15)
-        gfx.StrokeColor(0,128,255)
-        gfx.StrokeWidth(2)
+        if result.displayIndex ~= nil and result.displayIndex + 1 == i then
+            gfx.RoundedRectVarying(510-20,ypos, 280, 70,0,0,35,0)
+        else
+            gfx.RoundedRectVarying(510,ypos, 280, 70,0,0,35,0)
+        end
+        if result.uid ~= nil and result.uid == s.uid then
+            gfx.FillColor(60,60,60)
+            gfx.StrokeColor(0,128,255)
+        else
+            gfx.FillColor(15,15,15)
+            gfx.StrokeColor(0,128,255)
+        end
         gfx.Fill()
         gfx.Stroke()
         gfx.BeginPath()
@@ -107,6 +116,9 @@ draw_highscores = function()
         gfx.FontSize(20)
         if s.timestamp > 0 then
             gfx.Text(os.date("%Y-%m-%d %H:%M:%S", s.timestamp), 650, ypos + 45)
+        end
+        if s.name ~= nil then
+            gfx.Text(s.name, 650, ypos + 45) 
         end
     end
 end
@@ -150,10 +162,11 @@ render = function(deltaTime, showStats)
     if jacket == nil then
         jacket = gfx.CreateImage(result.jacketPath, 0)
     end
-    if not gradeImg then
+    if not gradeImg or result.grade ~= lastGrade then
         gradeImg = gfx.CreateSkinImage(string.format("score/%s.png", result.grade),0)
         local gradew,gradeh = gfx.ImageSize(gradeImg)
         gradear = gradew/gradeh
+        lastGrade = result.grade 
     end
     gfx.BeginPath()
     gfx.Rect(0,0,500,800)

@@ -330,6 +330,12 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	return true;
 }
 
+bool MultiplayerScreen::m_handleFinalStats(nlohmann::json& packet)
+{
+	m_addFinalStat(packet);
+	return true;
+}
+
 // Start the game
 bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 {
@@ -339,6 +345,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_inGame = true;
 	m_failed = false;
 	m_syncState = SyncState::LOADING;
+	m_finalStats.clear();
 
 	// Grab the map from the database
 	MapIndex* map = m_mapDatabase.GetMap(m_selectedMapId);
@@ -898,14 +905,49 @@ void MultiplayerScreen::PerformScoreTick(Scoring& scoring, MapTime time)
 	m_tcp.SendJSON(packet);
 }
 
-void MultiplayerScreen::SendFinalScore(Scoring& scoring, int clearState)
+void MultiplayerScreen::m_addFinalStat(nlohmann::json& data)
 {
+	m_finalStats.push_back(data);
+	// Sort all scores
+	sort(m_finalStats.begin(), m_finalStats.end(),
+		[](const nlohmann::json& a, const nlohmann::json& b) -> bool
+		{
+			return (a["score"] + (a["clear"] > 1 ? 10000000 : 0)) >
+				(b["score"] +( b["clear"] > 1 ? 10000000 : 0));
+		});
+}
+
+void MultiplayerScreen::SendFinalScore(class Game* game, int clearState)
+{
+	Scoring& scoring = game->GetScoring();
+
+	clearState = HasFailed() ? 1 : clearState;
+
+	uint32 flags = (uint32)game->GetFlags();
+
 	nlohmann::json packet;
 	packet["topic"] = "room.score.final";
 	packet["score"] = scoring.CalculateCurrentScore();
 	packet["combo"] = scoring.maxComboCounter;
 	packet["clear"] = clearState;
+	packet["gauge"] = scoring.currentGauge;
+	packet["early"] = scoring.timedHits[0];
+	packet["late"] = scoring.timedHits[1];
+	packet["miss"] = scoring.categorizedHits[0];
+	packet["near"] = scoring.categorizedHits[1];
+	packet["crit"] = scoring.categorizedHits[2];
+	packet["flags"] = flags;
+	packet["mean_delta"] = scoring.GetMeanHitDelta();
+	packet["median_delta"] = scoring.GetMedianHitDelta();
+
+	packet["graph"] = *(std::array<float, 256>*)game->GetGaugeSamples();
+
 	m_tcp.SendJSON(packet);
+
+	packet["name"] = m_userName;
+	packet["uid"] = m_userId;
+
+	m_addFinalStat(packet);
 
 	// In case we exit early
 	m_syncState = SyncState::SYNCED;
@@ -1147,6 +1189,7 @@ bool MultiplayerScreen::AsyncLoad()
 	m_tcp.SetTopicHandler("server.room.joined", this, &MultiplayerScreen::m_handleJoinRoom);
 	m_tcp.SetTopicHandler("server.error", this, &MultiplayerScreen::m_handleError);
 	m_tcp.SetTopicHandler("server.room.badpassword", this, &MultiplayerScreen::m_handleBadPassword);
+	m_tcp.SetTopicHandler("game.finalstats", this, &MultiplayerScreen::m_handleFinalStats);
 
 	m_tcp.SetCloseHandler(this, &MultiplayerScreen::m_handleSocketClose);
 

@@ -2,6 +2,7 @@
 #include "ApplicationTickable.hpp"
 #include "AsyncLoadable.hpp"
 #include <Beatmap/MapDatabase.hpp>
+#include "json.hpp"
 
 class MultiplayerScreen;
 
@@ -79,4 +80,6 @@ public:
 	virtual void SetGameplayLua(struct lua_State* L) = 0;
 	// Full path to map
 	virtual const String& GetMapPath() const = 0;
+	// Is this a multiplayer game
+	virtual bool IsMultiplayerGame() const = 0;
 };
