@@ -18,7 +18,8 @@ static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Controls how quickly a laser slam roll decays
 static const float SLAM_DECAY = 192;
 // Amount of time before the slam roll starts to decay
-static const float SLAM_SLOW_DECAY_TIMER = 0.1f;
+static const float SLAM_FAST_DECAY_TIMER = 0.1;
+static const float SLAM_SLOW_DECAY_TIMER = 0.2;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOW_TILT_LOWER_BOUND = 1 / 12.f;
 

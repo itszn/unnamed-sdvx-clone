@@ -268,7 +268,10 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 {
 	assert(index >= 0 && index <= 1);
 	m_slamRoll[index] = amount;
-	m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
+	if (amount == 0)
+		m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
+	else
+		m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
 }
 
 /*
