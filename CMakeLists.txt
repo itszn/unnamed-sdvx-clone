@@ -68,10 +68,10 @@ macro(precompiled_header_exclude exclude)
 	endif(MSVC)
 endmacro(precompiled_header_exclude)
 
-# Function to enable c++11 compilation on linux
+# Function to enable c++14 compilation on linux
 macro(enable_cpp14)
 	if(UNIX)
-		# C++11 support enabled for linux compilers
+		# C++14 support enabled for linux compilers
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 	endif(UNIX)
 endmacro(enable_cpp14)
