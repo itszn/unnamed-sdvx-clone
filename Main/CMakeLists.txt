@@ -25,10 +25,10 @@ precompiled_header_exclude("Resource.rc")
 include_directories(Audio GUI .)
 add_executable(usc-game ${Main_src} ${C_src})
 target_compile_features(usc-game PUBLIC cxx_std_14)
-
-if(${CMAKE_VERSION} VERSION_GREATER "3.11")
-	add_compile_definitions(GIT_COMMIT=${GIT_DATE_HASH})
-endif()
+target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
+target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
+target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
+target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
 
 set_output_postfixes(usc-game)
 
@@ -37,11 +37,6 @@ if(MSVC)
    set_target_properties(usc-game PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
    set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 endif(MSVC)
-
-# Defines
-target_compile_definitions(usc-game PUBLIC VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
-target_compile_definitions(usc-game PUBLIC VERSION_MINOR=${PROJECT_VERSION_MINOR})
-target_compile_definitions(usc-game PUBLIC VERSION_PATCH=${PROJECT_VERSION_PATCH})
 
 # Dependencies
 target_link_libraries(usc-game Shared)
