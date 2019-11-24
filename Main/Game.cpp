@@ -1358,12 +1358,13 @@ public:
 	// Called during a laser slam tick
 	void OnLaserSlam(LaserObjectState* object)
 	{
+		bool extendedLaser = object->flags & LaserObjectState::flag_Extended;
 		if (!object->next)
 		{
 			if (object->index == 0)
-				m_camera.SetSlamAmount(object->index, -object->points[1]);
+				m_camera.SetSlamAmount(object->index, -object->points[1], extendedLaser);
 			if (object->index == 1)
-				m_camera.SetSlamAmount(object->index, 1.f - object->points[1]);
+				m_camera.SetSlamAmount(object->index, 1.f - object->points[1], extendedLaser);
 		}
 	}
 

@@ -40,7 +40,7 @@ public:
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
 	void SetRollIntensity(float val);
-	void SetSlamAmount(uint32 index, float amount);
+	void SetSlamAmount(uint32 index, float amount, bool extendedLaser);
 	void SetSlowTilt(bool tilt);
 	void SetLasersActive(bool lasersActive);
 	void SetTargetRoll(float target);

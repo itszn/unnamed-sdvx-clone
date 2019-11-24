@@ -263,15 +263,26 @@ void Camera::SetSlowTilt(bool tilt)
 Sets laser slam amount
 @param index - index of the laser. 0 for blue laser, 1 for red laser
 @param amount - the "strength" of the slam. Should be the position of the slam's tail
+@param extendedLaser - whether tha laser is extended or not
 */
-void Camera::SetSlamAmount(uint32 index, float amount)
+void Camera::SetSlamAmount(uint32 index, float amount, bool extendedLaser)
 {
 	assert(index >= 0 && index <= 1);
 	m_slamRoll[index] = amount;
-	if (amount == 0)
-		m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
+	if (extendedLaser)
+	{
+		if (fabsf(amount) < 0.5)
+			m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
+		else
+			m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
+	}
 	else
-		m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
+	{
+		if (amount == 0)
+			m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
+		else
+			m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
+	}
 }
 
 /*
