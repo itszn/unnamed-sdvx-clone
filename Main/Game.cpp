@@ -154,8 +154,8 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeAmount = 3;
-	float m_shakeDuration = 0.083;
+	float m_shakeAmount = 2.5;
+	float m_shakeDuration = 0.1;
 
 	Map<ScoreIndex*, ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
@@ -1372,7 +1372,7 @@ public:
 		float slamSize = (object->points[1] - object->points[0]);
 		float direction = Math::Sign(slamSize);
 		slamSize = fabsf(slamSize);
-		CameraShake shake(m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
+		CameraShake shake(powf(slamSize, 0.5f) * m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
 
