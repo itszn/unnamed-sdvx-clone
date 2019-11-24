@@ -368,7 +368,7 @@ void Camera::SetTargetRoll(float target)
 		}
 		m_targetRollSet = true;
 	}
-	m_targetLaserRoll = Math::Min(fabs(m_targetLaserRoll), m_rollIntensity) * Math::Sign(m_targetLaserRoll);
+	m_targetLaserRoll = Math::Min((float)fabs(m_targetLaserRoll), m_rollIntensity) * Math::Sign(m_targetLaserRoll);
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)

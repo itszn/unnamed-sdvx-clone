@@ -912,8 +912,8 @@ void MultiplayerScreen::m_addFinalStat(nlohmann::json& data)
 	sort(m_finalStats.begin(), m_finalStats.end(),
 		[](const nlohmann::json& a, const nlohmann::json& b) -> bool
 		{
-			return (a["score"] + (a["clear"] > 1 ? 10000000 : 0)) >
-				(b["score"] +( b["clear"] > 1 ? 10000000 : 0));
+			return (a["score"].get<int>() + (a["clear"].get<int>() > 1 ? 10000000 : 0)) >
+				(b["score"].get<int>() +( b["clear"].get<int>() > 1 ? 10000000 : 0));
 		});
 }
 
