@@ -88,6 +88,7 @@ public:
 	// Updates the list of objects that are possible to hit
 	void Tick(float deltaTime);
 
+	float GetLaserPosition(uint32 index, float pos);
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();

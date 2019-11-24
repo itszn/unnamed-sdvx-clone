@@ -234,6 +234,14 @@ void Scoring::Tick(float deltaTime)
 	}
 }
 
+float Scoring::GetLaserPosition(uint32 index, float pos)
+{
+	if (index == 0)
+		return -pos;
+	if (index == 1)
+		return 1.0f - pos;
+}
+
 float Scoring::GetLaserRollOutput(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
@@ -244,10 +252,7 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	}
 	if(m_currentLaserSegments[index])
 	{
-		if(index == 0)
-			return -laserTargetPositions[index];
-		if(index == 1)
-			return (1.0f - laserTargetPositions[index]);
+		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
 	else // Check if any upcoming lasers are within 2 beats
 	{
@@ -257,10 +262,7 @@ float Scoring::GetLaserRollOutput(uint32 index)
 			{
 				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
 				{
-					if (index == 0)
-						return -l->points[0];
-					if (index == 1)
-						return (1.0f - l->points[0]);
+					return GetLaserPosition(index, l->points[0]);
 				}
 			}
 		}
