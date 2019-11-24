@@ -56,42 +56,7 @@ find_package(LibArchive REQUIRED)
 #	this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
-# Precompiled header macro
-#	src 	= Path to source files
-#	pchSrc 	= Path to precompiled header source file
-macro(enable_precompiled_headers src pchSrc)
-	if(MSVC)
-		#message("Enabling precompiled header generated from source file ${pchSrc}")
-		#message("Files using precompiled headers => ${src}")
-		# Set precompiled header usage
-		set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "/Yu")
-		# Set precompiled header
-		set_source_files_properties(${pchSrc} PROPERTIES COMPILE_FLAGS "/Yc")
-	endif(MSVC)
-endmacro(enable_precompiled_headers)
-
-# Excludes a file from precompiled header usage
-macro(precompiled_header_exclude exclude)
-	if(MSVC)
-		# Excluded files
-		set_source_files_properties(${exclude} PROPERTIES COMPILE_FLAGS "")
-	endif(MSVC)
-endmacro(precompiled_header_exclude)
-
-# Function to enable c++14 compilation on linux
-macro(enable_cpp14)
-	if(UNIX)
-		# C++14 support enabled for linux compilers
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-	endif(UNIX)
-endmacro(enable_cpp14)
-
-# Set output binary postfixes so that they will be named <project>_<configuration>.exe/dll
-macro(set_output_postfixes projectName)
-	set_target_properties(${projectName} PROPERTIES 
-		OUTPUT_NAME_DEBUG ${projectName}_Debug
-		OUTPUT_NAME_RELEASE ${projectName})
-endmacro(set_output_postfixes)
+include(${PROJECT_SOURCE_DIR}/cmake/Macros.cmake)
 
 # Sub-Project directories
 add_subdirectory(third_party)

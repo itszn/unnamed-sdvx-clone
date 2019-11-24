@@ -19,12 +19,12 @@ source_group("Header Files\\GUI" FILES ${GUI_include})
 source_group("Source Files\\GUI" FILES ${GUI_src})
 
 # Compiler stuff
-enable_cpp14()
 enable_precompiled_headers("${Main_src}" stdafx.cpp)
 precompiled_header_exclude("Resource.rc")
 
 include_directories(Audio GUI .)
 add_executable(usc-game ${Main_src} ${C_src})
+target_compile_features(usc-game PUBLIC cxx_std_14)
 
 if(${CMAKE_VERSION} VERSION_GREATER "3.11")
 	add_compile_definitions(GIT_COMMIT=${GIT_DATE_HASH})

@@ -15,11 +15,11 @@ else(WIN32)
 endif(WIN32)
 
 # Compiler stuff
-enable_cpp14()
 enable_precompiled_headers("${Tests_src}" src/stdafx.cpp)
 
 
 add_library(Tests ${Tests_src} ${Tests_include} ${Platform_src})
+target_compile_features(Tests PUBLIC cxx_std_14)
 # Public include paths for library
 target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Tests PRIVATE

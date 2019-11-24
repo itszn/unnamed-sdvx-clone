@@ -4,10 +4,10 @@
 file(GLOB Main_src "*.cpp" "*.hpp")
 
 # Compiler stuff
-enable_cpp14()
 enable_precompiled_headers("${Main_src}" stdafx.cpp)
 
 add_executable(Tests.Game ${Main_src})
+target_compile_features(Tests.Game PUBLIC cxx_std_14)
 set_output_postfixes(Tests.Game)
 target_include_directories(Tests.Game PRIVATE .)
 

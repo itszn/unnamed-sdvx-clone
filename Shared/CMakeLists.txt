@@ -33,12 +33,10 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_cpp14()
 enable_precompiled_headers("${BEATMAP_SRC}" ${PCH_SRC})
 
 add_library(Shared ${SHARED_SRC} ${PCH_FILES})
-
-# Public include paths for library
+target_compile_features(Shared PUBLIC cxx_std_14)
 target_include_directories(Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Shared PRIVATE
 	${SRCROOT}

@@ -19,11 +19,10 @@ set(PCH_FILES ${PCH_SRC} ${PCH_INC})
 source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_cpp14()
 enable_precompiled_headers("${GUI_SRC}" ${PCH_SRC})
 
 add_library(GUI ${GUI_SRC} ${PCH_FILES})
-
+target_compile_features(GUI PUBLIC cxx_std_14)
 target_include_directories(GUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(GUI PRIVATE
 	${SRCROOT}
