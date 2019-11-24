@@ -140,7 +140,7 @@ private:
 	Sample* m_fxSamples = nullptr;
 
 	// Roll intensity, default = 1
-	float m_rollIntensity = 14 / 360.0;
+	float m_rollIntensity = 10.5 / 360.0;
 	bool m_manualTiltEnabled = false;
 
 	// Particle effects
@@ -1565,7 +1565,7 @@ public:
 			else
 			{
 				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
-				m_rollIntensity = (14 * (1.0 + 0.5 * (i - 1))) / 360.0;
+				m_rollIntensity = (10.5 * (1.0 + 0.5 * (i - 1))) / 360.0;
 			}
 		}
 		else if(key == EventKey::SlamVolume)
