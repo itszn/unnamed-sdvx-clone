@@ -689,7 +689,6 @@ void Scoring::m_UpdateTicks()
 					LaserObjectState* laserObject = (LaserObjectState*)tick->object;
 					if(tick->HasFlag(TickFlags::Slam))
 					{
-						OnLaserSlam.Call((LaserObjectState*) tick->object);
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
@@ -1036,10 +1035,18 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			else
 			{
 				// Don't sample slams
-				if ((currentSegment->flags & LaserObjectState::flag_Instant) == 0)
+				if (!(currentSegment->flags & LaserObjectState::flag_Instant))
 				{
 					// Update target position
 					laserTargetPositions[i] = currentSegment->SamplePosition(mapTime);
+				}
+				else
+				{
+					if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+					{
+						OnLaserSlam.Call(currentSegment);
+						currentSegment->flags |= LaserObjectState::flag_slamProcessed;
+					}
 				}
 			}
 		}

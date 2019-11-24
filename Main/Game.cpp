@@ -1355,7 +1355,7 @@ public:
 		//g_guiRenderer->End();
 	}
 
-	// Called during a laser slam tick
+	// Called during a laser slam
 	void OnLaserSlam(LaserObjectState* object)
 	{
 		bool extendedLaser = object->flags & LaserObjectState::flag_Extended;
