@@ -970,12 +970,13 @@ public:
 		// Register input bindings
 		m_scoring.OnButtonMiss.Add(this, &Game_Impl::OnButtonMiss);
 		m_scoring.OnLaserSlamHit.Add(this, &Game_Impl::OnLaserSlamHit);
-		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnButtonHit.Add(this, &Game_Impl::OnButtonHit);
 		m_scoring.OnComboChanged.Add(this, &Game_Impl::OnComboChanged);
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
+
+		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 
 		m_playback.hittableObjectEnter = Scoring::missHitTime + g_gameConfig.GetInt(GameConfigKeys::InputOffset);
 		m_playback.hittableObjectLeave = Scoring::goodHitTime;
@@ -1355,7 +1356,6 @@ public:
 		//g_guiRenderer->End();
 	}
 
-	// Called during a laser slam
 	void OnLaserSlam(LaserObjectState* object)
 	{
 		if (!object->next)
@@ -1363,7 +1363,7 @@ public:
 			uint8 index = object->index;
 			float head = m_scoring.GetLaserPosition(index, object->points[0]);
 			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
-			// These special cases only matter if there's an incoming laser within 2 beats
+			// These special cases only matter if there's an incoming laser of the same index within 2 beats
 			bool otherLaserAtZero = m_scoring.IsLaserHeld(index ^ 1, false) && 
 						(m_scoring.GetLaserRollOutput(index ^ 1) == 0);
 			bool tailLessThanHead = fabsf(tail) < fabsf(head);

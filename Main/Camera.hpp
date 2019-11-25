@@ -40,7 +40,20 @@ public:
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
 	void SetRollIntensity(float val);
-	void SetSlamAmount(uint32 index, float amount, bool extendedLaser);
+	
+	/*
+	Sets laser slam amount
+	@param index - index of the laser. 0 for blue laser, 1 for red laser
+	@param amount - the "strength" of the slam. Should be the position of the slam's tail
+	@param slowDecay - whether if the other laser's current position is 0 or if the slam's tail position is less than its head
+	slowDecay only matters when there is an incoming laser of the same index within 2 beats
+	*/
+	void SetSlamAmount(uint32 index, float amount, bool slowDecay);
+	
+	/*
+	Sets slow tilt state
+	@param tilt - should be true when rollA && rollB == -1 and 1 respectively, or when rollA && rollB == 0
+	*/
 	void SetSlowTilt(bool tilt);
 	void SetLasersActive(bool lasersActive);
 	void SetTargetRoll(float target);
@@ -52,6 +65,12 @@ public:
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
 	Vector3 GetShakeOffset();
+	
+	/*
+	Gets laser slam timer
+	@param index - index of the laser. 0 for blue laser, 1 for red laser
+	@return the slam timer for the given laser index
+	*/
 	float GetSlamTimer(uint32 index);
 
 	// Gets the spin angle for the background shader
@@ -110,7 +129,7 @@ private:
 	float m_rollIntensity;
 
 	// Controls if the camera rolls at a slow rate
-	// Activates when blue and red lasers are at the extremeties
+	// Activates when blue and red lasers are at the extremeties (-1, 1 or 0, 0)
 	bool m_slowTilt = false;
 
 	// Laser slam rolls

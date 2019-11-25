@@ -242,11 +242,6 @@ float Scoring::GetLaserPosition(uint32 index, float pos)
 		return 1.0f - pos;
 }
 
-/*
-Returns a laser object if it is within two beats
-@param index - the laser to search for (0 for blue laser, 1 for red laser)
-@return the laser object, or a nullptr if no laser was found
-*/
 LaserObjectState* Scoring::GetLaserInRange(uint32 index)
 {
 	for (auto l : m_laserSegmentQueue)

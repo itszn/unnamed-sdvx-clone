@@ -89,6 +89,12 @@ public:
 	void Tick(float deltaTime);
 
 	float GetLaserPosition(uint32 index, float pos);
+	
+	/*
+	Returns a laser object if it is within two beats
+	@param index - the laser to search for (0 for blue laser, 1 for red laser)
+	@return the laser object, or a nullptr if no laser was found
+	*/
 	LaserObjectState* GetLaserInRange(uint32 index);
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
@@ -136,6 +142,7 @@ public:
 	// Called when a laser slam was hit
 	// (Laser slam segment)
 	Delegate<LaserObjectState*> OnLaserSlamHit;
+	// Called during a laser slam
 	Delegate<LaserObjectState*> OnLaserSlam;
 	// Called when the combo counter changed
 	// (New Combo)

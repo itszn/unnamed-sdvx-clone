@@ -250,22 +250,11 @@ void Camera::SetRollIntensity(float val)
 	m_rollIntensity = val;
 }
 
-/*
-Sets slow tilt state
-@param tilt - should be true when rollA && rollB == -1 and 1 respectively, or when rollA && rollB == 0
-*/
 void Camera::SetSlowTilt(bool tilt)
 {
 	m_slowTilt = tilt;
 }
 
-/*
-Sets laser slam amount
-@param index - index of the laser. 0 for blue laser, 1 for red laser
-@param amount - the "strength" of the slam. Should be the position of the slam's tail
-@param slowDecay - whether if the other laser's current position is 0 or if the slam's tail position is less than its head
-slowDecay only matters when there is an incoming laser within 2 beats
-*/
 void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
 {
 	assert(index >= 0 && index <= 1);
@@ -273,11 +262,6 @@ void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
 	m_slamRollTimer[index] = slowDecay ? SLAM_SLOW_DECAY_TIMER : SLAM_FAST_DECAY_TIMER;
 }
 
-/*
-Gets laser slam timer
-@param index - index of the laser. 0 for blue laser, 1 for red laser
-@return the slam timer for the given laser index
-*/
 float Camera::GetSlamTimer(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
