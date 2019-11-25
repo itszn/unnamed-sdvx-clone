@@ -242,6 +242,26 @@ float Scoring::GetLaserPosition(uint32 index, float pos)
 		return 1.0f - pos;
 }
 
+/*
+Returns a laser object if it is within two beats
+@param index - the laser to search for (0 for blue laser, 1 for red laser)
+@return the laser object, or a nullptr if no laser was found
+*/
+LaserObjectState* Scoring::GetLaserInRange(uint32 index)
+{
+	for (auto l : m_laserSegmentQueue)
+	{
+		if (l->index == index && !l->prev)
+		{
+			if (l->time - m_playback->GetLastTime() <= Math::Ceil(m_playback->GetCurrentTimingPoint().beatDuration * 2))
+			{
+				return l;
+			}
+		}
+	}
+	return nullptr;
+}
+
 float Scoring::GetLaserRollOutput(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
@@ -256,16 +276,9 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	}
 	else // Check if any upcoming lasers are within 2 beats
 	{
-		for (auto l : m_laserSegmentQueue)
-		{
-			if (l->index == index && !l->prev)
-			{
-				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
-				{
-					return GetLaserPosition(index, l->points[0]);
-				}
-			}
-		}
+		LaserObjectState* laser = GetLaserInRange(index);
+		if (laser != nullptr)
+			return GetLaserPosition(index, laser->points[0]);
 	}
 	return 0.0f;
 }

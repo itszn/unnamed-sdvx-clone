@@ -123,8 +123,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedlimit = Math::Max(m_rollIntensity * 3.75f, 10.5f / 360.0f);
 	// True when the roll amount is less than the one of the laser slam roll amounts
-	bool rollCatchUp = fabsf(m_actualRoll / m_rollIntensity) < fabsf(m_slamRoll[0]) || 
-				fabsf(m_actualRoll / m_rollIntensity) < fabsf(m_slamRoll[1]);
+	bool rollCatchUp = fabsf(m_laserRoll / m_rollIntensity) < fabsf(m_slamRoll[0]) ||
+				fabsf(m_laserRoll / m_rollIntensity) < fabsf(m_slamRoll[1]);
 
 	if (pManualTiltEnabled)
 	{
@@ -148,7 +148,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	
 	for (int index = 0; index < 2; ++index)
 	{
-		if (!m_slamRollTimer[index] > 0)
+		if (m_slamRollTimer[index] == 0)
 		{
 			float slamDecayDivider = !m_slowTilt ? 1 : fabsf(m_slamRoll[index]) > SLOW_TILT_LOWER_BOUND ? 1.9f : 3.8f;
 			LerpTo(m_slamRoll[index], 0, SLAM_DECAY / slamDecayDivider);
@@ -263,26 +263,14 @@ void Camera::SetSlowTilt(bool tilt)
 Sets laser slam amount
 @param index - index of the laser. 0 for blue laser, 1 for red laser
 @param amount - the "strength" of the slam. Should be the position of the slam's tail
-@param extendedLaser - whether tha laser is extended or not
+@param slowDecay - whether if the other laser's current position is 0 or if the slam's tail position is less than its head
+slowDecay only matters when there is an incoming laser within 2 beats
 */
-void Camera::SetSlamAmount(uint32 index, float amount, bool extendedLaser)
+void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
 {
 	assert(index >= 0 && index <= 1);
 	m_slamRoll[index] = amount;
-	if (extendedLaser)
-	{
-		if (fabsf(amount) < 0.5)
-			m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
-		else
-			m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
-	}
-	else
-	{
-		if (amount == 0)
-			m_slamRollTimer[index] = SLAM_SLOW_DECAY_TIMER;
-		else
-			m_slamRollTimer[index] = SLAM_FAST_DECAY_TIMER;
-	}
+	m_slamRollTimer[index] = slowDecay ? SLAM_SLOW_DECAY_TIMER : SLAM_FAST_DECAY_TIMER;
 }
 
 /*

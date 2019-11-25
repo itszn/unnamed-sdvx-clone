@@ -1358,13 +1358,17 @@ public:
 	// Called during a laser slam
 	void OnLaserSlam(LaserObjectState* object)
 	{
-		bool extendedLaser = object->flags & LaserObjectState::flag_Extended;
 		if (!object->next)
 		{
-			if (object->index == 0)
-				m_camera.SetSlamAmount(object->index, -object->points[1], extendedLaser);
-			if (object->index == 1)
-				m_camera.SetSlamAmount(object->index, 1.f - object->points[1], extendedLaser);
+			uint8 index = object->index;
+			float head = m_scoring.GetLaserPosition(index, object->points[0]);
+			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
+			// These special cases only matter if there's an incoming laser within 2 beats
+			bool otherLaserAtZero = m_scoring.IsLaserHeld(index ^ 1, false) && 
+						(m_scoring.GetLaserRollOutput(index ^ 1) == 0);
+			bool tailLessThanHead = fabsf(tail) < fabsf(head);
+			m_camera.SetSlamAmount(index, tail, (otherLaserAtZero || tailLessThanHead) && 
+						m_scoring.GetLaserInRange(index) != nullptr);
 		}
 	}
 

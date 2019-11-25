@@ -89,6 +89,7 @@ public:
 	void Tick(float deltaTime);
 
 	float GetLaserPosition(uint32 index, float pos);
+	LaserObjectState* GetLaserInRange(uint32 index);
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
