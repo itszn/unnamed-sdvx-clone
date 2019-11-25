@@ -15,8 +15,6 @@ struct CameraShake
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
-// Controls how quickly a laser slam roll decays
-static const float SLAM_DECAY = 128;
 // Amount of time before the slam roll starts to decay
 static const float SLAM_FAST_DECAY_TIMER = 0.1;
 static const float SLAM_SLOW_DECAY_TIMER = 0.2;

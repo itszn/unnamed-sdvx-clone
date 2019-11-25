@@ -123,8 +123,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedlimit = Math::Max(m_rollIntensity * 3.75f, 10.5f / 360.0f);
 	// True when the roll amount is less than the one of the laser slam roll amounts
-	bool rollCatchUp = fabsf(m_laserRoll / m_rollIntensity) < fabsf(m_slamRoll[0]) ||
-				fabsf(m_laserRoll / m_rollIntensity) < fabsf(m_slamRoll[1]);
+	bool rollCatchUp = m_slamRoll[0] || m_slamRoll[1];
 
 	if (pManualTiltEnabled)
 	{
@@ -150,11 +149,12 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		if (m_slamRollTimer[index] == 0)
 		{
-			float slamDecayDivider = !m_slowTilt ? 1 : fabsf(m_slamRoll[index]) > SLOW_TILT_LOWER_BOUND ? 1.9f : 3.8f;
-			LerpTo(m_slamRoll[index], 0, SLAM_DECAY / slamDecayDivider);
+			m_slamRoll[index] = 0;
 		}
-			
-		m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
+		else
+		{
+			m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
+		}
 	}
 
 	//LerpTo(m_actualRoll, actualTargetRoll, 8);
