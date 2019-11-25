@@ -19,7 +19,7 @@ static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 static const float SLAM_FAST_DECAY_TIMER = 0.1;
 static const float SLAM_SLOW_DECAY_TIMER = 0.2;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
-static const float SLOW_TILT_LOWER_BOUND = 1 / 12.f;
+static const float SLOWEST_TILT_THRESHOLD = 0.1;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects

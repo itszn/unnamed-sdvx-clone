@@ -140,7 +140,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		{
 			// Roll slower when slowTilt == true
 			// Roll even slower when roll is less than 1 / 12 of max tilt
-			float speedLimitDivider = !m_slowTilt ? 1 : fabsf(m_laserRoll) > m_rollIntensity * SLOW_TILT_LOWER_BOUND ? 3.8f : 7.9f;
+			// These values are close enough, probably a frame too fast
+			float speedLimitDivider = !m_slowTilt ? 1 : fabsf(m_laserRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 			LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit / speedLimitDivider);
 		}
 	}
