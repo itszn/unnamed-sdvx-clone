@@ -148,14 +148,19 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	
 	for (int index = 0; index < 2; ++index)
 	{
-		if (m_slamRollTimer[index] == 0)
+		// Apply slam roll only for 100ms
+		if (m_slamRollType[index] == FAST_ROLL_IGNORE)
 		{
-			m_slamRoll[index] = 0;
+			if (m_slamRollTimer[index] == 0)
+				m_slamRoll[index] = 0;
 		}
-		else
+		else if (m_slamRollType[index] == SLOW_ROLL_IGNORE)
 		{
-			m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
+			if (m_slamRollTimer[index] - 0.1f <= 0)
+				m_slamRoll[index] = 0;
 		}
+
+		m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
 	}
 
 	//LerpTo(m_actualRoll, actualTargetRoll, 8);
@@ -260,7 +265,16 @@ void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
 {
 	assert(index >= 0 && index <= 1);
 	m_slamRoll[index] = amount;
-	m_slamRollTimer[index] = slowDecay ? SLAM_SLOW_DECAY_TIMER : SLAM_FAST_DECAY_TIMER;
+	if (slowDecay)
+	{
+		m_slamRollTimer[index] = SLOW_ROLL_IGNORE_TIMER;
+		m_slamRollType[index] = SLOW_ROLL_IGNORE;
+	}
+	else
+	{
+		m_slamRollTimer[index] = FAST_ROLL_IGNORE_TIMER;
+		m_slamRollType[index] = FAST_ROLL_IGNORE;
+	}
 }
 
 float Camera::GetSlamTimer(uint32 index)
