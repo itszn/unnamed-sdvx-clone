@@ -1050,14 +1050,9 @@ void Scoring::m_UpdateLasers(float deltaTime)
 					// Update target position
 					laserTargetPositions[i] = currentSegment->SamplePosition(mapTime);
 				}
-				else
-				{
-					if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
-					{
-						OnLaserSlam.Call(currentSegment);
-						currentSegment->flags |= LaserObjectState::flag_slamProcessed;
-					}
-				}
+				// Apply slam roll instead
+				else if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+					OnLaserSlam.Call(currentSegment);
 			}
 		}
 

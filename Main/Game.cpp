@@ -1358,6 +1358,7 @@ public:
 
 	void OnLaserSlam(LaserObjectState* object)
 	{
+		object->flags |= LaserObjectState::flag_slamProcessed;
 		if (!object->next)
 		{
 			uint8 index = object->index;
