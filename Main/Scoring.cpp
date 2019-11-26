@@ -1052,7 +1052,9 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				}
 				// Apply slam roll instead
 				else if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+				{
 					OnLaserSlam.Call(currentSegment);
+				}
 			}
 		}
 
