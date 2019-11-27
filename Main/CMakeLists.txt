@@ -1,29 +1,43 @@
 # Main Project
 
 # Find files used for project
-# Find miniaudio root
-file(GLOB Audio_include "Audio/*.hpp")
-file(GLOB Audio_src "Audio/*.cpp")
-file(GLOB GUI_include "GUI/*.hpp")
-file(GLOB nuk_include "nuklear/*.h")
-file(GLOB GUI_src "GUI/*.cpp" "Audio/minimp3.c")
-file(GLOB Main_src "*.cpp" "*.hpp"  "Resource.rc" 
-	${Audio_include} ${Audio_src} ${GUI_src} ${GUI_include} ${nuk_include})
 
-# Project filters
+set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
 
-source_group("Header Files\\Audio" FILES ${Audio_include})
-source_group("Source Files\\Audio" FILES ${Audio_src})
-source_group("Header Files\\nuklear" FILES ${nuk_include})
-source_group("Header Files\\GUI" FILES ${GUI_include})
-source_group("Source Files\\GUI" FILES ${GUI_src})
+file(GLOB SRC "${SRCROOT}/*.cpp" "${SRCROOT}/*.hpp")
+source_group("Source" FILES ${SRC})
+
+file(GLOB AUDIO_SRC "${SRCROOT}/Audio/*.cpp" "${SRCROOT}/Audio/*.hpp")
+source_group("Source\\Audio" FILES ${AUDIO_SRC})
+
+file(GLOB GUI_SRC "${SRCROOT}/GUI/*.cpp" "${SRCROOT}/GUI/*.hpp")
+source_group("Source\\GUI" FILES ${GUI_SRC})
+
+file(GLOB NUK_INCLUDE "${SRCROOT}/nuklear/*.h")
+source_group("Source\\nuklear" FILES ${NUK_SRC})
+
+set(MAIN_SRC ${SRC} ${AUDIO_SRC} ${GUI_SRC} ${NUK_SRC})
+
+
+file(GLOB RESOURCE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Resource.rc)
+source_group("" FILES ${RESOURCE_SRC})
+
+set(PCH_SRC ${PCHROOT}/stdafx.cpp)
+set(PCH_INC ${PCHROOT}/stdafx.h)
+set(PCH_FILES ${PCH_SRC} ${PCH_INC})
+source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${Main_src}" stdafx.cpp)
-precompiled_header_exclude("Resource.rc")
+enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
 
 include_directories(Audio GUI .)
-add_executable(usc-game ${Main_src} ${C_src})
+add_executable(usc-game ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
+target_include_directories(usc-game PRIVATE
+   ${SRCROOT}
+   ${SRCROOT}/GUI
+   ${SRCROOT}/Audio
+)
 target_compile_features(usc-game PUBLIC cxx_std_14)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
