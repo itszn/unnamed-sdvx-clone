@@ -640,15 +640,21 @@ public:
 		// i.e. as if they cancel each other out. Also, set slowTilt to true
 		if (rollA == -1 && m_camera.GetSlamAmount(1) == 1 && timerB)
 		{
-			m_camera.SetSlamAmount(1, 0.f, false);
-			rollA = 0;
-			slowTilt = true;
+			if (m_scoring.CheckLaserContinuity(0)) // I guess this is pretty hacky
+			{
+				m_camera.SetSlamAmount(1, 0.f, false);
+				rollA = 0;
+				slowTilt = true;
+			}
 		}
 		else if (rollB == 1 && m_camera.GetSlamAmount(0) == -1 && timerA)
 		{
-			m_camera.SetSlamAmount(0, 0.f, false);
-			rollB = 0;
-			slowTilt = true;
+			if (m_scoring.CheckLaserContinuity(1))
+			{
+				m_camera.SetSlamAmount(0, 0.f, false);
+				rollB = 0;
+				slowTilt = true;
+			}
 		}
 		
 		m_camera.SetTargetRoll(rollA + rollB);

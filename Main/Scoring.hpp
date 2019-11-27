@@ -96,6 +96,12 @@ public:
 	@return the laser object, or a nullptr if no laser was found
 	*/
 	LaserObjectState* GetLaserInRange(uint32 index);
+	/*
+	Checks if a laser segment ends later than the other
+	@param index - the laser to check if it's longer
+	@return true if it ends at a later point compared to the other laser, false otherwise or if neither laser is in the current laser segments
+	*/
+	bool CheckLaserContinuity(uint32 index);
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
