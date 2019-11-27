@@ -624,11 +624,12 @@ public:
 		float rollB = m_scoring.GetLaserRollOutput(1);
 		float timerA = m_camera.GetSlamTimer(0);
 		float timerB = m_camera.GetSlamTimer(1);
+		// Ignore roll if a slam roll is being applied
 		if (timerA != 0)
 			rollA = 0;
 		if (timerB != 0)
 			rollB = 0;
-			
+
 		m_camera.SetTargetRoll(rollA + rollB);
 		m_camera.SetRollIntensity(m_rollIntensity);
 		m_camera.SetSlowTilt((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0));
@@ -1364,6 +1365,7 @@ public:
 			uint8 index = object->index;
 			float head = m_scoring.GetLaserPosition(index, object->points[0]);
 			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
+			// Special cases where laser rolls are ignored for longer
 			bool otherLaserAtZero = false;
 			bool tailLessThanHead = false;
 			// These special cases only matter if there's an incoming laser of the same index within 2 beats
