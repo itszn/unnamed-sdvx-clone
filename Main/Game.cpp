@@ -624,15 +624,36 @@ public:
 		float rollB = m_scoring.GetLaserRollOutput(1);
 		float timerA = m_camera.GetSlamTimer(0);
 		float timerB = m_camera.GetSlamTimer(1);
+		bool slowTilt = false;
 		// Ignore roll if a slam roll is being applied
 		if (timerA != 0)
 			rollA = 0;
 		if (timerB != 0)
 			rollB = 0;
 
+		if ((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0))
+		{
+			slowTilt = true;
+		}
+		
+		// If a laser is at an extremity and the slam goes to the opposite extremity, act as if the roll is 0
+		// i.e. as if they cancel each other out. Also, set slowTilt to true
+		if (rollA == -1 && m_camera.GetSlamAmount(1) == 1 && timerB)
+		{
+			m_camera.SetSlamAmount(1, 0.f, false);
+			rollA = 0;
+			slowTilt = true;
+		}
+		else if (rollB == 1 && m_camera.GetSlamAmount(0) == -1 && timerA)
+		{
+			m_camera.SetSlamAmount(0, 0.f, false);
+			rollB = 0;
+			slowTilt = true;
+		}
+		
 		m_camera.SetTargetRoll(rollA + rollB);
 		m_camera.SetRollIntensity(m_rollIntensity);
-		m_camera.SetSlowTilt((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0));
+		m_camera.SetSlowTilt(slowTilt);
 
 		// Set track zoom
 

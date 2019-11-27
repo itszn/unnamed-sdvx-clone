@@ -275,6 +275,12 @@ float Camera::GetSlamTimer(uint32 index)
 	return m_slamRollTimer[index];
 }
 
+float Camera::GetSlamAmount(uint32 index)
+{
+	assert(index >= 0 && index <= 1);
+	return m_slamRoll[index];
+}
+
 Vector2 Camera::Project(const Vector3& pos)
 {
 	Vector3 cameraSpace = m_rsLast.cameraTransform.TransformPoint(pos);

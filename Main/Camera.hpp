@@ -73,6 +73,13 @@ public:
 	*/
 	float GetSlamTimer(uint32 index);
 
+	/*
+	Gets laser slam amount
+	@param index - index of the laser. 0 for blue laser, 1 for red laser
+	@return the slam amount for the given laser index
+	*/
+	float GetSlamAmount(uint32 index);
+
 	// Gets the spin angle for the background shader
 	float GetBackgroundSpin() const { return m_bgSpin; }
 
