@@ -21,7 +21,9 @@ static const float SLOW_ROLL_IGNORE_TIMER = 0.2;
 static const int FAST_ROLL_IGNORE = 0;
 static const int SLOW_ROLL_IGNORE = 1;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
-static const float SLOWEST_TILT_THRESHOLD = 0.2;
+static const float SLOWEST_TILT_THRESHOLD = 0.1f;
+static const float MAX_ROLL_ANGLE = 10.5 / 360.f;
+static const float ROLL_SPEED = 3.8;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
@@ -134,6 +136,8 @@ private:
 	// Roll force
 	float m_rollVelocity = 0.0f;
 	float m_rollIntensity;
+	// Checks if camera roll needs to roll quickly due to a new tilt value
+	bool m_rollIntensityQuickReset = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremeties (-1, 1 or 0, 0)

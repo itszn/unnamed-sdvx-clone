@@ -102,7 +102,18 @@ public:
 	@return true if it ends at a later point compared to the other laser, false otherwise or if neither laser is in the current laser segments
 	*/
 	bool CheckLaserContinuity(uint32 index);
-	float GetLaserRollOutput(uint32 index);
+	/*
+	Checks if a laser is in the current laser segment
+	@param index - the laser to check for
+	@return true if it is in the current laser segment, false otherwise
+	*/
+	bool CheckLaserInCurrentSegment(uint32 index);
+	/*
+	Checks if either laser is in the current laser segment
+	@return true if either laser is in the current laser segment, false otherwise
+	*/
+	bool CheckIfLasersInCurrentSegment();
+	float GetLaserRollOutput(uint32 index, bool checkInRange = true);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
 	bool GetFXActive();

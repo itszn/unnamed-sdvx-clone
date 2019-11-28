@@ -3,7 +3,6 @@
 #include "Application.hpp"
 #include "Track.hpp"
 
-const float ROLL_AMT = 8;
 const float ZOOM_POW = 1.65f;
 
 Camera::Camera()
@@ -121,20 +120,41 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedlimit = Math::Max(m_rollIntensity * 3.8f, 10.5f / 360.0f);
-	// Catch up to the laser slam's roll position if a slam roll is being applied (i.e. not 0)
-	bool rollCatchUp = m_slamRoll[0] || m_slamRoll[1];
+	float speedlimit = Math::Max(m_rollIntensity * ROLL_SPEED, MAX_ROLL_ANGLE);
 
 	if (pManualTiltEnabled)
 	{
 		m_laserRoll = pLaneTilt;
 	}
+	else if (rollKeep)
+	{
+		if ((m_laserRoll > 0 && m_targetLaserRoll > m_laserRoll) || (m_laserRoll < 0 && m_targetLaserRoll < m_laserRoll) || m_laserRoll == 0)
+			LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
+	}
+	else if (m_rollIntensityQuickReset)
+	{
+		if (!m_lasersActive)
+		{
+			LerpTo(m_laserRoll, 0, MAX_ROLL_ANGLE * ROLL_SPEED * 3);
+			if (m_laserRoll == 0)
+				m_rollIntensityQuickReset = false;
+		}
+		else
+		{
+			// Quickly roll to the maximum roll of the new tilt type
+			LerpTo(m_laserRoll, m_targetLaserRoll, MAX_ROLL_ANGLE * ROLL_SPEED * 3);
+			if (fabsf(m_laserRoll) < m_rollIntensity)
+				m_rollIntensityQuickReset = false;
+		}
+	}
 	else
 	{
+		// Catch up to the laser slam's roll position if a slam roll is being applied (i.e. not 0)
+		bool rollCatchUp = m_slamRoll[0] || m_slamRoll[1];
 		float speedLimitDivider = 1.f;
 		if (m_slowTilt && !rollCatchUp)
-			// Roll even slower when roll is less than 1 / 5 of max tilt
-			speedLimitDivider = fabsf(m_laserRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 6.f;
+			// Roll even slower when roll is less than 1 / 10 of tilt
+			speedLimitDivider = fabsf(m_laserRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit / speedLimitDivider);
 	}
 	
@@ -245,6 +265,8 @@ void Camera::AddRollImpulse(float dir, float strength)
 
 void Camera::SetRollIntensity(float val)
 {
+	if (rollKeep || m_rollIntensity > val)
+		m_rollIntensityQuickReset = true;
 	m_rollIntensity = val;
 }
 
@@ -342,15 +364,8 @@ void Camera::SetTargetRoll(float target)
 	}
 	else
 	{
-		if (m_targetLaserRoll == 0.0f || Math::Sign(m_targetLaserRoll) == Math::Sign(actualTarget))
-		{
-			if (m_targetLaserRoll == 0)
-				m_targetLaserRoll = actualTarget;
-			if (m_targetLaserRoll < 0 && actualTarget < m_targetLaserRoll)
-				m_targetLaserRoll = actualTarget;
-			else if (m_targetLaserRoll > 0 && actualTarget > m_targetLaserRoll)
-				m_targetLaserRoll = actualTarget;
-		}
+		if ((m_targetLaserRoll < 0 && actualTarget < m_targetLaserRoll) || (m_targetLaserRoll > 0 && actualTarget > m_targetLaserRoll) || m_targetLaserRoll == 0)
+			m_targetLaserRoll = actualTarget;
 		m_targetRollSet = true;
 	}
 	m_targetLaserRoll = Math::Min((float)fabs(m_targetLaserRoll), m_rollIntensity) * Math::Sign(m_targetLaserRoll);

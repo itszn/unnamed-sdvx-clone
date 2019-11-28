@@ -140,7 +140,7 @@ private:
 	Sample* m_fxSamples = nullptr;
 
 	// Roll intensity, default = 1
-	float m_rollIntensity = 10.5 / 360.0;
+	float m_rollIntensity = MAX_ROLL_ANGLE;
 	bool m_manualTiltEnabled = false;
 
 	// Particle effects
@@ -618,7 +618,6 @@ public:
 		else
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
-
 		// Get render state from the camera
 		float rollA = m_scoring.GetLaserRollOutput(0);
 		float rollB = m_scoring.GetLaserRollOutput(1);
@@ -632,9 +631,7 @@ public:
 			rollB = 0;
 
 		if ((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0))
-		{
 			slowTilt = true;
-		}
 		
 		// If a laser is at an extremity and the slam goes to the opposite extremity, act as if the roll is 0
 		// i.e. as if they cancel each other out. Also, set slowTilt to true
@@ -1400,7 +1397,7 @@ public:
 			{
 				uint8 otherLaserIndex = index ^ 1;
 				if (m_scoring.GetLaserRollOutput(otherLaserIndex) == 0)
-					otherLaserAtZero = m_scoring.IsLaserHeld(otherLaserIndex, false);
+					otherLaserAtZero = m_scoring.CheckLaserInCurrentSegment(otherLaserIndex);
 				tailLessThanHead = fabsf(tail) < fabsf(head);
 			}
 			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead);
@@ -1591,6 +1588,7 @@ public:
 		}
 		else if(key == EventKey::TrackRollBehaviour)
 		{
+			m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
 			m_camera.rollKeep = (data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep;
 			int32 i = (uint8)data.rollVal & 0x7;
 
@@ -1605,7 +1603,7 @@ public:
 			else
 			{
 				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
-				m_rollIntensity = (10.5 * (1.0 + 0.5 * (i - 1))) / 360.0;
+				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.7 * (i - 1));
 			}
 		}
 		else if(key == EventKey::SlamVolume)

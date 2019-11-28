@@ -269,7 +269,18 @@ bool Scoring::CheckLaserContinuity(uint32 index)
 	return false;
 }
 
-float Scoring::GetLaserRollOutput(uint32 index)
+bool Scoring::CheckLaserInCurrentSegment(uint32 index)
+{
+	assert(index >= 0 && index <= 1);
+	return m_currentLaserSegments[index];
+}
+
+bool Scoring::CheckIfLasersInCurrentSegment()
+{
+	return CheckLaserInCurrentSegment(0) || CheckLaserInCurrentSegment(1);
+}
+
+float Scoring::GetLaserRollOutput(uint32 index, bool checkInRange)
 {
 	assert(index >= 0 && index <= 1);
 	if (m_onSlam[index])
@@ -277,11 +288,11 @@ float Scoring::GetLaserRollOutput(uint32 index)
 		m_onSlam[index] = false;
 		return 0;
 	}
-	if(m_currentLaserSegments[index])
+	if (m_currentLaserSegments[index])
 	{
 		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
-	else // Check if any upcoming lasers are within 2 beats
+	else if (checkInRange) // Check if any upcoming lasers are within 2 beats
 	{
 		LaserObjectState* laser = GetLaserInRange(index);
 		if (laser != nullptr)
