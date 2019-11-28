@@ -1,20 +1,19 @@
 # Main Project
 
+set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 # Find files used for project
-file(GLOB Main_src "*.cpp" "*.hpp")
+file(GLOB SRC "${SRCROOT}/*.cpp" "${SRCROOT}/*.hpp")
+source_group("Sources" FILES ${SRC})
 
-include_directories(.)
-add_executable(Tests.Shared ${Main_src})
+set(MAIN_SRC ${SRC})
+
+add_executable(Tests.Shared ${MAIN_SRC})
 target_compile_features(Tests.Shared PUBLIC cxx_std_14)
-
+target_include_directories(Tests.Shared PRIVATE
+	${SRCROOT}
+)
 set_output_postfixes(Tests.Shared)
-
-if(MSVC)
-	# SEH and Debug
-	target_compile_options(Tests.Shared PUBLIC /EHa /Zi)
-else()
-	target_compile_options(Tests.Shared PUBLIC -rdynamic)
-endif()
 
 # Dependencies
 target_link_libraries(Tests.Shared Shared)
