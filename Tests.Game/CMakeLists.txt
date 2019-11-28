@@ -1,22 +1,32 @@
 # Game/Graphics Test Project
 
+set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
+
 # Find files used for project
-file(GLOB Main_src "*.cpp" "*.hpp")
+file(GLOB SRC "${SRCROOT}/*.cpp" "${SRCROOT}/*.hpp")
+source_group("Sources" FILES ${SRC})
+
+set(TESTS_GAME_SRC ${SRC} ${INC})
+
+set(PCH_SRC ${PCHROOT}/stdafx.cpp)
+set(PCH_INC ${PCHROOT}/stdafx.h)
+set(PCH_FILES ${PCH_SRC} ${PCH_INC})
+source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_precompiled_headers("${Main_src}" stdafx.cpp)
+enable_precompiled_headers("${TESTS_GAME_SRC}" ${PCH_SRC})
 
-add_executable(Tests.Game ${Main_src})
+add_executable(Tests.Game ${TESTS_GAME_SRC} ${PCH_FILES})
 target_compile_features(Tests.Game PUBLIC cxx_std_14)
 set_output_postfixes(Tests.Game)
-target_include_directories(Tests.Game PRIVATE .)
-
-if(MSVC)
-	# SEH and Debug
-	target_compile_options(Tests.Game PUBLIC /EHa /Zi)
-else()
-	target_compile_options(Tests.Game PUBLIC -rdynamic)
-endif()	
+target_include_directories(Tests.Game PRIVATE
+   ${SRCROOT}
+   ${PCHROOT}
+)
+target_compile_definitions(Tests.Game PRIVATE
+	SDL_MAIN_HANDLED # Because SDL rename our main to replace it by it's own
+)
 
 # Dependencies
 target_link_libraries(Tests.Game Shared)
