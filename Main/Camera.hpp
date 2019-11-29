@@ -42,6 +42,7 @@ public:
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
 	void SetRollIntensity(float val);
+	void SetRollKeep(bool rollKeep);
 	
 	/*
 	Sets laser slam amount
@@ -67,6 +68,7 @@ public:
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
 	Vector3 GetShakeOffset();
+	bool GetRollKeep();
 	
 	/*
 	Gets laser slam timer
@@ -93,8 +95,6 @@ public:
 
 	// The track being watched
 	class Track* track;
-
-	bool rollKeep = false;
 
 	// Zoom values, both can range from -1 to 1 to control the track zoom
 	float pLaneOffset = 0.0f;
@@ -135,9 +135,13 @@ private:
 	bool m_lasersActive = false;
 	// Roll force
 	float m_rollVelocity = 0.0f;
-	float m_rollIntensity;
+	float m_rollIntensity = MAX_ROLL_ANGLE;
+	float m_oldRollIntensity = MAX_ROLL_ANGLE;
 	// Checks if camera roll needs to roll quickly due to a new tilt value
-	bool m_rollIntensityQuickReset = false;
+	bool m_rollIntensityChanged = false;
+	float m_rollIntensityChangedTarget = 0.f;
+	bool m_rollKeep = false;
+	bool m_rollKeepChange = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremeties (-1, 1 or 0, 0)

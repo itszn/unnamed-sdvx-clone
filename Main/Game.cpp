@@ -655,7 +655,6 @@ public:
 		}
 		
 		m_camera.SetTargetRoll(rollA + rollB);
-		m_camera.SetRollIntensity(m_rollIntensity);
 		m_camera.SetSlowTilt(slowTilt);
 
 		// Set track zoom
@@ -1331,7 +1330,7 @@ public:
 		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
-			m_camera.GetRoll(), m_rollIntensity, m_camera.rollKeep ? "[Keep]" : ""), textPos).y;
+			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Top: %f", m_camera.pLanePitch), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Bottom: %f", m_camera.pLaneZoom), textPos).y;
@@ -1589,7 +1588,7 @@ public:
 		else if(key == EventKey::TrackRollBehaviour)
 		{
 			m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
-			m_camera.rollKeep = (data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep;
+			m_camera.SetRollKeep((data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep);
 			int32 i = (uint8)data.rollVal & 0x7;
 
 			m_manualTiltEnabled = false;
@@ -1605,6 +1604,7 @@ public:
 				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
 				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.7 * (i - 1));
 			}
+			m_camera.SetRollIntensity(m_rollIntensity);
 		}
 		else if(key == EventKey::SlamVolume)
 		{
