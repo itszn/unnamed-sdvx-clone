@@ -139,10 +139,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		if (m_rollIntensityChangedTarget == 0)
 		{
 			float rollTarget;
-			if (!m_rollKeepChange || (m_lasersActive && Math::Sign(m_laserRoll) == Math::Sign(m_targetLaserRoll)))
+			// Target new laser roll value if were only changing tilt magnitude or 
+			// if the target roll is on the same "side" of the currently kept roll
+			if (!m_rollKeepChange || Math::Sign(m_laserRoll) == Math::Sign(m_targetLaserRoll))
 				rollTarget = m_laserRoll;
 			else
 				rollTarget = m_targetLaserRoll;
+			// Get new roll value based off of the new tilt value
 			m_rollIntensityChangedTarget = (rollTarget / m_oldRollIntensity) * m_rollIntensity;
 		}
 
