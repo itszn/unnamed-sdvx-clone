@@ -1587,7 +1587,6 @@ public:
 		}
 		else if(key == EventKey::TrackRollBehaviour)
 		{
-			m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
 			m_camera.SetRollKeep((data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep);
 			int32 i = (uint8)data.rollVal & 0x7;
 
