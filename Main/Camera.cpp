@@ -272,10 +272,9 @@ void Camera::AddRollImpulse(float dir, float strength)
 void Camera::SetRollIntensity(float val)
 {
 	if (m_rollIntensity != val)
-	{
 		m_rollIntensityChanged = true;
-		m_oldRollIntensity = m_rollIntensity == 0 ? MAX_ROLL_ANGLE : m_rollIntensity;
-	}
+
+	m_oldRollIntensity = m_rollIntensity == 0 ? MAX_ROLL_ANGLE : m_rollIntensity;
 	m_rollIntensity = val;
 }
 
