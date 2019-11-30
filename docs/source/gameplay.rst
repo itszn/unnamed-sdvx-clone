@@ -130,9 +130,9 @@ hits the button when there is no note object in range on that lane.
 laser_slam_hit(slamLength, startPos, endPost, index)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 For animating laser slam hits.
-``slamLength`` is the length between slams (in ksh units). The sign on this value indicates the slam direction.
-``startPos`` is the x offset on the crit line where the slam starts
-``endPos`` is the x offset on the crit line where the slam ends
+``slamLength`` is the length between slams from -2.0 through 2.0. The sign on this value indicates the slam direction.
+``startPos`` is the x offset from the center of the crit line where the slam starts
+``endPos`` is the x offset from the center of the crit line where the slam ends
 ``index`` indicates which laser the slam was for
 
 laser_alert(isRight)

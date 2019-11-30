@@ -82,9 +82,9 @@ private:
 	// Current lane toggle status
 	bool m_hideLane = false;
 
-    // Use m-mod and what m-mod speed
+	// Use m-mod and what m-mod speed
 	SpeedMods m_speedMod;
-    float m_modSpeed = 400;
+	float m_modSpeed = 400;
 
 	// Game Canvas
 	Ref<HealthGauge> m_scoringGauge;
@@ -188,7 +188,7 @@ public:
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
-        m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
+		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 	~Game_Impl()
 	{
@@ -268,43 +268,43 @@ public:
 		m_endTime = lastObjectTime;
 		m_gaugeSampleRate = lastObjectTime / 256;
 
-        // Move this somewhere else?
-        // Set hi-speed for m-Mod
-        // Uses the "mode" of BPMs in the chart, should use median?
-        if(m_speedMod == SpeedMods::MMod)
-        {
-            Map<double, MapTime> bpmDurations;
-            const Vector<TimingPoint*>& timingPoints = m_beatmap->GetLinearTimingPoints();
-            MapTime lastMT = mapSettings.offset;
-            MapTime largestMT = -1;
-            double useBPM = -1;
-            double lastBPM = -1;
-            for (TimingPoint* tp : timingPoints)
-            {
-                double thisBPM = tp->GetBPM();
-                if (!bpmDurations.count(lastBPM))
-                {
-                    bpmDurations[lastBPM] = 0;
-                }
-                MapTime timeSinceLastTP = tp->time - lastMT;
-                bpmDurations[lastBPM] += timeSinceLastTP;
-                if (bpmDurations[lastBPM] > largestMT)
-                {
-                    useBPM = lastBPM;
-                    largestMT = bpmDurations[lastBPM];
-                }
-                lastMT = tp->time;
-                lastBPM = thisBPM;
-            }
-            bpmDurations[lastBPM] += lastObjectTime - lastMT;
+		// Move this somewhere else?
+		// Set hi-speed for m-Mod
+		// Uses the "mode" of BPMs in the chart, should use median?
+		if(m_speedMod == SpeedMods::MMod)
+		{
+			Map<double, MapTime> bpmDurations;
+			const Vector<TimingPoint*>& timingPoints = m_beatmap->GetLinearTimingPoints();
+			MapTime lastMT = mapSettings.offset;
+			MapTime largestMT = -1;
+			double useBPM = -1;
+			double lastBPM = -1;
+			for (TimingPoint* tp : timingPoints)
+			{
+				double thisBPM = tp->GetBPM();
+				if (!bpmDurations.count(lastBPM))
+				{
+					bpmDurations[lastBPM] = 0;
+				}
+				MapTime timeSinceLastTP = tp->time - lastMT;
+				bpmDurations[lastBPM] += timeSinceLastTP;
+				if (bpmDurations[lastBPM] > largestMT)
+				{
+					useBPM = lastBPM;
+					largestMT = bpmDurations[lastBPM];
+				}
+				lastMT = tp->time;
+				lastBPM = thisBPM;
+			}
+			bpmDurations[lastBPM] += lastObjectTime - lastMT;
 
-            if (bpmDurations[lastBPM] > largestMT)
-            {
-                useBPM = lastBPM;
-            }
+			if (bpmDurations[lastBPM] > largestMT)
+			{
+				useBPM = lastBPM;
+			}
 
-            m_hispeed = m_modSpeed / useBPM; 
-        }
+			m_hispeed = m_modSpeed / useBPM; 
+		}
 		else if (m_speedMod == SpeedMods::CMod)
 		{
 			m_hispeed = m_modSpeed / m_beatmap->GetLinearTimingPoints().front()->GetBPM();
@@ -952,7 +952,7 @@ public:
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
 
-        // If c-mod is used
+		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)
 		{
 			m_playback.OnTimingPointChanged.Add(this, &Game_Impl::OnTimingPointChanged);
@@ -1365,8 +1365,11 @@ public:
 
 
 		float dir = Math::Sign(object->points[1] - object->points[0]);
-		float startPos = m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f;
-		float endPos = m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f;
+
+		float width = (object->flags & LaserObjectState::flag_Extended) ? 2.0 : 1.0;
+		float startPos = m_track->trackWidth * object->points[0] * width - m_track->trackWidth * 0.5f;
+		float endPos = m_track->trackWidth * object->points[1] * width - m_track->trackWidth * 0.5f;
+
 		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
 		ex->position = Vector3(endPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
@@ -1375,14 +1378,14 @@ public:
 		lua_getglobal(m_lua, "laser_slam_hit");
 		if (lua_isfunction(m_lua, -1))
 		{
-            // Slam size and direction
-			lua_pushnumber(m_lua, object->points[1] - object->points[0]);
-            // Start position
+			// Slam size and direction
+			lua_pushnumber(m_lua, (object->points[1] - object->points[0]) * width);
+			// Start position
 			lua_pushnumber(m_lua, startPos);
-            // End position
+			// End position
 			lua_pushnumber(m_lua, endPos);
-            // Laser index
-            lua_pushnumber(m_lua, object->index);
+			// Laser index
+			lua_pushnumber(m_lua, object->index);
 			if (lua_pcall(m_lua, 4, 0, 0) != 0)
 			{
 				Logf("Lua error on calling laser_slam_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -1525,10 +1528,10 @@ public:
 	}
 
 
-    void OnTimingPointChanged(TimingPoint* tp)
-    {
-       m_hispeed = m_modSpeed / tp->GetBPM(); 
-    }
+	void OnTimingPointChanged(TimingPoint* tp)
+	{
+	   m_hispeed = m_modSpeed / tp->GetBPM(); 
+	}
 
 	void OnLaneToggleChanged(LaneHideTogglePoint* tp)
 	{
