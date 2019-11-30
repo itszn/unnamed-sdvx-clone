@@ -1365,11 +1365,32 @@ public:
 
 
 		float dir = Math::Sign(object->points[1] - object->points[0]);
-		float laserPos = m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f;
+		float startPos = m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f;
+		float endPos = m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f;
 		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
-		ex->position = Vector3(laserPos, 0.0f, -0.05f);
+		ex->position = Vector3(endPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
+
+		//call lua button_hit if it exists
+		lua_getglobal(m_lua, "laser_slam_hit");
+		if (lua_isfunction(m_lua, -1))
+		{
+            // Slam size and direction
+			lua_pushnumber(m_lua, object->points[1] - object->points[0]);
+            // Start position
+			lua_pushnumber(m_lua, startPos);
+            // End position
+			lua_pushnumber(m_lua, endPos);
+            // Laser index
+            lua_pushnumber(m_lua, object->index);
+			if (lua_pcall(m_lua, 4, 0, 0) != 0)
+			{
+				Logf("Lua error on calling laser_slam_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
+
 	void OnButtonHit(Input::Button button, ScoreHitRating rating, ObjectState* hitObject, MapTime delta)
 	{
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
