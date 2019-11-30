@@ -378,19 +378,8 @@ RenderState Camera::CreateRenderState(bool clipped)
 
 void Camera::SetTargetRoll(float target)
 {
-	float actualTarget = (target + m_slamRoll[0] + m_slamRoll[1]) * m_rollIntensity;
-	if(!m_rollKeep)
-	{
-		m_targetLaserRoll = actualTarget;
-		m_targetRollSet = true;
-	}
-	else
-	{
-		if ((m_targetLaserRoll < 0 && actualTarget < m_targetLaserRoll) || (m_targetLaserRoll > 0 && actualTarget > m_targetLaserRoll) || m_targetLaserRoll == 0)
-			m_targetLaserRoll = actualTarget;
-		m_targetRollSet = true;
-	}
-	m_targetLaserRoll = Math::Min((float)fabs(m_targetLaserRoll), m_rollIntensity) * Math::Sign(m_targetLaserRoll);
+	m_targetLaserRoll = Math::Clamp(target + m_slamRoll[0] + m_slamRoll[1], -1.f, 1.f) * m_rollIntensity;
+	m_targetRollSet = true;
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)
