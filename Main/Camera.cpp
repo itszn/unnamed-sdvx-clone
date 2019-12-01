@@ -138,7 +138,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		float rollSpeed = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 
 		if (!m_rollIntensityChangedTargetSet)
-		{	
+		{
 			if (m_rollKeepChanged)
 				m_rollIntensityChangedTarget = m_targetLaserRoll;
 			else
