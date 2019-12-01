@@ -147,6 +147,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 			m_rollIntensityChangedTargetSet = true;
 		}
 
+		if (m_lasersActive && m_rollKeepChanged)
+		{
+			// If the target roll goes to 0 or to the other side while lasers are active, roll to that position instead
+			if (Math::Sign(m_rollIntensityChangedTarget) != Math::Sign(m_targetLaserRoll))
+				m_rollIntensityChangedTarget = m_targetLaserRoll;
+		}
+
 		LerpTo(m_laserRoll, m_rollIntensityChangedTarget, rollSpeed);
 		if (m_laserRoll == m_rollIntensityChangedTarget)
 		{
