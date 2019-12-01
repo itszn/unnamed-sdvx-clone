@@ -32,7 +32,7 @@ target_include_directories(Tests PRIVATE
 )
 if(MSVC)
 	# SEH and Debug
-	target_compile_options(Tests PUBLIC /EHa /Zi)
+	target_compile_options(Tests PUBLIC /EHa)
 endif()
 
 target_link_libraries(Tests Shared)
