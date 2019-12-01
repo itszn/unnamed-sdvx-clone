@@ -42,7 +42,10 @@ endforeach( OUTPUTCONFIG CMAKE_CONFIGURATION_TYPES )
 
 set(CMAKE_MACOSX_RPATH 1)
 
+# Set folder where to find FindXXX.cmake and
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+
+# Find external dependencies
 find_package(Freetype REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(SDL2 REQUIRED)
@@ -56,6 +59,7 @@ find_package(LibArchive REQUIRED)
 #	this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Include macros
 include(${PROJECT_SOURCE_DIR}/cmake/Macros.cmake)
 
 # Sub-Project directories
@@ -66,6 +70,7 @@ add_subdirectory(Main)
 add_subdirectory(Audio)
 add_subdirectory(Beatmap)
 add_subdirectory(GUI)
+
 # Unit test projects
 add_subdirectory(Tests)
 add_subdirectory(Tests.Shared)
@@ -74,31 +79,24 @@ add_subdirectory(Tests.Game)
 # Enabled project filters on windows
 if(MSVC)
 	#updater for windows
-	add_subdirectory(updater)	
+	add_subdirectory(updater)
 
 	# Use filters in VS projects
 	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+	# Set usc-game as default target in VS
+	set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
 	
 	# Put all third party libraries in a seperate folder in the VS solution
-	#set_target_properties(jpeg PROPERTIES FOLDER "Third Party")
-	#set_target_properties(png PROPERTIES FOLDER "Third Party")
-	#set_target_properties(zlib PROPERTIES FOLDER "Third Party")
-	#set_target_properties(ogg PROPERTIES FOLDER "Third Party")
-	#set_target_properties(vorbis PROPERTIES FOLDER "Third Party")
-	#set_target_properties(freetype PROPERTIES FOLDER "Third Party")
-	#set_target_properties(archive PROPERTIES FOLDER "Third Party")
-	#set_target_properties(archive_static PROPERTIES FOLDER "Third Party")
-	#set_target_properties(SDL2 PROPERTIES FOLDER "Third Party")
 	set_target_properties(cpr PROPERTIES FOLDER "Third Party")
-	#set_target_properties(libcurl PROPERTIES FOLDER "Third Party/external")
 	set_target_properties(nanovg PROPERTIES FOLDER "Third Party")
     set_target_properties(sqlite3 PROPERTIES FOLDER "Third Party")	
-    #set_target_properties(nuklear PROPERTIES FOLDER "Third Party")
     set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")
     set_target_properties(minimp3 PROPERTIES FOLDER "Third Party")
     set_target_properties(soundtouch PROPERTIES FOLDER "Third Party")
     set_target_properties(lua PROPERTIES FOLDER "Third Party")
     set_target_properties(GLEW PROPERTIES FOLDER "Third Party")
+	
 	# My libraries in the libraries folder
 	set_target_properties(Shared PROPERTIES FOLDER Libraries)
 	set_target_properties(Graphics PROPERTIES FOLDER Libraries)
@@ -111,5 +109,4 @@ if(MSVC)
 	set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
 	set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
 
-	set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
 endif(MSVC)
