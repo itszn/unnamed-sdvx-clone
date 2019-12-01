@@ -114,13 +114,14 @@ draw_room = function(name, x, y, selected, hoverindex)
 end;
 
 draw_button = function(name, x, y, buttonWidth, hoverindex)
-    draw_button_color(name, x, y, buttonWidth, hoverindex, 40,40,40)
+    draw_button_color(name, x, y, buttonWidth, hoverindex, 40,40,40, 0,128,255)
 end
-draw_button_color = function(name, x, y, buttonWidth, hoverindex,r,g,b)
+
+draw_button_color = function(name, x, y, buttonWidth, hoverindex,r,g,b, olr,olg,olb)
     local rx = x - (buttonWidth / 2);
     local ty = y - (buttonHeight / 2);
     gfx.BeginPath();
-    gfx.FillColor(0,128,255);
+    gfx.FillColor(olr, olg, olb);
     if mouse_clipped(rx,ty, buttonWidth, buttonHeight) then
        hovered = hoverindex;
        gfx.FillColor(255,128,0);
@@ -315,6 +316,9 @@ function render_info()
     gfx.FontSize(20)
     gfx.Text(MULTIPLAYER_VERSION, xmax + 13, resY - 15)
     --gfx.Text('Server: '..'', xmax + 13, resY - 15)
+    draw_button_color("Settings", 500-60, resY-25, 120, function()
+        mpScreen.OpenSettings();
+    end, 33,33,33, 33,33,33)
     gfx.Restore()
 
 	if searchStatus then
@@ -575,7 +579,7 @@ function render_lobby(deltaTime)
                 draw_button_color("Select song", split/2 + song_x_off, 375+jacket_size, 600, function() 
                     missing_song = false
                     mpScreen.SelectSong()
-                end, 0, math.min(255, 128 + math.floor(32 * math.cos(timer * math.pi))), 0);
+                end, 0, math.min(255, 128 + math.floor(32 * math.cos(timer * math.pi))), 0, 0,128,255);
             elseif user_ready and all_ready then
                 draw_button("Start game", split/2 + song_x_off, 375+jacket_size, 600, start_game)
             elseif user_ready and not all_ready then

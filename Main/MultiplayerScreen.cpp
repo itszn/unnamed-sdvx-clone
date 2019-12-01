@@ -8,6 +8,7 @@
 #include "GameConfig.hpp"
 #include "cpr/util.h"
 #include "SongSelect.hpp"
+#include "SettingsScreen.hpp"
 #include "SkinConfig.hpp"
 
 #include <ctime>
@@ -1153,6 +1154,13 @@ int MultiplayerScreen::lSongSelect(lua_State* L)
 	return 0;
 }
 
+int MultiplayerScreen::lSettings(lua_State* L)
+{
+	m_suspended = true;
+	g_application->AddTickable(SettingsScreen::Create());
+	return 0;
+}
+
 void MultiplayerScreen::OnRestore()
 {
 	m_suspended = false;
@@ -1219,6 +1227,7 @@ bool MultiplayerScreen::AsyncFinalize()
 	m_bindable = new LuaBindable(m_lua, "mpScreen");
 	m_bindable->AddFunction("Exit", this, &MultiplayerScreen::lExit);
 	m_bindable->AddFunction("SelectSong", this, &MultiplayerScreen::lSongSelect);
+	m_bindable->AddFunction("OpenSettings", this, &MultiplayerScreen::lSettings);
 	m_bindable->AddFunction("JoinWithPassword", this, &MultiplayerScreen::lJoinWithPassword);
 	m_bindable->AddFunction("JoinWithoutPassword", this, &MultiplayerScreen::lJoinWithoutPassword);
 	m_bindable->AddFunction("NewRoomStep", this, &MultiplayerScreen::lNewRoomStep);

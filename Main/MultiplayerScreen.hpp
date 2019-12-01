@@ -58,6 +58,7 @@ public:
 
 	int lExit(struct lua_State* L);
 	int lSongSelect(struct lua_State* L);
+	int lSettings(struct lua_State* L);
 	int lNewRoomStep(struct lua_State* L);
 	int lJoinWithPassword(struct lua_State* L);
 	int lJoinWithoutPassword(struct lua_State* L);
