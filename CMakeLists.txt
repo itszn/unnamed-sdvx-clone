@@ -111,5 +111,5 @@ if(MSVC)
 	set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
 	set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
 
-  set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT usc-game)
+	set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
 endif(MSVC)
