@@ -141,7 +141,7 @@ private:
 	bool m_rollIntensityChanged = false;
 	float m_rollIntensityChangedTarget = 0.f;
 	bool m_rollKeep = false;
-	bool m_rollKeepChange = false;
+	bool m_rollKeepChanged = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremeties (-1, 1 or 0, 0)
