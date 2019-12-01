@@ -140,6 +140,7 @@ private:
 	// Checks if camera roll needs to roll quickly due to a new tilt value
 	bool m_rollIntensityChanged = false;
 	float m_rollIntensityChangedTarget = 0.f;
+	bool m_rollIntensityChangedTargetSet = false;
 	bool m_rollKeep = false;
 	bool m_rollKeepChanged = false;
 

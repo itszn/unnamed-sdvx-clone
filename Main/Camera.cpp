@@ -137,21 +137,21 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		float rollSpeedFactor = ((Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE) - 1.f) / 0.7f + 1.f;
 		float rollSpeed = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 
-		if (m_rollIntensityChangedTarget == 0)
-		{
-			
+		if (!m_rollIntensityChangedTargetSet)
+		{	
 			if (m_rollKeepChanged)
 				m_rollIntensityChangedTarget = m_targetLaserRoll;
 			else
 				// Get new roll value based off of the new tilt value
 				m_rollIntensityChangedTarget = (m_laserRoll / m_oldRollIntensity) * m_rollIntensity;
+			m_rollIntensityChangedTargetSet = true;
 		}
 
 		LerpTo(m_laserRoll, m_rollIntensityChangedTarget, rollSpeed);
 		if (m_laserRoll == m_rollIntensityChangedTarget)
 		{
 			m_rollIntensityChanged = false;
-			m_rollIntensityChangedTarget = 0.f;
+			m_rollIntensityChangedTargetSet = false;
 		}
 	}
 	else
