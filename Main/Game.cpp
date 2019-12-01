@@ -619,42 +619,33 @@ public:
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
 		// Get render state from the camera
-		float rollA = m_scoring.GetLaserRollOutput(0);
-		float rollB = m_scoring.GetLaserRollOutput(1);
-		float timerA = m_camera.GetSlamTimer(0);
-		float timerB = m_camera.GetSlamTimer(1);
+		float roll[2] = { 0.f };
+		float timer[2] = { 0.f };
 		bool slowTilt = false;
-		// Ignore roll if a slam roll is being applied
-		if (timerA != 0)
-			rollA = 0;
-		if (timerB != 0)
-			rollB = 0;
+		for (int index = 0; index < 2; ++index)
+		{
+			roll[index] = m_scoring.GetLaserRollOutput(index);
+			timer[index] = m_camera.GetSlamTimer(index);
+			if (timer[index] != 0)
+				roll[index] = 0;
 
-		if ((rollA == -1 && rollB == 1) || (rollA == 0 && rollB == 0))
+			int otherIndex = index ^ 1;
+			// Checks if roll is -1/1 and the slam of the other index is 1/-1
+			if (roll[index] == 2 * index - 1 && m_camera.GetSlamAmount(otherIndex) == 2 * otherIndex - 1 && timer[otherIndex])
+			{
+				if (m_scoring.CheckLaserContinuity(index)) // I guess this is pretty hacky
+				{
+					m_camera.SetSlamAmount(otherIndex, 0.f, false);
+					roll[index] = 0;
+					slowTilt = false;
+				}
+			}
+		}
+
+		if ((roll[0] == -1 && roll[1] == 1) || (roll[0] == 0 && roll[1] == 0))
 			slowTilt = true;
 		
-		// If a laser is at an extremity and the slam goes to the opposite extremity, act as if the roll is 0
-		// i.e. as if they cancel each other out. Also, set slowTilt to true
-		if (rollA == -1 && m_camera.GetSlamAmount(1) == 1 && timerB)
-		{
-			if (m_scoring.CheckLaserContinuity(0)) // I guess this is pretty hacky
-			{
-				m_camera.SetSlamAmount(1, 0.f, false);
-				rollA = 0;
-				slowTilt = true;
-			}
-		}
-		else if (rollB == 1 && m_camera.GetSlamAmount(0) == -1 && timerA)
-		{
-			if (m_scoring.CheckLaserContinuity(1))
-			{
-				m_camera.SetSlamAmount(0, 0.f, false);
-				rollB = 0;
-				slowTilt = true;
-			}
-		}
-		
-		m_camera.SetTargetRoll(rollA + rollB);
+		m_camera.SetTargetRoll(roll[0] + roll[1]);
 		m_camera.SetSlowTilt(slowTilt);
 
 		// Set track zoom
