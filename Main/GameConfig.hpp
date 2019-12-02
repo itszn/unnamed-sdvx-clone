@@ -38,6 +38,7 @@ DefineEnum(GameConfigKeys,
 	LaserChangeExponent,
 	GaugeDrainNormal,
 	GaugeDrainHalf,
+	SDVXIIRollKeep,
 
 	HiddenCutoff,
 	HiddenFade,

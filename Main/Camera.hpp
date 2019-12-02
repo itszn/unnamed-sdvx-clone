@@ -34,6 +34,8 @@ public:
 	Camera();
 	~Camera();
 
+	void SetRollKeepStyle(bool style);
+
 	// Updates the camera's shake effects, movement, etc.
 	void Tick(float deltaTime, class BeatmapPlayback& playback);
 
@@ -122,6 +124,13 @@ public:
 
 private:
 	float m_ClampRoll(float in) const;
+	/*
+	Determines if roll should roll towards target
+	@param target - the target roll
+	@param roll - the roll to compare against
+	@return true if roll should roll towards target, false otherwise
+	*/
+	bool m_ShouldRollDuringKeep(float target, float roll);
 	// x offset
 	float m_totalOffset = 0.0f;
 	float m_spinBounceOffset = 0.0f;
@@ -175,4 +184,5 @@ private:
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
 	Vector3 m_shakeOffset;
+	bool m_SDVXIIRollKeep = true;
 };
