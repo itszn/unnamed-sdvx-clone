@@ -7,7 +7,8 @@ enum FilterType
 {
 	All,
 	Folder,
-	Level
+	Level,
+	Collection
 };
 
 class SongFilter
@@ -52,6 +53,22 @@ public:
 
 private:
 	String m_folder;
+	MapDatabase* m_mapDatabase;
+
+};
+
+class CollectionFilter : public SongFilter
+{
+public:
+	CollectionFilter(String collection, MapDatabase* database) : m_collection(collection), m_mapDatabase(database) {}
+	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source);
+	virtual String GetName() override;
+	virtual bool IsAll() override;
+	virtual FilterType GetType() { return FilterType::Collection; }
+
+
+private:
+	String m_collection;
 	MapDatabase* m_mapDatabase;
 
 };

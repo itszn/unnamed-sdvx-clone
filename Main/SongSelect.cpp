@@ -9,6 +9,7 @@
 #include "TransitionScreen.hpp"
 #include "GameConfig.hpp"
 #include "SongFilter.hpp"
+#include "CollectionDialog.hpp"
 #include <Audio/Audio.hpp>
 #include "lua.hpp"
 #include <iterator>
@@ -740,7 +741,7 @@ public:
 	{
 		uint8 t = type == FilterType::Folder ? 0 : 1;
 		int index = 0;
-		if (type == FilterType::Folder)
+		if (type != FilterType::Level)
 		{
 			index = std::find(m_folderFilters.begin(), m_folderFilters.end(), filter) - m_folderFilters.begin();
 		}
@@ -807,6 +808,13 @@ public:
 	void SetMapDB(MapDatabase* db)
 	{
 		m_mapDB = db;
+
+		for (auto& c : db->GetCollections())
+		{
+			CollectionFilter* filter = new CollectionFilter(c, db);
+			AddFilter(filter, FilterType::Collection);
+		}
+
 		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
 		{
 			FolderFilter* filter = new FolderFilter(p, m_mapDB);
@@ -1076,6 +1084,8 @@ private:
 	lua_State* m_lua = nullptr;
 
 	MultiplayerScreen* m_multiplayer = nullptr;
+	CollectionDialog m_collDiag;
+	bool m_hasCollDiag = false;
 
 public:
 
@@ -1120,6 +1130,8 @@ public:
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 
 		m_previewParams = { "", 0, 0 };
+
+		m_hasCollDiag = m_collDiag.Init(&m_mapDatabase);
 
 		return true;
 	}
@@ -1209,7 +1221,7 @@ public:
 
     void m_OnButtonPressed(Input::Button buttonCode)
     {
-		if (m_suspended)
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1355,7 +1367,7 @@ public:
 	}
 	void m_OnMouseScroll(int32 steps)
 	{
-		if (m_suspended)
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (m_settingsWheel->Active)
@@ -1373,6 +1385,9 @@ public:
 	}
 	virtual void OnKeyPressed(int32 key)
 	{
+		if (m_collDiag.IsActive())
+			return;
+
 		if (m_settingsWheel->Active)
 		{
 			if (key == SDLK_DOWN)
@@ -1430,6 +1445,10 @@ public:
 			{
 				m_mapDatabase.StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
+			}
+			else if (key == SDLK_F1 && m_hasCollDiag)
+			{
+				m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
 			}
 			else if (key == SDLK_F2)
 			{
@@ -1502,6 +1521,10 @@ public:
 			m_previewPlayer.Update(deltaTime);
 			m_searchInput->Tick();
 			m_selectionWheel->SetSearchFieldLua(m_searchInput);
+			if (m_collDiag.IsActive())
+			{
+				m_collDiag.Tick(deltaTime);
+			}
 		}
 	}
 
@@ -1522,6 +1545,11 @@ public:
 		m_selectionWheel->Render(deltaTime);
 		m_filterSelection->Render(deltaTime);
 		m_settingsWheel->Render(deltaTime);
+
+		if (m_collDiag.IsActive())
+		{
+			m_collDiag.Render(deltaTime);
+		}
 	}
 
     void TickNavigation(float deltaTime)

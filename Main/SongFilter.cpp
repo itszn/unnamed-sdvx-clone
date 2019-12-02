@@ -50,3 +50,26 @@ bool FolderFilter::IsAll()
 {
 	return false;
 }
+
+Map<int32, SongSelectIndex> CollectionFilter::GetFiltered(const Map<int32, SongSelectIndex>& source)
+{
+	Map<int32, MapIndex*> maps = m_mapDatabase->FindMapsByCollection(m_collection);
+
+	Map<int32, SongSelectIndex> filtered;
+	for (auto m : maps)
+	{
+		SongSelectIndex index(m.second);
+		filtered.Add(index.id, index);
+	}
+	return filtered;
+}
+
+String CollectionFilter::GetName()
+{
+	return "Collection: " + m_collection;
+}
+
+bool CollectionFilter::IsAll()
+{
+	return false;
+}
