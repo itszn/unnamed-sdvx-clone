@@ -5,7 +5,7 @@
 #include "lua.hpp"
 #include "GameConfig.hpp"
 
-// XXX probably should be moved with the songselect one to its own class file?
+// XXX probably should be moved with the other ones to its own class file?
 class TextInputCollectionDialog
 {
 public:
@@ -158,6 +158,8 @@ bool CollectionDialog::Init(MapDatabase* songdb)
 
 	m_nameEntry = Ref<TextInputCollectionDialog>(new TextInputCollectionDialog());
 	m_nameEntry->OnReturn.Add(this, &CollectionDialog::m_OnEntryReturn);
+
+	m_isInitialized = true;
 	return true;
 }
 
@@ -279,6 +281,11 @@ bool CollectionDialog::IsActive()
 	return m_active;
 }
 
+bool CollectionDialog::Initialized()
+{
+	return m_isInitialized;
+}
+
 int CollectionDialog::lConfirm(lua_State* L)
 {
 	if (m_closing)
@@ -286,6 +293,7 @@ int CollectionDialog::lConfirm(lua_State* L)
 
 	String collectionName(luaL_checkstring(L, 2));
 	m_songdb->AddToCollection(collectionName, m_currentId);
+	OnCompletion.Call();
 	Close();
 	return 0;
 }
@@ -376,6 +384,7 @@ void CollectionDialog::m_OnKeyPressed(int32 key)
 void CollectionDialog::m_OnEntryReturn(const WString& name)
 {
 	m_songdb->AddToCollection(Utility::ConvertToUTF8(name), m_currentId);
+	OnCompletion.Call();
 	Close();
 }
 

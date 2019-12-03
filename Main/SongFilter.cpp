@@ -18,12 +18,12 @@ Map<int32, SongSelectIndex> LevelFilter::GetFiltered(const Map<int32, SongSelect
 	return filtered;
 }
 
-String LevelFilter::GetName()
+String LevelFilter::GetName() const
 {
 	return Utility::Sprintf("Level: %d", m_level);
 }
 
-bool LevelFilter::IsAll()
+bool LevelFilter::IsAll() const
 {
 	return false;
 }
@@ -41,12 +41,12 @@ Map<int32, SongSelectIndex> FolderFilter::GetFiltered(const Map<int32, SongSelec
 	return filtered;
 }
 
-String FolderFilter::GetName()
+String FolderFilter::GetName() const
 {
 	return "Folder: " + m_folder;
 }
 
-bool FolderFilter::IsAll()
+bool FolderFilter::IsAll() const
 {
 	return false;
 }
@@ -64,12 +64,12 @@ Map<int32, SongSelectIndex> CollectionFilter::GetFiltered(const Map<int32, SongS
 	return filtered;
 }
 
-String CollectionFilter::GetName()
+String CollectionFilter::GetName() const
 {
 	return "Collection: " + m_collection;
 }
 
-bool CollectionFilter::IsAll()
+bool CollectionFilter::IsAll() const
 {
 	return false;
 }

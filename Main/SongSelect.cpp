@@ -15,6 +15,7 @@
 #include <iterator>
 #include <mutex>
 #include <MultiplayerScreen.hpp>
+#include <unordered_set>
 
 
 class TextInput
@@ -811,17 +812,23 @@ public:
 
 		for (auto& c : db->GetCollections())
 		{
-			CollectionFilter* filter = new CollectionFilter(c, db);
+			CollectionFilter* filter = new CollectionFilter(c, m_mapDB);
 			AddFilter(filter, FilterType::Collection);
+			m_collections.insert(c);
 		}
 
 		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
 		{
 			FolderFilter* filter = new FolderFilter(p, m_mapDB);
 			if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
+			{
 				AddFilter(filter, FilterType::Folder);
+				m_folders.insert(p);
+			}
 			else
+			{
 				delete filter;
+			}
 		}
 		m_SetLuaTable();
 	}
@@ -837,6 +844,49 @@ public:
 			g_gameWindow->ShowMessageBox("Lua Error on set_mode", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
+	}
+
+	// Check if any new folders or collections should be added and add them
+	void UpdateFilters()
+	{
+		for (std::string c : m_mapDB->GetCollections())
+		{
+			if (m_collections.find(c) == m_collections.end())
+			{
+				CollectionFilter* filter = new CollectionFilter(c, m_mapDB);
+				AddFilter(filter, FilterType::Collection);
+				m_collections.insert(c);
+			}
+		}
+
+		for (std::string p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
+		{
+			if (m_folders.find(p) == m_folders.end())
+			{
+				FolderFilter* filter = new FolderFilter(p, m_mapDB);
+				if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
+				{
+					AddFilter(filter, FilterType::Folder);
+					m_folders.insert(p);
+				}
+				else
+				{
+					delete filter;
+				}
+			}
+		}
+
+		//sort the new folderfilter vector
+		m_folderFilters.Sort([](const SongFilter* a, const SongFilter* b)
+		{
+			return a->GetName().compare(b->GetName()) < 0;
+		}
+		);
+
+		//set the selection index to match the selected filter
+		m_currentFolderSelection = std::find(m_folderFilters.begin(), m_folderFilters.end(), m_currentFilters[0]) - m_folderFilters.begin();
+		m_SetLuaTable();
+		SelectFilter(m_currentFilters[0], FilterType::Folder);
 	}
 
 	String GetStatusText()
@@ -884,6 +934,17 @@ private:
 			lua_settable(m_lua, -3);
 		}
 		lua_setglobal(m_lua, "filters");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+
 	}
 
 	Ref<SelectionWheel> m_selectionWheel;
@@ -895,6 +956,8 @@ private:
 	SongFilter* m_currentFilters[2] = { nullptr };
 	MapDatabase* m_mapDB;
 	lua_State* m_lua = nullptr;
+	std::unordered_set<std::string> m_folders;
+	std::unordered_set<std::string> m_collections;
 };
 
 class GameSettingsWheel{
@@ -1133,6 +1196,11 @@ public:
 
 		m_hasCollDiag = m_collDiag.Init(&m_mapDatabase);
 
+		if (m_hasCollDiag)
+		{
+			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
+		}
+
 		return true;
 	}
 	~SongSelect_Impl()
@@ -1145,6 +1213,11 @@ public:
 
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
+	}
+
+	void m_OnSongAddedToCollection()
+	{
+		m_filterSelection->UpdateFilters();
 	}
 
 	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
@@ -1627,6 +1700,7 @@ public:
 		m_previewPlayer.Restore();
 		m_mapDatabase.StartSearching();
 		OnSearchTermChanged(m_searchInput->input);
+		m_filterSelection->UpdateFilters();
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
 			m_settingsWheel->ClearSettings();

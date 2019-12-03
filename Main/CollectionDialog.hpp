@@ -19,6 +19,9 @@ public:
 	//Call to start closing the dialog
 	void Close();
 	bool IsActive();
+	bool Initialized();
+
+	Delegate<> OnCompletion;
 
 private:
 	int lConfirm(struct lua_State* L);
@@ -44,6 +47,6 @@ private:
 	float m_sensMult = 1.0f;
 	bool m_active = false;
 	bool m_closing = false;
-
+	bool m_isInitialized = false;
 	bool m_shouldChangeState = false;
 };

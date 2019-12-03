@@ -18,9 +18,9 @@ public:
 	~SongFilter() = default;
 
 	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) { return source; }
-	virtual String GetName() { return m_name; }
-	virtual bool IsAll() { return true; }
-	virtual FilterType GetType() { return FilterType::All; }
+	virtual String GetName() const { return m_name; }
+	virtual bool IsAll() const { return true; }
+	virtual FilterType GetType() const { return FilterType::All; }
 
 private:
 	String m_name = "All";
@@ -32,9 +32,9 @@ class LevelFilter : public SongFilter
 public:
 	LevelFilter(uint16 level) : m_level(level) {}
 	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) override;
-	virtual String GetName() override;
-	virtual bool IsAll() override;
-	virtual FilterType GetType() { return FilterType::Level; }
+	virtual String GetName() const override;
+	virtual bool IsAll() const override;
+	virtual FilterType GetType() const { return FilterType::Level; }
 
 
 private:
@@ -46,9 +46,9 @@ class FolderFilter : public SongFilter
 public:
 	FolderFilter(String folder, MapDatabase* database) : m_folder(folder), m_mapDatabase(database) {}
 	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source);
-	virtual String GetName() override;
-	virtual bool IsAll() override;
-	virtual FilterType GetType() { return FilterType::Folder; }
+	virtual String GetName() const override;
+	virtual bool IsAll() const override;
+	virtual FilterType GetType() const { return FilterType::Folder; }
 
 
 private:
@@ -62,9 +62,9 @@ class CollectionFilter : public SongFilter
 public:
 	CollectionFilter(String collection, MapDatabase* database) : m_collection(collection), m_mapDatabase(database) {}
 	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source);
-	virtual String GetName() override;
-	virtual bool IsAll() override;
-	virtual FilterType GetType() { return FilterType::Collection; }
+	virtual String GetName() const override;
+	virtual bool IsAll() const override;
+	virtual FilterType GetType() const { return FilterType::Collection; }
 
 
 private:
