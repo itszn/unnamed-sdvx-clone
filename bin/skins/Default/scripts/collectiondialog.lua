@@ -4,6 +4,7 @@ selectedIndex = 0
 resx, resy = game.GetResolution()
 width = 500
 titleText = ""
+scale = 1.0
 
 function make_option(name)
     return function()
@@ -34,6 +35,8 @@ function open()
     xmi,ymi,xma,yma = gfx.TextBounds(0,0, titleText)
     width = xma - xmi + 50
     width = math.max(500, width)
+    scale = math.min(resy / 1280, 1.0)
+    scale = math.min(scale, resx / width)
 end
 
 function render(deltaTime)
@@ -43,7 +46,7 @@ function render(deltaTime)
         yscale = math.min(yscale + deltaTime * 4, 1.0)
     end
     gfx.Translate(resx / 2, resy / 2)
-    gfx.Scale(1.0, yscale)
+    gfx.Scale(scale, yscale * scale)
     gfx.BeginPath()
     gfx.Rect(-width/2, -250, width, 500)
     gfx.FillColor(50,50,50)
@@ -66,14 +69,18 @@ function render(deltaTime)
         gfx.FillColor(255,255,255)
         gfx.Text(dialog.newName, 0, 0)
     else
+        local yshift = 20
         gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_LEFT)
         for i, option in ipairs(options) do
-            gfx.Text(option[1], 40 - width/2, 60 * ((i-1) - selectedIndex))
+            local y = yshift + 60 * ((i-1) - selectedIndex)
+            if y > -190 and y < 220 then 
+                gfx.Text(option[1], 40 - width/2, y)
+            end
         end
         gfx.BeginPath()
-        gfx.MoveTo(20 - width/2, -10)
-        gfx.LineTo(30 - width/2, 0)
-        gfx.LineTo(20 - width/2, 10)
+        gfx.MoveTo(20 - width/2, -10 + yshift)
+        gfx.LineTo(30 - width/2, 0 + yshift)
+        gfx.LineTo(20 - width/2, 10 + yshift)
         gfx.FillColor(255,255,255)
         gfx.Fill()
     end

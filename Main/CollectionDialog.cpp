@@ -111,7 +111,6 @@ public:
 
 CollectionDialog::~CollectionDialog()
 {
-	m_nameEntry->OnReturn.RemoveAll(this);
 	g_input.OnButtonPressed.RemoveAll(this);
 	g_gameWindow->OnKeyPressed.RemoveAll(this);
 	if (m_lua)
@@ -281,7 +280,7 @@ bool CollectionDialog::IsActive()
 	return m_active;
 }
 
-bool CollectionDialog::Initialized()
+bool CollectionDialog::IsInitialized()
 {
 	return m_isInitialized;
 }

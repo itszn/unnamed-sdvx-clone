@@ -1292,8 +1292,8 @@ public:
 	}
 
 
-    void m_OnButtonPressed(Input::Button buttonCode)
-    {
+	void m_OnButtonPressed(Input::Button buttonCode)
+	{
 		if (m_suspended || m_collDiag.IsActive())
 			return;
 
@@ -1302,8 +1302,8 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-	    if(buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
-        {
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
+		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			MapIndex* map = m_selectionWheel->GetSelection();
 			if (map)
@@ -1333,73 +1333,91 @@ public:
 				TransitionScreen* transistion = TransitionScreen::Create(game);
 				g_application->AddTickable(transistion);
 			}
-        }
+		}
 		else
 		{
-			switch (buttonCode)
+			if (m_settingsWheel->Active)
 			{
-			case Input::Button::BT_0:
-			case Input::Button::BT_1:
-			case Input::Button::BT_2:
-			case Input::Button::BT_3:
-				if (m_settingsWheel->Active)
+				switch (buttonCode)
+				{
+				case Input::Button::BT_0:
+				case Input::Button::BT_1:
+				case Input::Button::BT_2:
+				case Input::Button::BT_3:
 					m_settingsWheel->ChangeSetting();
-				break;
-
-			case Input::Button::FX_1:
-				if (!m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_0) && !m_filterSelection->Active)
-				{
-					m_settingsWheel->Active = true;
-				}
-				else if (m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_0))
-				{
+					break;
+				case Input::Button::FX_0:
+					if (g_input.GetButton(Input::Button::FX_1))
+						m_settingsWheel->Active = false;
+					break;
+				case Input::Button::FX_1:
+					if (g_input.GetButton(Input::Button::FX_0))
+						m_settingsWheel->Active = false;
+					break;
+				case Input::Button::BT_S:
+				case Input::Button::Back:
 					m_settingsWheel->Active = false;
+					break;
+				default:
+					break;
 				}
-				break;
-			case Input::Button::FX_0:
-				if (!m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_1) && !m_filterSelection->Active)
+			}
+			else if (m_filterSelection->Active)
+			{
+				switch (buttonCode)
 				{
-					m_settingsWheel->Active = true;
-				}
-				else if (m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_1))
-				{
-					m_settingsWheel->Active = false;
-				}
-				break;
-			case Input::Button::BT_S:
-				if (m_filterSelection->Active)
-				{
+				case Input::Button::BT_S:
 					m_filterSelection->ToggleSelectionMode();
-				}
-				if (m_settingsWheel->Active)
-				{
-					m_settingsWheel->Active = false;
-				}
-				break;
-			case Input::Button::Back:
-				if (m_filterSelection->Active)
-				{
+					break;
+				case Input::Button::Back:
 					m_filterSelection->Active = false;
+					break;
+				default:
+					break;
 				}
-				else if (m_settingsWheel->Active)
+			}
+			else
+			{
+				switch (buttonCode)
 				{
-					m_settingsWheel->Active = false;
-				}
-				else
-				{
+				case Input::Button::BT_1:
+					if (g_input.GetButton(Input::Button::BT_2))
+						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+					break;
+				case Input::Button::BT_2:
+					if (g_input.GetButton(Input::Button::BT_1))
+						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+					break;
+
+				case Input::Button::FX_1:
+					if (g_input.GetButton(Input::Button::FX_0))
+					{
+						m_settingsWheel->Active = true;
+					}
+					break;
+				case Input::Button::FX_0:
+					if (g_input.GetButton(Input::Button::FX_1))
+					{
+						m_settingsWheel->Active = true;
+					}
+					break;
+				case Input::Button::BT_S:
+					break;
+				case Input::Button::Back:
 					m_suspended = true;
 					g_application->RemoveTickable(this);
+					break;
+				default:
+					break;
 				}
-				break;
-			default:
-				break;
-			}
 
+			}
 		}
-    }
+	}
+
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
-		if (m_suspended)
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)

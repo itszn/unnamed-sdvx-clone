@@ -11,6 +11,7 @@
 #include "lua.hpp"
 #include "Shared/Time.hpp"
 #include "json.hpp"
+#include "CollectionDialog.hpp"
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -55,6 +56,8 @@ private:
 	Texture m_jacketImage;
 	Texture m_graphTex;
 	GameFlags m_flags;
+	CollectionDialog m_collDiag;
+	DifficultyIndex m_diffId;
 
 	void m_PushStringToTable(const char* name, String data)
 	{
@@ -76,10 +79,22 @@ private:
 	}
 	void m_OnButtonPressed(Input::Button button)
 	{
+		if (m_collDiag.IsActive())
+			return;
+
 		if ((button == Input::Button::BT_S || button == Input::Button::Back) && m_restored && !m_removed)
 		{
 			g_application->RemoveTickable(this);
 			m_removed = true;
+		}
+
+		if ((button == Input::Button::BT_1 && g_input.GetButton(Input::Button::BT_2)) ||
+			(button == Input::Button::BT_2 && g_input.GetButton(Input::Button::BT_1)))
+		{
+			if (m_collDiag.IsInitialized())
+			{
+				m_collDiag.Open(m_diffId);
+			}
 		}
 
 		// Switch between shown scores
@@ -207,6 +222,7 @@ public:
 		m_autoplay = scoring.autoplay;
 		m_highScores = game->GetDifficultyIndex().scores;
 		m_autoButtons = scoring.autoplayButtons;
+		m_diffId = game->GetDifficultyIndex();
 
 		// XXX add data for multi
 		m_gaugeSamples = game->GetGaugeSamples();
@@ -414,7 +430,7 @@ public:
 			return false;
 
 		updateLuaData();
-
+		m_collDiag.Init(&m_mapDatabase);
 		g_input.OnButtonPressed.Add(this, &ScoreScreen_Impl::m_OnButtonPressed);
 
 		return true;
@@ -427,6 +443,9 @@ public:
 
 	virtual void OnKeyPressed(int32 key) override
 	{
+		if (m_collDiag.IsActive())
+			return;
+
 		if(key == SDLK_RETURN && !m_removed)
 		{
 			g_application->RemoveTickable(this);
@@ -456,6 +475,10 @@ public:
 			assert(false);
 		}
 		m_hasRendered = true;
+		if (m_collDiag.IsActive())
+		{
+			m_collDiag.Render(deltaTime);
+		}
 	}
 	virtual void Tick(float deltaTime) override
 	{
@@ -488,6 +511,11 @@ public:
 
 			loadScoresFromMultiplayer();
 			updateLuaData();
+		}
+
+		if (m_collDiag.IsActive())
+		{
+			m_collDiag.Tick(deltaTime);
 		}
 	}
 

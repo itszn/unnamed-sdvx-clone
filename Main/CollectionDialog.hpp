@@ -19,7 +19,7 @@ public:
 	//Call to start closing the dialog
 	void Close();
 	bool IsActive();
-	bool Initialized();
+	bool IsInitialized();
 
 	Delegate<> OnCompletion;
 
