@@ -198,6 +198,8 @@ void CollectionDialog::Render(float deltaTime)
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
 		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+		Close();
+		m_Finish();
 	}
 	else
 	{
@@ -242,12 +244,24 @@ void CollectionDialog::Open(const DifficultyIndex& song)
 
 	lua_pushstring(m_lua, "collections");
 	lua_newtable(m_lua);
+
+	auto existing = m_songdb->GetCollectionsForMap(m_currentId);
 	int i = 1;
-	for (auto& name : m_songdb->GetCollections())
+	for (String name : m_songdb->GetCollections())
 	{
 		lua_pushinteger(m_lua, i++);
-		lua_pushstring(m_lua, *name);
+		{
+			lua_newtable(m_lua);
+			lua_pushstring(m_lua, "name");
+			lua_pushstring(m_lua, *name);
+			lua_settable(m_lua, -3);
+
+			lua_pushstring(m_lua, "exists");
+			lua_pushboolean(m_lua, existing.Contains(name));
+			lua_settable(m_lua, -3);
+		}
 		lua_settable(m_lua, -3);
+
 	}
 	lua_settable(m_lua, -3);
 
@@ -291,7 +305,7 @@ int CollectionDialog::lConfirm(lua_State* L)
 		return 0;
 
 	String collectionName(luaL_checkstring(L, 2));
-	m_songdb->AddToCollection(collectionName, m_currentId);
+	m_songdb->AddOrRemoveToCollection(collectionName, m_currentId);
 	OnCompletion.Call();
 	Close();
 	return 0;
@@ -382,7 +396,7 @@ void CollectionDialog::m_OnKeyPressed(int32 key)
 
 void CollectionDialog::m_OnEntryReturn(const WString& name)
 {
-	m_songdb->AddToCollection(Utility::ConvertToUTF8(name), m_currentId);
+	m_songdb->AddOrRemoveToCollection(Utility::ConvertToUTF8(name), m_currentId);
 	OnCompletion.Call();
 	Close();
 }

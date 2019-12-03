@@ -293,6 +293,17 @@ public:
 		return res;
 	}
 
+	Vector<String> GetCollectionsForMap(int32 mapid)
+	{
+		Vector<String> res;
+		DBStatement search = m_database.Query(Utility::Sprintf("SELECT DISTINCT collection FROM collections WHERE mapid==%d", mapid));
+		while (search.StepRow())
+		{
+			res.Add(search.StringColumn(0));
+		}
+		return res;
+	}
+
 	Map<int32, MapIndex*> FindMapsByCollection(const String& collection)
 	{
 		String stmt = Utility::Sprintf("SELECT mapid FROM Collections WHERE collection==\"%s\"", collection);
@@ -565,7 +576,7 @@ public:
 
 	}
 
-	void AddToCollection(const String& name, int32 mapid)
+	void AddOrRemoveToCollection(const String& name, int32 mapid)
 	{
 		DBStatement addColl = m_database.Query("INSERT INTO Collections(mapid,collection) VALUES(?,?)");
 		m_database.Exec("BEGIN");
@@ -573,10 +584,15 @@ public:
 		addColl.BindInt(1, mapid);
 		addColl.BindString(2, name);
 
-		addColl.Step();
+		bool result = addColl.Step();
 		addColl.Rewind();
 
 		m_database.Exec("END");
+
+		if (!result) //Failed to add, try to remove
+		{
+			m_database.Exec(Utility::Sprintf("DELETE FROM collections WHERE mapid==%d AND collection==\"%s\"", mapid, name));
+		}
 	}
 
 	DifficultyIndex* GetRandomDiff()
@@ -944,9 +960,13 @@ Vector<String> MapDatabase::GetCollections()
 {
 	return m_impl->GetCollections();
 }
-void MapDatabase::AddToCollection(const String& name, int32 mapid)
+Vector<String> MapDatabase::GetCollectionsForMap(int32 mapid)
 {
-	m_impl->AddToCollection(name, mapid);
+	return m_impl->GetCollectionsForMap(mapid);
+}
+void MapDatabase::AddOrRemoveToCollection(const String& name, int32 mapid)
+{
+	m_impl->AddOrRemoveToCollection(name, mapid);
 }
 void MapDatabase::AddSearchPath(const String& path)
 {

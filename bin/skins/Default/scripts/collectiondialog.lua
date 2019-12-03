@@ -20,14 +20,16 @@ function open()
     
     index = 1
     if #dialog.collections == 0 then
-        options[index] = {"Favourites", make_option("Favourites")}
+        options[index] = {"Favourites", make_option("Favourites"), {255,255,255}}
     end
     
-    for i,name in ipairs(dialog.collections) do
-        options[i] = {name, make_option(name)}
+    for i,value in ipairs(dialog.collections) do
+        options[i] = {value.name, make_option(value.name), {255,255,255}}
+        if value.exists then options[i][3] = {255,0,0} end
+        
     end
-    table.insert(options, {"New Collection", menu.ChangeState})
-    table.insert(options, {"Cancel", menu.Cancel})
+    table.insert(options, {"New Collection", menu.ChangeState, {0, 255, 128}})
+    table.insert(options, {"Cancel", menu.Cancel, {200,200,200}})
     
     gfx.FontFace("fallback")
     gfx.FontSize(50)
@@ -74,6 +76,7 @@ function render(deltaTime)
         for i, option in ipairs(options) do
             local y = yshift + 60 * ((i-1) - selectedIndex)
             if y > -190 and y < 220 then 
+                gfx.FillColor(option[3][1], option[3][2], option[3][3])
                 gfx.Text(option[1], 40 - width/2, y)
             end
         end
