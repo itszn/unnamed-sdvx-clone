@@ -1406,7 +1406,10 @@ public:
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
 
-		// The color effect in the button lane
+		// Show crit color on idle if a hold not is hit
+		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
+			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
+
 		m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 
 		if (st != nullptr && st->hasSample)
