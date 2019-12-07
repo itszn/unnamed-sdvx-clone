@@ -12,14 +12,14 @@ source_group("Sources" FILES ${SRC})
 
 # Platform specific source files
 if(WIN32)
-	file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
+    file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
 else(WIN32)
-	file(GLOB UNIX_SRC "${SRCROOT}/Unix/*.cpp")
-	if(APPLE)
-		file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/MacOS/*.cpp")
-	else(APPLE)
-		file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/Linux/*.cpp")
-	endif(APPLE)
+    file(GLOB UNIX_SRC "${SRCROOT}/Unix/*.cpp")
+    if(APPLE)
+        file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/MacOS/*.cpp")
+    else(APPLE)
+        file(GLOB PLATFORM_SRC ${UNIX_SRC} "${SRCROOT}/Linux/*.cpp")
+    endif(APPLE)
 endif(WIN32)
 source_group("Sources\\Platform" FILES ${PLATFORM_SRC})
 
@@ -39,9 +39,9 @@ add_library(Shared ${SHARED_SRC} ${PCH_FILES})
 target_compile_features(Shared PUBLIC cxx_std_14)
 target_include_directories(Shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Shared PRIVATE
-	${SRCROOT}
-	${INCROOT}
-	${PCHROOT}
+    ${SRCROOT}
+    ${INCROOT}
+    ${PCHROOT}
 )
 
 target_link_libraries(Shared lua)

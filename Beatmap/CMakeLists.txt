@@ -25,9 +25,9 @@ add_library(Beatmap ${BEATMAP_SRC} ${PCH_FILES})
 target_compile_features(Beatmap PUBLIC cxx_std_14)
 target_include_directories(Beatmap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Beatmap PRIVATE
-	${INCROOT}
-	${SRCROOT}
-	${PCHROOT}
+    ${INCROOT}
+    ${SRCROOT}
+    ${PCHROOT}
 )
 
 # Dependencies

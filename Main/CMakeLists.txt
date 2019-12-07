@@ -34,9 +34,9 @@ enable_precompiled_headers("${MAIN_SRC}" ${PCH_SRC})
 include_directories(Audio GUI .)
 add_executable(usc-game ${MAIN_SRC} ${RESOURCE_SRC} ${PCH_FILES})
 target_include_directories(usc-game PRIVATE
-   ${SRCROOT}
-   ${SRCROOT}/GUI
-   ${SRCROOT}/Audio
+    ${SRCROOT}
+    ${SRCROOT}/GUI
+    ${SRCROOT}/Audio
 )
 target_compile_features(usc-game PUBLIC cxx_std_14)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
@@ -48,8 +48,8 @@ set_output_postfixes(usc-game)
 
 # Target subsystem on windows, set debugging folder
 if(MSVC)
-   set_target_properties(usc-game PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
-   set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+    set_target_properties(usc-game PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
+    set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 endif(MSVC)
 
 # Dependencies

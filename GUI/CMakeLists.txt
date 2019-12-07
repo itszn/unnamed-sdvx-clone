@@ -25,9 +25,9 @@ add_library(GUI ${GUI_SRC} ${PCH_FILES})
 target_compile_features(GUI PUBLIC cxx_std_14)
 target_include_directories(GUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(GUI PRIVATE
-	${SRCROOT}
-	${INCROOT}
-	${PCHROOT}
+    ${SRCROOT}
+    ${INCROOT}
+    ${PCHROOT}
 )
 
 # Dependencies

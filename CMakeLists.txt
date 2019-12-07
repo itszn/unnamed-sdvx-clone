@@ -5,13 +5,11 @@ cmake_minimum_required(VERSION 3.8)
 #set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg target triplet (ex. x86-windows)")
 
 if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-      CACHE STRING "")
-      
-  message("Found vcpkg root '$ENV{VCPKG_ROOT}'")
-  
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "")
+    message("Found vcpkg root '$ENV{VCPKG_ROOT}'")
 elseif(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-  message(FATAL_ERROR "Could not find vcpkg root")
+    message(FATAL_ERROR "Could not find vcpkg root")
 endif()
 
 
@@ -56,7 +54,7 @@ find_package(OGG REQUIRED)
 find_package(LibArchive REQUIRED)
 
 # All projects use unicode define
-#	this is mainly for windows functions either being defined to call A or W prefixed functions
+# this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
 # Include macros
@@ -78,35 +76,35 @@ add_subdirectory(Tests.Game)
 
 # Enabled project filters on windows
 if(MSVC)
-	#updater for windows
-	add_subdirectory(updater)
+    #updater for windows
+    add_subdirectory(updater)
 
-	# Use filters in VS projects
-	set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+    # Use filters in VS projects
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-	# Set usc-game as default target in VS
-	set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
-	
-	# Put all third party libraries in a seperate folder in the VS solution
-	set_target_properties(cpr PROPERTIES FOLDER "Third Party")
-	set_target_properties(nanovg PROPERTIES FOLDER "Third Party")
-    set_target_properties(sqlite3 PROPERTIES FOLDER "Third Party")	
+    # Set usc-game as default target in VS
+    set_directory_properties(PROPERTY VS_STARTUP_PROJECT usc-game)
+
+    # Put all third party libraries in a seperate folder in the VS solution
+    set_target_properties(cpr PROPERTIES FOLDER "Third Party")
+    set_target_properties(nanovg PROPERTIES FOLDER "Third Party")
+    set_target_properties(sqlite3 PROPERTIES FOLDER "Third Party")
     set_target_properties(discord-rpc PROPERTIES FOLDER "Third Party")
     set_target_properties(minimp3 PROPERTIES FOLDER "Third Party")
     set_target_properties(soundtouch PROPERTIES FOLDER "Third Party")
     set_target_properties(lua PROPERTIES FOLDER "Third Party")
     set_target_properties(GLEW PROPERTIES FOLDER "Third Party")
-	
-	# My libraries in the libraries folder
-	set_target_properties(Shared PROPERTIES FOLDER Libraries)
-	set_target_properties(Graphics PROPERTIES FOLDER Libraries)
-	set_target_properties(Audio PROPERTIES FOLDER Libraries)
-	set_target_properties(Beatmap PROPERTIES FOLDER Libraries)
-	set_target_properties(GUI PROPERTIES FOLDER Libraries)
-	
-	# Unit tests
-	set_target_properties(Tests PROPERTIES FOLDER "Tests")
-	set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
-	set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
+
+    # My libraries in the libraries folder
+    set_target_properties(Shared PROPERTIES FOLDER Libraries)
+    set_target_properties(Graphics PROPERTIES FOLDER Libraries)
+    set_target_properties(Audio PROPERTIES FOLDER Libraries)
+    set_target_properties(Beatmap PROPERTIES FOLDER Libraries)
+    set_target_properties(GUI PROPERTIES FOLDER Libraries)
+
+    # Unit tests
+    set_target_properties(Tests PROPERTIES FOLDER "Tests")
+    set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
+    set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
 
 endif(MSVC)

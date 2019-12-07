@@ -26,12 +26,12 @@ target_compile_features(Tests PUBLIC cxx_std_14)
 # Public include paths for library
 target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Tests PRIVATE
-	${SRCROOT}
-	${INCROOT}
-	${PCHROOT}
+    ${SRCROOT}
+    ${INCROOT}
+    ${PCHROOT}
 )
 if(MSVC)
-	target_compile_options(Tests PUBLIC /EHa) # SEH
+    target_compile_options(Tests PUBLIC /EHa) # SEH
 endif()
 
 target_link_libraries(Tests Shared)

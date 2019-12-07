@@ -25,9 +25,9 @@ add_library(Graphics ${GRAPHICS_SRC} ${PCH_FILES})
 target_compile_features(Graphics PUBLIC cxx_std_14)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Graphics PRIVATE
-	${INCROOT}
-	${SRCROOT}
-	${PCHROOT}
+    ${INCROOT}
+    ${SRCROOT}
+    ${PCHROOT}
 )
 
 # Dependencies
@@ -44,14 +44,14 @@ target_link_libraries(Graphics ${JPEG_LIBRARIES})
 target_link_libraries(Graphics ${PNG_LIBRARIES})
 target_link_libraries(Graphics GLEW)
 if(UNIX)
-	target_link_libraries(Graphics pthread) 
-	target_link_libraries(Graphics dl)
-	if(APPLE)
-		find_library(OPEN_GL OpenGL)
-		target_link_libraries(Graphics ${OPEN_GL})
-	else(APPLE)
-		target_link_libraries(Graphics GL)
-		find_package(X11 REQUIRED)
-		include_directories(${X11_INCLUDE_DIR})
-	endif(APPLE)
+    target_link_libraries(Graphics pthread) 
+    target_link_libraries(Graphics dl)
+    if(APPLE)
+        find_library(OPEN_GL OpenGL)
+        target_link_libraries(Graphics ${OPEN_GL})
+    else(APPLE)
+        target_link_libraries(Graphics GL)
+        find_package(X11 REQUIRED)
+        include_directories(${X11_INCLUDE_DIR})
+    endif(APPLE)
 endif(UNIX)

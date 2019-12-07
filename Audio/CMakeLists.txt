@@ -12,9 +12,9 @@ source_group("Sources" FILES ${SRC})
 
 # Platform specific source files
 if(WIN32)
-	file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
+    file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
 else()
-	file(GLOB PLATFORM_SRC "${SRCROOT}/Unix/*.cpp")
+    file(GLOB PLATFORM_SRC "${SRCROOT}/Unix/*.cpp")
 endif(WIN32)
 source_group("Sources\\Platform" FILES ${PLATFORM_SRC})
 
@@ -32,9 +32,9 @@ add_library(Audio ${AUDIO_SRC} ${PCH_FILES})
 target_compile_features(Audio PUBLIC cxx_std_14)
 target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Audio PRIVATE
-	${SRCROOT}
-	${INCROOT}
-	${PCHROOT}
+    ${SRCROOT}
+    ${INCROOT}
+    ${PCHROOT}
 )
 
 # Dependencies

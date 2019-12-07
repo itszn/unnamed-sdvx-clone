@@ -21,11 +21,11 @@ add_executable(Tests.Game ${TESTS_GAME_SRC} ${PCH_FILES})
 target_compile_features(Tests.Game PUBLIC cxx_std_14)
 set_output_postfixes(Tests.Game)
 target_include_directories(Tests.Game PRIVATE
-   ${SRCROOT}
-   ${PCHROOT}
+    ${SRCROOT}
+    ${PCHROOT}
 )
 target_compile_definitions(Tests.Game PRIVATE
-	SDL_MAIN_HANDLED # Because SDL rename our main to replace it by it's own
+    SDL_MAIN_HANDLED # Because SDL rename our main to replace it by it's own
 )
 
 # Dependencies
