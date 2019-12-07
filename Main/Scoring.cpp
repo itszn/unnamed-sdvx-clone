@@ -768,7 +768,7 @@ void Scoring::m_UpdateTicks()
 }
 ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 {
-	MapTime currentTime = m_playback->GetLastTime();
+	MapTime currentTime = m_playback->GetLastTime(); //get time from audio here instead?
 
 	assert(buttonCode < 8);
 

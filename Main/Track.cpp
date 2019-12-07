@@ -42,7 +42,7 @@ Track::~Track()
 bool Track::AsyncLoad()
 {
 	loader = new AsyncAssetLoader();
-	String skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+	String skin = g_application->GetCurrentSkin();
 
 	float laserHues[2] = { 0.f };
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
