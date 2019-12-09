@@ -809,27 +809,7 @@ public:
 	void SetMapDB(MapDatabase* db)
 	{
 		m_mapDB = db;
-
-		for (auto& c : db->GetCollections())
-		{
-			CollectionFilter* filter = new CollectionFilter(c, m_mapDB);
-			AddFilter(filter, FilterType::Collection);
-			m_collections.insert(c);
-		}
-
-		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
-		{
-			FolderFilter* filter = new FolderFilter(p, m_mapDB);
-			if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
-			{
-				AddFilter(filter, FilterType::Folder);
-				m_folders.insert(p);
-			}
-			else
-			{
-				delete filter;
-			}
-		}
+		UpdateFilters();
 		m_SetLuaTable();
 	}
 
@@ -879,7 +859,11 @@ public:
 		//sort the new folderfilter vector
 		m_folderFilters.Sort([](const SongFilter* a, const SongFilter* b)
 		{
-			return a->GetName().compare(b->GetName()) < 0;
+			String aupper = a->GetName();
+			aupper.ToUpper();
+			String bupper = b->GetName();
+			bupper.ToUpper();
+			return aupper.compare(bupper) < 0;
 		}
 		);
 
