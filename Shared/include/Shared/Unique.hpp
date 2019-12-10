@@ -1,5 +1,6 @@
 #pragma once
-
+#ifndef UNIQUE_H
+#define UNIQUE_H
 /*
 	Inherit from this to disallow copying
 */
@@ -10,3 +11,4 @@ protected:
 	Unique& operator=(const Unique& rhs) = delete;
 	Unique() = default;
 };
+#endif

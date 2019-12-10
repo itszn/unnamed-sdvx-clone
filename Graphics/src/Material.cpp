@@ -68,7 +68,11 @@ namespace Graphics
 #if _DEBUG
 		String m_debugNames[3];
 #endif
+#ifdef EMBEDDED
+		uint32 m_program;
+#else
 		uint32 m_pipeline;
+#endif
 		Map<uint32, BoundParameterList> m_boundParameters;
 		Map<String, uint32> m_mappedParameters;
 		Map<String, uint32> m_textureIDs;
@@ -78,11 +82,20 @@ namespace Graphics
 
 		Material_Impl(OpenGL* gl) : m_gl(gl)
 		{
+#ifdef EMBEDDED
+			m_program = glCreateProgram();
+#else
 			glGenProgramPipelines(1, &m_pipeline);
+#endif
 		}
 		~Material_Impl()
 		{
+			#ifdef EMBEDDED
+			if (glIsProgram(m_program))
+				glDeleteProgram(m_program);
+			#else
 			glDeleteProgramPipelines(1, &m_pipeline);
+			#endif
 		}
 		void AssignShader(ShaderType t, Shader shader)
 		{
@@ -98,14 +111,27 @@ namespace Graphics
 #endif // _DEBUG
 
 			int32 numUniforms;
+#ifdef EMBEDDED
+			glAttachShader(m_program, handle);
+			glLinkProgram(m_program);
+			
+			glGetProgramiv(m_program, GL_ACTIVE_UNIFORMS, &numUniforms);
+#else
 			glGetProgramiv(handle, GL_ACTIVE_UNIFORMS, &numUniforms);
+#endif
+			
 			for(int32 i = 0; i < numUniforms; i++)
 			{
 				char name[64];
 				int32 nameLen, size;
 				uint32 type;
+				#ifdef EMBEDDED
+				glGetActiveUniform(m_program, i, sizeof(name), &nameLen, &size, &type, name);
+				uint32 loc = glGetUniformLocation(m_program, name);
+				#else
 				glGetActiveUniform(handle, i, sizeof(name), &nameLen, &size, &type, name);
 				uint32 loc = glGetUniformLocation(handle, name);
+				#endif
 				m_uniforms.Add(name);
 				// Select type
 				uint32 textureID = 0;
@@ -158,8 +184,9 @@ namespace Graphics
 					i, loc, Utility::Sprintf("Unknown [%d]", type), name);
 #endif // _DEBUG
 			}
-
+#ifndef EMBEDDED
 			glUseProgramStages(m_pipeline, shaderStageMap[(size_t)t], shader->Handle());
+#endif
 		}
 
 		// Bind render state and params and shaders to context
@@ -188,10 +215,15 @@ namespace Graphics
 				{
 					if(m_shaders[i])
 						AssignShader(ShaderType(i), m_shaders[i]);
+					#ifdef EMBEDDED
+					glLinkProgram(m_program);
+					#endif
 				}
 			}
 #endif
-
+			#ifdef EMBEDDED
+			BindToContext();
+			#endif
 			// Bind renderstate variables
 			BindAll(SV_Proj, rs.projectionTransform);
 			BindAll(SV_Camera, rs.cameraTransform);
@@ -203,8 +235,9 @@ namespace Graphics
 			
 			// Bind parameters
 			BindParameters(params, rs.worldTransform);
-
+			#ifndef EMBEDDED
 			BindToContext();
+			#endif
 		}
 
 		// Bind only parameters
@@ -270,7 +303,11 @@ namespace Graphics
 		virtual void BindToContext()
 		{
 			// Bind pipeline to context
+			#ifdef EMBEDDED
+			glUseProgram(m_program);
+			#else
 			glBindProgramPipeline(m_pipeline);
+			#endif
 		}
 
 		virtual bool HasUniform(String name) override
@@ -321,6 +358,49 @@ namespace Graphics
 		}
 	};
 	
+#ifdef EMBEDDED
+	template<> void Material_Impl::BindShaderVar<Vector4>(uint32 shader, uint32 loc, const Vector4& obj)
+	{
+		glUniform4fv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<Vector3>(uint32 shader, uint32 loc, const Vector3& obj)
+	{
+		glUniform3fv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<Vector2>(uint32 shader, uint32 loc, const Vector2& obj)
+	{
+		glUniform2fv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<float>(uint32 shader, uint32 loc, const float& obj)
+	{
+		glUniform1fv(loc, 1, &obj);
+	}
+	template<> void Material_Impl::BindShaderVar<Colori>(uint32 shader, uint32 loc, const Colori& obj)
+	{
+		Color c = obj;
+		glUniform4fv(loc, 1, &c.x);
+	}
+	template<> void Material_Impl::BindShaderVar<Vector4i>(uint32 shader, uint32 loc, const Vector4i& obj)
+	{
+		glUniform4iv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<Vector3i>(uint32 shader, uint32 loc, const Vector3i& obj)
+	{
+		glUniform3iv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<Vector2i>(uint32 shader, uint32 loc, const Vector2i& obj)
+	{
+		glUniform2iv(loc, 1, &obj.x);
+	}
+	template<> void Material_Impl::BindShaderVar<int32>(uint32 shader, uint32 loc, const int32& obj)
+	{
+		glUniform1iv(loc, 1, &obj);
+	}
+	template<> void Material_Impl::BindShaderVar<Transform>(uint32 shader, uint32 loc, const Transform& obj)
+	{
+		glUniformMatrix4fv(loc, 1, GL_FALSE, obj.mat);
+	}
+#else
 	template<> void Material_Impl::BindShaderVar<Vector4>(uint32 shader, uint32 loc, const Vector4& obj)
 	{
 		glProgramUniform4fv(shader, loc, 1, &obj.x);
@@ -362,6 +442,7 @@ namespace Graphics
 	{
 		glProgramUniformMatrix4fv(shader, loc, 1, GL_FALSE, obj.mat);
 	}
+#endif
 
 	Material MaterialRes::Create(OpenGL* gl)
 	{

@@ -64,10 +64,14 @@ namespace Graphics
 				}
 				else
 				{
+					#ifdef EMBEDDED
+					type = GL_FLOAT;
+					#else
 					if(e.componentSize == 4)
 						type = GL_FLOAT;
 					else if(e.componentSize == 8)
 						type = GL_DOUBLE;
+					#endif
 				}
 				assert(type != -1);
 				glVertexAttribPointer((int)index, (int)e.components, type, GL_TRUE, (int)totalVertexSize, (void*)offset);

@@ -23,7 +23,11 @@
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "SDL2/SDL_keycode.h"
+#ifdef EMBEDDED
+#define NANOVG_GLES2_IMPLEMENTATION
+#else
 #define NANOVG_GL3_IMPLEMENTATION
+#endif
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
@@ -374,7 +378,13 @@ void Application::m_InitDiscord()
 bool Application::m_Init()
 {
 	ProfilerScope $("Application Setup");
+
 	Logf("Version: %d.%d.%d", Logger::Info, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+
+#ifdef EMBEDDED
+	Log("Embeedded version.");
+#endif
+	
 
 #ifdef GIT_COMMIT
 	Logf("Git commit: %s", Logger::Info, GIT_COMMIT);
@@ -519,11 +529,18 @@ bool Application::m_Init()
 			Log("Failed to create OpenGL context", Logger::Error);
 			return false;
 		}
-
+#ifdef EMBEDDED
+#ifdef _DEBUG
+		g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+#else
+		g_guiState.vg = nvgCreateGLES2(0);
+#endif
+#else
 #ifdef _DEBUG
 		g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
 #else
 		g_guiState.vg = nvgCreateGL3(0);
+#endif
 #endif
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
@@ -797,7 +814,11 @@ void Application::m_Cleanup()
 
 	Discord_Shutdown();
 
+#ifdef EMBEDDED
+	nvgDeleteGLES2(g_guiState.vg);
+#else
 	nvgDeleteGL3(g_guiState.vg);
+#endif
 
 	if(m_updateThread.joinable())
 		m_updateThread.join();
@@ -1041,11 +1062,25 @@ void Application::ReloadSkin()
 	g_guiState.nextPaintId.clear();
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
-	nvgDeleteGL3(g_guiState.vg);
-#ifdef _DEBUG
-	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+
+#ifdef EMBEDDED
+	nvgDeleteGLES2(g_guiState.vg);
 #else
-	g_guiState.vg = nvgCreateGL3(0);
+	nvgDeleteGL3(g_guiState.vg);
+#endif
+
+#ifdef EMBEDDED
+#ifdef _DEBUG
+		g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+#else
+		g_guiState.vg = nvgCreateGLES2(0);
+#endif
+#else
+#ifdef _DEBUG
+		g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+#else
+		g_guiState.vg = nvgCreateGL3(0);
+#endif
 #endif
 
 	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");

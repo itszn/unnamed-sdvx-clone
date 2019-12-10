@@ -46,6 +46,13 @@ set(CMAKE_MACOSX_RPATH 1)
 #	this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
+OPTION(EMBEDDED "Enable embedded build" OFF)
+
+if(EMBEDDED)
+	message("Enabling embedded build")
+    add_definitions(-DEMBEDDED)
+endif()
+
 # Precompiled header macro
 #	src 	= Path to source files
 #	pchSrc 	= Path to precompiled header source file
