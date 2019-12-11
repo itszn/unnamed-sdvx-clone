@@ -84,6 +84,21 @@ namespace Graphics
 			glBindVertexArray(0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
+		
+		#ifdef EMBEDDED
+		virtual void Draw()
+		{
+			glBindVertexArray(m_vao);
+			glDrawArrays(m_glType, 0, (int)m_vertexCount);
+			glBindVertexArray(0);
+		}
+		virtual void Redraw()
+		{
+			glBindVertexArray(m_vao);
+			glDrawArrays(m_glType, 0, (int)m_vertexCount);
+			glBindVertexArray(0);
+		}
+		#else
 		virtual void Draw()
 		{
 			glBindVertexArray(m_vao);
@@ -93,6 +108,7 @@ namespace Graphics
 		{
 			glDrawArrays(m_glType, 0, (int)m_vertexCount);
 		}
+		#endif
 
 		virtual void SetPrimitiveType(PrimitiveType pt)
 		{

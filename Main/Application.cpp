@@ -940,7 +940,7 @@ Sample Application::LoadSample(const String& name, const bool& external)
 		path += ".wav";
 
 	Sample ret = g_audio->CreateSample(path);
-	assert(ret);
+	//assert(ret);
 	return ret;
 }
 

@@ -336,6 +336,9 @@ namespace Graphics
 		template<typename T> void BindAll(const String& name, const T& obj)
 		{
 			uint32 num = 0;
+			#ifdef EMBEDDED
+			glUseProgram(m_program);
+			#endif
 			BoundParameterInfo* bp = GetBoundParameters(name, num);
 			for(uint32 i = 0; bp && i < num; i++)
 			{
@@ -345,6 +348,9 @@ namespace Graphics
 		template<typename T> void BindAll(BuiltInShaderVariable bsv, const T& obj)
 		{
 			uint32 num = 0;
+			#ifdef EMBEDDED
+			glUseProgram(m_program);
+			#endif
 			BoundParameterInfo* bp = GetBoundParameters(bsv, num);
 			for(uint32 i = 0; bp && i < num; i++)
 			{

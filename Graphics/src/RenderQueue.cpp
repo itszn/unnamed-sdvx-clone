@@ -143,6 +143,9 @@ namespace Graphics
 				}
 
 				DrawOrRedrawMesh(sdc->mesh);
+				#ifdef EMBEDDED
+				glUseProgram(0);
+				#endif
 			}
 			else if(Cast<PointDrawCall>(item))
 			{
@@ -169,6 +172,9 @@ namespace Graphics
 				}
 				
 				DrawOrRedrawMesh(pdc->mesh);
+				#ifdef EMBEDDED
+				glUseProgram(0);
+				#endif
 			}
 		}
 

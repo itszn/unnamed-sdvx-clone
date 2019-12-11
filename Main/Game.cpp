@@ -370,6 +370,10 @@ public:
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
+		#ifdef EMBEDDED
+		basicParticleTexture = Ref<TextureRes>(nullptr);
+		particleMaterial = Ref<MaterialRes>(nullptr);
+		#else
 		// Load particle textures
 		basicParticleTexture = g_application->LoadTexture("particle_flare.png");
 		particleMaterial = g_application->LoadMaterial("particle");
@@ -378,6 +382,7 @@ public:
 			particleMaterial->blendMode = MaterialBlendMode::Additive;
 			particleMaterial->opaque = false;
 		}
+		#endif
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
@@ -712,9 +717,10 @@ public:
 		// Render queues
 		renderQueue.Process();
 		scoringRq.Process();
+		glFlush();
 
 		// Set laser follow particle visiblity
-		if (particleMaterial && basicParticleTexture)
+		if (particleMaterial.GetData() && basicParticleTexture.GetData())
 		{
 			for (uint32 i = 0; i < 2; i++)
 			{
@@ -794,7 +800,7 @@ public:
 		NVG_FLUSH();
 
 		// Render particle effects last
-		if (particleMaterial && basicParticleTexture)
+		if (particleMaterial.GetData() && basicParticleTexture.GetData())
 		{
 			RenderParticles(rs, deltaTime);
 			glFlush();
@@ -1445,7 +1451,7 @@ public:
 			// Create hit effect particle
 			Color hitColor = (buttonIdx < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
 			float hitWidth = (buttonIdx < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
-			if (particleMaterial && basicParticleTexture)
+			if (particleMaterial.GetData() && basicParticleTexture.GetData())
 			{
 				Ref<ParticleEmitter> emitter = CreateHitEmitter(hitColor, hitWidth);
 				emitter->position.x = m_track->GetButtonPlacement(buttonIdx);
