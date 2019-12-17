@@ -1202,6 +1202,7 @@ public:
 	void m_OnSongAddedToCollection()
 	{
 		m_filterSelection->UpdateFilters();
+		OnSearchTermChanged(m_searchInput->input);
 	}
 
 	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
@@ -1701,8 +1702,8 @@ public:
 		m_suspended = false;
 		m_previewPlayer.Restore();
 		m_mapDatabase.StartSearching();
-		OnSearchTermChanged(m_searchInput->input);
 		m_filterSelection->UpdateFilters();
+		OnSearchTermChanged(m_searchInput->input);
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
 			m_settingsWheel->ClearSettings();
