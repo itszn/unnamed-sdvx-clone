@@ -1,10 +1,10 @@
 # - Find vorbis
 # Find the native vorbis includes and libraries
 #
-#  VORBIS_INCLUDE_DIR - where to find vorbis.h, etc.
-#  OGG_INCLUDE_DIR    - where to find ogg/ogg.h, etc.
-#  VORBIS_LIBRARIES   - List of libraries when using vorbis(file).
-#  VORBIS_FOUND       - True if vorbis found.
+#    VORBIS_INCLUDE_DIR - where to find vorbis.h, etc.
+#    OGG_INCLUDE_DIR    - where to find ogg/ogg.h, etc.
+#    VORBIS_LIBRARIES   - List of libraries when using vorbis(file).
+#    VORBIS_FOUND       - True if vorbis found.
 
 if(NOT GP2XWIZ)
     if(VORBIS_INCLUDE_DIR)
@@ -29,16 +29,16 @@ else(NOT GP2XWIZ)
     find_package_handle_standard_args(VORBIS DEFAULT_MSG
         VORBIS_INCLUDE_DIR VORBIS_LIBRARY)
 endif(NOT GP2XWIZ)
-    
+
 if(VORBIS_FOUND)
-  if(NOT GP2XWIZ)
-     set(VORBIS_LIBRARIES ${VORBISFILE_LIBRARY} ${VORBIS_LIBRARY}
-           ${OGG_LIBRARY})
-  else(NOT GP2XWIZ)
-     set(VORBIS_LIBRARIES ${VORBIS_LIBRARY})
-  endif(NOT GP2XWIZ)
+    if(NOT GP2XWIZ)
+        set(VORBIS_LIBRARIES ${VORBISFILE_LIBRARY} ${VORBIS_LIBRARY}
+            ${OGG_LIBRARY})
+    else(NOT GP2XWIZ)
+        set(VORBIS_LIBRARIES ${VORBIS_LIBRARY})
+    endif(NOT GP2XWIZ)
 else(VORBIS_FOUND)
-  set(VORBIS_LIBRARIES)
+    set(VORBIS_LIBRARIES)
 endif(VORBIS_FOUND)
 
 mark_as_advanced(OGG_INCLUDE_DIR VORBIS_INCLUDE_DIR)

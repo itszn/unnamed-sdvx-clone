@@ -2,80 +2,52 @@
 
 set(INCROOT ${CMAKE_CURRENT_SOURCE_DIR}/include/Audio/)
 set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
 
-set(SRC
-	${INCROOT}/Audio_Impl.hpp
-	${SRCROOT}/Audio.cpp
-	${INCROOT}/Audio.hpp
-	${SRCROOT}/AudioBase.cpp
-	${INCROOT}/AudioBase.hpp
-	${INCROOT}/AudioOutput.hpp
-	${INCROOT}/AudioStream.hpp
-	${SRCROOT}/AudioStream.cpp
-	${SRCROOT}/AudioStreamBase.cpp
-	${SRCROOT}/AudioStreamBase.hpp
-	${SRCROOT}/AudioStreamMa.cpp
-	${SRCROOT}/AudioStreamMa.hpp
-	${SRCROOT}/AudioStreamMp3.cpp
-	${SRCROOT}/AudioStreamMp3.hpp
-	${SRCROOT}/AudioStreamOgg.cpp
-	${SRCROOT}/AudioStreamOgg.hpp
-	${SRCROOT}/AudioStreamWav.cpp
-	${SRCROOT}/AudioStreamWav.hpp
-	${SRCROOT}/DSP.cpp
-	${INCROOT}/DSP.hpp
-	${SRCROOT}/Sample.cpp
-	${INCROOT}/Sample.hpp
-)
+file(GLOB INC "${INCROOT}/*.hpp")
+source_group("Public Headers" FILES ${INC})
+
+file(GLOB SRC "${SRCROOT}/*.cpp" "${SRCROOT}/*.hpp")
+source_group("Sources" FILES ${SRC})
 
 # Platform specific source files
 if(WIN32)
-	SET(PLATFORM_SRC
-		${SRCROOT}/Platform/AudioOutput_WASAPI.cpp
-	)
-	# Platform specific source group
-	source_group("Source Files\\Platform" FILES ${PLATFORM_SRC})
+    file(GLOB PLATFORM_SRC "${SRCROOT}/Windows/*.cpp")
 else()
-	SET(PLATFORM_SRC
-		${SRCROOT}/Platform/AudioOutput_SDL.cpp
-	)
+    file(GLOB PLATFORM_SRC "${SRCROOT}/Unix/*.cpp")
 endif(WIN32)
+source_group("Sources\\Platform" FILES ${PLATFORM_SRC})
 
-set(AUDIO_SRC ${SRC} ${PLATFORM_SRC})
+set(AUDIO_SRC ${SRC} ${INC} ${PLATFORM_SRC})
+
+set(PCH_SRC ${PCHROOT}/stdafx.cpp)
+set(PCH_INC ${PCHROOT}/stdafx.h)
+set(PCH_FILES ${PCH_SRC} ${PCH_INC})
+source_group("" FILES ${PCH_FILES})
 
 # Compiler stuff
-enable_cpp14()
-enable_precompiled_headers("${AUDIO_SRC}" src/stdafx.cpp)
+enable_precompiled_headers("${AUDIO_SRC}" "${PCH_SRC}")
 
-add_library(Audio ${AUDIO_SRC} src/stdafx.cpp)
-
-target_include_directories(Audio PUBLIC
-	include/
-	include/Audio
-	src
+add_library(Audio ${AUDIO_SRC} ${PCH_FILES})
+target_compile_features(Audio PUBLIC cxx_std_14)
+target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(Audio PRIVATE
+    ${SRCROOT}
+    ${INCROOT}
+    ${PCHROOT}
 )
-
-target_link_libraries(Audio Shared)
 
 # Dependencies
+## Local Dependencies
+target_link_libraries(Audio Shared)
 
-## Find dependencies roots
-get_property(MA_ROOT GLOBAL PROPERTY MA_ROOT)
-get_property(MINIMP3_ROOT GLOBAL PROPERTY MINIMP3_ROOT)
-get_property(SOUNDTOUCH_ROOT GLOBAL PROPERTY SOUNDTOUCH_ROOT)
-
-## Add dependencies headers
-target_include_directories(Audio PUBLIC SYSTEM
-	${SOUNDTOUCH_ROOT}/include
-	${MINIMP3_ROOT}
-	${MA_ROOT}
-)
-
-## Add dependencies to linkage
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/third_party)
-include(FindLibraries)
-
-target_link_libraries(Audio minimp3)
+## 3rd Party dependencies
+### Find dependencies roots
+target_include_directories(Audio PUBLIC ${SDL2_INCLUDE_DIR})
+### Add dependencies to linkage
 target_link_libraries(Audio soundtouch)
+target_link_libraries(Audio minimp3)
+target_link_libraries(Audio miniaudio)
+target_link_libraries(Audio ${SDL2_LIBRARY})
 target_link_libraries(Audio ${OGG_LIBRARIES})
 target_link_libraries(Audio ${VORBIS_LIBRARIES})
