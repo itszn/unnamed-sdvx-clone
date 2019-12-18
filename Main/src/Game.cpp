@@ -1381,8 +1381,8 @@ public:
 		float dir = Math::Sign(object->points[1] - object->points[0]);
 
 		float width = (object->flags & LaserObjectState::flag_Extended) ? 2.0 : 1.0;
-		float startPos = m_track->trackWidth * object->points[0] * width - m_track->trackWidth * 0.5f;
-		float endPos = m_track->trackWidth * object->points[1] * width - m_track->trackWidth * 0.5f;
+		float startPos = (m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f) * width;
+		float endPos = (m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f) * width;
 
 		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
 		ex->position = Vector3(endPos, 0.0f, -0.05f);

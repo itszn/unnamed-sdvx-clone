@@ -320,6 +320,7 @@ void __updateChecker()
 		if (response.status_code != 200)
 		{
 			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
+			return;
 		}
 
 		auto commits = nlohmann::json::parse(response.text);
