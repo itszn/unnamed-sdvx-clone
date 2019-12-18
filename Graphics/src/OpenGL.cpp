@@ -39,10 +39,12 @@ namespace Graphics
 			ResourceManagers::DestroyResourceManager<ResourceType::Material>();
 			ResourceManagers::DestroyResourceManager<ResourceType::ParticleSystem>();
 
+#ifndef EMBEDDED
 			if(glBindProgramPipeline)
 			{
 				glDeleteProgramPipelines(1, &m_mainProgramPipeline);
 			}
+#endif
 
 			SDL_GL_DeleteContext(m_impl->context);
 			m_impl->context = nullptr;
@@ -69,10 +71,15 @@ namespace Graphics
 		m_window = &window;
 		SDL_Window* sdlWnd = (SDL_Window*)m_window->Handle();
 
+#ifdef EMBEDDED
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-
+#endif
 		// Create a context
 		m_impl->context = SDL_GL_CreateContext(sdlWnd);
 		if(!m_impl->context)
@@ -81,14 +88,27 @@ namespace Graphics
             return false;
 		}
 
-		SDL_GL_MakeCurrent(sdlWnd, m_impl->context);
+		if (SDL_GL_MakeCurrent(sdlWnd, m_impl->context) < 0)
+		{
+			Logf("Failed to set OpenGL context to current: %s", Logger::Error, SDL_GetError());
+			return false;
+		}
 
-		// macOS doesnt need glew
+		//windows always needs glew
+#ifdef _WIN32
+		glewExperimental = true;
+		glewInit();
+#else
+
+		// macOS and embedded doesnt need glew
+		#ifndef EMBEDDED
 		#ifndef __APPLE__
 		// To allow usage of experimental features
 		glewExperimental = true;
 		glewInit();
 		#endif
+		#endif
+#endif
 
 		//#define LIST_OGL_EXTENSIONS
 #ifdef LIST_OGL_EXTENSIONS
@@ -118,13 +138,16 @@ namespace Graphics
 
 		InitResourceManagers();
 
+#ifndef EMBEDDED
 		// Create pipeline for the program
 		glGenProgramPipelines(1, &m_mainProgramPipeline);
 		glBindProgramPipeline(m_mainProgramPipeline);
-		glDisable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_MULTISAMPLE);
+#endif
+
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
 		glEnable(GL_BLEND);
 		glEnable(GL_STENCIL_TEST);
 		return true;

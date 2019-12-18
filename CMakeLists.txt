@@ -57,6 +57,13 @@ find_package(LibArchive REQUIRED)
 # this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
+OPTION(EMBEDDED "Enable embedded build" OFF)
+
+if(EMBEDDED)
+	message("Enabling embedded build")
+    add_definitions(-DEMBEDDED)
+endif()
+
 # Include macros
 include(${PROJECT_SOURCE_DIR}/cmake/Macros.cmake)
 

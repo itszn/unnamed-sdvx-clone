@@ -143,6 +143,9 @@ namespace Graphics
 				}
 
 				DrawOrRedrawMesh(sdc->mesh);
+				#ifdef EMBEDDED
+				glUseProgram(0);
+				#endif
 			}
 			else if(Cast<PointDrawCall>(item))
 			{
@@ -163,10 +166,15 @@ namespace Graphics
 				}
 				else
 				{
+					#ifndef EMBEDDED
 					glPointSize(pdc->size);
+					#endif
 				}
 				
 				DrawOrRedrawMesh(pdc->mesh);
+				#ifdef EMBEDDED
+				glUseProgram(0);
+				#endif
 			}
 		}
 
@@ -229,6 +237,7 @@ namespace Graphics
 		sdc->params = params;
 		// Set Font texture map
 		sdc->params.SetParameter("mainTex", text->GetTexture());
+		sdc->params.SetParameter("mapSize", text->GetTexture()->GetSize());
 		sdc->worldTransform = worldTransform;
 		sdc->scissorRect = scissor;
 		m_orderedCommands.push_back(sdc);
