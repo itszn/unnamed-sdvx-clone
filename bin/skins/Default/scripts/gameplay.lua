@@ -396,7 +396,7 @@ function render_crit_base(deltaTime)
         gfx.UpdateImagePattern(critAnim,
             startOffset,
             -crit_base_info.half_critAnimHeight,
-            crit_base_info.critWidth,
+            crit_base_info.critAnimWidth,
             crit_base_info.critAnimHeight,
             0, 1)
         

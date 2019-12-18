@@ -94,6 +94,12 @@ namespace Graphics
 			return false;
 		}
 
+		//windows always needs glew
+#ifdef _WIN32
+		glewExperimental = true;
+		glewInit();
+#else
+
 		// macOS and embedded doesnt need glew
 		#ifndef EMBEDDED
 		#ifndef __APPLE__
@@ -102,6 +108,7 @@ namespace Graphics
 		glewInit();
 		#endif
 		#endif
+#endif
 
 		//#define LIST_OGL_EXTENSIONS
 #ifdef LIST_OGL_EXTENSIONS
