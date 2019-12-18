@@ -371,8 +371,8 @@ public:
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
 		#ifdef EMBEDDED
-		basicParticleTexture = Ref<TextureRes>(nullptr);
-		particleMaterial = Ref<MaterialRes>(nullptr);
+		basicParticleTexture = Ref<TextureRes>();
+		particleMaterial = Ref<MaterialRes>();
 		#else
 		// Load particle textures
 		basicParticleTexture = g_application->LoadTexture("particle_flare.png");
