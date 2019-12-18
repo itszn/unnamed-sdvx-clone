@@ -42,7 +42,7 @@ Track::~Track()
 bool Track::AsyncLoad()
 {
 	loader = new AsyncAssetLoader();
-	String skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+	String skin = g_application->GetCurrentSkin();
 
 	float laserHues[2] = { 0.f };
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
@@ -557,6 +557,7 @@ void Track::DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale)
 
 void Track::DrawTrackCover(RenderQueue& rq)
 {
+	#ifndef EMBEDDED
 	if (trackCoverMaterial.IsValid() && trackCoverTexture.IsValid())
 	{
 		Transform t = trackOrigin;
@@ -568,6 +569,7 @@ void Track::DrawTrackCover(RenderQueue& rq)
 		p.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
 		rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
 	}
+	#endif
 }
 
 Vector3 Track::TransformPoint(const Vector3 & p)

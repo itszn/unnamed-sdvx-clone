@@ -48,7 +48,11 @@ namespace Graphics
 			uint32 type = -1;
 			if(format == TextureFormat::D32)
 			{
+				#ifdef EMBEDDED
+				ifmt = GL_DEPTH_COMPONENT16;
+				#else
 				ifmt = GL_DEPTH_COMPONENT32;
+				#endif
 				fmt = GL_DEPTH_COMPONENT;
 				type = GL_FLOAT;
 			}
@@ -115,10 +119,12 @@ namespace Graphics
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, m_filter ? GL_LINEAR : GL_NEAREST);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, m_filter ? GL_LINEAR : GL_NEAREST);
 			}
+			#ifndef EMBEDDED
 			if(GL_TEXTURE_MAX_ANISOTROPY_EXT)
 			{
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, m_anisotropic);
 			}
+			#endif
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 		virtual void SetFilter(bool enabled, bool mipFiltering, float anisotropic)
