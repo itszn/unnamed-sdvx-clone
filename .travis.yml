@@ -3,7 +3,7 @@ language: cpp
 matrix:
   include:
     - os: linux
-      dist: xenial
+      dist: bionic
       addons:
         apt:
           sources:
@@ -15,7 +15,6 @@ matrix:
       before_install:
         - eval "${MATRIX_EVAL}"
         - "sudo apt-get -qq update"
-        - "sudo apt-get install -y cmake"
         - "sudo apt-get install -y libegl1-mesa-dev"
         - "sudo apt-get install -y libfreetype6-dev"
         - "sudo apt-get install -y libogg-dev"
@@ -25,10 +24,6 @@ matrix:
         - "sudo apt-get install -y zlib1g-dev --reinstall"
         - "sudo apt-get install -y libjpeg-dev --reinstall"
       install:
-        - CMAKE_URL="https://cmake.org/files/v3.14/cmake-3.14.0-Linux-x86_64.tar.gz"
-        - mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
-        - export "PATH=${TRAVIS_BUILD_DIR}/cmake/bin:${PATH}"
-        - cmake --version
         #Libpng
         - LIBPNG_URL="http://download.sourceforge.net/libpng/libpng-1.6.24.tar.gz"
         - mkdir libpng && travis_retry wget --no-check-certificate --quiet -O - ${LIBPNG_URL} | tar --strip-components=1 -xz -C libpng

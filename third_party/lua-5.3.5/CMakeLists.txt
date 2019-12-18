@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.4)
 
 include_directories(src)
-add_library(lua src/lua.c
+add_library(lua
     src/lapi.c
     src/lauxlib.c
     src/lbaselib.c
@@ -32,8 +32,6 @@ add_library(lua src/lua.c
     src/ltable.c
     src/ltablib.c
     src/ltm.c
-    src/lua.c
-    src/luac.c
     src/lundump.c
     src/lutf8lib.c
     src/lvm.c
