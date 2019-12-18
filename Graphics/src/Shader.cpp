@@ -126,7 +126,14 @@ namespace Graphics
 				return false;
 
 			in.Read(&sourceStr.front(), sourceStr.size());
-			sourceStr = "#version 330\n" + sourceStr;
+			String firstLine;
+			sourceStr.Split("\n", &firstLine, nullptr);
+			firstLine.Trim('\r');
+			firstLine.ToLower();
+			if (firstLine.compare("#version 330") != 0)
+			{
+				sourceStr = "#version 330\n" + sourceStr;
+			}
 			const char* pChars = *sourceStr;
 			programOut = glCreateShaderProgramv(typeMap[(size_t)m_type], 1, &pChars);
 			if(programOut == 0)
