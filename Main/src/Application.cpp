@@ -596,6 +596,19 @@ bool Application::m_Init()
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
 
+	// Flags read _before_ config load
+	for(auto& cl : m_commandLine)
+	{
+		String k, v;
+		if(cl.Split("=", &k, &v))
+		{
+			if (k == "-gamedir")
+			{
+				Path::gameDir = v;
+			}
+		}
+	}
+
 	// Load config
 	if(!m_LoadConfig())
 	{
@@ -615,6 +628,7 @@ bool Application::m_Init()
 		startFullscreen = true;
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
+	// Flags read _after_ config load
 	for(auto& cl : m_commandLine)
 	{
 		String k, v;
