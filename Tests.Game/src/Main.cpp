@@ -16,6 +16,7 @@ void ListTests()
 
 int main(int argc, char** argv)
 {
+	SDL_SetMainReady();
 	Vector<String> cmdLine = Path::SplitCommandLine(argc, argv);
 	if(cmdLine.empty())
 	{

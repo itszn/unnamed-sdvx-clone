@@ -66,7 +66,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 11;
+	static const int32 m_version = 12;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
@@ -124,6 +124,14 @@ public:
 			{
 				m_database.Exec("ALTER TABLE Difficulties ADD COLUMN hash TEXT");
 				gotVersion = 11;
+			}
+			if (gotVersion == 11) //upgrade from 11 to 12
+			{
+				m_database.Exec("CREATE TABLE Collections"
+					"(collection TEXT, mapid INTEGER, "
+					"UNIQUE(collection,mapid), "
+					"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
+				gotVersion = 12;
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 		}
@@ -273,6 +281,48 @@ public:
 
 		return res;
 	}
+
+	Vector<String> GetCollections()
+	{
+		Vector<String> res;
+		DBStatement search = m_database.Query("SELECT DISTINCT collection FROM collections");
+		while (search.StepRow())
+		{
+			res.Add(search.StringColumn(0));
+		}
+		return res;
+	}
+
+	Vector<String> GetCollectionsForMap(int32 mapid)
+	{
+		Vector<String> res;
+		DBStatement search = m_database.Query(Utility::Sprintf("SELECT DISTINCT collection FROM collections WHERE mapid==%d", mapid));
+		while (search.StepRow())
+		{
+			res.Add(search.StringColumn(0));
+		}
+		return res;
+	}
+
+	Map<int32, MapIndex*> FindMapsByCollection(const String& collection)
+	{
+		String stmt = Utility::Sprintf("SELECT mapid FROM Collections WHERE collection==\"%s\"", collection);
+
+		Map<int32, MapIndex*> res;
+		DBStatement search = m_database.Query(stmt);
+		while (search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			MapIndex** map = m_maps.Find(id);
+			if (map)
+			{
+				res.Add(id, *map);
+			}
+		}
+
+		return res;
+	}
+
 
 	Map<int32, MapIndex*> FindMapsByFolder(const String& folder)
 	{
@@ -424,6 +474,11 @@ public:
 
 				itMap->second->difficulties.Remove(itDiff->second);
 
+				for (auto s : itDiff->second->scores)
+				{
+					delete s;
+				}
+				itDiff->second->scores.clear();
 				delete itDiff->second;
 				m_difficulties.erase(e.id);
 
@@ -521,6 +576,25 @@ public:
 
 	}
 
+	void AddOrRemoveToCollection(const String& name, int32 mapid)
+	{
+		DBStatement addColl = m_database.Query("INSERT INTO Collections(mapid,collection) VALUES(?,?)");
+		m_database.Exec("BEGIN");
+
+		addColl.BindInt(1, mapid);
+		addColl.BindString(2, name);
+
+		bool result = addColl.Step();
+		addColl.Rewind();
+
+		m_database.Exec("END");
+
+		if (!result) //Failed to add, try to remove
+		{
+			m_database.Exec(Utility::Sprintf("DELETE FROM collections WHERE mapid==%d AND collection==\"%s\"", mapid, name));
+		}
+	}
+
 	DifficultyIndex* GetRandomDiff()
 	{
 		auto it = m_difficulties.begin();
@@ -565,6 +639,11 @@ private:
 		m_database.Exec("CREATE TABLE Scores"
 			"(score INTEGER, crit INTEGER, near INTEGER, miss INTEGER, gauge REAL, gameflags INTEGER, diffid INTEGER, hitstats BLOB, timestamp INTEGER, "
 			"FOREIGN KEY(diffid) REFERENCES Difficulties(rowid))");
+
+		m_database.Exec("CREATE TABLE Collections"
+			"(collection TEXT, mapid INTEGER, "
+			"UNIQUE(collection,mapid), "
+			"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
 	}
 	void m_LoadInitialData()
 	{
@@ -868,10 +947,26 @@ Map<int32, MapIndex*> MapDatabase::FindMapsByFolder(const String & folder)
 {
 	return m_impl->FindMapsByFolder(folder);
 }
+Map<int32, MapIndex*> MapDatabase::FindMapsByCollection(const String& category)
+{
+	return m_impl->FindMapsByCollection(category);
+}
 MapIndex* MapDatabase::GetMap(int32 idx)
 {
 	MapIndex** mapIdx = m_impl->m_maps.Find(idx);
 	return mapIdx ? *mapIdx : nullptr;
+}
+Vector<String> MapDatabase::GetCollections()
+{
+	return m_impl->GetCollections();
+}
+Vector<String> MapDatabase::GetCollectionsForMap(int32 mapid)
+{
+	return m_impl->GetCollectionsForMap(mapid);
+}
+void MapDatabase::AddOrRemoveToCollection(const String& name, int32 mapid)
+{
+	m_impl->AddOrRemoveToCollection(name, mapid);
 }
 void MapDatabase::AddSearchPath(const String& path)
 {

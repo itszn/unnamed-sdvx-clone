@@ -37,6 +37,9 @@ The backgrounds that are available in ksh are::
 You should have all these in your skin (excluding hidden) so that all backgrounds that can appear in ksh
 has something that will be displayed.
 
+If you create a background folder called ``fallback`` then the game will try to load that background every time it
+can't find or load any other background.
+
 In the following documentation only "background" or "bg" will be used but everything applies to both
 backgrounds and foregrounds.
 

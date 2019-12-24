@@ -9,11 +9,13 @@
 #include "TransitionScreen.hpp"
 #include "GameConfig.hpp"
 #include "SongFilter.hpp"
+#include "CollectionDialog.hpp"
 #include <Audio/Audio.hpp>
 #include "lua.hpp"
 #include <iterator>
 #include <mutex>
 #include <MultiplayerScreen.hpp>
+#include <unordered_set>
 
 
 class TextInput
@@ -740,7 +742,7 @@ public:
 	{
 		uint8 t = type == FilterType::Folder ? 0 : 1;
 		int index = 0;
-		if (type == FilterType::Folder)
+		if (type != FilterType::Level)
 		{
 			index = std::find(m_folderFilters.begin(), m_folderFilters.end(), filter) - m_folderFilters.begin();
 		}
@@ -807,14 +809,7 @@ public:
 	void SetMapDB(MapDatabase* db)
 	{
 		m_mapDB = db;
-		for (String p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
-		{
-			FolderFilter* filter = new FolderFilter(p, m_mapDB);
-			if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
-				AddFilter(filter, FilterType::Folder);
-			else
-				delete filter;
-		}
+		UpdateFilters();
 		m_SetLuaTable();
 	}
 
@@ -829,6 +824,53 @@ public:
 			g_gameWindow->ShowMessageBox("Lua Error on set_mode", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
+	}
+
+	// Check if any new folders or collections should be added and add them
+	void UpdateFilters()
+	{
+		for (std::string c : m_mapDB->GetCollections())
+		{
+			if (m_collections.find(c) == m_collections.end())
+			{
+				CollectionFilter* filter = new CollectionFilter(c, m_mapDB);
+				AddFilter(filter, FilterType::Collection);
+				m_collections.insert(c);
+			}
+		}
+
+		for (std::string p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
+		{
+			if (m_folders.find(p) == m_folders.end())
+			{
+				FolderFilter* filter = new FolderFilter(p, m_mapDB);
+				if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
+				{
+					AddFilter(filter, FilterType::Folder);
+					m_folders.insert(p);
+				}
+				else
+				{
+					delete filter;
+				}
+			}
+		}
+
+		//sort the new folderfilter vector
+		m_folderFilters.Sort([](const SongFilter* a, const SongFilter* b)
+		{
+			String aupper = a->GetName();
+			aupper.ToUpper();
+			String bupper = b->GetName();
+			bupper.ToUpper();
+			return aupper.compare(bupper) < 0;
+		}
+		);
+
+		//set the selection index to match the selected filter
+		m_currentFolderSelection = std::find(m_folderFilters.begin(), m_folderFilters.end(), m_currentFilters[0]) - m_folderFilters.begin();
+		m_SetLuaTable();
+		SelectFilter(m_currentFilters[0], FilterType::Folder);
 	}
 
 	String GetStatusText()
@@ -876,6 +918,17 @@ private:
 			lua_settable(m_lua, -3);
 		}
 		lua_setglobal(m_lua, "filters");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+
 	}
 
 	Ref<SelectionWheel> m_selectionWheel;
@@ -887,6 +940,8 @@ private:
 	SongFilter* m_currentFilters[2] = { nullptr };
 	MapDatabase* m_mapDB;
 	lua_State* m_lua = nullptr;
+	std::unordered_set<std::string> m_folders;
+	std::unordered_set<std::string> m_collections;
 };
 
 class GameSettingsWheel{
@@ -1076,6 +1131,8 @@ private:
 	lua_State* m_lua = nullptr;
 
 	MultiplayerScreen* m_multiplayer = nullptr;
+	CollectionDialog m_collDiag;
+	bool m_hasCollDiag = false;
 
 public:
 
@@ -1121,6 +1178,13 @@ public:
 
 		m_previewParams = { "", 0, 0 };
 
+		m_hasCollDiag = m_collDiag.Init(&m_mapDatabase);
+
+		if (m_hasCollDiag)
+		{
+			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
+		}
+
 		return true;
 	}
 	~SongSelect_Impl()
@@ -1133,6 +1197,12 @@ public:
 
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
+	}
+
+	void m_OnSongAddedToCollection()
+	{
+		m_filterSelection->UpdateFilters();
+		OnSearchTermChanged(m_searchInput->input);
 	}
 
 	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
@@ -1207,9 +1277,9 @@ public:
 	}
 
 
-    void m_OnButtonPressed(Input::Button buttonCode)
-    {
-		if (m_suspended)
+	void m_OnButtonPressed(Input::Button buttonCode)
+	{
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1217,8 +1287,8 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-	    if(buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
-        {
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
+		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			MapIndex* map = m_selectionWheel->GetSelection();
 			if (map)
@@ -1248,73 +1318,91 @@ public:
 				TransitionScreen* transistion = TransitionScreen::Create(game);
 				g_application->AddTickable(transistion);
 			}
-        }
+		}
 		else
 		{
-			switch (buttonCode)
+			if (m_settingsWheel->Active)
 			{
-			case Input::Button::BT_0:
-			case Input::Button::BT_1:
-			case Input::Button::BT_2:
-			case Input::Button::BT_3:
-				if (m_settingsWheel->Active)
+				switch (buttonCode)
+				{
+				case Input::Button::BT_0:
+				case Input::Button::BT_1:
+				case Input::Button::BT_2:
+				case Input::Button::BT_3:
 					m_settingsWheel->ChangeSetting();
-				break;
-
-			case Input::Button::FX_1:
-				if (!m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_0) && !m_filterSelection->Active)
-				{
-					m_settingsWheel->Active = true;
-				}
-				else if (m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_0))
-				{
+					break;
+				case Input::Button::FX_0:
+					if (g_input.GetButton(Input::Button::FX_1))
+						m_settingsWheel->Active = false;
+					break;
+				case Input::Button::FX_1:
+					if (g_input.GetButton(Input::Button::FX_0))
+						m_settingsWheel->Active = false;
+					break;
+				case Input::Button::BT_S:
+				case Input::Button::Back:
 					m_settingsWheel->Active = false;
+					break;
+				default:
+					break;
 				}
-				break;
-			case Input::Button::FX_0:
-				if (!m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_1) && !m_filterSelection->Active)
+			}
+			else if (m_filterSelection->Active)
+			{
+				switch (buttonCode)
 				{
-					m_settingsWheel->Active = true;
-				}
-				else if (m_settingsWheel->Active && g_input.GetButton(Input::Button::FX_1))
-				{
-					m_settingsWheel->Active = false;
-				}
-				break;
-			case Input::Button::BT_S:
-				if (m_filterSelection->Active)
-				{
+				case Input::Button::BT_S:
 					m_filterSelection->ToggleSelectionMode();
-				}
-				if (m_settingsWheel->Active)
-				{
-					m_settingsWheel->Active = false;
-				}
-				break;
-			case Input::Button::Back:
-				if (m_filterSelection->Active)
-				{
+					break;
+				case Input::Button::Back:
 					m_filterSelection->Active = false;
+					break;
+				default:
+					break;
 				}
-				else if (m_settingsWheel->Active)
+			}
+			else
+			{
+				switch (buttonCode)
 				{
-					m_settingsWheel->Active = false;
-				}
-				else
-				{
+				case Input::Button::BT_1:
+					if (g_input.GetButton(Input::Button::BT_2))
+						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+					break;
+				case Input::Button::BT_2:
+					if (g_input.GetButton(Input::Button::BT_1))
+						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+					break;
+
+				case Input::Button::FX_1:
+					if (g_input.GetButton(Input::Button::FX_0))
+					{
+						m_settingsWheel->Active = true;
+					}
+					break;
+				case Input::Button::FX_0:
+					if (g_input.GetButton(Input::Button::FX_1))
+					{
+						m_settingsWheel->Active = true;
+					}
+					break;
+				case Input::Button::BT_S:
+					break;
+				case Input::Button::Back:
 					m_suspended = true;
 					g_application->RemoveTickable(this);
+					break;
+				default:
+					break;
 				}
-				break;
-			default:
-				break;
-			}
 
+			}
 		}
-    }
+	}
+
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
-		if (m_suspended)
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1355,7 +1443,7 @@ public:
 	}
 	void m_OnMouseScroll(int32 steps)
 	{
-		if (m_suspended)
+		if (m_suspended || m_collDiag.IsActive())
 			return;
 
 		if (m_settingsWheel->Active)
@@ -1373,6 +1461,9 @@ public:
 	}
 	virtual void OnKeyPressed(int32 key)
 	{
+		if (m_collDiag.IsActive())
+			return;
+
 		if (m_settingsWheel->Active)
 		{
 			if (key == SDLK_DOWN)
@@ -1430,6 +1521,10 @@ public:
 			{
 				m_mapDatabase.StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
+			}
+			else if (key == SDLK_F1 && m_hasCollDiag)
+			{
+				m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
 			}
 			else if (key == SDLK_F2)
 			{
@@ -1502,6 +1597,10 @@ public:
 			m_previewPlayer.Update(deltaTime);
 			m_searchInput->Tick();
 			m_selectionWheel->SetSearchFieldLua(m_searchInput);
+			if (m_collDiag.IsActive())
+			{
+				m_collDiag.Tick(deltaTime);
+			}
 		}
 	}
 
@@ -1522,6 +1621,11 @@ public:
 		m_selectionWheel->Render(deltaTime);
 		m_filterSelection->Render(deltaTime);
 		m_settingsWheel->Render(deltaTime);
+
+		if (m_collDiag.IsActive())
+		{
+			m_collDiag.Render(deltaTime);
+		}
 	}
 
     void TickNavigation(float deltaTime)
@@ -1598,6 +1702,7 @@ public:
 		m_suspended = false;
 		m_previewPlayer.Restore();
 		m_mapDatabase.StartSearching();
+		m_filterSelection->UpdateFilters();
 		OnSearchTermChanged(m_searchInput->input);
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{

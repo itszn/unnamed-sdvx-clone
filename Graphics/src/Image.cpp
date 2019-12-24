@@ -99,7 +99,11 @@ namespace Graphics
 
 
 			//Copy texture contents to image pData
+			#ifdef EMBEDDED
+			glReadPixels(0, 0, m_size.x, m_size.y, GL_RGBA, GL_UNSIGNED_BYTE, m_pData);
+			#else
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pData);
+			#endif
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glFinish();
 

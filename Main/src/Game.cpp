@@ -146,7 +146,6 @@ private:
 	// Particle effects
 	Material particleMaterial;
 	Texture basicParticleTexture;
-	Texture squareParticleTexture;
 	ParticleSystem m_particleSystem;
 	Ref<ParticleEmitter> m_laserFollowEmitters[2];
 	Ref<ParticleEmitter> m_holdEmitters[6];
@@ -338,11 +337,6 @@ public:
 		m_track = new Track();
 		loader.AddLoadable(*m_track, "Track");
 
-		// Load particle textures
-		loader.AddTexture(basicParticleTexture, "particle_flare.png");
-		loader.AddTexture(squareParticleTexture, "particle_square.png");
-		loader.AddMaterial(particleMaterial, "particle");
-
 		if(!InitHUD())
 			return false;
 
@@ -376,7 +370,19 @@ public:
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
-
+		#ifdef EMBEDDED
+		basicParticleTexture = Ref<TextureRes>();
+		particleMaterial = Ref<MaterialRes>();
+		#else
+		// Load particle textures
+		basicParticleTexture = g_application->LoadTexture("particle_flare.png");
+		particleMaterial = g_application->LoadMaterial("particle");
+		if (particleMaterial)
+		{
+			particleMaterial->blendMode = MaterialBlendMode::Additive;
+			particleMaterial->opaque = false;
+		}
+		#endif
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
@@ -398,8 +404,7 @@ public:
 		m_foreground = CreateBackground(this, true);
 		g_application->LoadGauge((m_flags & GameFlags::Hard) != GameFlags::None);
 
-		particleMaterial->blendMode = MaterialBlendMode::Additive;
-		particleMaterial->opaque = false;
+
 		// Do this here so we don't get input events while still loading
 		m_scoring.SetFlags(m_flags);
 		m_scoring.SetPlayback(m_playback);
@@ -736,52 +741,57 @@ public:
 		// Render queues
 		renderQueue.Process();
 		scoringRq.Process();
+		glFlush();
 
 		// Set laser follow particle visiblity
-		for(uint32 i = 0; i < 2; i++)
+		if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
+			(particleMaterial.GetData() && basicParticleTexture.GetData()))
 		{
-			if(m_scoring.IsLaserHeld(i))
+			for (uint32 i = 0; i < 2; i++)
 			{
-				if(!m_laserFollowEmitters[i])
-					m_laserFollowEmitters[i] = CreateTrailEmitter(m_track->laserColors[i]);
-
-				// Set particle position to follow laser
-				float followPos = m_scoring.laserTargetPositions[i];
-				if (m_scoring.lasersAreExtend[i])
-					followPos = followPos * 2.0f - 0.5f; 
-
-				m_laserFollowEmitters[i]->position = m_track->TransformPoint(Vector3(m_track->trackWidth * followPos - m_track->trackWidth * 0.5f, 0.f, 0.f));
-			}
-			else
-			{
-				if(m_laserFollowEmitters[i])
+				if (m_scoring.IsLaserHeld(i))
 				{
-					m_laserFollowEmitters[i].Release();
+					if (!m_laserFollowEmitters[i])
+						m_laserFollowEmitters[i] = CreateTrailEmitter(m_track->laserColors[i]);
+
+					// Set particle position to follow laser
+					float followPos = m_scoring.laserTargetPositions[i];
+					if (m_scoring.lasersAreExtend[i])
+						followPos = followPos * 2.0f - 0.5f;
+
+					m_laserFollowEmitters[i]->position = m_track->TransformPoint(Vector3(m_track->trackWidth * followPos - m_track->trackWidth * 0.5f, 0.f, 0.f));
 				}
-			}
-		}
-
-		// Set hold button particle visibility
-		for(uint32 i = 0; i < 6; i++)
-		{
-			if(m_scoring.IsObjectHeld(i))
-			{
-				if(!m_holdEmitters[i])
+				else
 				{
-					Color hitColor = (i < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
-					float hitWidth = (i < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
-					m_holdEmitters[i] = CreateHoldEmitter(hitColor, hitWidth);
-				}
-				m_holdEmitters[i]->position = m_track->TransformPoint(Vector3(m_track->GetButtonPlacement(i), 0.f, 0.f));
-			}
-			else
-			{
-				if(m_holdEmitters[i])
-				{
-					m_holdEmitters[i].Release();
+					if (m_laserFollowEmitters[i])
+					{
+						m_laserFollowEmitters[i].Release();
+					}
 				}
 			}
 
+			// Set hold button particle visibility
+			for (uint32 i = 0; i < 6; i++)
+			{
+				if (m_scoring.IsObjectHeld(i))
+				{
+					if (!m_holdEmitters[i])
+					{
+						Color hitColor = (i < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
+						float hitWidth = (i < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
+						m_holdEmitters[i] = CreateHoldEmitter(hitColor, hitWidth);
+					}
+					m_holdEmitters[i]->position = m_track->TransformPoint(Vector3(m_track->GetButtonPlacement(i), 0.f, 0.f));
+				}
+				else
+				{
+					if (m_holdEmitters[i])
+					{
+						m_holdEmitters[i].Release();
+					}
+				}
+
+			}
 		}
 
 		// IF YOU INCLUDE nanovg.h YOU CAN DO
@@ -815,8 +825,12 @@ public:
 		NVG_FLUSH();
 
 		// Render particle effects last
-		RenderParticles(rs, deltaTime);
-		glFlush();
+		if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
+			(particleMaterial.GetData() && basicParticleTexture.GetData())) 
+		{
+			RenderParticles(rs, deltaTime);
+			glFlush();
+		}
 
 		// Render Critical Line Overlay
 		lua_getglobal(m_lua, "render_crit_overlay");
@@ -1416,8 +1430,8 @@ public:
 		float dir = Math::Sign(object->points[1] - object->points[0]);
 
 		float width = (object->flags & LaserObjectState::flag_Extended) ? 2.0 : 1.0;
-		float startPos = m_track->trackWidth * object->points[0] * width - m_track->trackWidth * 0.5f;
-		float endPos = m_track->trackWidth * object->points[1] * width - m_track->trackWidth * 0.5f;
+		float startPos = (m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f) * width;
+		float endPos = (m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f) * width;
 
 		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
 		ex->position = Vector3(endPos, 0.0f, -0.05f);
@@ -1449,7 +1463,10 @@ public:
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
 
-		// The color effect in the button lane
+		// Show crit color on idle if a hold not is hit
+		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
+			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
+
 		m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
 
 		if (st != nullptr && st->hasSample)
@@ -1485,11 +1502,15 @@ public:
 			// Create hit effect particle
 			Color hitColor = (buttonIdx < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
 			float hitWidth = (buttonIdx < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
-			Ref<ParticleEmitter> emitter = CreateHitEmitter(hitColor, hitWidth);
-			emitter->position.x = m_track->GetButtonPlacement(buttonIdx);
-			emitter->position.z = -0.05f;
-			emitter->position.y = 0.0f;
-			emitter->position = m_track->TransformPoint(emitter->position);
+			if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
+				(particleMaterial.GetData() && basicParticleTexture.GetData())) 
+			{
+				Ref<ParticleEmitter> emitter = CreateHitEmitter(hitColor, hitWidth);
+				emitter->position.x = m_track->GetButtonPlacement(buttonIdx);
+				emitter->position.z = -0.05f;
+				emitter->position.y = 0.0f;
+				emitter->position = m_track->TransformPoint(emitter->position);
+			}
 		}
 
 		//call lua button_hit if it exists

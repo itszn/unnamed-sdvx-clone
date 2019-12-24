@@ -80,3 +80,18 @@ end
 set_mode = function(isFolder)
     selectingFolders = isFolder
 end
+
+function tables_set()
+    gfx.LoadSkinFont("NotoSans-Regular.ttf");
+    gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE);
+    gfx.FontSize(40);
+    for i,f in ipairs(filters.folder) do
+       folderLabels[i] = gfx.CreateLabel(f, 40, 0)
+    end
+
+    for i,l in ipairs(filters.level) do
+        if not levelLabels[i] then
+           levelLabels[i] = gfx.CreateLabel(l, 40, 0)
+        end
+    end
+end

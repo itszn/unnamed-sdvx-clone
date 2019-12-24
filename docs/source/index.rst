@@ -24,6 +24,7 @@ Contents:
    skinsettings
    http
    bgfg
+   collectiondialog
 
 
 Indices and tables
