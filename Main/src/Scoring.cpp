@@ -257,18 +257,6 @@ LaserObjectState* Scoring::GetLaserInRange(uint32 index)
 	return nullptr;
 }
 
-bool Scoring::CheckLaserContinuity(uint32 index)
-{
-	uint8 otherIndex = index ^ 1;
-	if (m_currentLaserSegments[index] && m_currentLaserSegments[otherIndex])
-	{
-		MapTime slamTime = m_currentLaserSegments[otherIndex]->time;
-		MapTime otherLaserLastTime = m_currentLaserSegments[index]->GetTail()->time;
-		return otherLaserLastTime - slamTime > 0 ? true : false;
-	}
-	return false;
-}
-
 bool Scoring::CheckLaserInCurrentSegment(uint32 index)
 {
 	assert(index >= 0 && index <= 1);

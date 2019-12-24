@@ -165,7 +165,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		// Catch up to the laser slam's roll position if a slam roll is being applied (i.e. not 0)
 		bool rollCatchUp = m_slamRoll[0] || m_slamRoll[1];
 		float speedLimitDivider = 1.f;
-		if (m_slowTilt && !rollCatchUp)
+		if ((m_slowTilt && !rollCatchUp) || m_slowTiltSlam)
 			// Roll even slower when roll is less than 1 / 10 of tilt
 			speedLimitDivider = fabsf(m_laserRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit / speedLimitDivider);
@@ -301,6 +301,11 @@ void Camera::SetSlowTilt(bool tilt)
 	m_slowTilt = tilt;
 }
 
+void Camera::SetSlowTiltSlam(bool tilt)
+{
+	m_slowTiltSlam = tilt;
+}
+
 void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
 {
 	assert(index >= 0 && index <= 1);
@@ -398,7 +403,6 @@ void Camera::SetTargetRoll(float target)
 	}
 	else
 	{
-		// Ignore rolls to have SDVX II roll keeps
 		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
 		if (m_ShouldRollDuringKeep(actualTarget, m_targetLaserRoll))
 		{

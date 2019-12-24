@@ -625,30 +625,28 @@ public:
 
 		// Get render state from the camera
 		float roll[2] = { 0.f };
-		float timer[2] = { 0.f };
-		bool slowTilt = false;
+
 		for (int index = 0; index < 2; ++index)
 		{
 			roll[index] = m_scoring.GetLaserRollOutput(index);
-			timer[index] = m_camera.GetSlamTimer(index);
-			if (timer[index] != 0)
+
+			if (m_camera.GetSlamTimer(index) != 0)
 				roll[index] = 0;
 
 			int otherIndex = index ^ 1;
+
 			// Checks if roll is -1/1 and the slam of the other index is 1/-1
-			if (roll[index] == 2 * index - 1 && m_camera.GetSlamAmount(otherIndex) == 2 * otherIndex - 1 && timer[otherIndex])
+			// This could be simplified, but this is needed to have slams and SDVX II-like roll keep
+			if (index == 0) {
+				m_camera.SetSlowTiltSlam(roll[index] == -1 && m_camera.GetSlamAmount(otherIndex) == 1);
+			}
+			else
 			{
-				if (m_scoring.CheckLaserContinuity(index)) // I guess this is pretty hacky
-				{
-					m_camera.SetSlamAmount(otherIndex, 0.f, false);
-					roll[index] = 0;
-					slowTilt = false;
-				}
+				m_camera.SetSlowTiltSlam(roll[index] == 1 && m_camera.GetSlamAmount(otherIndex) == -1);
 			}
 		}
 
-		if ((roll[0] == -1 && roll[1] == 1) || (roll[0] == 0 && roll[1] == 0))
-			slowTilt = true;
+		bool slowTilt = (roll[0] == -1 && roll[1] == 1) || (roll[0] == 0 && roll[1] == 0);
 		
 		m_camera.SetTargetRoll(roll[0] + roll[1]);
 		m_camera.SetSlowTilt(slowTilt);

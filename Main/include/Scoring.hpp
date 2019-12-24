@@ -97,12 +97,6 @@ public:
 	*/
 	LaserObjectState* GetLaserInRange(uint32 index);
 	/*
-	Checks if a laser segment ends later than the other
-	@param index - the laser to check if it's longer
-	@return true if it ends at a later point compared to the other laser, false otherwise or if neither laser is in the current laser segments
-	*/
-	bool CheckLaserContinuity(uint32 index);
-	/*
 	Checks if a laser is in the current laser segment
 	@param index - the laser to check for
 	@return true if it is in the current laser segment, false otherwise
