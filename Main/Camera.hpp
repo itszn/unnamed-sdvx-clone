@@ -122,6 +122,7 @@ public:
 
 private:
 	float m_ClampRoll(float in) const;
+	bool m_ShouldRollDuringKeep(float target, float roll);
 	// x offset
 	float m_totalOffset = 0.0f;
 	float m_spinBounceOffset = 0.0f;

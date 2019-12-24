@@ -128,8 +128,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	}
 	else if (m_rollKeep)
 	{
-			if ((m_laserRoll > 0 && m_targetLaserRoll > m_laserRoll) || (m_laserRoll < 0 && m_targetLaserRoll < m_laserRoll) || m_laserRoll == 0)
-				LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
+		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
 	}
 	else if (m_rollIntensityChanged)
 	{
@@ -381,10 +380,32 @@ RenderState Camera::CreateRenderState(bool clipped)
 	return rs;
 }
 
+bool Camera::m_ShouldRollDuringKeep(float target, float roll)
+{
+	if (roll == 0.0f || Math::Sign(roll) == Math::Sign(target))
+	{
+		return roll == 0 || (target < roll && roll < 0) || (target > roll&& roll > 0);
+	}
+	return false;
+}
+
 void Camera::SetTargetRoll(float target)
 {
-	m_targetLaserRoll = Math::Clamp(target + m_slamRoll[0] + m_slamRoll[1], -1.f, 1.f) * m_rollIntensity;
-	m_targetRollSet = true;
+	if (!m_rollKeep)
+	{
+		m_targetLaserRoll = Math::Clamp(target + m_slamRoll[0] + m_slamRoll[1], -1.f, 1.f) * m_rollIntensity;
+		m_targetRollSet = true;
+	}
+	else
+	{
+		// Ignore rolls to have SDVX II roll keeps
+		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
+		if (m_ShouldRollDuringKeep(actualTarget, m_targetLaserRoll))
+		{
+			m_targetLaserRoll = actualTarget;
+			m_targetRollSet = true;
+		}
+	}
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)
