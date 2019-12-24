@@ -22,8 +22,8 @@ static const int FAST_ROLL_IGNORE = 0;
 static const int SLOW_ROLL_IGNORE = 1;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
-static const float MAX_ROLL_ANGLE = 10.5 / 360.f;
-static const float ROLL_SPEED = 3.8;
+static const float MAX_ROLL_ANGLE = 10 / 360.f;
+static const float ROLL_SPEED = 4;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
