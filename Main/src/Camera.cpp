@@ -148,7 +148,11 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 		if (m_lasersActive && m_rollKeepChanged)
 		{
-			// If the target roll goes to 0 or to the other side while lasers are active, roll to that position instead
+			// If the target roll goes to 0 or to the other side while lasers are active, roll to that position instead.
+			// This behaviour isn't in SDVX and is merely a workaround that may produce results that are not SDVX accurate.
+			// The issue comes from TrackRollBehaviour event changes happening earlier than where they actually are in the KSM editor.
+			// e.g. at the end of Brain Power, roll keep is disabled and roll should be at 0. In USC, the game thinks it's still at -1
+			// and rolls to the right instead of the neutral position. This workaround fixes that.
 			if (Math::Sign(m_rollIntensityChangedTarget) != Math::Sign(m_targetLaserRoll))
 				m_rollIntensityChangedTarget = m_targetLaserRoll;
 		}

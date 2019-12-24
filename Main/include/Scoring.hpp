@@ -280,11 +280,6 @@ private:
 	// Updates laser output with or without interpolation
 	bool m_interpolateLaserOutput = false;
 
-	// True when a slam is hit
-	// When true, GetLaserRollOutput returns 0
-	// This ensures slam rolls are applied correctly
-	bool m_onSlam[2] = { false };
-
 	// Lerp for laser output
 	float m_laserOutputSource = 0.0f;
 	float m_laserOutputTarget = 0.0f;

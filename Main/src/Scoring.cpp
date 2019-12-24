@@ -271,11 +271,6 @@ bool Scoring::CheckIfLasersInCurrentSegment()
 float Scoring::GetLaserRollOutput(uint32 index, bool checkInRange)
 {
 	assert(index >= 0 && index <= 1);
-	if (m_onSlam[index])
-	{
-		m_onSlam[index] = false;
-		return 0;
-	}
 	if (m_currentLaserSegments[index])
 	{
 		return GetLaserPosition(index, laserTargetPositions[index]);
@@ -1063,7 +1058,6 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				// Apply slam roll instead
 				else if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
 				{
-					m_onSlam[currentSegment->index] = true;
 					OnLaserSlam.Call(currentSegment);
 				}
 			}

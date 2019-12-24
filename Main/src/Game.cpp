@@ -632,24 +632,14 @@ public:
 
 			if (m_camera.GetSlamTimer(index) != 0)
 				roll[index] = 0;
-
-			int otherIndex = index ^ 1;
-
-			// Checks if roll is -1/1 and the slam of the other index is 1/-1
-			// This could be simplified, but this is needed to have slams and SDVX II-like roll keep
-			if (index == 0) {
-				m_camera.SetSlowTiltSlam(roll[index] == -1 && m_camera.GetSlamAmount(otherIndex) == 1);
-			}
-			else
-			{
-				m_camera.SetSlowTiltSlam(roll[index] == 1 && m_camera.GetSlamAmount(otherIndex) == -1);
-			}
 		}
 
 		bool slowTilt = (roll[0] == -1 && roll[1] == 1) || (roll[0] == 0 && roll[1] == 0);
+		bool slowTiltSlam = (roll[0] == -1 && m_camera.GetSlamAmount(1) == 1) || (roll[1] == 1 && m_camera.GetSlamAmount(0) == -1);
 		
 		m_camera.SetTargetRoll(roll[0] + roll[1]);
 		m_camera.SetSlowTilt(slowTilt);
+		m_camera.SetSlowTiltSlam(slowTiltSlam);
 		m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
 
 		// Set track zoom
