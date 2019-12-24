@@ -546,8 +546,6 @@ public:
 	}
 	virtual void Tick(float deltaTime) override
 	{
-		m_camera.SetRollKeepStyle(g_gameConfig.GetBool(GameConfigKeys::SDVXIIRollKeep));
-
 		// Lock mouse to screen when playing
 		if(g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
 		{

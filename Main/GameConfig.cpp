@@ -53,7 +53,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::SuddenCutoff, 1.0f);
 	Set(GameConfigKeys::SuddenFade, 0.2f);
 	Set(GameConfigKeys::ShowCover, true);
-	Set(GameConfigKeys::SDVXIIRollKeep, true);
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 

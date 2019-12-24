@@ -562,7 +562,6 @@ public:
 				nk_layout_row_dynamic(m_nctx, 30, 1);
 				ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
 				ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
-				ToggleSetting(GameConfigKeys::SDVXIIRollKeep, "Use SDVX II roll keep behaviour");
 				EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 
 				nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
