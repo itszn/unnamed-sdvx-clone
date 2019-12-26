@@ -624,20 +624,15 @@ public:
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
 		// Get render state from the camera
-		float roll[2] = { 0.f };
+		// Only get roll when there's no laser slam roll being applied
+		float rollL = m_camera.GetSlamTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
+		float rollR = m_camera.GetSlamTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
 
-		for (int index = 0; index < 2; ++index)
-		{
-			roll[index] = m_scoring.GetLaserRollOutput(index);
-
-			if (m_camera.GetSlamTimer(index) != 0)
-				roll[index] = 0;
-		}
-
-		bool slowTilt = (roll[0] == -1 && roll[1] == 1) || (roll[0] == 0 && roll[1] == 0);
-		bool slowTiltSlam = (roll[0] == -1 && m_camera.GetSlamAmount(1) == 1) || (roll[1] == 1 && m_camera.GetSlamAmount(0) == -1);
+		// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
+		bool slowTilt = (rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0);
+		bool slowTiltSlam = (rollL == -1 && m_camera.GetSlamAmount(1) == 1) || (rollR == 1 && m_camera.GetSlamAmount(0) == -1);
 		
-		m_camera.SetTargetRoll(roll[0] + roll[1]);
+		m_camera.SetTargetRoll(rollL + rollR);
 		m_camera.SetSlowTilt(slowTilt);
 		m_camera.SetSlowTiltSlam(slowTiltSlam);
 		m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
@@ -1383,9 +1378,10 @@ public:
 			float head = m_scoring.GetLaserPosition(index, object->points[0]);
 			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
 			// Special cases where laser rolls are ignored for longer
+			// These special cases only matter if there's an incoming laser of the same index within 2 beats
 			bool otherLaserAtZero = false;
 			bool tailLessThanHead = false;
-			// These special cases only matter if there's an incoming laser of the same index within 2 beats
+			
 			if (m_scoring.GetLaserInRange(index) != nullptr)
 			{
 				uint8 otherLaserIndex = index ^ 1;

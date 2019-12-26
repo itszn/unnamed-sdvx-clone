@@ -389,17 +389,17 @@ RenderState Camera::CreateRenderState(bool clipped)
 	return rs;
 }
 
-bool Camera::m_ShouldRollDuringKeep(float target, float roll)
-{
-	if (roll == 0.0f || Math::Sign(roll) == Math::Sign(target))
-	{
-		return roll == 0 || (target < roll && roll < 0) || (target > roll&& roll > 0);
-	}
-	return false;
-}
-
 void Camera::SetTargetRoll(float target)
 {
+	auto ShouldRollDuringKeep = [](float target, float roll)
+	{
+		if (roll == 0.0f || Math::Sign(roll) == Math::Sign(target))
+		{
+			return roll == 0 || (target < roll && roll < 0) || (target > roll && roll > 0);
+		}
+		return false;
+	};
+
 	if (!m_rollKeep)
 	{
 		m_targetLaserRoll = Math::Clamp(target + m_slamRoll[0] + m_slamRoll[1], -1.f, 1.f) * m_rollIntensity;
@@ -408,7 +408,7 @@ void Camera::SetTargetRoll(float target)
 	else
 	{
 		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
-		if (m_ShouldRollDuringKeep(actualTarget, m_targetLaserRoll))
+		if (ShouldRollDuringKeep(actualTarget, m_targetLaserRoll))
 		{
 			m_targetLaserRoll = actualTarget;
 			m_targetRollSet = true;

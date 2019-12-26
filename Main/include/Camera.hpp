@@ -123,7 +123,6 @@ public:
 
 private:
 	float m_ClampRoll(float in) const;
-	bool m_ShouldRollDuringKeep(float target, float roll);
 	// x offset
 	float m_totalOffset = 0.0f;
 	float m_spinBounceOffset = 0.0f;
@@ -147,9 +146,8 @@ private:
 	bool m_rollKeepChanged = false;
 
 	// Controls if the camera rolls at a slow rate
-	// Activates when blue and red lasers are at the extremeties (-1, 1 or 0, 0)
+	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
 	bool m_slowTilt = false;
-
 	bool m_slowTiltSlam = false;
 
 	// Laser slam rolls
