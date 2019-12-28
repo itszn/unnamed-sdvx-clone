@@ -124,15 +124,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
-		m_laserRoll = pLaneTilt;
+		LerpTo(m_laserRoll, pLaneTilt, MAX_ROLL_ANGLE * 2.4f * ROLL_SPEED); // BIGGEST tilt speed
 	}
 	else if (m_rollKeep)
 	{
 		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
 	}
-	else if (m_rollIntensityChanged)
+	else if (m_rollIntensityChanged) // Roll to the new roll value of the tilt
 	{
-		// Roll to the new roll value of the tilt
+		// Get the roll speed based on the larger tilt value
+		// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
 		float rollSpeedFactor = ((Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE) - 1.f) / 0.7f + 1.f;
 		float rollSpeed = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 
