@@ -1385,8 +1385,7 @@ public:
 			if (m_scoring.GetLaserInRange(index) != nullptr)
 			{
 				uint8 otherLaserIndex = index ^ 1;
-				if (m_scoring.GetLaserRollOutput(otherLaserIndex) == 0)
-					otherLaserAtZero = m_scoring.CheckLaserInCurrentSegment(otherLaserIndex);
+				otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
 				tailLessThanHead = fabsf(tail) < fabsf(head);
 			}
 			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead);
