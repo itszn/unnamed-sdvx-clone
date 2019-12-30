@@ -91,7 +91,7 @@ To run from Visual Studio, go to Properties for Main > Debugging > Working Direc
 ### Linux:
 1. Install [CMake](https://cmake.org/download/)
 2. Check 'build.linux' for libraries to install
-3. Run `cmake .` and then `make` from the root of the project
+3. Run `cmake -DCMAKE_BUILD_TYPE=Release .` and then `make` from the root of the project
 4. Run the executable made in the 'bin' folder
 
 ### macOS:
