@@ -236,10 +236,8 @@ void Scoring::Tick(float deltaTime)
 
 float Scoring::GetLaserPosition(uint32 index, float pos)
 {
-	if (index == 0)
-		return -pos;
-	if (index == 1)
-		return 1.0f - pos;
+	assert(index == 0 || index == 1);
+	return index == 0 ? -pos : 1.f - pos;
 }
 
 LaserObjectState* Scoring::GetLaserInRange(uint32 index)
