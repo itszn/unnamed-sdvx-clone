@@ -55,7 +55,7 @@ public:
 	
 	/*
 	Sets slow tilt state
-	@param tilt - should be true when rollA && rollB == -1 and 1 respectively, or when rollA && rollB == 0
+	@param tilt - should be true when lasers are at 0/0 or -1/1
 	*/
 	void SetSlowTilt(bool tilt);
 	void SetSlowTiltSlam(bool tilt);
@@ -148,7 +148,6 @@ private:
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
 	bool m_slowTilt = false;
-	bool m_slowTiltSlam = false;
 
 	// Laser slam rolls
 	// Does not track slams that have a next segment
