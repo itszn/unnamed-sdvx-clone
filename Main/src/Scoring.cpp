@@ -255,17 +255,6 @@ LaserObjectState* Scoring::GetLaserInRange(uint32 index)
 	return nullptr;
 }
 
-bool Scoring::CheckLaserInCurrentSegment(uint32 index)
-{
-	assert(index >= 0 && index <= 1);
-	return m_currentLaserSegments[index];
-}
-
-bool Scoring::CheckIfLasersInCurrentSegment()
-{
-	return CheckLaserInCurrentSegment(0) || CheckLaserInCurrentSegment(1);
-}
-
 float Scoring::GetLaserRollOutput(uint32 index, bool checkInRange)
 {
 	assert(index >= 0 && index <= 1);

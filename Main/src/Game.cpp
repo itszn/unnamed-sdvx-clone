@@ -637,7 +637,6 @@ public:
 		
 		m_camera.SetTargetRoll(rollL + rollR);
 		m_camera.SetSlowTilt(slowTilt);
-		m_camera.SetLasersActive(m_scoring.CheckIfLasersInCurrentSegment());
 
 		// Set track zoom
 

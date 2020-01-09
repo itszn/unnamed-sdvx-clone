@@ -120,58 +120,46 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedlimit = Math::Max(m_rollIntensity * ROLL_SPEED, MAX_ROLL_ANGLE);
+	float speedLimit = Math::Max(m_rollIntensity * ROLL_SPEED, MAX_ROLL_ANGLE);
 
 	if (pManualTiltEnabled)
 	{
-		LerpTo(m_laserRoll, pLaneTilt, MAX_ROLL_ANGLE * 2.4f * ROLL_SPEED); // BIGGEST tilt speed
+		m_actualTargetLaserRoll = pLaneTilt;
 	}
-	else if (m_rollKeep)
+	else if (m_rollIntensityChanged && !m_rollKeep)
 	{
-		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
-	}
-	else if (m_rollIntensityChanged) // Roll to the new roll value of the tilt
-	{
-		// Get the roll speed based on the larger tilt value
-		// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
-		float rollSpeedFactor = ((Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE) - 1.f) / 0.7f + 1.f;
-		float rollSpeed = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+		// Get new roll value based off of the new tilt value
+		float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 
-		if (!m_rollIntensityChangedTargetSet)
-		{
-			if (m_rollKeepChanged)
-				m_rollIntensityChangedTarget = m_targetLaserRoll;
-			else
-				// Get new roll value based off of the new tilt value
-				m_rollIntensityChangedTarget = (m_laserRoll / m_oldRollIntensity) * m_rollIntensity;
-			m_rollIntensityChangedTargetSet = true;
-		}
-
-		if (m_lasersActive && m_rollKeepChanged)
-		{
-			// If the target roll goes to 0 or to the other side while lasers are active, roll to that position instead.
-			// This behaviour isn't in SDVX and is merely a workaround that may produce results that are not SDVX accurate.
-			// The issue comes from TrackRollBehaviour event changes happening earlier than where they actually are in the KSM editor.
-			// e.g. at the end of Brain Power, roll keep is disabled and roll should be at 0. In USC, the game thinks it's still at -1
-			// and rolls to the right instead of the neutral position. This workaround fixes that.
-			if (Math::Sign(m_rollIntensityChangedTarget) != Math::Sign(m_targetLaserRoll))
-				m_rollIntensityChangedTarget = m_targetLaserRoll;
-		}
-
-		LerpTo(m_laserRoll, m_rollIntensityChangedTarget, rollSpeed);
-		if (m_laserRoll == m_rollIntensityChangedTarget)
+		if (m_actualRoll == target)
 		{
 			m_rollIntensityChanged = false;
-			m_rollIntensityChangedTargetSet = false;
+		}
+		else
+		{
+			// Get the roll speed based on the larger tilt value
+			// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
+			float rollSpeedFactor = ((Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE) - 1.f) / 0.7f + 1.f;
+			float rollSpeed = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+			m_actualTargetLaserRoll = target;
 		}
 	}
-	else
+	else if (m_slowTilt && !m_rollKeep)
 	{
-		if (m_slowTilt)
-			// Roll even slower when roll is less than 1 / 10 of tilt
-			speedlimit /= fabsf(m_laserRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
-		LerpTo(m_laserRoll, m_targetLaserRoll, speedlimit);
+		// Roll even slower when roll is less than 1 / 10 of tilt
+		speedLimit /= fabsf(m_actualRoll) > m_rollIntensity* SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 	}
+
+	// Lerp highway tilt
+	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+
+	// Lerp crit line position
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED; // Set roll speed to normal
+	if (m_slowTilt)
+		// Roll even slower when roll is less than 1 / 10 of tilt
+		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -189,9 +177,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 		m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
 	}
-
-	//LerpTo(m_actualRoll, actualTargetRoll, 8);
-	m_actualRoll = m_laserRoll;
 
 	m_spinProgress = (float)(playback.GetLastTime() - m_spinStart) / m_spinDuration;
 	// Calculate camera spin
@@ -230,7 +215,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	if (!m_rollKeep)
 	{
 		m_targetRollSet = false;
-		m_targetLaserRoll = 0.0f;
+		m_actualTargetLaserRoll = 0.0f;
 	}
 
 	// Update camera shake effects
@@ -283,7 +268,7 @@ void Camera::SetRollIntensity(float val)
 	if (m_rollIntensity != val)
 		m_rollIntensityChanged = true;
 
-	m_oldRollIntensity = m_rollIntensity == 0 ? MAX_ROLL_ANGLE : m_rollIntensity;
+	m_oldRollIntensity = m_rollIntensity;
 	m_rollIntensity = val;
 }
 
@@ -294,7 +279,6 @@ bool Camera::GetRollKeep()
 
 void Camera::SetRollKeep(bool rollKeep)
 {
-	m_rollKeepChanged = m_rollKeep ^ rollKeep;
 	m_rollKeep = rollKeep;
 }
 
@@ -393,17 +377,20 @@ void Camera::SetTargetRoll(float target)
 		return false;
 	};
 
+	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
+	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
+
 	if (!m_rollKeep)
 	{
-		m_targetLaserRoll = Math::Clamp(target + m_slamRoll[0] + m_slamRoll[1], -1.f, 1.f) * m_rollIntensity;
+		m_actualTargetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * m_rollIntensity;
 		m_targetRollSet = true;
 	}
 	else
 	{
 		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
-		if (ShouldRollDuringKeep(actualTarget, m_targetLaserRoll))
+		if (ShouldRollDuringKeep(actualTarget, m_actualTargetLaserRoll))
 		{
-			m_targetLaserRoll = actualTarget;
+			m_actualTargetLaserRoll = actualTarget;
 			m_targetRollSet = true;
 		}
 	}

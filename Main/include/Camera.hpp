@@ -128,10 +128,14 @@ private:
 	float m_spinBounceOffset = 0.0f;
 	// roll value
 	float m_totalRoll = 0.0f;
+	// Used for crit line position
 	float m_laserRoll = 0.0f;
+	// Actual highway tilt
 	float m_actualRoll = 0.0f;
 	// Target to roll towards
-	float m_targetLaserRoll = 0.0f;
+	float m_actualTargetLaserRoll = 0.0f;
+	// Target roll used for crit line
+	float m_targetLaserRoll = 0.f;
 	bool m_targetRollSet = false;
 	bool m_lasersActive = false;
 	// Roll force
@@ -140,10 +144,7 @@ private:
 	float m_oldRollIntensity = MAX_ROLL_ANGLE;
 	// Checks if camera roll needs to roll quickly due to a new tilt value
 	bool m_rollIntensityChanged = false;
-	float m_rollIntensityChangedTarget = 0.f;
-	bool m_rollIntensityChangedTargetSet = false;
 	bool m_rollKeep = false;
-	bool m_rollKeepChanged = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)

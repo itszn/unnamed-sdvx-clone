@@ -96,17 +96,6 @@ public:
 	@return the laser object, or a nullptr if no laser was found
 	*/
 	LaserObjectState* GetLaserInRange(uint32 index);
-	/*
-	Checks if a laser is in the current laser segment
-	@param index - the laser to check for
-	@return true if it is in the current laser segment, false otherwise
-	*/
-	bool CheckLaserInCurrentSegment(uint32 index);
-	/*
-	Checks if either laser is in the current laser segment
-	@return true if either laser is in the current laser segment, false otherwise
-	*/
-	bool CheckIfLasersInCurrentSegment();
 	float GetLaserRollOutput(uint32 index, bool checkInRange = true);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
