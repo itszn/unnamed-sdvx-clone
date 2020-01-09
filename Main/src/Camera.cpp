@@ -125,6 +125,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	if (pManualTiltEnabled)
 	{
 		m_actualTargetLaserRoll = pLaneTilt;
+		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.4f; // BIGGEST roll speed
 	}
 	else if (m_rollIntensityChanged && !m_rollKeep)
 	{
@@ -164,18 +165,18 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	for (int index = 0; index < 2; ++index)
 	{
 		// Apply slam roll only for 100ms
-		if (m_slamRollType[index] == FAST_ROLL_IGNORE)
+		if (m_rollIgnoreType[index] == ROLL_IGNORE)
 		{
-			if (m_slamRollTimer[index] == 0)
+			if (m_rollIgnoreTimer[index] == 0)
 				m_slamRoll[index] = 0;
 		}
-		else if (m_slamRollType[index] == SLOW_ROLL_IGNORE)
+		else if (m_rollIgnoreType[index] == LONG_ROLL_IGNORE)
 		{
-			if (m_slamRollTimer[index] - 0.1f <= 0)
+			if (m_rollIgnoreTimer[index] - 0.1f <= 0)
 				m_slamRoll[index] = 0;
 		}
 
-		m_slamRollTimer[index] = Math::Max(m_slamRollTimer[index] - deltaTime, 0.f);
+		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 	}
 
 	m_spinProgress = (float)(playback.GetLastTime() - m_spinStart) / m_spinDuration;
@@ -287,26 +288,31 @@ void Camera::SetSlowTilt(bool tilt)
 	m_slowTilt = tilt;
 }
 
-void Camera::SetSlamAmount(uint32 index, float amount, bool slowDecay)
+void Camera::SetSlamAmount(uint32 index, float amount, bool longIgnore)
 {
 	assert(index >= 0 && index <= 1);
 	m_slamRoll[index] = amount;
-	if (slowDecay)
+	SetRollIgnore(index, longIgnore);
+}
+
+void Camera::SetRollIgnore(uint32 index, bool longIgnore)
+{
+	if (longIgnore)
 	{
-		m_slamRollTimer[index] = SLOW_ROLL_IGNORE_TIMER;
-		m_slamRollType[index] = SLOW_ROLL_IGNORE;
+		m_rollIgnoreTimer[index] = LONG_ROLL_IGNORE_TIMER;
+		m_rollIgnoreType[index] = LONG_ROLL_IGNORE;
 	}
 	else
 	{
-		m_slamRollTimer[index] = FAST_ROLL_IGNORE_TIMER;
-		m_slamRollType[index] = FAST_ROLL_IGNORE;
+		m_rollIgnoreTimer[index] = ROLL_IGNORE_TIMER;
+		m_rollIgnoreType[index] = ROLL_IGNORE;
 	}
 }
 
 float Camera::GetSlamTimer(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
-	return m_slamRollTimer[index];
+	return m_rollIgnoreTimer[index];
 }
 
 float Camera::GetSlamAmount(uint32 index)

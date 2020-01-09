@@ -991,6 +991,7 @@ public:
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
 
 		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
+		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
 
 		m_playback.hittableObjectEnter = Scoring::missHitTime + g_gameConfig.GetInt(GameConfigKeys::InputOffset);
 		m_playback.hittableObjectLeave = Scoring::goodHitTime;
@@ -1391,6 +1392,15 @@ public:
 			}
 			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead);
 		}
+	}
+
+	void OnLaserExit(LaserObjectState* object)
+	{
+		uint8 index = object->index;
+		float head = m_scoring.GetLaserPosition(index, object->points[0]);
+		float tail = m_scoring.GetLaserPosition(index, object->points[1]);
+		if (!object->next && fabsf(tail) <= fabsf(head))
+			m_camera.SetRollIgnore(index, false);
 	}
 
 	void OnLaserSlamHit(LaserObjectState* object)

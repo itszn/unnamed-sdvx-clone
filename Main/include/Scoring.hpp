@@ -144,6 +144,8 @@ public:
 	Delegate<LaserObjectState*> OnLaserSlamHit;
 	// Called during a laser slam
 	Delegate<LaserObjectState*> OnLaserSlam;
+	// Called when a laser has passed the crit line
+	Delegate<LaserObjectState*> OnLaserExit;
 	// Called when the combo counter changed
 	// (New Combo)
 	Delegate<uint32> OnComboChanged;

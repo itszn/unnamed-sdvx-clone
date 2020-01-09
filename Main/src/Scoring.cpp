@@ -1022,6 +1022,9 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			lasersAreExtend[i] = (currentSegment->flags & LaserObjectState::flag_Extended) != 0;
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
+				if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+					OnLaserExit.Call(currentSegment);
+
 				currentSegment = nullptr;
 				m_currentLaserSegments[i] = nullptr;
 				for (auto o : m_laserSegmentQueue)
