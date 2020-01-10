@@ -1396,11 +1396,8 @@ public:
 
 	void OnLaserExit(LaserObjectState* object)
 	{
-		uint8 index = object->index;
-		float head = m_scoring.GetLaserPosition(index, object->points[0]);
-		float tail = m_scoring.GetLaserPosition(index, object->points[1]);
-		if (!object->next && fabsf(tail) <= fabsf(head))
-			m_camera.SetRollIgnore(index, false);
+		if (!object->next)
+			m_camera.SetRollIgnore(object->index, false);
 	}
 
 	void OnLaserSlamHit(LaserObjectState* object)
