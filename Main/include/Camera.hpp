@@ -49,7 +49,6 @@ public:
 	@param index - index of the laser. 0 for blue laser, 1 for red laser
 	@param amount - the "strength" of the slam. Should be the position of the slam's tail
 	@param longIgnore - ignore rolls for longer
-	longIgnore only matters when there is an incoming laser of the same index within 2 beats
 	*/
 	void SetSlamAmount(uint32 index, float amount, bool longIgnore);
 
@@ -57,7 +56,6 @@ public:
 	Set how long to ignore a laser's roll
 	@param index - index of the laser
 	@param longIgnore - ignore rolls for longer
-	longIgnore only matters when there is an incoming laser of the same index within 2 beats
 	*/
 	void SetRollIgnore(uint32 index, bool longIgnore);
 	

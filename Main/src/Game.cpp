@@ -1377,19 +1377,12 @@ public:
 		if (!object->next)
 		{
 			uint8 index = object->index;
+			uint8 otherLaserIndex = index ^ 1;
 			float head = m_scoring.GetLaserPosition(index, object->points[0]);
 			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
 			// Special cases where laser rolls are ignored for longer
-			// These special cases only matter if there's an incoming laser of the same index within 2 beats
-			bool otherLaserAtZero = false;
-			bool tailLessThanHead = false;
-			
-			if (m_scoring.GetLaserInRange(index) != nullptr)
-			{
-				uint8 otherLaserIndex = index ^ 1;
-				otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
-				tailLessThanHead = fabsf(tail) < fabsf(head);
-			}
+			bool otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
+			bool tailLessThanHead = fabsf(tail) < fabsf(head);
 			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead);
 		}
 	}
