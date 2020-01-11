@@ -240,33 +240,26 @@ float Scoring::GetLaserPosition(uint32 index, float pos)
 	return index == 0 ? -pos : 1.f - pos;
 }
 
-LaserObjectState* Scoring::GetLaserInRange(uint32 index)
-{
-	for (auto l : m_laserSegmentQueue)
-	{
-		if (l->index == index && !l->prev)
-		{
-			if (l->time - m_playback->GetLastTime() <= Math::Ceil(m_playback->GetCurrentTimingPoint().beatDuration * 2))
-			{
-				return l;
-			}
-		}
-	}
-	return nullptr;
-}
-
-float Scoring::GetLaserRollOutput(uint32 index, bool checkInRange)
+float Scoring::GetLaserRollOutput(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
 	if (m_currentLaserSegments[index])
 	{
 		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
-	else if (checkInRange) // Check if any upcoming lasers are within 2 beats
+	else // Check if any upcoming lasers are within 2 beats
 	{
-		LaserObjectState* laser = GetLaserInRange(index);
-		if (laser != nullptr)
-			return GetLaserPosition(index, laser->points[0]);
+		for (auto l : m_laserSegmentQueue)
+		{
+			if (l->index == index && !l->prev)
+			{
+				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
+				{
+					return GetLaserPosition(index, l->points[0]);
+				}
+			}
+		}
+			
 	}
 	return 0.0f;
 }

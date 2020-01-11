@@ -89,14 +89,7 @@ public:
 	void Tick(float deltaTime);
 
 	float GetLaserPosition(uint32 index, float pos);
-	
-	/*
-	Returns a laser object if it is within two beats
-	@param index - the laser to search for (0 for blue laser, 1 for red laser)
-	@return the laser object, or a nullptr if no laser was found
-	*/
-	LaserObjectState* GetLaserInRange(uint32 index);
-	float GetLaserRollOutput(uint32 index, bool checkInRange = true);
+	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
 	bool GetFXActive();
