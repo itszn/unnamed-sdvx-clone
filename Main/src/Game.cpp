@@ -1383,7 +1383,8 @@ public:
 			// Special cases where laser rolls are ignored for longer
 			bool otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
 			bool tailLessThanHead = fabsf(tail) < fabsf(head);
-			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead);
+			bool headLessThanHalf = fabsf(head) < 0.5f;
+			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead || headLessThanHalf);
 		}
 	}
 
