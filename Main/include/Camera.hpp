@@ -53,7 +53,7 @@ public:
 	void SetSlamAmount(uint32 index, float amount, bool longIgnore);
 
 	/*
-	Set how long to ignore a laser's roll
+	Set laser roll ignore
 	@param index - index of the laser
 	@param longIgnore - ignore rolls for longer
 	*/
@@ -61,10 +61,9 @@ public:
 	
 	/*
 	Sets slow tilt state
-	@param tilt - should be true when lasers are at 0/0 or -1/1
+	@param tilt - true when lasers are at 0/0 or -1/1
 	*/
 	void SetSlowTilt(bool tilt);
-	void SetSlowTiltSlam(bool tilt);
 	void SetLasersActive(bool lasersActive);
 	void SetTargetRoll(float target);
 	void SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback);
