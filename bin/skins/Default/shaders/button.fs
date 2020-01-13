@@ -36,6 +36,24 @@ void main()
 }
 
 #else
+
+float hide()
+{
+    float off = trackPos + position.y * trackScale;
+
+    if (hiddenCutoff > suddenCutoff) {
+        float sudden = smoothstep(suddenCutoff, suddenCutoff - suddenFadeWindow, off);
+        float hidden = smoothstep(hiddenCutoff, hiddenCutoff + hiddenFadeWindow, off);
+        return min(hidden + sudden, 1.0);
+    }
+
+    float sudden = smoothstep(suddenCutoff + suddenFadeWindow, suddenCutoff, off);
+    float hidden = smoothstep(hiddenCutoff - hiddenFadeWindow, hiddenCutoff, off);
+
+    return hidden * sudden;
+}
+
+
 void main()
 {	
 	vec4 mainColor = texture(mainTex, fsTex.xy);
@@ -49,36 +67,6 @@ void main()
     }
 
     target = mainColor;
-    
-    float off = trackPos + position.y * trackScale;
-    
-    if(hiddenCutoff < suddenCutoff)
-    {
-        float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;
-        if (off < hiddenCutoff) {
-            target = target * max(0.0, (off - hiddenCutoffFade) / hiddenFadeWindow);
-        }
-
-        float suddenCutoffFade = suddenCutoff + suddenFadeWindow;
-        if (off > suddenCutoff) {
-            target = target * max(0.0, (suddenCutoffFade - off) / suddenFadeWindow);
-        }
-    }
-    else
-    {
-        float hiddenCutoffFade = hiddenCutoff + hiddenFadeWindow;
-        if (off > hiddenCutoff) {
-            target = target * clamp((off - hiddenCutoffFade) / hiddenFadeWindow, 0.0, 1.0);
-        }
-
-        float suddenCutoffFade = suddenCutoff - suddenFadeWindow;
-        if (off < suddenCutoff) {
-            target = target * clamp((suddenCutoffFade - off) / suddenFadeWindow, 0.0, 1.0);
-        }
-
-        if (off > suddenCutoff && off < hiddenCutoff) {
-            target = target * vec4(0.0);
-        }
-    }
+    target *= hide();
 }
 #endif
