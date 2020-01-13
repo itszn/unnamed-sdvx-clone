@@ -46,7 +46,10 @@ vec4 draw_a(vec2 uv, vec2 center)
     uv.y = (uv.y + 0.6) / 2.0;
     uv.x *= thing / 20.0;
     uv.x += timing.y * 2.0;
-	
+
+
+    uv.y = clamp(uv.y, 0.0, 1.0);
+
 	float alpha = texture(mainTex, uv).a;
     vec4 col = vec4(0.2, 1.0, 0.0, alpha);
     vec4 clear_col = vec4(0.2, 1.0, 0.0, alpha);
@@ -54,8 +57,6 @@ vec4 draw_a(vec2 uv, vec2 center)
     col *= (1.0 - clearTransition);
     col += clear_col * clearTransition * 1.1;
     
-    if (abs(uv.y) > 1.0 || uv.y < 0.0)
-        col = vec4(0);
     col.a *= 1.0 - (thing * 70.0);
 
 	return col;
@@ -72,15 +73,14 @@ vec4 draw_b(vec2 uv, vec2 center)
     uv.x += timing.y * 1.0;
 	uv.y = -uv.y + 1.0;
 	uv.x = -uv.x + 1.0;
+    uv.y = clamp(uv.y, 0.0, 1.0);
 	float alpha = texture(mainTex, uv).a;
     vec4 col = vec4(0.2, 0.2, 1.0, alpha);
     vec4 clear_col = vec4(0.2 + (1.0 - uv.y * 1.5), 1.0, 0.0, alpha);
     
     col *= (1.0 - clearTransition);
     col += clear_col * clearTransition * 1.1;
-    
-    if (abs(uv.y) > 1.0 || uv.y < 0.0)
-        col = vec4(0);
+
     col.a *= 1.0 - (thing * 70.0);
 
 	return col * (1.4 + clearTransition * 0.2);
