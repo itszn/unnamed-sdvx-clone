@@ -1373,25 +1373,29 @@ public:
 
 	void OnLaserSlam(LaserObjectState* object)
 	{
-		object->flags |= LaserObjectState::flag_slamProcessed;
-		if (!object->next)
+		if (object != nullptr)
 		{
-			uint8 index = object->index;
-			uint8 otherLaserIndex = index ^ 1;
-			float head = m_scoring.GetLaserPosition(index, object->points[0]);
-			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
-			// Special cases where laser rolls are ignored for longer
-			bool otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
-			bool tailLessThanHead = fabsf(tail) < fabsf(head);
-			bool headLessThanHalf = fabsf(head) < 0.5f;
-			m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead || headLessThanHalf);
+			object->flags |= LaserObjectState::flag_slamProcessed;
+			if (!object->next)
+			{
+				uint8 index = object->index;
+				uint8 otherLaserIndex = index ^ 1;
+				float head = m_scoring.GetLaserPosition(index, object->points[0]);
+				float tail = m_scoring.GetLaserPosition(index, object->points[1]);
+				// Special cases where laser rolls are ignored for longer
+				bool otherLaserAtZero = m_scoring.GetLaserRollOutput(otherLaserIndex) == 0;
+				bool tailLessThanHead = fabsf(tail) < fabsf(head);
+				bool headLessThanHalf = fabsf(head) < 0.5f;
+				m_camera.SetSlamAmount(index, tail, otherLaserAtZero || tailLessThanHead || headLessThanHalf);
+			}
 		}
 	}
 
 	void OnLaserExit(LaserObjectState* object)
 	{
-		if (!object->next)
-			m_camera.SetRollIgnore(object->index, false);
+		if (object != nullptr)
+			if (!object->next)
+				m_camera.SetRollIgnore(object->index, false);
 	}
 
 	void OnLaserSlamHit(LaserObjectState* object)
