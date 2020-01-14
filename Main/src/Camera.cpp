@@ -166,8 +166,10 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	
 	for (int index = 0; index < 2; ++index)
 	{
+		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
+
 		// Apply slam roll only for 100ms
-		if (m_rollIgnoreType[index] == ROLL_IGNORE)
+		if (m_rollIgnoreType[index] == NORMAL_ROLL_IGNORE)
 		{
 			if (m_rollIgnoreTimer[index] == 0)
 				m_slamRoll[index] = 0;
@@ -177,8 +179,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 			if (m_rollIgnoreTimer[index] - 0.1f <= 0)
 				m_slamRoll[index] = 0;
 		}
-
-		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 	}
 
 	m_spinProgress = (float)(playback.GetLastTime() - m_spinStart) / m_spinDuration;
@@ -307,7 +307,7 @@ void Camera::SetRollIgnore(uint32 index, bool longIgnore)
 	else
 	{
 		m_rollIgnoreTimer[index] = ROLL_IGNORE_TIMER;
-		m_rollIgnoreType[index] = ROLL_IGNORE;
+		m_rollIgnoreType[index] = NORMAL_ROLL_IGNORE;
 	}
 }
 

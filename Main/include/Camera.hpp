@@ -18,7 +18,7 @@ static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Amount of time roll is ignored
 static const float ROLL_IGNORE_TIMER = 0.1f;
 static const float LONG_ROLL_IGNORE_TIMER = 0.2f;
-static const int ROLL_IGNORE = 0;
+static const int NORMAL_ROLL_IGNORE = 0;
 static const int LONG_ROLL_IGNORE = 1;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
