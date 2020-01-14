@@ -127,28 +127,31 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_actualTargetLaserRoll = pLaneTilt;
 		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.4f; // BIGGEST roll speed
 	}
-	else if (m_rollIntensityChanged && !m_rollKeep)
+	else if (!m_rollKeep) 
 	{
-		// Get new roll value based off of the new tilt value
-		float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
+		if (m_rollIntensityChanged)
+		{
+			// Get new roll value based off of the new tilt value
+			float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 
-		if (m_actualRoll == target)
-		{
-			m_rollIntensityChanged = false;
+			if (m_actualRoll == target)
+			{
+				m_rollIntensityChanged = false;
+			}
+			else
+			{
+				// Get the roll speed based on the larger tilt value
+				// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
+				float rollSpeedFactor = (Math::Max(m_oldRollIntensity, m_rollIntensity)) / MAX_ROLL_ANGLE;
+				speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+				m_actualTargetLaserRoll = target;
+			}
 		}
-		else
+		else if (m_slowTilt)
 		{
-			// Get the roll speed based on the larger tilt value
-			// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
-			float rollSpeedFactor = (Math::Max(m_oldRollIntensity, m_rollIntensity)) / MAX_ROLL_ANGLE;
-			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
-			m_actualTargetLaserRoll = target;
+			// Roll even slower when roll is less than 1 / 10 of tilt
+			speedLimit /= fabsf(m_actualRoll) > m_rollIntensity* SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 		}
-	}
-	else if (m_slowTilt && !m_rollKeep)
-	{
-		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_actualRoll) > m_rollIntensity* SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 	}
 
 	// Lerp highway tilt
