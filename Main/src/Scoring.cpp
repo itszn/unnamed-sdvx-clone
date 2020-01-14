@@ -1015,7 +1015,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			lasersAreExtend[i] = (currentSegment->flags & LaserObjectState::flag_Extended) != 0;
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
-				if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+				if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed) && !currentSegment->next)
 					OnLaserExit.Call(currentSegment);
 
 				currentSegment = nullptr;
@@ -1039,7 +1039,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 					laserTargetPositions[i] = currentSegment->SamplePosition(mapTime);
 				}
 				// Apply slam roll instead
-				else if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed))
+				else if (!(currentSegment->flags & LaserObjectState::flag_slamProcessed) && !currentSegment->next)
 				{
 					OnLaserSlam.Call(currentSegment);
 				}
