@@ -456,6 +456,7 @@ bool Application::m_Init()
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
 	g_gameWindow->OnKeyReleased.Add(this, &Application::m_OnKeyReleased);
 	g_gameWindow->OnResized.Add(this, &Application::m_OnWindowResized);
+	g_gameWindow->OnFocusChanged.Add(this, &Application::m_OnFocusChanged);
 
 	// Initialize Input
 	g_input.Init(*g_gameWindow);
@@ -1352,6 +1353,17 @@ void Application::m_OnWindowResized(const Vector2i& newSize)
 		}
 	}
 
+}
+
+void Application::m_OnFocusChanged(bool focused)
+{
+	bool muteUnfocused = g_gameConfig.GetBool(GameConfigKeys::MuteUnfocused);
+	if (focused && muteUnfocused) {
+		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
+	}
+	else if (!focused && muteUnfocused) {
+		g_audio->SetGlobalVolume(0.0f);
+	}
 }
 
 int Application::FastText(String inputText, float x, float y, int size, int align)

@@ -328,6 +328,13 @@ namespace Graphics
 							Vector2i newSize(evt.window.data1, evt.window.data2);
 							outer.OnResized.Call(newSize);
 						}
+						else if (evt.window.event == SDL_WindowEventID::SDL_WINDOWEVENT_FOCUS_GAINED) {
+							outer.OnFocusChanged.Call(true);
+						}
+						else if (evt.window.event == SDL_WindowEventID::SDL_WINDOWEVENT_FOCUS_LOST) {
+							outer.OnFocusChanged.Call(false);
+						}
+
 					}
 				}
 				else if(evt.type == SDL_EventType::SDL_TEXTINPUT)

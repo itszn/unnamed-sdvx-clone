@@ -115,6 +115,7 @@ namespace Graphics
 		Delegate<const WString&> OnTextInput;
 		Delegate<const TextComposition&> OnTextComposition;
 		Delegate<const Vector2i&> OnResized;
+		Delegate<bool> OnFocusChanged;
 
 	private:
 		class Window_Impl* m_impl;

@@ -604,6 +604,7 @@ public:
 #ifdef _WIN32
 				ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
+				ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
 				ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 				ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
 
