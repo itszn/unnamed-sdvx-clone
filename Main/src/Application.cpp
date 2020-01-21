@@ -269,7 +269,7 @@ void __updateChecker()
 		auto r = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest" });
 
 		Logf("Update check status code: %d", Logger::Normal, r.status_code);
-		if (r.error.code != cpr::ErrorCode::OK)
+		if (r.status_code != 200)
 		{
 			Logf("Failed to get update information: %s", Logger::Error, r.error.message.c_str());
 		}
