@@ -282,7 +282,7 @@ void Application::m_unpackSkins()
 				break;
 
 			String currentFile = archive_entry_pathname(entry);
-			size_t slashIndex = currentFile.find(Path::sep);
+			size_t slashIndex = currentFile.find("/"); // Seems to be / on both unix and windows
 			
 			if (slashIndex == String::npos)
 			{
@@ -328,7 +328,7 @@ void Application::m_unpackSkins()
 		// Use the zip name as the directory if there is no single dir
 		String dest = Path::Absolute("skins/");
 		if (!singleDir)
-			dest = fi.fullPath.substr(0,fi.fullPath.length()-4) + Path::sep;
+			dest = fi.fullPath.substr(0,fi.fullPath.length()-9) + Path::sep;
 
 		bool extractOk = true;
 
