@@ -23,6 +23,7 @@
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "SDL2/SDL_keycode.h"
+#include "ShadedMesh.hpp"
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
 #else
@@ -1451,6 +1452,14 @@ Transform Application::GetGUIProjection() const
 {
 	return ProjectionMatrix::CreateOrthographic(0.0f, (float)g_resolution.x, (float)g_resolution.y, 0.0f, 0.0f, 100.0f);
 }
+Transform Application::GetCurrentGUITransform() const
+{
+	return g_guiState.t;
+}
+Rect Application::GetCurrentGUIScissor() const
+{
+	return g_guiState.scissor;
+}
 void Application::StoreNamedSample(String name, Sample sample)
 {
 	m_samples.Add(name, sample);
@@ -1986,6 +1995,7 @@ void Application::SetLuaBindings(lua_State * state)
 		pushFuncToTable("GlobalCompositeBlendFunc", lGlobalCompositeBlendFunc);
 		pushFuncToTable("GlobalCompositeBlendFuncSeparate", lGlobalCompositeBlendFuncSeparate);
 		pushFuncToTable("GlobalAlpha", lGlobalAlpha);
+		pushFuncToTable("CreateShadedMesh", ShadedMesh::lNew);
 		//constants
 		//Text align
 		pushIntToTable("TEXT_ALIGN_BASELINE",	NVGalign::NVG_ALIGN_BASELINE);

@@ -23,7 +23,7 @@ class TitleScreen_Impl : public TitleScreen
 {
 private:
 	lua_State* m_lua = nullptr;
-	LuaBindable* m_luaBinds;
+	LuaBindable* m_luaBinds = nullptr;
 
 	void Exit()
 	{
@@ -159,7 +159,11 @@ public:
 			g_application->DisposeLua(m_lua);
 			m_lua = nullptr;
 		}
-		delete m_luaBinds;
+		if (m_luaBinds)
+		{
+			delete m_luaBinds;
+			m_luaBinds = nullptr;
+		}
 	}
 
 	virtual void Render(float deltaTime)
