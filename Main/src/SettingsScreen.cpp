@@ -304,7 +304,7 @@ public:
 	bool Init()
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
-		m_skins = Path::GetSubDirs("./skins/");
+		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
