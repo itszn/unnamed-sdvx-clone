@@ -33,6 +33,8 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#include "archive.h"
+#include "archive_entry.h"
 
 GameConfig g_gameConfig;
 SkinConfig* g_skinConfig;
@@ -206,6 +208,193 @@ Vector<String> Application::GetUpdateAvailable()
 	}
 
 	return Vector<String>();	
+}
+
+int copyArchiveData(archive* ar, archive* aw)
+{
+	int r;
+	const void *buff;
+	size_t size;
+	la_int64_t offset;
+
+	for (;;)
+	{
+		r = archive_read_data_block(ar, &buff, &size, &offset);
+		if (r == ARCHIVE_EOF)
+			return (ARCHIVE_OK);
+		if (r < ARCHIVE_OK)
+			return (r);
+		r = archive_write_data_block(aw, buff, size, offset);
+		if (r < ARCHIVE_OK)
+		{
+			return (r);
+		}
+  }
+
+}
+
+// Extract .usc-skin files in the skin directory
+void Application::m_unpackSkins()
+{
+	bool interrupt = false;
+	Vector<FileInfo> files = Files::ScanFiles(
+			Path::Absolute("skins/"), "usc-skin", &interrupt);
+	if (interrupt)
+		return;
+
+	for(FileInfo& fi : files)
+	{
+		Logf("[Archive] Extracting skin '%s'", Logger::Info, fi.fullPath);
+
+		// Init archive structs
+		archive* a = archive_read_new();
+		archive* ext = archive_write_disk_new();
+		archive_entry* entry;
+
+		archive_read_support_filter_all(a);
+		archive_read_support_format_all(a);
+
+		// Setup archive to write to disk
+		archive_write_disk_set_options(ext, ARCHIVE_EXTRACT_TIME);
+		archive_write_disk_set_standard_lookup(ext);
+
+		// Read the file twice so we can determin if there is a single file
+		// in the top level or multiple files
+
+		int res = archive_read_open_filename(a, fi.fullPath.c_str(), 10240);
+		if (res != ARCHIVE_OK)
+		{
+			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+					archive_error_string(a));
+			archive_read_close(a);
+			archive_read_free(a);
+			archive_write_free(ext);
+			continue;
+		}
+
+		bool singleDir = false;
+		bool otherFiles = false;
+
+		for (;;)
+		{
+			res = archive_read_next_header(a, &entry);
+			if (res == ARCHIVE_EOF)
+				break;
+
+			String currentFile = archive_entry_pathname(entry);
+			size_t slashIndex = currentFile.find("/"); // Seems to be / on both unix and windows
+			
+			if (slashIndex == String::npos)
+			{
+				// This is a non directory in the root
+				otherFiles = true;
+				if (singleDir)
+					singleDir = false;
+			}
+			// Check if first slash is in last position
+			else if (slashIndex == currentFile.length() - 1)
+			{
+				if (singleDir) // This is the second dir we have seen
+					singleDir = false;
+				else if (!otherFiles) // First file we have seen
+					singleDir = true;
+
+				otherFiles = true;
+			}
+
+			archive_read_data_skip(a);
+		}
+
+		// Reset the archive
+		archive_read_close(a);
+		archive_read_free(a);
+		a = archive_read_new();
+
+		archive_read_support_filter_all(a);
+		archive_read_support_format_all(a);
+
+		// This time we will actually extract
+		res = archive_read_open_filename(a, fi.fullPath.c_str(), 10240);
+		if (res != ARCHIVE_OK)
+		{
+			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+					archive_error_string(a));
+			archive_read_close(a);
+			archive_read_free(a);
+			archive_write_free(ext);
+			continue;
+		}
+
+		// Use the zip name as the directory if there is no single dir
+		String dest = Path::Absolute("skins/");
+		if (!singleDir)
+			dest = fi.fullPath.substr(0,fi.fullPath.length()-9) + Path::sep;
+
+		bool extractOk = true;
+
+		for (;;)
+		{
+			// Read the header
+			res = archive_read_next_header(a, &entry);
+			if (res == ARCHIVE_EOF)
+				break;
+			if (res < ARCHIVE_OK)
+				Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+						archive_error_string(a));
+			if (res < ARCHIVE_WARN) {
+				extractOk = false;
+				break;
+			}
+
+			// Update the path to our dest
+			const char* currentFile = archive_entry_pathname(entry);
+			const std::string fullOutputPath = dest + currentFile;
+
+			// Check for zipslip
+			if (fullOutputPath.find(".."+Path::sep) != String::npos) {
+				extractOk = false;
+				break;
+			}
+
+			archive_entry_set_pathname(entry, fullOutputPath.c_str());
+
+			// Write the new header
+			res = archive_write_header(ext, entry);
+			if (res < ARCHIVE_OK)
+				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+						archive_error_string(ext));
+			else if (archive_entry_size(entry) > 0) {
+				// Copy the data so it will be extracted
+				res = copyArchiveData(a, ext);
+				if (res < ARCHIVE_OK)
+					Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+							archive_error_string(ext));
+				if (res < ARCHIVE_WARN) {
+					extractOk = false;
+					break;
+				}
+			}
+			res = archive_write_finish_entry(ext);
+			if (res < ARCHIVE_OK)
+				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+						archive_error_string(ext));
+			if (res < ARCHIVE_WARN) {
+				extractOk = false;
+				break;
+			}
+		}
+
+		// Free and close everything
+		archive_read_close(a);
+		archive_read_free(a);
+		archive_write_close(ext);
+		archive_write_free(ext);
+
+		// If we extracted everything alright, we can remove the file
+		if (extractOk) {
+			Path::Delete(fi.fullPath);
+		}
+	}
 }
 
 bool Application::m_LoadConfig()
@@ -460,6 +649,8 @@ bool Application::m_Init()
 
 	// Initialize Input
 	g_input.Init(*g_gameWindow);
+
+	m_unpackSkins();
 
 	// Set skin variable
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
@@ -930,11 +1121,11 @@ Material Application::LoadMaterial(const String& name)
 }
 Sample Application::LoadSample(const String& name, const bool& external)
 {
-    String path;
-    if(external)
-	    path = name;
-    else
-        path = Path::Absolute(String("skins/") + m_skin + String("/audio/") + name);
+	String path;
+	if(external)
+		path = name;
+	else
+		path = Path::Absolute(String("skins/") + m_skin + String("/audio/") + name);
 
 	path = Path::Normalize(path);
 	String ext = Path::GetExtension(path);
