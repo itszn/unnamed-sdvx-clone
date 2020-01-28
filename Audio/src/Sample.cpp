@@ -104,7 +104,7 @@ public:
 	}
 	int32 GetPosition() const
 	{
-		return 0;
+		return m_playbackPointer;
 	}
 	float* GetPCM()
 	{
