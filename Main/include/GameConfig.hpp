@@ -109,6 +109,7 @@ DefineEnum(GameConfigKeys,
 	AutoScoreScreenshot,
 
 	WASAPI_Exclusive,
+	MuteUnfocused,
 
 	CheckForUpdates,
 	OnlyRelease,

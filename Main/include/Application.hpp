@@ -109,6 +109,8 @@ private:
 	void m_OnKeyPressed(int32 key);
 	void m_OnKeyReleased(int32 key);
 	void m_OnWindowResized(const Vector2i& newSize);
+	void m_OnFocusChanged(bool focused);
+	void m_unpackSkins();
 
 	RenderState m_renderStateBase;
 	RenderQueue m_renderQueueBase;

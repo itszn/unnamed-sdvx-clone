@@ -120,6 +120,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::EditorPath, "PathToEditor");
 	Set(GameConfigKeys::EditorParamsFormat, "%s");
 	Set(GameConfigKeys::WASAPI_Exclusive, false);
+	Set(GameConfigKeys::MuteUnfocused, false);
+
 
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true);

@@ -304,7 +304,7 @@ public:
 	bool Init()
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
-		m_skins = Path::GetSubDirs("./skins/");
+		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
@@ -604,6 +604,7 @@ public:
 #ifdef _WIN32
 				ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
+				ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
 				ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 				ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
 

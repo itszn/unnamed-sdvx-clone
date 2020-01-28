@@ -20,34 +20,15 @@ void main()
 	target = texture(mainTex, vec2(fsTex.x, fsTex.y * 2.0));
 	
 	float off = 1.0 - (fsTex.y * 2.0);
-
-    if(hiddenCutoff < suddenCutoff)
-    {
-        float hiddenCutoffFade = hiddenCutoff - hiddenFadeWindow;
-        if (off > hiddenCutoffFade && off < hiddenCutoff) {
-            target.a = target.a * max(0.0, (hiddenCutoff - off) / hiddenFadeWindow);
-        }
-		
-		if (off < suddenCutoff && off > hiddenCutoff) {
-			target.a = 0.0;
-		}
-
-        float suddenCutoffFade = suddenCutoff + suddenFadeWindow;
-        if (off < suddenCutoffFade && off > suddenCutoff) {
-            target.a = target.a * max(0.0, (off - suddenCutoff) / suddenFadeWindow);
-        }
+    if (hiddenCutoff < suddenCutoff) {
+        float hidden = 1.0 - smoothstep(hiddenCutoff - hiddenFadeWindow, hiddenCutoff, off);
+        float sudden = 1.0 - smoothstep(suddenCutoff + suddenFadeWindow, suddenCutoff, off);
+        target.a = min(hidden + sudden, 1.0);
     }
-    else
-    {
-        float hiddenCutoffFade = hiddenCutoff + hiddenFadeWindow;
-        if (off > hiddenCutoff) {
-            target.a = target.a * max(0.0, (hiddenCutoffFade - off) / hiddenFadeWindow);
-        }
-
-        float suddenCutoffFade = suddenCutoff - suddenFadeWindow;
-        if (off < suddenCutoff) {
-            target.a = target.a * max(0.0, (off - suddenCutoffFade) / suddenFadeWindow);
-        }
+    else {
+        float hidden = smoothstep(hiddenCutoff + hiddenFadeWindow, hiddenCutoff, off);
+        float sudden = smoothstep(suddenCutoff - suddenFadeWindow, suddenCutoff, off);
+        target.a = hidden * sudden;
     }
 	#endif
 }
