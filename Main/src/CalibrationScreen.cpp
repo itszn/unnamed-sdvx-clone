@@ -27,7 +27,6 @@ bool CalibrationScreen::AsyncFinalize()
 	m_track.suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
 	m_track.hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
 	m_track.hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
-
 	m_timer.Restart();
 	m_metronome->Play(true);
 	m_camera.track = &m_track;
@@ -49,6 +48,7 @@ void CalibrationScreen::Render(float deltaTime)
 	{
 		m_track.DrawObjectState(renderQueue, m_playback, object, false);
 	}
+	m_track.DrawCalibrationCritLine(renderQueue);
 	renderQueue.Process();
 
 	//Draw nuklear GUI
@@ -91,6 +91,16 @@ void CalibrationScreen::Render(float deltaTime)
 			}
 			nk_end(m_ctx);
 		}
+		if (nk_begin(m_ctx, "Hit Deltas", nk_rect(50, 400, 400, 300), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_SCALABLE))
+		{
+			nk_layout_row_dynamic(m_ctx, 20, 1);
+			nk_label(m_ctx, "multi", NK_TEXT_LEFT);
+			nk_label(m_ctx, "line", NK_TEXT_LEFT);
+			nk_label(m_ctx, "test", NK_TEXT_LEFT);
+			nk_end(m_ctx);
+		}
+
+
 		SettingsScreen::NKRender();
 	}
 }
@@ -103,8 +113,8 @@ void CalibrationScreen::Tick(float deltaTime)
 
 
 	m_playback.Update(m_lastTime);
-	m_track.Tick(m_playback, deltaTime);
 	m_camera.Tick(deltaTime, m_playback);
+	m_track.Tick(m_playback, deltaTime);
 }
 
 void CalibrationScreen::OnKeyPressed(int32 key)

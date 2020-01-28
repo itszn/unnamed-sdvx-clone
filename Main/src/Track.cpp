@@ -180,9 +180,15 @@ bool Track::AsyncFinalize()
 
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
+	calibrationCritMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -0.02f), Vector2(trackWidth, 0.02f));
+	calibrationDarkMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1.0f), Vector2(trackWidth, 0.99f));
 	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
 	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth, trackTickLength));
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
+	uint8 whiteData[4] = { 255, 255, 255, 255 };
+	whiteTexture = TextureRes::Create(g_gl);
+	whiteTexture->SetData({ 1,1 }, (void*)whiteData);
+
 
 	timedHitEffect = new TimedHitEffect(false);
 	timedHitEffect->time = 0;
@@ -570,6 +576,23 @@ void Track::DrawTrackCover(RenderQueue& rq)
 		rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
 	}
 	#endif
+}
+
+void Track::DrawCalibrationCritLine(RenderQueue& rq)
+{
+	Transform t = trackOrigin;
+	{
+		MaterialParameterSet params;
+		params.SetParameter("color", Color::Red);
+		params.SetParameter("mainTex", whiteTexture);
+		rq.Draw(t, calibrationCritMesh, spriteMaterial, params);
+	}
+	{
+		MaterialParameterSet params;
+		params.SetParameter("color", Color::Color(0.0, 0.0, 0.0, 0.6));
+		params.SetParameter("mainTex", whiteTexture);
+		rq.Draw(t, calibrationDarkMesh, spriteMaterial, params);
+	}
 }
 
 Vector3 Track::TransformPoint(const Vector3 & p)
