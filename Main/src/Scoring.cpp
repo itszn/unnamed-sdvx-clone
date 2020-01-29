@@ -1015,6 +1015,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			lasersAreExtend[i] = (currentSegment->flags & LaserObjectState::flag_Extended) != 0;
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
+				// Apply laser roll ignore when the laser has scrolled past
 				if (!(currentSegment->flags & LaserObjectState::flag_Instant) && !currentSegment->next)
 					OnLaserExit.Call(currentSegment);
 

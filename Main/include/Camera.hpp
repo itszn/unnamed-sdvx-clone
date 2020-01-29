@@ -17,7 +17,8 @@ static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Amount of time roll is ignored
 static const float ROLL_IGNORE_TIMER = 0.1f;
-static const float LONG_ROLL_IGNORE_TIMER = 0.2f;
+// This is different for SDVX III due to a longer slam tail
+static const float LONG_ROLL_IGNORE_TIMER = 0.2f; // 0.25 for SDVX III
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
@@ -46,9 +47,8 @@ public:
 	Sets laser slam amount
 	@param index - index of the laser. 0 for blue laser, 1 for red laser
 	@param amount - the "strength" of the slam. Should be the position of the slam's tail
-	@param longIgnore - ignore rolls for longer
 	*/
-	void SetSlamAmount(uint32 index, float amount, bool longIgnore);
+	void SetSlamAmount(uint32 index, float amount);
 
 	/*
 	Set laser roll ignore
