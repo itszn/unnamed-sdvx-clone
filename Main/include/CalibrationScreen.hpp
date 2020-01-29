@@ -11,12 +11,12 @@ class CalibrationScreen: public IAsyncLoadableApplicationTickable
 {
 public:
 	CalibrationScreen(struct nk_context* nk_ctx);
+	~CalibrationScreen();
 	bool AsyncLoad() override;
 	bool AsyncFinalize() override;
 	void Render(float deltaTime) override;
 	void Tick(float deltaTime) override;
-	void OnKeyPressed(int32 key) override;
-	void OnKeyReleased(int32 key) override;
+	bool GetTickRate(int32& rate) override;
 
 private:
 	Timer m_timer;
@@ -25,11 +25,20 @@ private:
 	Sample m_metronome;
 	BeatmapPlayback m_playback;
 	float m_hispeed = 2.0;
-	int m_audioOffset;
-	int m_inputOffset;
-	MapTime m_lastTime;
+	int m_audioOffset = 0;
+	int m_inputOffset = 0;
+	MapTime m_lastTime = 0;
+	bool m_trackCover = false;
+	Vector<int> m_hitDeltas;
+	Vector<int> m_zeroOffsetDeltas;
 	struct nk_context* m_ctx;
+	MapTime m_buttonGuardTime[4] = { 0, 0, 0, 0 };
+	MapTime m_bounceGuard = 10;
+	int32 m_fpsTarget = 0;
+	int32 m_hitcount = 0;
+	bool m_autoCalibrate = false;
 
 	void m_OnButtonPressed(Input::Button buttonCode);
 	void m_OnButtonReleased(Input::Button buttonCode);
+	float m_average(const Vector<int>& values);
 };
