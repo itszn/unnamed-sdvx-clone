@@ -168,17 +168,9 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
-		// Apply slam roll only for 100ms
-		if (m_longRollIgnore[index])
-		{
-			if (m_rollIgnoreTimer[index] - 0.1f <= 0)
-				m_slamRoll[index] = 0;
-		}
-		else
-		{
-			if (m_rollIgnoreTimer[index] == 0)
-				m_slamRoll[index] = 0;
-		}
+		// Apply slam roll for 100ms (150ms for SDVX III)
+		if (m_rollIgnoreTimer[index] <= ROLL_IGNORE_TIMER)
+			m_slamRoll[index] = 0;
 	}
 
 	m_spinProgress = (float)(playback.GetLastTime() - m_spinStart) / m_spinDuration;
@@ -297,10 +289,9 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 	SetRollIgnore(index, true);
 }
 
-void Camera::SetRollIgnore(uint32 index, bool longIgnore)
+void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	m_rollIgnoreTimer[index] = longIgnore ? LONG_ROLL_IGNORE_TIMER : ROLL_IGNORE_TIMER;
-	m_longRollIgnore[index] = longIgnore;
+	m_rollIgnoreTimer[index] = ROLL_IGNORE_TIMER + (slam ? SLAM_LENGTH : 0);
 }
 
 float Camera::GetSlamTimer(uint32 index)

@@ -15,10 +15,10 @@ struct CameraShake
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
-// Amount of time roll is ignored
+// Amount of time roll is ignored in seconds
 static const float ROLL_IGNORE_TIMER = 0.1f;
-// This is different for SDVX III due to a longer slam tail
-static const float LONG_ROLL_IGNORE_TIMER = 0.2f; // 0.25 for SDVX III
+// Duration of the slam in seconds. 0.15 for SDVX III
+static const float SLAM_LENGTH = 0.1f;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
@@ -53,9 +53,9 @@ public:
 	/*
 	Set laser roll ignore
 	@param index - index of the laser
-	@param longIgnore - ignore rolls for longer
+	@param slam - true when the current laser segment is a slam
 	*/
-	void SetRollIgnore(uint32 index, bool longIgnore);
+	void SetRollIgnore(uint32 index, bool slam);
 	
 	/*
 	Sets slow tilt state
@@ -156,9 +156,8 @@ private:
 	// Laser slam rolls
 	// Does not track slams that have a next segment
 	float m_slamRoll[2] = { 0.0f };
-	// Keeps track of how roll is ignored
+	// Keeps track of how long roll is ignored
 	float m_rollIgnoreTimer[2] = { 0.0f };
-	bool m_longRollIgnore[2] = { false };
 
 	// Spin variables
 	int32 m_spinDuration = 1;
