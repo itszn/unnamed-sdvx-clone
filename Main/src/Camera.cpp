@@ -127,30 +127,31 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_actualTargetLaserRoll = pLaneTilt;
 		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.4f; // BIGGEST roll speed
 	}
-	else if (!m_rollKeep) 
+	else if (!m_rollKeep)
 	{
 		if (m_rollIntensityChanged)
 		{
 			// Get new roll value based off of the new tilt value
 			float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 
-			if (m_actualRoll == target)
-			{
-				m_rollIntensityChanged = false;
-			}
-			else
-			{
-				// Get the roll speed based on the larger tilt value
-				// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
-				float rollSpeedFactor = (Math::Max(m_oldRollIntensity, m_rollIntensity)) / MAX_ROLL_ANGLE;
-				speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
-				m_actualTargetLaserRoll = target;
-			}
+			// Get the roll speed based on the larger tilt value
+			// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
+			float rollSpeedFactor = Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE;
+			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+			m_actualTargetLaserRoll = target;
+
+			// Check if roll has met target
+			m_rollIntensityChanged = m_actualRoll != target;
+		}
+		else if (m_actualRoll != m_laserRoll && m_rollIntensity == MAX_ROLL_ANGLE)
+		{
+			// Catch up to regular roll position if for some reason they're not the same
+			m_actualTargetLaserRoll = m_laserRoll;
 		}
 		else if (m_slowTilt)
 		{
 			// Roll even slower when roll is less than 1 / 10 of tilt
-			speedLimit /= fabsf(m_actualRoll) > m_rollIntensity* SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+			speedLimit /= fabsf(m_actualRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 		}
 	}
 
@@ -158,7 +159,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
 
 	// Lerp crit line position
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED; // Set roll speed to normal
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED; // Reset roll speed to normal
 	if (m_slowTilt)
 		// Roll even slower when roll is less than 1 / 10 of tilt
 		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
@@ -168,8 +169,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
-		// Apply slam roll for 100ms (150ms for SDVX III)
-		if (m_rollIgnoreTimer[index] <= rollIgnoreDuration)
+		// Apply slam roll for 0 to 100ms (depending on user config)
+		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
 			m_slamRoll[index] = 0;
 	}
 
@@ -291,10 +292,10 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	m_rollIgnoreTimer[index] = rollIgnoreDuration + (slam ? slamLength : 0);
+	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamLength : 0);
 }
 
-float Camera::GetSlamTimer(uint32 index)
+float Camera::GetRollIgnoreTimer(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
 	return m_rollIgnoreTimer[index];
@@ -308,12 +309,12 @@ float Camera::GetSlamAmount(uint32 index)
 
 void Camera::SetRollIgnoreDuration(float duration)
 {
-	rollIgnoreDuration = duration;
+	m_rollIgnoreDuration = duration;
 }
 
 void Camera::SetSlamLength(float length)
 {
-	slamLength = length;
+	m_slamLength = length;
 }
 
 Vector2 Camera::Project(const Vector3& pos)
@@ -379,7 +380,7 @@ void Camera::SetTargetRoll(float target)
 	};
 
 	// Work around for slams being applied for at least 1 frame
-	float slamRollTotal = slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
+	float slamRollTotal = m_slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
 	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
 	if (!m_rollKeep)

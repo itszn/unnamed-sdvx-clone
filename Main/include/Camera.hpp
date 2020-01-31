@@ -15,7 +15,6 @@ struct CameraShake
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
-
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
@@ -74,11 +73,11 @@ public:
 	void SetSlamLength(float length);
 	
 	/*
-	Gets laser slam timer
+	Gets roll ignore timer for a laser
 	@param index - index of the laser. 0 for blue laser, 1 for red laser
-	@return the slam timer for the given laser index
+	@return the roll ignore timer for the given laser index
 	*/
-	float GetSlamTimer(uint32 index);
+	float GetRollIgnoreTimer(uint32 index);
 
 	/*
 	Gets laser slam amount
@@ -158,9 +157,9 @@ private:
 	// Keeps track of how long roll is ignored
 	float m_rollIgnoreTimer[2] = { 0.0f };
 	// Amount of time roll is ignored in seconds
-	float rollIgnoreDuration = 0.0f;
+	float m_rollIgnoreDuration = 0.0f;
 	// Duration of the slam in seconds
-	float slamLength = 0.0f;
+	float m_slamLength = 0.0f;
 
 	// Spin variables
 	int32 m_spinDuration = 1;
