@@ -973,6 +973,10 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		
+		// Set roll ignore and slam durations
+		m_camera.SetRollIgnoreDuration(g_gameConfig.GetFloat(GameConfigKeys::RollIgnoreDuration) / 1000);
+		m_camera.SetSlamLength(g_gameConfig.GetFloat(GameConfigKeys::LaserSlamLength) / 1000);
 
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)

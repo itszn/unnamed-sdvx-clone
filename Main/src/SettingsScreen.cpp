@@ -587,6 +587,9 @@ public:
 
 				nk_layout_row_dynamic(m_nctx, 30, 1);
 
+				FloatSetting(GameConfigKeys::RollIgnoreDuration, "Roll Ignore Duration (%g ms)", 0, 100, 1);
+				FloatSetting(GameConfigKeys::LaserSlamLength, "Laser Slam Duration (%g ms)", 0, 100, 1);
+
 				nk_tree_pop(m_nctx);
 			}
 

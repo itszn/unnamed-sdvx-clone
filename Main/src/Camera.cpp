@@ -169,7 +169,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
 		// Apply slam roll for 100ms (150ms for SDVX III)
-		if (m_rollIgnoreTimer[index] <= ROLL_IGNORE_TIMER)
+		if (m_rollIgnoreTimer[index] <= rollIgnoreDuration)
 			m_slamRoll[index] = 0;
 	}
 
@@ -291,7 +291,7 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	m_rollIgnoreTimer[index] = ROLL_IGNORE_TIMER + (slam ? SLAM_LENGTH : 0);
+	m_rollIgnoreTimer[index] = rollIgnoreDuration + (slam ? slamLength : 0);
 }
 
 float Camera::GetSlamTimer(uint32 index)
@@ -304,6 +304,16 @@ float Camera::GetSlamAmount(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
 	return m_slamRoll[index];
+}
+
+void Camera::SetRollIgnoreDuration(float duration)
+{
+	rollIgnoreDuration = duration;
+}
+
+void Camera::SetSlamLength(float length)
+{
+	slamLength = length;
 }
 
 Vector2 Camera::Project(const Vector3& pos)
@@ -368,7 +378,8 @@ void Camera::SetTargetRoll(float target)
 		return false;
 	};
 
-	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
+	// Work around for slams being applied for at least 1 frame
+	float slamRollTotal = slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
 	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
 	if (!m_rollKeep)
