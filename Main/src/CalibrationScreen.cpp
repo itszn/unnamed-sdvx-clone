@@ -66,6 +66,7 @@ bool CalibrationScreen::AsyncFinalize()
 
 void CalibrationScreen::Render(float deltaTime)
 {
+	const int windowFlag = NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_SCALABLE | NK_WINDOW_MINIMIZABLE;
 	m_track.SetViewRange(8.0f / m_hispeed);
 
 	RenderState rs = m_camera.CreateRenderState(true);
@@ -89,7 +90,7 @@ void CalibrationScreen::Render(float deltaTime)
 
 	//Draw nuklear GUI
 	{
-		if (nk_begin(m_ctx, "Options", nk_rect(50, 50, 400, 300), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_SCALABLE))
+		if (nk_begin(m_ctx, "Options", nk_rect(50, 50, 400, 300), windowFlag))
 		{
 			nk_layout_row_dynamic(m_ctx, 30, 1);
 			m_audioOffset = nk_propertyi(m_ctx, "Global Offset", -1000, m_audioOffset, 1000, 1, 1);
@@ -144,9 +145,10 @@ void CalibrationScreen::Render(float deltaTime)
 				g_gameConfig.Set(GameConfigKeys::ShowCover, m_trackCover);
 				g_application->RemoveTickable(this);
 			}
-			nk_end(m_ctx);
 		}
-		if (nk_begin(m_ctx, "Hit Deltas", nk_rect(50, 400, 400, 300), NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_SCALABLE))
+		nk_end(m_ctx);
+
+		if (nk_begin(m_ctx, "Hit Deltas", nk_rect(g_resolution.x - 450, 50, 400, 300), windowFlag))
 		{
 			int count = 0;
 			double sum = 0.0;
@@ -177,8 +179,30 @@ void CalibrationScreen::Render(float deltaTime)
 				auto c = Color::FromHSV(fmax(hue, 0.0) , 1.0, 1.0).ToRGBA8();
 				nk_label_colored(m_ctx, *Utility::Sprintf("%d", *it), NK_TEXT_RIGHT, nk_color{ c.x, c.y, c.z, 255 });
 			}
-			nk_end(m_ctx);
 		}
+		nk_end(m_ctx);
+
+		if (nk_begin(m_ctx, "Guide", nk_rect(g_resolution.x / 2.0 - 300, 0, 600, 300), NK_WINDOW_BORDER | NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE))
+		{
+			nk_layout_set_min_row_height(m_ctx, 20);
+			nk_layout_row_dynamic(m_ctx, 0, 1);
+			nk_label(m_ctx, "First adjust your global offset until the bottom of the", NK_LEFT);
+			nk_label(m_ctx, "notes hit the critical line at the exact time of the audio tick.", NK_LEFT);
+			nk_label(m_ctx, "", NK_LEFT);
+			nk_label(m_ctx, "Once you have set your global offset it's time", NK_TEXT_LEFT);
+			nk_label(m_ctx, "to adjust your input offset, either use the automatic", NK_TEXT_LEFT);
+			nk_label(m_ctx, "calibration or do it manually. If you are doing it manually", NK_TEXT_LEFT);
+			nk_label(m_ctx, "you want to subtract the average delta you are hitting from", NK_TEXT_LEFT);
+			nk_label(m_ctx, "your current input offset, for the automatic calibration ", NK_TEXT_LEFT);
+			nk_label(m_ctx, "keep hitting notes until your average hits very close to 0.", NK_TEXT_LEFT);
+
+		}
+		nk_end(m_ctx);
+		if (!m_hasRenderedOnce) {
+			nk_window_collapse(m_ctx, "Guide", NK_MINIMIZED);
+			m_hasRenderedOnce = true;
+		}
+
 
 
 		SettingsScreen::NKRender();

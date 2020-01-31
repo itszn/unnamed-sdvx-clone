@@ -37,6 +37,7 @@ private:
 	int32 m_fpsTarget = 0;
 	int32 m_hitcount = 0;
 	bool m_autoCalibrate = false;
+	bool m_hasRenderedOnce = false;
 
 	void m_OnButtonPressed(Input::Button buttonCode);
 	void m_OnButtonReleased(Input::Button buttonCode);
