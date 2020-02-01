@@ -1623,7 +1623,7 @@ public:
 			else
 			{
 				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
-				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.7 * (i - 1));
+				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.75 * (i - 1));
 			}
 			m_camera.SetRollIntensity(m_rollIntensity);
 		}

@@ -89,7 +89,7 @@ static Transform GetOriginTransform(float pitch, float offs, float roll)
 	if (g_aspectRatio < 1.0f)
 	{
 		auto origin = Transform::Rotation({ 0, 0, roll });
-		auto anchor = Transform::Translation({ offs, -0.8f, 0 })
+		auto anchor = Transform::Translation({ offs, -0.775f, 0 })
 			* Transform::Rotation({ 1.5f, 0, 0 });
 		auto contnr = Transform::Translation({ 0, 0, -0.9f })
 			* Transform::Rotation({ -90 + pitch, 0, 0, });
@@ -125,7 +125,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	if (pManualTiltEnabled)
 	{
 		m_actualTargetLaserRoll = pLaneTilt;
-		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.4f; // BIGGEST roll speed
+		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
 	}
 	else if (!m_rollKeep)
 	{
@@ -135,7 +135,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 			float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 
 			// Get the roll speed based on the larger tilt value
-			// i.e. rollSpeedFactor = 1 if NORMAL, 1.7 if BIGGER, 2.4 if BIGGEST
+			// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
 			float rollSpeedFactor = Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE;
 			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 			m_actualTargetLaserRoll = target;
@@ -228,7 +228,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_shakeOffset += shakeVec;
 	}
 
-	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
+	bool portrait = g_aspectRatio < 1.0f;
+	float lanePitch = (portrait ? pLanePitch : PitchScaleFunc(pLanePitch)) * pitchUnit;
 
 	worldNormal = GetOriginTransform(lanePitch, m_totalOffset, m_totalRoll * 360.0f);
 	worldNoRoll = GetOriginTransform(lanePitch, 0, 0);
@@ -240,9 +241,17 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		zoomDir = zoomDir.Normalized();
 
 		float zoomAmt;
-		if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
-		else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
-
+		if (portrait)
+		{
+			// This doesn't scale correctly with some charts (e.g. INDEPENDENT SKY GRV)
+			zoomAmt = -pLaneZoom / (pLaneZoom > 0 ? 2.f : 1.1f);
+		}
+		else
+		{
+			if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
+			else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
+		}
+		
 		return Transform::Translation(zoomDir * zoomAmt) * t;
 	};
 
