@@ -589,7 +589,7 @@ void Track::DrawCalibrationCritLine(RenderQueue& rq)
 	}
 	{
 		MaterialParameterSet params;
-		params.SetParameter("color", Color::Color(0.0, 0.0, 0.0, 0.6));
+		params.SetParameter("color", Color::Black.WithAlpha(0.6));
 		params.SetParameter("mainTex", whiteTexture);
 		rq.Draw(t, calibrationDarkMesh, spriteMaterial, params);
 	}
