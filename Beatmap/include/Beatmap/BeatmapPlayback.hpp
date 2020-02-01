@@ -9,6 +9,7 @@ class BeatmapPlayback
 public:
 	BeatmapPlayback() = default;
 	BeatmapPlayback(Beatmap& beatmap);
+	~BeatmapPlayback();
 
 	// Resets the playback of the map
 	// Must be called before any other function is called on this object

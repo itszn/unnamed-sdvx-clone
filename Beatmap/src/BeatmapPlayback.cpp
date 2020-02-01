@@ -5,6 +5,17 @@
 BeatmapPlayback::BeatmapPlayback(Beatmap& beatmap) : m_beatmap(&beatmap)
 {
 }
+BeatmapPlayback::~BeatmapPlayback()
+{
+	if (m_isCalibration) {
+		for (auto* o : m_calibrationObjects) {
+			delete o;
+		}
+		m_calibrationObjects.clear();
+		delete m_timingPoints.at(0);
+		m_timingPoints.clear();
+	}
+}
 bool BeatmapPlayback::Reset(MapTime startTime)
 {
 	m_effectObjects.clear();
