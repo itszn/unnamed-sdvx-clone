@@ -572,6 +572,7 @@ public:
 					nk_group_end(m_nctx);
 				}
 				nk_layout_row_dynamic(m_nctx, 30, 1);
+				FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale: %.2f", 1.0f, 5.0f);
 				ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
 				ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 				EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");

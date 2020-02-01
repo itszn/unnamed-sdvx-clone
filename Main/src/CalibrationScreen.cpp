@@ -102,7 +102,8 @@ void CalibrationScreen::Render(float deltaTime)
 
 			nk_label(m_ctx, *Utility::Sprintf("HiSpeed (%.2f x 120 = %.1f):", m_hispeed, m_hispeed * 120.0), nk_text_alignment::NK_TEXT_LEFT);
 			nk_slider_float(m_ctx, 0.5, &m_hispeed, 10.0f, 0.01f);
-
+			nk_label(m_ctx, *Utility::Sprintf("Distant Button Scale: %.2f", m_track.distantButtonScale), NK_TEXT_LEFT);
+			nk_slider_float(m_ctx, 1.0f, &m_track.distantButtonScale, 5.0f, 0.01f);
 			nk_layout_row_dynamic(m_ctx, 150, 2);
 			if (nk_group_begin(m_ctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
@@ -143,6 +144,7 @@ void CalibrationScreen::Render(float deltaTime)
 				g_gameConfig.Set(GameConfigKeys::InputOffset, m_inputOffset);
 				g_gameConfig.Set(GameConfigKeys::GlobalOffset, m_audioOffset);
 				g_gameConfig.Set(GameConfigKeys::ShowCover, m_trackCover);
+				g_gameConfig.Set(GameConfigKeys::DistantButtonScale, m_track.distantButtonScale);
 				g_application->RemoveTickable(this);
 			}
 		}

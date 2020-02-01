@@ -19,6 +19,7 @@ public:
 	float trackTickLength;
 	float buttonLength;
 	float fxbuttonLength;
+	float distantButtonScale = 2.0f;
 
 	// Laser color setting
 	Color laserColors[2] = {};

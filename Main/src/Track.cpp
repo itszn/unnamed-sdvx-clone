@@ -420,6 +420,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			params.SetParameter("trackScale", trackScale);
 		}
 		else {
+			//Use actual distance from camera instead of position on the track?
+			scale = 1.0f + (Math::Max(1.0f, distantButtonScale) - 1.0f) * position;
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 
