@@ -53,6 +53,7 @@ public:
 	void DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f);
 	void DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale = 1.0f);
 	void DrawTrackCover(RenderQueue& rq);
+	void DrawCalibrationCritLine(RenderQueue& rq);
 
 	Vector3 TransformPoint(const Vector3& p);
 
@@ -91,6 +92,8 @@ public:
 	Mesh trackMesh;
 	Mesh trackTickMesh;
 	Mesh trackCoverMesh;
+	Mesh calibrationCritMesh;
+	Mesh calibrationDarkMesh;
 	Material trackMaterial; // Also used for buttons
 	Texture trackTexture;
 	Texture trackCoverTexture;
@@ -111,6 +114,7 @@ public:
 	Material laserMaterial;
 	Material blackLaserMaterial;
 	Texture laserAlertTextures[2];
+	Texture whiteTexture;
 
 	/* Overlay graphics */
 	Material trackOverlay;

@@ -9,6 +9,7 @@ class BeatmapPlayback
 public:
 	BeatmapPlayback() = default;
 	BeatmapPlayback(Beatmap& beatmap);
+	~BeatmapPlayback();
 
 	// Resets the playback of the map
 	// Must be called before any other function is called on this object
@@ -30,6 +31,8 @@ public:
 	bool cMod = false;
 	float cModSpeed = 400;
 
+	// Removes any existing data and sets a special behaviour for calibration mode
+	void MakeCalibrationPlayback();
 
 	// Gets all linear objects that fall within the given time range:
 	//	<curr - keepObjectDuration, curr + range>
@@ -148,4 +151,8 @@ private:
 	float m_beatTime;
 
 	Beatmap* m_beatmap = nullptr;
+
+	//calibration mode things
+	bool m_isCalibration = false;
+	Vector<ObjectState*> m_calibrationObjects;
 };
