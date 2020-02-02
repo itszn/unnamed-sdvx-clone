@@ -229,7 +229,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	}
 
 	bool portrait = g_aspectRatio < 1.0f;
-	float lanePitch = (portrait ? pLanePitch : PitchScaleFunc(pLanePitch)) * pitchUnit;
+	float lanePitch = (portrait ? pLanePitch * 4 / 3.f : PitchScaleFunc(pLanePitch)) * pitchUnit;
 
 	worldNormal = GetOriginTransform(lanePitch, m_totalOffset, m_totalRoll * 360.0f);
 	worldNoRoll = GetOriginTransform(lanePitch, 0, 0);
@@ -244,7 +244,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		if (portrait)
 		{
 			// This doesn't scale correctly with some charts (e.g. INDEPENDENT SKY GRV)
-			zoomAmt = -pLaneZoom / (pLaneZoom > 0 ? 2.f : 1.1f);
+			zoomAmt = -pLaneZoom / (pLaneZoom > 0 ? 2.f : 1);
 		}
 		else
 		{
