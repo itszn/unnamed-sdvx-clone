@@ -228,9 +228,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_shakeOffset += shakeVec;
 	}
 
-	bool portrait = g_aspectRatio < 1.0f;
-	// Portrait lane pitch doesn't scale correctly with some charts (e.g. Absurd Gaff GRV)
-	float lanePitch = (portrait ? pLanePitch * 4 / 3.f : PitchScaleFunc(pLanePitch)) * pitchUnit;
+	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
 	worldNormal = GetOriginTransform(lanePitch, m_totalOffset, m_totalRoll * 360.0f);
 	worldNoRoll = GetOriginTransform(lanePitch, 0, 0);
@@ -242,16 +240,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		zoomDir = zoomDir.Normalized();
 
 		float zoomAmt;
-		if (portrait)
-		{
-			// This doesn't scale correctly with some charts (e.g. INDEPENDENT SKY GRV)
-			zoomAmt = -pLaneZoom / (pLaneZoom > 0 ? 2.f : 1);
-		}
-		else
-		{
-			if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
-			else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
-		}
+		if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
+		else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
 		
 		return Transform::Translation(zoomDir * zoomAmt) * t;
 	};
