@@ -45,6 +45,7 @@ DefineEnum(GameConfigKeys,
 	SuddenFade,
 	ShowCover,
 	UseBackCombo,
+	DistantButtonScale,
 
 	// Input device setting per element
 	LaserInputDevice,

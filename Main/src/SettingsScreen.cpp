@@ -16,7 +16,8 @@
 #include <queue>
 #include <SDL2/SDL.h>
 #include "nanovg.h"
-
+#include "CalibrationScreen.hpp"
+#include "TransitionScreen.hpp"
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -467,6 +468,7 @@ public:
 		float x = g_resolution.x / 2 - w / 2;
 		m_comboBoxSize = nk_vec2(w - 30, 250);
 
+
 		if (nk_begin(m_nctx, "Settings", nk_rect(x, 0, w, g_resolution.y), 0))
 		{
 			//Input settings
@@ -527,6 +529,10 @@ public:
 
 				IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
 				IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
+				if (nk_button_label(m_nctx, "Calibrate offsets")) {
+					CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
+					g_application->AddTickable(TransitionScreen::Create(cscreen));
+				}
 				FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier (%.1f):", 0.0f, 20.0f);
 				IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 				if (nk_tree_push(m_nctx, NK_TREE_NODE, "Laser Assist", NK_MINIMIZED))
@@ -566,6 +572,7 @@ public:
 					nk_group_end(m_nctx);
 				}
 				nk_layout_row_dynamic(m_nctx, 30, 1);
+				FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale: %.2f", 1.0f, 5.0f);
 				ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
 				ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 				EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
@@ -635,7 +642,7 @@ public:
 			if (nk_button_label(m_nctx, "Exit")) Exit();
 			nk_end(m_nctx);
 		}
-		nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
+		NKRender();
 	}
 
 	virtual void OnSuspend()
@@ -654,6 +661,11 @@ SettingsScreen* SettingsScreen::Create()
 {
 	SettingsScreen_Impl* impl = new SettingsScreen_Impl();
 	return impl;
+}
+
+void SettingsScreen::NKRender()
+{
+	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
 }
 
 class ButtonBindingScreen_Impl : public ButtonBindingScreen
