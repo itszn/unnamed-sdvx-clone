@@ -229,6 +229,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	}
 
 	bool portrait = g_aspectRatio < 1.0f;
+	// Portrait lane pitch doesn't scale correctly with some charts (e.g. Absurd Gaff GRV)
 	float lanePitch = (portrait ? pLanePitch * 4 / 3.f : PitchScaleFunc(pLanePitch)) * pitchUnit;
 
 	worldNormal = GetOriginTransform(lanePitch, m_totalOffset, m_totalRoll * 360.0f);
