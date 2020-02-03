@@ -88,6 +88,7 @@ public:
 	// Updates the list of objects that are possible to hit
 	void Tick(float deltaTime);
 
+	float GetLaserPosition(uint32 index, float pos);
 	float GetLaserRollOutput(uint32 index);
 	// Check if any lasers are currently active
 	bool GetLaserActive();
@@ -134,6 +135,10 @@ public:
 	// Called when a laser slam was hit
 	// (Laser slam segment)
 	Delegate<LaserObjectState*> OnLaserSlamHit;
+	// Called during a laser slam
+	Delegate<LaserObjectState*> OnLaserSlam;
+	// Called when a laser has passed the crit line
+	Delegate<LaserObjectState*> OnLaserExit;
 	// Called when the combo counter changed
 	// (New Combo)
 	Delegate<uint32> OnComboChanged;

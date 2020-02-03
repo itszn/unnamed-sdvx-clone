@@ -189,8 +189,8 @@ struct ObjectTypeData_Laser
 	static const uint8 flag_Instant = 0x1;
 	// Indicates that the range of this laser is extended from -0.5 to 1.5
 	static const uint8 flag_Extended = 0x2;
-
-
+	// Indicates that the slam has been processed (ensures slam rolls are applied once)
+	static const uint8 flag_slamProcessed = 0x4;
 };
 
 struct EventData
