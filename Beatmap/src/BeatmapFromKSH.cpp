@@ -5,11 +5,11 @@
 // Temporary object to keep track if a button is a hold button
 struct TempButtonState
 {
-	TempButtonState(MapTime startTime)
-		: startTime(startTime)
+	TempButtonState(uint32 startTick)
+		: startTick(startTick)
 	{
 	}
-	MapTime startTime;
+	uint32 startTick;
 	uint32 numTicks = 0;
 	EffectType effectType = EffectType::None;
 	uint16 effectParams[2] = { 0 };
@@ -25,13 +25,14 @@ struct TempButtonState
 };
 struct TempLaserState
 {
-	TempLaserState(MapTime startTime, uint32 effectType, TimingPoint* tpStart)
-		: startTime(startTime), effectType(effectType), tpStart(tpStart)
+	TempLaserState(uint32 startTick, uint32 absoluteStartTick, uint32 effectType, TimingPoint* tpStart)
+		: startTick(startTick), effectType(effectType), tpStart(tpStart), absoluteStartTick(absoluteStartTick)
 	{
 	}
 	// Timing point at which this segment started
 	TimingPoint* tpStart;
-	MapTime startTime;
+	uint32 startTick;
+	uint32 absoluteStartTick;
 	uint32 numTicks = 0;
 	uint32 effectType = 0;
 	bool spinIsBounce = false;
@@ -105,6 +106,23 @@ void AssignAudioEffectParameter(EffectParam<T>& param, const String& paramName, 
 		param = *ival;
 		return;
 	}
+}
+
+MapTime TimeFromTicks(uint32 tick, const Map<uint32, TimingPoint*>& timingpoints, double resolution) 
+{
+	TimingPoint* lastTp = timingpoints.begin()->second;
+	uint32 lastTick = timingpoints.begin()->first;
+	double ret = lastTp->time;
+	for (auto kvp : timingpoints) {
+		if (kvp.first > tick)
+		{
+			break;
+		}
+		ret += Math::MSFromTicks((double)(kvp.first - lastTick), lastTp->GetBPM(), resolution);
+		lastTp = kvp.second;
+		lastTick = kvp.first;
+	}
+	return Math::Round(ret + Math::MSFromTicks((double)(tick - lastTick), lastTp->GetBPM(), resolution));
 }
 
 struct MultiParam
@@ -518,6 +536,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 	// Temporary map for timing points
 	Map<MapTime, TimingPoint*> timingPointMap;
+	// Used for accurate time calculations
+	Map<uint32, TimingPoint*> timingPointTicks;
 
 	// Process initial timing point
 	TimingPoint* lastTimingPoint = new TimingPoint();
@@ -537,6 +557,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 	// Add First timing point
 	m_timingPoints.Add(lastTimingPoint);
 	timingPointMap.Add(lastTimingPoint->time, lastTimingPoint);
+	timingPointTicks.Add(0, lastTimingPoint);
+	int tickResolution = 240;
 
 	// Add First Lane Toggle Point
 	LaneHideTogglePoint* startLaneTogglePoint = new LaneHideTogglePoint();
@@ -562,6 +584,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 	ZoomControlPoint *firstControlPoints[4] = { nullptr };
 	MapTime lastMapTime = 0;
+	uint32 currentTick = 0;
 	for (KShootMap::TickIterator it(kshootMap); it; ++it)
 	{
 		const KShootBlock& block = it.GetCurrentBlock();
@@ -620,6 +643,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					realMapTime = currentMapTime;
 					m_timingPoints.Add(lastTimingPoint);
 					timingPointMap.Add(mapTime, lastTimingPoint);
+					timingPointTicks.Add(currentTick, lastTimingPoint);
 					timingPointBlockOffset = time.block;
 					timingTickOffset = time.tick;
 				}
@@ -923,9 +947,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				if (IsHoldState())
 				{
 					HoldObjectState* obj = lastHoldObject = new HoldObjectState();
-					obj->time = state->startTime;
+					obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
 					obj->index = i;
-					obj->duration = mapTime - state->startTime;
+					obj->duration = TimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
 					obj->effectType = state->effectType;
 					if (state->lastHoldObject)
 						state->lastHoldObject->next = obj;
@@ -937,7 +961,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				{
 					ButtonObjectState* obj = new ButtonObjectState();
 					
-					obj->time = state->startTime;
+					obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
 					obj->index = i;
 					obj->hasSample = state->usingSample;
 					obj->sampleIndex = state->sampleIndex;
@@ -973,7 +997,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 			else if (!state)
 			{
 				// Create new hold state
-				state = new TempButtonState(mapTime);
+				state = new TempButtonState(currentTick);
 				uint32 div = (uint32)block.ticks.size();
 
 				if (lastHoldObject)
@@ -1070,7 +1094,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					CreateButton();
 
 					// Create new hold state
-					state = new TempButtonState(mapTime);
+					state = new TempButtonState(currentTick);
 					uint32 div = (uint32)block.ticks.size();
 
 					if (i < 4)
@@ -1118,27 +1142,27 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 				LaserObjectState* obj = new LaserObjectState();
 
-				obj->time = state->startTime;
-				obj->duration = mapTime - state->startTime;
+				obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
+				obj->tick = state->startTick;
+				obj->duration = TimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
 				obj->index = i;
 				obj->points[0] = state->startPosition;
 				obj->points[1] = endPos;
-
+				uint32 tickDuration = currentTick - state->absoluteStartTick;
 
 
 				if (laserRanges[i] > 1.0f)
 				{
 					obj->flags |= LaserObjectState::flag_Extended;
 				}
-				// Threshold for laser segments to be considered instant
+				uint32 laserSlamThreshold = tickResolution / 8;
 				bool lastSlam = (state->last && (state->last->flags & LaserObjectState::flag_Instant) != 0); // Deal with super fast repeat slams
-				MapTime laserSlamThreshold = (MapTime)ceil(state->tpStart->beatDuration / 8.0);
-				if (lastSlam)
-					laserSlamThreshold *= 2;
 
-				if (obj->duration <= laserSlamThreshold && (obj->points[1] != obj->points[0]))
+				if (tickDuration <= laserSlamThreshold && (obj->points[1] != obj->points[0]))
 				{
 					obj->flags |= LaserObjectState::flag_Instant;
+					obj->time = TimeFromTicks(state->absoluteStartTick, timingPointTicks, tickResolution);
+					obj->tick = state->absoluteStartTick;
 					if (state->spinType != 0)
 					{
 						obj->spin.duration = state->spinDuration;
@@ -1192,7 +1216,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 						obj->prev->duration = actualPrevDuration;
 					}
 					obj->prev->next = obj;
-
 				}
 
 				if ((obj->flags & LaserObjectState::flag_Instant) != 0 && lastSlam) //add short straight segment between the slams
@@ -1216,6 +1239,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				}
 
 				// Add to list of objects
+
+				assert(obj->GetRoot() != nullptr);
+
 				m_objectStates.Add(*obj);
 
 				return obj;
@@ -1255,13 +1281,13 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 					state = nullptr;
 				}
 
-				MapTime startTime = mapTime;
+				uint32 startTick = currentTick;
 				if (last && (last->flags & LaserObjectState::flag_Instant) != 0)
 				{
 					// Move offset to be the same as last segment, as in ksh maps there is a 1 tick delay after laser slams
-					startTime = last->time;
+					startTick = last->tick;
 				}
-				state = new TempLaserState(startTime, 0, lastTimingPoint);
+				state = new TempLaserState(startTick, currentTick, 0, lastTimingPoint);
 				state->last = last; // Link together
 				state->startPosition = pos;
 
@@ -1302,6 +1328,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 		}
 
 		lastMapTime = mapTime;
+		currentTick += (tickResolution * 4 * lastTimingPoint->numerator / lastTimingPoint->denominator) / block.ticks.size();
 	}
 
 	for (int i = 0; i < sizeof(firstControlPoints) / sizeof(ZoomControlPoint *); i++)

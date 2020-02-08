@@ -190,6 +190,8 @@ struct ObjectTypeData_Laser
 	// Indicates that the range of this laser is extended from -0.5 to 1.5
 	static const uint8 flag_Extended = 0x2;
 
+	// Tick used for more accuracy in some calculations
+	uint32 tick;
 
 };
 
