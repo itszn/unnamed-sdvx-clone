@@ -610,7 +610,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 		for (auto& p : tick.settings)
 		{
 			// Functions that adds a new timing point at current location if it's not yet there
-			auto AddTimingPoint = [&](double newDuration, uint32 newNum, uint32 newDenom)
+			auto AddTimingPoint = [&](double newDuration, uint32 newNum, uint32 newDenom, int8 tickrateOffset)
 			{
 				// Does not yet exist at current time?
 				if (!timingPointMap.Contains(mapTime))
@@ -627,6 +627,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				lastTimingPoint->numerator = newNum;
 				lastTimingPoint->denominator = newDenom;
 				lastTimingPoint->beatDuration = newDuration;
+				lastTimingPoint->tickrateOffset = tickrateOffset;
 
 				// Calculate new block duration
 				blockDuration = lastTimingPoint->GetBarDuration();
@@ -682,12 +683,17 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				uint32 denom = atol(*d);
 				//assert(denom % 4 == 0);
 
-				AddTimingPoint(lastTimingPoint->beatDuration, num, denom);
+				AddTimingPoint(lastTimingPoint->beatDuration, num, denom, lastTimingPoint->tickrateOffset);
 			}
 			else if (p.first == "t")
 			{
 				double bpm = atof(*p.second);
-				AddTimingPoint(60000.0 / bpm, lastTimingPoint->numerator, lastTimingPoint->denominator);
+				AddTimingPoint(60000.0 / bpm, lastTimingPoint->numerator, lastTimingPoint->denominator, lastTimingPoint->tickrateOffset);
+			}
+			else if (p.first == "tickrate_offset")
+			{
+				int8 value = atoi(*p.second);
+				AddTimingPoint(lastTimingPoint->beatDuration, lastTimingPoint->numerator, lastTimingPoint->denominator, value);
 			}
 			else if (p.first == "laserrange_l")
 			{

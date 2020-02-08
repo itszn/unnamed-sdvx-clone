@@ -457,8 +457,9 @@ bool Scoring::IsLaserIdle(uint32 index) const
 double Scoring::m_CalculateTicks(const TimingPoint* tp) const
 {
 	// Tick rate based on BPM
-	const double tickNoteValue = 16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7, 0)));
-	return tp->GetWholeNoteLength() / tickNoteValue;;
+	float offset = powf(2.0, tp->tickrateOffset);
+	const double tickNoteValue = (16 / (pow(2, Math::Max((int)(log2(tp->GetBPM())) - 7, 0)))) * offset;
+	return tp->GetWholeNoteLength() / tickNoteValue;
 }
 
 void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks) const

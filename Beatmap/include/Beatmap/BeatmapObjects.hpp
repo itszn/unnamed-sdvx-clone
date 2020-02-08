@@ -288,6 +288,7 @@ struct TimingPoint
 	// Lower part of the time signature
 	// the note value (4th, 3th, 8th notes, etc.) for a beat
 	uint8 denominator = 4;
+	int8 tickrateOffset = 0;
 };
 
 struct LaneHideTogglePoint
