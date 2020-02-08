@@ -559,7 +559,7 @@ float BeatmapPlayback::GetBeatTime() const
 
 float BeatmapPlayback::GetZoom(uint8 index)
 {
-	assert(index >= 0 && index <= 3);
+	assert(index >= 0 && index <= 4);
 	MapTime startTime = m_zoomStartPoints[index] ? m_zoomStartPoints[index]->time : 0;
 	float start = m_zoomStartPoints[index] ? m_zoomStartPoints[index]->zoom : 0.0f;
 	if (!m_zoomEndPoints[index]) // Last point?

@@ -560,7 +560,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 	float laserRanges[2] = { 1.0f, 1.0f };
 	MapTime lastLaserPointTime[2] = { 0, 0 };
 
-	ZoomControlPoint *firstControlPoints[4] = { nullptr };
+	ZoomControlPoint *firstControlPoints[5] = { nullptr };
 	MapTime lastMapTime = 0;
 	for (KShootMap::TickIterator it(kshootMap); it; ++it)
 	{
@@ -790,6 +790,15 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				point->time = mapTime;
 				point->duration = atol(*p.second);
 				m_laneTogglePoints.Add(point);
+			}
+			else if (p.first == "center_split")
+			{
+				ZoomControlPoint* point = new ZoomControlPoint();
+				point->time = mapTime;
+				point->index = 4;
+				point->zoom = Math::Max(0.0, atof(*p.second));
+				m_zoomControlPoints.Add(point);
+				CHECK_FIRST;
 			}
 			else if (p.first == "tilt")
 			{

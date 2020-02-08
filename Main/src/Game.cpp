@@ -520,6 +520,7 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		m_track->centerSplit = m_playback.GetZoom(4);
 
 		for(uint32 i = 0; i < 2; i++)
 		{
@@ -645,6 +646,7 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		m_track->centerSplit = m_playback.GetZoom(4);
 		m_camera.pManualTiltEnabled = m_manualTiltEnabled;
 		m_camera.track = m_track;
 		m_camera.Tick(deltaTime,m_playback);
