@@ -733,9 +733,31 @@ float Track::GetViewRange() const
 
 float Track::GetButtonPlacement(uint32 buttonIdx)
 {
-	if(buttonIdx < 4)
-		return buttonIdx * buttonWidth - (buttonWidth * 1.5f);
+	if (buttonIdx < 4)
+	{
+		float x = buttonIdx * buttonWidth - (buttonWidth * 1.5f);
+		if (buttonIdx < 2)
+		{
+			x -= 0.5 * centerSplit * buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * centerSplit * buttonWidth;
+		}
+		return x;
+	}
 	else
-		return (buttonIdx - 4) * fxbuttonWidth - (fxbuttonWidth * 0.5f);
+	{
+		float x = (buttonIdx - 4) * fxbuttonWidth - (fxbuttonWidth * 0.5f);
+		if (buttonIdx < 5)
+		{
+			x -= 0.5 * centerSplit * buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * centerSplit * buttonWidth;
+		}
+		return x;
+	}
 }
 
