@@ -134,8 +134,8 @@ private:
 	ZoomControlPoint** m_currentZoomPoint = nullptr;
 
 	// Used to calculate track zoom
-	ZoomControlPoint* m_zoomStartPoints[4] = { nullptr };
-	ZoomControlPoint* m_zoomEndPoints[4] = { nullptr };
+	ZoomControlPoint* m_zoomStartPoints[5] = { nullptr };
+	ZoomControlPoint* m_zoomEndPoints[5] = { nullptr };
 
 	// Contains all the objects that are in the current valid timing area
 	Vector<ObjectState*> m_hittableObjects;

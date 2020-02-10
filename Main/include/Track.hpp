@@ -83,6 +83,7 @@ public:
 	float suddenFadewindow = 0.2f;
 
 	float laserSpeedOffset = 0.90;
+	float centerSplit = 0.0f;
 	Vector3 shakeOffset;
 
 	// Visible time elements on the playfield track
@@ -91,8 +92,11 @@ public:
 
 	/* Track base graphics */
 	Mesh trackMesh;
+	Mesh splitTrackMesh[2];
 	Mesh trackTickMesh;
+	Mesh splitTrackTickMesh[2];
 	Mesh trackCoverMesh;
+	Mesh splitTrackCoverMesh[2];
 	Mesh calibrationCritMesh;
 	Mesh calibrationDarkMesh;
 	Material trackMaterial; // Also used for buttons
