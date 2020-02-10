@@ -108,7 +108,7 @@ void AssignAudioEffectParameter(EffectParam<T>& param, const String& paramName, 
 	}
 }
 
-MapTime TimeFromTicks(uint32 tick, const Map<uint32, TimingPoint*>& timingpoints, double resolution) 
+double TimeFromTicks(uint32 tick, const Map<uint32, TimingPoint*>& timingpoints, double resolution) 
 {
 	TimingPoint* lastTp = timingpoints.begin()->second;
 	uint32 lastTick = timingpoints.begin()->first;
@@ -122,7 +122,12 @@ MapTime TimeFromTicks(uint32 tick, const Map<uint32, TimingPoint*>& timingpoints
 		lastTp = kvp.second;
 		lastTick = kvp.first;
 	}
-	return Math::Round(ret + Math::MSFromTicks((double)(tick - lastTick), lastTp->GetBPM(), resolution));
+	return ret + Math::MSFromTicks((double)(tick - lastTick), lastTp->GetBPM(), resolution);
+}
+
+MapTime MapTimeFromTicks(uint32 tick, const Map<uint32, TimingPoint*>& timingpoints, double resolution)
+{
+	return Math::Round(TimeFromTicks(tick, timingpoints, resolution));
 }
 
 struct MultiParam
@@ -542,7 +547,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 	// Process initial timing point
 	TimingPoint* lastTimingPoint = new TimingPoint();
 	lastTimingPoint->time = atol(*kshootMap.settings["o"]);
-	double realMapTime = (double)lastTimingPoint->time;
 	double bpm = atof(*kshootMap.settings["t"]);
 	lastTimingPoint->beatDuration = 60000.0 / bpm;
 	lastTimingPoint->numerator = 4;
@@ -551,8 +555,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 	uint32 timingPointBlockOffset = 0;
 	// Tick offset into block for current timing point
 	uint32 timingTickOffset = 0;
-	// Duration of first timing block
-	double timingFirstBlockDuration = 0.0f;
 
 	// Add First timing point
 	m_timingPoints.Add(lastTimingPoint);
@@ -593,34 +595,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 		float fxSampleVolume[2] = { 1.0, 1.0 };
 		bool useFxSample[2] = { false, false };
 		uint8 fxSampleIndex[2] = { 0,0 };
-		// Calculate MapTime from current tick
-		double blockDuration = lastTimingPoint->GetBarDuration();
-		uint32 blockFromStartOfTimingPoint = (time.block - timingPointBlockOffset);
-		uint32 tickFromStartOfTimingPoint;
-
-		if (blockFromStartOfTimingPoint == 0) // Use tick offset when in first block
-			tickFromStartOfTimingPoint = (time.tick - timingTickOffset);
-		else
-			tickFromStartOfTimingPoint = time.tick;
-
-		// Get the offset calculated by adding block durations together
-		double blockDurationOffset = 0;
-		if (timingTickOffset > 0) // First block might have a shorter length because of the timing point being mid tick
-		{
-			if (blockFromStartOfTimingPoint > 0)
-				blockDurationOffset = timingFirstBlockDuration + blockDuration * (blockFromStartOfTimingPoint - 1);
-		}
-		else
-		{
-			blockDurationOffset = blockDuration * blockFromStartOfTimingPoint;
-		}
-
-		// Sub-Block offset by adding ticks together
-		double blockPercent = (double)tickFromStartOfTimingPoint / (double)block.ticks.size();
-		double tickOffset = blockPercent * blockDuration;
-		double currentMapTime = realMapTime + blockDurationOffset + tickOffset;
-		MapTime mapTime = MapTime(currentMapTime);
-
+		MapTime mapTime = MapTimeFromTicks(currentTick, timingPointTicks, tickResolution);
 		bool lastTick = &block == &kshootMap.blocks.back() &&
 			&tick == &block.ticks.back();
 
@@ -640,7 +615,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				{
 					lastTimingPoint = new TimingPoint(*lastTimingPoint);
 					lastTimingPoint->time = mapTime;
-					realMapTime = currentMapTime;
 					m_timingPoints.Add(lastTimingPoint);
 					timingPointMap.Add(mapTime, lastTimingPoint);
 					timingPointTicks.Add(currentTick, lastTimingPoint);
@@ -651,12 +625,6 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				lastTimingPoint->numerator = newNum;
 				lastTimingPoint->denominator = newDenom;
 				lastTimingPoint->beatDuration = newDuration;
-
-				// Calculate new block duration
-				blockDuration = lastTimingPoint->GetBarDuration();
-
-				// Set new first block duration based on remaining ticks
-				timingFirstBlockDuration = (double)(block.ticks.size() - time.tick) / (double)block.ticks.size() * blockDuration;
 			};
 
 			// Parser the effect and parameters of an FX button (1.60)
@@ -947,9 +915,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				if (IsHoldState())
 				{
 					HoldObjectState* obj = lastHoldObject = new HoldObjectState();
-					obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
+					obj->time = MapTimeFromTicks(state->startTick, timingPointTicks, tickResolution);
 					obj->index = i;
-					obj->duration = TimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
+					obj->duration = MapTimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
 					obj->effectType = state->effectType;
 					if (state->lastHoldObject)
 						state->lastHoldObject->next = obj;
@@ -961,7 +929,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				{
 					ButtonObjectState* obj = new ButtonObjectState();
 					
-					obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
+					obj->time = MapTimeFromTicks(state->startTick, timingPointTicks, tickResolution);
 					obj->index = i;
 					obj->hasSample = state->usingSample;
 					obj->sampleIndex = state->sampleIndex;
@@ -1142,9 +1110,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 
 				LaserObjectState* obj = new LaserObjectState();
 
-				obj->time = TimeFromTicks(state->startTick, timingPointTicks, tickResolution);
+				obj->time = MapTimeFromTicks(state->startTick, timingPointTicks, tickResolution);
 				obj->tick = state->startTick;
-				obj->duration = TimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
+				obj->duration = MapTimeFromTicks(currentTick, timingPointTicks, tickResolution) - obj->time;
 				obj->index = i;
 				obj->points[0] = state->startPosition;
 				obj->points[1] = endPos;
@@ -1161,7 +1129,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream& input, bool metadataOnly)
 				if (tickDuration <= laserSlamThreshold && (obj->points[1] != obj->points[0]))
 				{
 					obj->flags |= LaserObjectState::flag_Instant;
-					obj->time = TimeFromTicks(state->absoluteStartTick, timingPointTicks, tickResolution);
+					obj->time = MapTimeFromTicks(state->absoluteStartTick, timingPointTicks, tickResolution);
 					obj->tick = state->absoluteStartTick;
 					if (state->spinType != 0)
 					{
