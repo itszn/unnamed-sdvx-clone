@@ -7,6 +7,7 @@
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <Beatmap/BeatmapObjects.hpp>
 #include "AsyncAssetLoader.hpp"
+#include <unordered_set>
 
 const float Track::trackWidth = 1.0f;
 const float Track::buttonWidth = 1.0f / 6;
@@ -47,6 +48,7 @@ bool Track::AsyncLoad()
 	float laserHues[2] = { 0.f };
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 	laserHues[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
+	m_btOverFxScale = Math::Clamp(g_gameConfig.GetFloat(GameConfigKeys::BTOverFXScale), 0.01f, 1.0f);
 
 	for (uint32 i = 0; i < 2; i++)
 		laserColors[i] = Color::FromHSV(laserHues[i],1.0,1.0);
@@ -409,7 +411,7 @@ void Track::DrawBase(class RenderQueue& rq)
 	}
 	
 }
-void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active)
+void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2])
 {
 	// Calculate height based on time on current track
 	float viewRange = GetViewRange();
@@ -423,6 +425,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		MaterialParameterSet params;
 		Material mat = buttonMaterial;
 		Mesh mesh;
+		float xscale = 1.0f;
 		float width;
 		float xposition;
 		float length;
@@ -432,6 +435,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		{
 			width = buttonWidth;
 			xposition = buttonTrackWidth * -0.5f + width * mobj->button.index;
+			int fxIdx = 0;
 			if (mobj->button.index < 2)
 			{
 				xposition -= 0.5 * centerSplit * buttonWidth;
@@ -439,6 +443,12 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			else 
 			{
 				xposition += 0.5 * centerSplit * buttonWidth;
+				fxIdx = 1;
+			}
+			if (!isHold && chipFXTimes[fxIdx].count(mobj->time))
+			{
+				xscale = m_btOverFxScale;
+				xposition += width * ((1.0 - xscale) / 2.0);
 			}
 			length = buttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);
@@ -500,7 +510,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
 
 
-		buttonTransform *= Transform::Scale({ 1.0f, scale, 1.0f });
+		buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
 	else if(obj->type == ObjectType::Laser) // Draw laser

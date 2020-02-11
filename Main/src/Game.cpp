@@ -685,6 +685,17 @@ public:
 			return renderPriorityA > renderPriorityB;
 		});
 
+		//TODO: Set as bool on the button object during parsing(?)
+		std::unordered_set<MapTime> chipFXTimes[2];
+		for (const auto& obj : m_currentObjectSet) {
+			if (obj->type == ObjectType::Single) {
+				auto b = (ButtonObjectState*)obj;
+				if (b->index > 3) {
+					chipFXTimes[b->index - 4].insert(b->time);
+				}
+			}
+		}
+
 		/// TODO: Performance impact analysis.
 		m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
 
@@ -694,7 +705,7 @@ public:
 		for(auto& object : m_currentObjectSet)
 		{
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
-				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
+				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
 		}
 		if(m_showCover)
 			m_track->DrawTrackCover(renderQueue);

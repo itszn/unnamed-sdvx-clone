@@ -1,6 +1,7 @@
 #pragma once
 #include "Scoring.hpp"
 #include "AsyncLoadable.hpp"
+#include <unordered_set>
 
 /*
 	The object responsible for drawing the track.
@@ -45,7 +46,7 @@ public:
 	// Just the board with tick lines
 	void DrawBase(RenderQueue& rq);
 	// Draws an object
-	void DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active = false);
+	void DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2]);
 	// Things like the laser pointers, hit bar and effect
 	void DrawOverlays(RenderQueue& rq);
 	// Draws a plane over the track
@@ -173,6 +174,7 @@ private:
 	// How much the track is hidden. 1.0 = fully hidden, 0.0 = fully visible
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
+	float m_btOverFxScale = 0.8f;
 }; 
 
 // Base class for sprite effects on the track

@@ -5,6 +5,7 @@
 #include "SDL2/SDL_keycode.h"
 #include "SettingsScreen.hpp"
 #include "../third_party/nuklear/nuklear.h"
+#include <unordered_set>
 
 
 CalibrationScreen::CalibrationScreen(nk_context* nk_ctx)
@@ -77,9 +78,11 @@ void CalibrationScreen::Render(float deltaTime)
 	auto currentObjectSet = m_playback.GetObjectsInRange(msViewRange);
 
 	m_track.DrawBase(renderQueue);
+	std::unordered_set<MapTime> chipFXTimes[2];
+
 	for (auto& object : currentObjectSet)
 	{
-		m_track.DrawObjectState(renderQueue, m_playback, object, false);
+		m_track.DrawObjectState(renderQueue, m_playback, object, false, chipFXTimes);
 	}
 	if (m_trackCover)
 	{

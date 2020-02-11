@@ -46,6 +46,7 @@ DefineEnum(GameConfigKeys,
 	ShowCover,
 	UseBackCombo,
 	DistantButtonScale,
+	BTOverFXScale,
 
 	// Input device setting per element
 	LaserInputDevice,
