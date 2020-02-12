@@ -788,7 +788,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				ZoomControlPoint *point = new ZoomControlPoint();
 				point->time = mapTime;
 				point->index = 4;
-				point->zoom = Math::Max(0.0, atof(*p.second));
+				int value = atol(*p.second);
+				point->zoom = (double)value / 100.0;
 				m_zoomControlPoints.Add(point);
 				CHECK_FIRST;
 			}
