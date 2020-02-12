@@ -380,7 +380,7 @@ void Track::DrawBase(class RenderQueue& rq)
 	params.SetParameter("rCol", laserColors[1]);
 	params.SetParameter("hidden", m_trackHide);
 
-	if (centerSplit > 0.0)
+	if (centerSplit != 0.0f)
 	{
 		rq.Draw(transform * Transform::Translation({centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
 		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
@@ -399,7 +399,7 @@ void Track::DrawBase(class RenderQueue& rq)
 		Vector3 tickPosition = Vector3(0.0f, trackLength * fLocal - trackTickLength * 0.5f, 0.01f);
 		Transform tickTransform = trackOrigin;
 		tickTransform *= Transform::Translation(tickPosition);
-		if (centerSplit > 0.0f)
+		if (centerSplit != 0.0f)
 		{
 			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params);
 			rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
@@ -655,7 +655,7 @@ void Track::DrawTrackCover(RenderQueue& rq)
 		p.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
 		p.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
 
-		if (centerSplit > 0.0)
+		if (centerSplit != 0.0f)
 		{
 			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
 			rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
