@@ -996,6 +996,20 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 			if ((*it)->time <= mapTime)
 			{
+				auto current = m_currentLaserSegments[(*it)->index];
+				auto& currentTicks = m_ticks[6 + (*it)->index];
+				if (!currentTicks.empty() && current != nullptr)
+				{
+					auto tick = currentTicks.front();
+					if ((current->flags & LaserObjectState::flag_Instant) != 0)
+					{
+						if ((LaserObjectState*)tick->object == current) {
+							// Don't continue to next segment before the slam has been decided as hit or not
+							it++;
+							continue;
+						}
+					}
+				}
 				// Replace the currently active segment
 				m_currentLaserSegments[(*it)->index] = *it;
 				if (m_currentLaserSegments[(*it)->index]->prev && m_currentLaserSegments[(*it)->index]->GetDirection() != m_currentLaserSegments[(*it)->index]->prev->GetDirection())
@@ -1014,21 +1028,28 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		if (currentSegment)
 		{
 			lasersAreExtend[i] = (currentSegment->flags & LaserObjectState::flag_Extended) != 0;
+			MapTime duration = currentSegment->duration;
+
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
-				// Apply laser roll ignore when the laser has scrolled past
-				if (!(currentSegment->flags & LaserObjectState::flag_Instant) && !currentSegment->next)
-					OnLaserExit.Call(currentSegment);
-
-				currentSegment = nullptr;
-				m_currentLaserSegments[i] = nullptr;
-				for (auto o : m_laserSegmentQueue)
+				auto currentTicks = m_ticks[6 + i];
+				if (currentSegment->flags & LaserObjectState::flag_Instant == 0 
+					|| currentTicks.empty() 
+					|| (LaserObjectState*)currentTicks.front()->object != currentSegment) // Don't null slam that hasn't been judged yet
 				{
-					if (o->index == i)
+					// Apply laser roll ignore when the laser has scrolled past
+					if (!(currentSegment->flags & LaserObjectState::flag_Instant) && !currentSegment->next)
+						OnLaserExit.Call(currentSegment);
+					currentSegment = nullptr;
+					m_currentLaserSegments[i] = nullptr;
+					for (auto o : m_laserSegmentQueue)
 					{
-						laserTargetPositions[i] = o->points[0];
-						lasersAreExtend[i] = o->flags & LaserObjectState::flag_Extended;
-						break;
+						if (o->index == i)
+						{
+							laserTargetPositions[i] = o->points[0];
+							lasersAreExtend[i] = o->flags & LaserObjectState::flag_Extended;
+							break;
+						}
 					}
 				}
 			}
