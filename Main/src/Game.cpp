@@ -71,6 +71,7 @@ private:
 	bool m_paused = false;
 	bool m_ended = false;
 	bool m_transitioning = false;
+	bool m_saveSpeed = false;
 
 	bool m_renderDebugHUD = false;
 
@@ -140,7 +141,7 @@ private:
 	Sample* m_fxSamples = nullptr;
 
 	// Roll intensity, default = 1
-	float m_rollIntensity = 14 / 360.0;
+	float m_rollIntensity = MAX_ROLL_ANGLE;
 	bool m_manualTiltEnabled = false;
 
 	// Particle effects
@@ -153,8 +154,8 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeAmount = 3;
-	float m_shakeDuration = 0.083;
+	float m_shakeAmount = 2.5;
+	float m_shakeDuration = 0.1;
 
 	Map<ScoreIndex*, ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
@@ -207,7 +208,10 @@ public:
 		if (m_fxSamples)
 			delete[] m_fxSamples;
 		// Save hispeed
-		g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
+		if (m_saveSpeed)
+		{
+			g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
+		}
 
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>()); 
 
@@ -326,6 +330,7 @@ public:
 		m_audioOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
 		m_playback.audioOffset = m_audioOffset;
 
+		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
@@ -368,6 +373,7 @@ public:
 		m_track->suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
 		m_track->hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
+		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
 		#ifdef EMBEDDED
@@ -519,6 +525,7 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		m_track->centerSplit = m_playback.GetZoom(4);
 
 		for(uint32 i = 0; i < 2; i++)
 		{
@@ -606,7 +613,10 @@ public:
 					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
 					if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
 					{
-						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
+						if (m_saveSpeed)
+						{
+							g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
+						}
 						m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
 						m_playback.cModSpeed = m_modSpeed;
 					}
@@ -623,12 +633,20 @@ public:
 		else
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
-
 		// Get render state from the camera
-		float rollA = m_scoring.GetLaserRollOutput(0);
-		float rollB = m_scoring.GetLaserRollOutput(1);
-		m_camera.SetTargetRoll(rollA + rollB);
-		m_camera.SetRollIntensity(m_rollIntensity);
+		// Only get roll when there's no laser slam roll being applied
+		float rollL = m_camera.GetRollIgnoreTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
+		float rollR = m_camera.GetRollIgnoreTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
+		float slamL = m_camera.GetSlamAmount(0);
+		float slamR = m_camera.GetSlamAmount(1);
+
+		// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
+		// slowTilt = true when lasers are at 0/0 or -1/1
+		bool slowTilt = (((rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0 && !(slamL || slamR))) ||
+					((rollL == -1 && slamR == 1) || (rollR == 1 && slamL == -1)));
+		
+		m_camera.SetTargetRoll(rollL + rollR);
+		m_camera.SetSlowTilt(slowTilt);
 
 		// Set track zoom
 
@@ -636,6 +654,7 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		m_track->centerSplit = m_playback.GetZoom(4);
 		m_camera.pManualTiltEnabled = m_manualTiltEnabled;
 		m_camera.track = m_track;
 		m_camera.Tick(deltaTime,m_playback);
@@ -674,6 +693,17 @@ public:
 			return renderPriorityA > renderPriorityB;
 		});
 
+		//TODO: Set as bool on the button object during parsing(?)
+		std::unordered_set<MapTime> chipFXTimes[2];
+		for (const auto& obj : m_currentObjectSet) {
+			if (obj->type == ObjectType::Single) {
+				auto b = (ButtonObjectState*)obj;
+				if (b->index > 3) {
+					chipFXTimes[b->index - 4].insert(b->time);
+				}
+			}
+		}
+
 		/// TODO: Performance impact analysis.
 		m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
 
@@ -683,7 +713,7 @@ public:
 		for(auto& object : m_currentObjectSet)
 		{
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
-				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object));
+				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
 		}
 		if(m_showCover)
 			m_track->DrawTrackCover(renderQueue);
@@ -965,6 +995,10 @@ public:
 		m_camera.pLanePitch = m_playback.GetZoom(1);
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
+		
+		// Set roll ignore and slam durations
+		m_camera.SetRollIgnoreDuration(g_gameConfig.GetFloat(GameConfigKeys::RollIgnoreDuration) / 1000);
+		m_camera.SetSlamLength(g_gameConfig.GetFloat(GameConfigKeys::LaserSlamLength) / 1000);
 
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)
@@ -981,6 +1015,9 @@ public:
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
+
+		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
+		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
 
 		m_playback.hittableObjectEnter = Scoring::missHitTime + g_gameConfig.GetInt(GameConfigKeys::InputOffset);
 		m_playback.hittableObjectLeave = Scoring::goodHitTime;
@@ -1310,7 +1347,7 @@ public:
 		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
-			m_camera.GetRoll(), m_rollIntensity, m_camera.rollKeep ? "[Keep]" : ""), textPos).y;
+			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Top: %f", m_camera.pLanePitch), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Track Zoom Bottom: %f", m_camera.pLaneZoom), textPos).y;
@@ -1360,12 +1397,32 @@ public:
 		//g_guiRenderer->End();
 	}
 
+	void OnLaserSlam(LaserObjectState* object)
+	{
+		// Note: this merely simulates the slam roll effect. The way SDVX does laser slams is probably just putting
+		// a straight laser segment to the tail of the slam. This isn't exactly ideal for USC as it'll limit laser skinning.
+		if (object != nullptr)
+		{
+			// Set flag
+			object->flags |= LaserObjectState::flag_slamProcessed;
+			uint8 index = object->index;
+			float tail = m_scoring.GetLaserPosition(index, object->points[1]);
+			m_camera.SetSlamAmount(index, tail);
+		}
+	}
+
+	void OnLaserExit(LaserObjectState* object)
+	{
+		if (object != nullptr)
+			m_camera.SetRollIgnore(object->index, false);
+	}
+
 	void OnLaserSlamHit(LaserObjectState* object)
 	{
 		float slamSize = (object->points[1] - object->points[0]);
 		float direction = Math::Sign(slamSize);
 		slamSize = fabsf(slamSize);
-		CameraShake shake(m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
+		CameraShake shake(powf(slamSize, 0.5f) * m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
 
@@ -1574,7 +1631,7 @@ public:
 		}
 		else if(key == EventKey::TrackRollBehaviour)
 		{
-			m_camera.rollKeep = (data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep;
+			m_camera.SetRollKeep((data.rollVal & TrackRollBehaviour::Keep) == TrackRollBehaviour::Keep);
 			int32 i = (uint8)data.rollVal & 0x7;
 
 			m_manualTiltEnabled = false;
@@ -1588,8 +1645,9 @@ public:
 			else
 			{
 				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
-				m_rollIntensity = (14 * (1.0 + 0.5 * (i - 1))) / 360.0;
+				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.75 * (i - 1));
 			}
+			m_camera.SetRollIntensity(m_rollIntensity);
 		}
 		else if(key == EventKey::SlamVolume)
 		{

@@ -7,6 +7,7 @@
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <Beatmap/BeatmapObjects.hpp>
 #include "AsyncAssetLoader.hpp"
+#include <unordered_set>
 
 const float Track::trackWidth = 1.0f;
 const float Track::buttonWidth = 1.0f / 6;
@@ -47,6 +48,7 @@ bool Track::AsyncLoad()
 	float laserHues[2] = { 0.f };
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 	laserHues[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
+	m_btOverFxScale = Math::Clamp(g_gameConfig.GetFloat(GameConfigKeys::BTOverFXScale), 0.01f, 1.0f);
 
 	for (uint32 i = 0; i < 2; i++)
 		laserColors[i] = Color::FromHSV(laserHues[i],1.0,1.0);
@@ -180,9 +182,50 @@ bool Track::AsyncFinalize()
 
 	// Generate simple planes for the playfield track and elements
 	trackMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1), Vector2(trackWidth, trackLength + 1));
+	
+	for (size_t i = 0; i < 2; i++)
+	{
+		//track base
+		Vector2 pos = Vector2(-trackWidth * 0.5f * i, -1);
+		Vector2 size = Vector2(trackWidth / 2.0f, trackLength + 1);
+		Rect rect = Rect(pos, size);
+		Rect uv = Rect(0.5 - 0.5 * i, 0.0f, 1.0 - 0.5 * i, 1.0f);
+		splitTrackMesh[i] = MeshRes::Create(g_gl);
+		splitTrackMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
+		Vector<MeshGenerators::SimpleVertex> splitMeshData;
+		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
+		splitTrackMesh[i]->SetData(splitMeshData);
+
+		//track cover
+		pos = Vector2(-trackWidth * 0.5f * i, -trackLength);
+		size = Vector2(trackWidth / 2.0f, trackLength * 2.0);
+		rect = Rect(pos, size);
+		splitTrackCoverMesh[i] = MeshRes::Create(g_gl);
+		splitTrackCoverMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
+		splitMeshData.clear();
+		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
+		splitTrackCoverMesh[i]->SetData(splitMeshData);
+
+		//tick meshes
+		pos = Vector2(-buttonTrackWidth * 0.5f * i, 0.0f);
+		size = Vector2(buttonTrackWidth / 2.0f, trackTickLength);
+		rect = Rect(pos, size);
+		splitTrackTickMesh[i] = MeshRes::Create(g_gl);
+		splitTrackTickMesh[i]->SetPrimitiveType(PrimitiveType::TriangleList);
+		splitMeshData.clear();
+		MeshGenerators::GenerateSimpleXYQuad(rect, uv, splitMeshData);
+		splitTrackTickMesh[i]->SetData(splitMeshData);
+	}
+	
+	calibrationCritMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -0.02f), Vector2(trackWidth, 0.02f));
+	calibrationDarkMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -1.0f), Vector2(trackWidth, 0.99f));
 	trackCoverMesh = MeshGenerators::Quad(g_gl, Vector2(-trackWidth * 0.5f, -trackLength), Vector2(trackWidth, trackLength * 2));
 	trackTickMesh = MeshGenerators::Quad(g_gl, Vector2(-buttonTrackWidth * 0.5f, 0.0f), Vector2(buttonTrackWidth, trackTickLength));
 	centeredTrackMesh = MeshGenerators::Quad(g_gl, Vector2(-0.5f, -0.5f), Vector2(1.0f, 1.0f));
+	uint8 whiteData[4] = { 255, 255, 255, 255 };
+	whiteTexture = TextureRes::Create(g_gl);
+	whiteTexture->SetData({ 1,1 }, (void*)whiteData);
+
 
 	timedHitEffect = new TimedHitEffect(false);
 	timedHitEffect->time = 0;
@@ -336,21 +379,39 @@ void Track::DrawBase(class RenderQueue& rq)
 	params.SetParameter("lCol", laserColors[0]);
 	params.SetParameter("rCol", laserColors[1]);
 	params.SetParameter("hidden", m_trackHide);
-	rq.Draw(transform, trackMesh, trackMaterial, params);
+
+	if (centerSplit != 0.0f)
+	{
+		rq.Draw(transform * Transform::Translation({centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[0], trackMaterial, params);
+		rq.Draw(transform * Transform::Translation({-centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f}), splitTrackMesh[1], trackMaterial, params);
+	}
+	else
+	{
+		rq.Draw(transform, trackMesh, trackMaterial, params);
+	}
 
 	// Draw the main beat ticks on the track
 	params.SetParameter("mainTex", trackTickTexture);
 	params.SetParameter("hasSample", false);
-	for(float f : m_barTicks)
+	for (float f : m_barTicks)
 	{
 		float fLocal = f / m_viewRange;
 		Vector3 tickPosition = Vector3(0.0f, trackLength * fLocal - trackTickLength * 0.5f, 0.01f);
 		Transform tickTransform = trackOrigin;
 		tickTransform *= Transform::Translation(tickPosition);
-		rq.Draw(tickTransform, trackTickMesh, buttonMaterial, params);
+		if (centerSplit != 0.0f)
+		{
+			rq.Draw(tickTransform * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[0], buttonMaterial, params);
+			rq.Draw(tickTransform * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackTickMesh[1], buttonMaterial, params);
+		}
+		else
+		{
+			rq.Draw(tickTransform, trackTickMesh, buttonMaterial, params);
+		}
 	}
+	
 }
-void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active)
+void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2])
 {
 	// Calculate height based on time on current track
 	float viewRange = GetViewRange();
@@ -364,6 +425,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		MaterialParameterSet params;
 		Material mat = buttonMaterial;
 		Mesh mesh;
+		float xscale = 1.0f;
 		float width;
 		float xposition;
 		float length;
@@ -373,6 +435,21 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		{
 			width = buttonWidth;
 			xposition = buttonTrackWidth * -0.5f + width * mobj->button.index;
+			int fxIdx = 0;
+			if (mobj->button.index < 2)
+			{
+				xposition -= 0.5 * centerSplit * buttonWidth;
+			}
+			else 
+			{
+				xposition += 0.5 * centerSplit * buttonWidth;
+				fxIdx = 1;
+			}
+			if (!isHold && chipFXTimes[fxIdx].count(mobj->time))
+			{
+				xscale = m_btOverFxScale;
+				xposition += width * ((1.0 - xscale) / 2.0);
+			}
 			length = buttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);
 			params.SetParameter("mainTex", isHold ? buttonHoldTexture : buttonTexture);
@@ -382,6 +459,14 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		{
 			width = fxbuttonWidth;
 			xposition = buttonTrackWidth * -0.5f + fxbuttonWidth *(mobj->button.index - 4);
+			if (mobj->button.index < 5)
+			{
+				xposition -= 0.5 * centerSplit * buttonWidth;
+			}
+			else
+			{
+				xposition += 0.5 * centerSplit * buttonWidth;
+			}
 			length = fxbuttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);
 			params.SetParameter("mainTex", isHold ? fxbuttonHoldTexture : fxbuttonTexture);
@@ -414,6 +499,8 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			params.SetParameter("trackScale", trackScale);
 		}
 		else {
+			//Use actual distance from camera instead of position on the track?
+			scale = 1.0f + (Math::Max(1.0f, distantButtonScale) - 1.0f) * position;
 			params.SetParameter("trackScale", 1.0f / trackLength);
 		}
 
@@ -423,7 +510,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		params.SetParameter("suddenFadeWindow", suddenFadewindow); // Sudden cutoff (% of track)
 
 
-		buttonTransform *= Transform::Scale({ 1.0f, scale, 1.0f });
+		buttonTransform *= Transform::Scale({ xscale, scale, 1.0f });
 		rq.Draw(buttonTransform, mesh, mat, params);
 	}
 	else if(obj->type == ObjectType::Laser) // Draw laser
@@ -567,9 +654,35 @@ void Track::DrawTrackCover(RenderQueue& rq)
 		p.SetParameter("hiddenFadeWindow", hiddenFadewindow); // Hidden cutoff (% of track)
 		p.SetParameter("suddenCutoff", suddenCutoff); // Hidden cutoff (% of track)
 		p.SetParameter("suddenFadeWindow", suddenFadewindow); // Hidden cutoff (% of track)
-		rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
+
+		if (centerSplit != 0.0f)
+		{
+			rq.Draw(t * Transform::Translation({ centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[0], trackCoverMaterial, p);
+			rq.Draw(t * Transform::Translation({ -centerSplit * 0.5f * buttonWidth, 0.0f, 0.0f }), splitTrackCoverMesh[1], trackCoverMaterial, p);
+		}
+		else
+		{
+			rq.Draw(t, trackCoverMesh, trackCoverMaterial, p);
+		}
 	}
 	#endif
+}
+
+void Track::DrawCalibrationCritLine(RenderQueue& rq)
+{
+	Transform t = trackOrigin;
+	{
+		MaterialParameterSet params;
+		params.SetParameter("color", Color::Red);
+		params.SetParameter("mainTex", whiteTexture);
+		rq.Draw(t, calibrationCritMesh, spriteMaterial, params);
+	}
+	{
+		MaterialParameterSet params;
+		params.SetParameter("color", Color::Black.WithAlpha(0.6));
+		params.SetParameter("mainTex", whiteTexture);
+		rq.Draw(t, calibrationDarkMesh, spriteMaterial, params);
+	}
 }
 
 Vector3 Track::TransformPoint(const Vector3 & p)
@@ -630,9 +743,31 @@ float Track::GetViewRange() const
 
 float Track::GetButtonPlacement(uint32 buttonIdx)
 {
-	if(buttonIdx < 4)
-		return buttonIdx * buttonWidth - (buttonWidth * 1.5f);
+	if (buttonIdx < 4)
+	{
+		float x = buttonIdx * buttonWidth - (buttonWidth * 1.5f);
+		if (buttonIdx < 2)
+		{
+			x -= 0.5 * centerSplit * buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * centerSplit * buttonWidth;
+		}
+		return x;
+	}
 	else
-		return (buttonIdx - 4) * fxbuttonWidth - (fxbuttonWidth * 0.5f);
+	{
+		float x = (buttonIdx - 4) * fxbuttonWidth - (fxbuttonWidth * 0.5f);
+		if (buttonIdx < 5)
+		{
+			x -= 0.5 * centerSplit * buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * centerSplit * buttonWidth;
+		}
+		return x;
+	}
 }
 

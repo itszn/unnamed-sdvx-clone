@@ -294,6 +294,9 @@ void RetriggerDSP::SetMaxLength(uint32 length)
 }
 void RetriggerDSP::Process(float* out, uint32 numSamples)
 {
+	if (m_length == 0)
+		return;
+
 	///TODO: Clean up casting
 	int32 startSample = (double)startTime * ((double)audio->GetSampleRate() / 1000.0);
 	int32 nowSample = (double)audioBase->GetPosition() * ((double)audio->GetSampleRate() / 1000.0);
@@ -341,6 +344,9 @@ void WobbleDSP::SetLength(double length)
 }
 void WobbleDSP::Process(float* out, uint32 numSamples)
 {
+	if (m_length == 0)
+		return;
+
 	static Interpolation::CubicBezier easing(Interpolation::EaseInExpo);
 	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
@@ -377,6 +383,9 @@ void PhaserDSP::SetLength(double length)
 }
 void PhaserDSP::Process(float* out, uint32 numSamples)
 {
+	if (m_length == 0)
+		return;
+
 	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 

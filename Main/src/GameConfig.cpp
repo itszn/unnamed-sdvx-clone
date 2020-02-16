@@ -42,6 +42,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::GaugeDrainNormal, 180);
 	Set(GameConfigKeys::GaugeDrainHalf, 300);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
+	Set(GameConfigKeys::AutoSaveSpeed, true);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
 	Set(GameConfigKeys::Laser0Color, 200.0f);
@@ -53,6 +54,9 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::SuddenCutoff, 1.0f);
 	Set(GameConfigKeys::SuddenFade, 0.2f);
 	Set(GameConfigKeys::ShowCover, true);
+	Set(GameConfigKeys::DistantButtonScale, 1.0f);
+	Set(GameConfigKeys::BTOverFXScale, 0.8f);
+
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 
@@ -131,4 +135,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MultiplayerHost, "usc-multi.drewol.me:39079");
 	Set(GameConfigKeys::MultiplayerPassword, "");
 	Set(GameConfigKeys::MultiplayerUsername, "");
+
+	Set(GameConfigKeys::RollIgnoreDuration, 100.f);
+	Set(GameConfigKeys::LaserSlamLength, 100.f);
 }

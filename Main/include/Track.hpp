@@ -1,6 +1,7 @@
 #pragma once
 #include "Scoring.hpp"
 #include "AsyncLoadable.hpp"
+#include <unordered_set>
 
 /*
 	The object responsible for drawing the track.
@@ -19,6 +20,7 @@ public:
 	float trackTickLength;
 	float buttonLength;
 	float fxbuttonLength;
+	float distantButtonScale = 2.0f;
 
 	// Laser color setting
 	Color laserColors[2] = {};
@@ -44,7 +46,7 @@ public:
 	// Just the board with tick lines
 	void DrawBase(RenderQueue& rq);
 	// Draws an object
-	void DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active = false);
+	void DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, ObjectState* obj, bool active, const std::unordered_set<MapTime> chipFXTimes[2]);
 	// Things like the laser pointers, hit bar and effect
 	void DrawOverlays(RenderQueue& rq);
 	// Draws a plane over the track
@@ -53,6 +55,7 @@ public:
 	void DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color = Color::White, float tilt = 0.0f);
 	void DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale = 1.0f);
 	void DrawTrackCover(RenderQueue& rq);
+	void DrawCalibrationCritLine(RenderQueue& rq);
 
 	Vector3 TransformPoint(const Vector3& p);
 
@@ -81,6 +84,7 @@ public:
 	float suddenFadewindow = 0.2f;
 
 	float laserSpeedOffset = 0.90;
+	float centerSplit = 0.0f;
 	Vector3 shakeOffset;
 
 	// Visible time elements on the playfield track
@@ -89,8 +93,13 @@ public:
 
 	/* Track base graphics */
 	Mesh trackMesh;
+	Mesh splitTrackMesh[2];
 	Mesh trackTickMesh;
+	Mesh splitTrackTickMesh[2];
 	Mesh trackCoverMesh;
+	Mesh splitTrackCoverMesh[2];
+	Mesh calibrationCritMesh;
+	Mesh calibrationDarkMesh;
 	Material trackMaterial; // Also used for buttons
 	Texture trackTexture;
 	Texture trackCoverTexture;
@@ -111,6 +120,7 @@ public:
 	Material laserMaterial;
 	Material blackLaserMaterial;
 	Texture laserAlertTextures[2];
+	Texture whiteTexture;
 
 	/* Overlay graphics */
 	Material trackOverlay;
@@ -164,6 +174,7 @@ private:
 	// How much the track is hidden. 1.0 = fully hidden, 0.0 = fully visible
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
+	float m_btOverFxScale = 0.8f;
 }; 
 
 // Base class for sprite effects on the track

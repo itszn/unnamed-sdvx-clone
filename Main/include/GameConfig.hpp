@@ -23,6 +23,7 @@ DefineEnum(GameConfigKeys,
 	HiSpeed,
     SpeedMod,
     ModSpeed,
+	AutoSaveSpeed,
     SkipScore,
 	GlobalOffset,
 	InputOffset,
@@ -45,6 +46,8 @@ DefineEnum(GameConfigKeys,
 	SuddenFade,
 	ShowCover,
 	UseBackCombo,
+	DistantButtonScale,
+	BTOverFXScale,
 
 	// Input device setting per element
 	LaserInputDevice,
@@ -118,7 +121,10 @@ DefineEnum(GameConfigKeys,
 	// Multiplayer
 	MultiplayerHost,
 	MultiplayerPassword,
-	MultiplayerUsername
+	MultiplayerUsername,
+
+	RollIgnoreDuration,
+	LaserSlamLength
 	);
 
 DefineEnum(SpeedMods,

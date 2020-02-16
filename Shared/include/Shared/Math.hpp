@@ -73,4 +73,24 @@ namespace Math
 	{
 		return std::round(t);
 	}
+	template<typename T>
+	T BeatInMS(T bpm)
+	{
+		return (T)60000 / bpm;
+	}
+	template<typename T>
+	T TickInMS(T bpm, T tpqn)
+	{
+		return BeatInMS(bpm) / tpqn;
+	}
+	template<typename T>
+	T TicksFromMS(T ms, T bpm, T tpqn)
+	{
+		return ms / TickInMS(bpm, tpqn);
+	}
+	template<typename T>
+	T MSFromTicks(T ticks, T bpm, T tpqn)
+	{
+		return TickInMS(bpm, tpqn) * ticks;
+	}
 }

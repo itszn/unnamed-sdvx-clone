@@ -10,6 +10,7 @@ protected:
 public:
 	virtual ~SettingsScreen() = default;
 	static SettingsScreen* Create();
+	static void NKRender();
 };
 
 class ButtonBindingScreen : public IApplicationTickable

@@ -29,12 +29,28 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	{
 		w = track->buttonWidth;
 		x = (-track->buttonWidth * 1.5f) + w * buttonCode;
+		if (buttonCode < 2)
+		{
+			x -= 0.5 * track->centerSplit * track->buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * track->centerSplit * track->buttonWidth;
+		}
 	}
 	else
 	{
 		yMult = 1.0f;
 		w = track->buttonWidth * 2.0f;
 		x = -track->buttonWidth + w * (buttonCode - 4);
+		if (buttonCode < 5)
+		{
+			x -= 0.5 * track->centerSplit * track->buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * track->centerSplit * track->buttonWidth;
+		}
 	}
 
 	Vector2 hitEffectSize = Vector2(w, 0.0f);
@@ -59,12 +75,28 @@ void ButtonHitRatingEffect::Draw(class RenderQueue& rq)
 	{
 		w = track->buttonWidth;
 		x = (-track->buttonWidth * 1.5f) + w * buttonCode;
+		if (buttonCode < 2)
+		{
+			x -= 0.5 * track->centerSplit * track->buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * track->centerSplit * track->buttonWidth;
+		}
 		y = 0.15f;
 	}
 	else
 	{
 		w = track->buttonWidth * 2.0f;
 		x = -track->buttonWidth + w * (buttonCode - 4);
+		if (buttonCode < 5)
+		{
+			x -= 0.5 * track->centerSplit * track->buttonWidth;
+		}
+		else
+		{
+			x += 0.5 * track->centerSplit * track->buttonWidth;
+		}
 		y = 0.175f;
 	}
 

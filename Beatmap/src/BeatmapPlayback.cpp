@@ -5,6 +5,17 @@
 BeatmapPlayback::BeatmapPlayback(Beatmap& beatmap) : m_beatmap(&beatmap)
 {
 }
+BeatmapPlayback::~BeatmapPlayback()
+{
+	if (m_isCalibration) {
+		for (auto* o : m_calibrationObjects) {
+			delete o;
+		}
+		m_calibrationObjects.clear();
+		delete m_timingPoints.at(0);
+		m_timingPoints.clear();
+	}
+}
 bool BeatmapPlayback::Reset(MapTime startTime)
 {
 	m_effectObjects.clear();
@@ -48,6 +59,19 @@ bool BeatmapPlayback::Reset(MapTime startTime)
 void BeatmapPlayback::Update(MapTime newTime)
 {
 	MapTime delta = newTime - m_playbackTime;
+	if (m_isCalibration) {
+		// Count bars
+		int32 beatID = 0;
+		uint32 nBeats = CountBeats(m_playbackTime - delta, delta, beatID);
+		const TimingPoint& tp = GetCurrentTimingPoint();
+		double effectiveTime = ((double)newTime - tp.time); // Time with offset applied
+		m_barTime = (float)fmod(effectiveTime / (tp.beatDuration * tp.numerator), 1.0);
+		m_beatTime = (float)fmod(effectiveTime / tp.beatDuration, 1.0);
+
+		// Set new time
+		m_playbackTime = newTime;
+		return;
+	}
 	if (newTime < m_playbackTime)
 	{
 		// Don't allow backtracking
@@ -277,7 +301,32 @@ void BeatmapPlayback::Update(MapTime newTime)
 
 Vector<ObjectState*>& BeatmapPlayback::GetHittableObjects()
 {
+	if (m_isCalibration) {
+		return m_calibrationObjects;
+	}
 	return m_hittableObjects;
+}
+
+void BeatmapPlayback::MakeCalibrationPlayback()
+{
+	m_isCalibration = true;
+	m_timingPoints.clear();
+
+	for (size_t i = 0; i < 50; i++)
+	{
+		ButtonObjectState* newObject = new ButtonObjectState();
+		newObject->index = i % 4;
+		newObject->time = i * 500;
+		m_calibrationObjects.Add((ObjectState*)newObject);
+	}
+
+	TimingPoint* calibrationTiming = new TimingPoint();
+	calibrationTiming->beatDuration = 500;
+	calibrationTiming->time = 0;
+	calibrationTiming->denominator = 4;
+	calibrationTiming->numerator = 4;
+	m_timingPoints.Add(calibrationTiming);
+	m_currentTiming = &m_timingPoints.front();
 }
 
 Vector<ObjectState*> BeatmapPlayback::GetObjectsInRange(MapTime range)
@@ -287,6 +336,19 @@ Vector<ObjectState*> BeatmapPlayback::GetObjectsInRange(MapTime range)
 	MapTime end = m_playbackTime + range;
 	MapTime begin = m_playbackTime - earlyVisiblity;
 	Vector<ObjectState*> ret;
+
+	if (m_isCalibration) {
+		for (auto& o : m_calibrationObjects)
+		{
+			if (o->time < begin)
+				continue;
+			if (o->time > end)
+				break;
+
+			ret.Add(o);
+		}
+		return ret;
+	}
 
 	// Add hold objects
 	for (auto& ho : m_holdObjects)
@@ -497,7 +559,7 @@ float BeatmapPlayback::GetBeatTime() const
 
 float BeatmapPlayback::GetZoom(uint8 index)
 {
-	assert(index >= 0 && index <= 3);
+	assert(index >= 0 && index <= 4);
 	MapTime startTime = m_zoomStartPoints[index] ? m_zoomStartPoints[index]->time : 0;
 	float start = m_zoomStartPoints[index] ? m_zoomStartPoints[index]->zoom : 0.0f;
 	if (!m_zoomEndPoints[index]) // Last point?
