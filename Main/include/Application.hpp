@@ -77,6 +77,8 @@ public:
 	Material GetFontMaterial() const;
 	Material GetGuiTexMaterial() const;
 	Transform GetGUIProjection() const;
+	Transform GetCurrentGUITransform() const;
+	Rect GetCurrentGUIScissor() const;
 	void StoreNamedSample(String name, Sample sample);
 	void PlayNamedSample(String name, bool loop);
 	void StopNamedSample(String name);
