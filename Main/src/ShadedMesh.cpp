@@ -27,6 +27,7 @@ static void stackDump(lua_State* L) {
 
 ShadedMesh::ShadedMesh() {
 	m_material = g_application->LoadMaterial("guiTex");
+	m_material->opaque = false;
 	auto mainTex = TextureRes::Create(g_gl);
 	SetParam("mainTex", mainTex);
 	SetParam("color", Color::White);
@@ -37,6 +38,7 @@ ShadedMesh::ShadedMesh() {
 
 ShadedMesh::ShadedMesh(const String& name) {
 	m_material = g_application->LoadMaterial(name);
+	m_material->opaque = false;
 	m_mesh = MeshRes::Create(g_gl);
 	m_mesh->SetPrimitiveType(Graphics::PrimitiveType::TriangleList);
 }
@@ -60,6 +62,11 @@ void ShadedMesh::AddSkinTexture(const String& name, const String& file) {
 	auto newTex = g_application->LoadTexture(file);
 	m_textures.Add(name, newTex);
 	SetParam(name, newTex);
+}
+
+void ShadedMesh::SetBlendMode(const MaterialBlendMode& mode)
+{
+	m_material->blendMode = mode;
 }
 
 int lSetData(lua_State* L) {
@@ -138,11 +145,18 @@ int lAddSkinTexture(lua_State* L) {
 	return 0;
 }
 
+int lSetBlendMode(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	MaterialBlendMode mode = (MaterialBlendMode)luaL_checkinteger(L, 2);
+	object->SetBlendMode(mode);
+	return 0;
+}
+
 int lSetParam(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	if (lua_isinteger(L, 3)) {
 		String name = luaL_checkstring(L, 2);
-		int value = luaL_checknumber(L, 3);
+		int value = luaL_checkinteger(L, 3);
 		object->SetParam(name, value);
 		return 0;
 	}
@@ -155,26 +169,97 @@ int lSetParam(lua_State* L) {
 	return 0;
 }
 
+int lSetParamVec3(lua_State* L)
+{
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	String name = luaL_checkstring(L, 2);
+	float x, y, z;
+	x = luaL_checknumber(L, 3);
+	y = luaL_checknumber(L, 4);
+	z = luaL_checknumber(L, 5);
+	Vector3 vec = { x,y,z };
+	object->SetParam(name, vec);
+
+	return 0;
+}
+
+int lSetParamVec2(lua_State* L)
+{
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	String name = luaL_checkstring(L, 2);
+	if (lua_isinteger(L, 3)) {
+		int x, y;
+		x = luaL_checkinteger(L, 3);
+		y = luaL_checkinteger(L, 4);
+		Vector2i vec = { x,y };
+		object->SetParam(name, vec);
+	}
+	else if (lua_isnumber(L, 3)) {
+		float x, y;
+		x = luaL_checknumber(L, 3);
+		y = luaL_checknumber(L, 4);
+		Vector2 vec = { x,y };
+		object->SetParam(name, vec);
+	}
+
+	return 0;
+}
+
+int lSetParamVec4(lua_State* L)
+{
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	String name = luaL_checkstring(L, 2);
+	float x, y, z, w;
+	x = luaL_checknumber(L, 3);
+	y = luaL_checknumber(L, 4);
+	z = luaL_checknumber(L, 5);
+	w = luaL_checknumber(L, 6);
+	Vector4 vec = { x,y,z,w };
+	object->SetParam(name, vec);
+	
+
+	return 0;
+}
+
+
 
 int __index(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	String fname = lua_tostring(L, 2);
 	Map<String, lua_CFunction> fmap;
+	Map<String, MaterialBlendMode> blendmap;
 	fmap.Add("Draw", lDraw);
 	fmap.Add("AddTexture", lAddTexture);
 	fmap.Add("AddSkinTexture", lAddSkinTexture);
 	fmap.Add("SetParam", lSetParam);
+	fmap.Add("SetParamVec2", lSetParamVec2);
+	fmap.Add("SetParamVec3", lSetParamVec3);
+	fmap.Add("SetParamVec4", lSetParamVec4);
 	fmap.Add("SetData", lSetData);
+	fmap.Add("SetBlendMode", lSetBlendMode);
+
+	blendmap.Add("BLEND_ADD", MaterialBlendMode::Additive);
+	blendmap.Add("BLEND_MULT", MaterialBlendMode::Multiply);
+	blendmap.Add("BLEND_NORM", MaterialBlendMode::Normal);
 
 	auto function = fmap.find(fname);
 
-	if (function == fmap.end())
+	if (function != fmap.end())
 	{
-		return luaL_error(L, *Utility::Sprintf("ShadedMesh has no: '%s'", *fname));
+		lua_pushcfunction(L, function->second);
+		return 1;
 	}
 
-	lua_pushcfunction(L, function->second);
-	return 1;
+	auto blendMode = blendmap.find(fname);
+
+	if (blendMode != blendmap.end())
+	{
+		lua_pushinteger(L, (int)blendMode->second);
+		return 1;
+	}
+		
+
+	return luaL_error(L, *Utility::Sprintf("ShadedMesh has no: '%s'", *fname));
 }
 
 int __gc(lua_State* L) {

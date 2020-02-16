@@ -10,6 +10,7 @@ public:
 	void SetData(Vector<MeshGenerators::SimpleVertex>& data);
 	void AddTexture(const String& name, const String& file);
 	void AddSkinTexture(const String& name, const String& file);
+	void SetBlendMode(const MaterialBlendMode& mode);
 
 	template<typename T>
 	void SetParam(const String& name, const T& value) {
