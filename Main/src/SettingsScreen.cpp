@@ -555,7 +555,7 @@ public:
 				EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
 				FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
 				FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
-
+				ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
 				nk_layout_row_dynamic(m_nctx, 150, 2);
 				if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 				{

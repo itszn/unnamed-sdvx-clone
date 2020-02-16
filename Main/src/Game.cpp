@@ -71,6 +71,7 @@ private:
 	bool m_paused = false;
 	bool m_ended = false;
 	bool m_transitioning = false;
+	bool m_saveSpeed = false;
 
 	bool m_renderDebugHUD = false;
 
@@ -207,7 +208,10 @@ public:
 		if (m_fxSamples)
 			delete[] m_fxSamples;
 		// Save hispeed
-		g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
+		if (m_saveSpeed)
+		{
+			g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
+		}
 
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>()); 
 
@@ -326,6 +330,7 @@ public:
 		m_audioOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
 		m_playback.audioOffset = m_audioOffset;
 
+		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
@@ -608,7 +613,10 @@ public:
 					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
 					if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
 					{
-						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
+						if (m_saveSpeed)
+						{
+							g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
+						}
 						m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
 						m_playback.cModSpeed = m_modSpeed;
 					}

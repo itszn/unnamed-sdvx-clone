@@ -42,6 +42,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::GaugeDrainNormal, 180);
 	Set(GameConfigKeys::GaugeDrainHalf, 300);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
+	Set(GameConfigKeys::AutoSaveSpeed, true);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
 	Set(GameConfigKeys::Laser0Color, 200.0f);
