@@ -52,6 +52,11 @@ void ShadedMesh::SetPrimitiveType(const PrimitiveType& type)
 	m_mesh->SetPrimitiveType(type);
 }
 
+void ShadedMesh::SetOpaque(bool opaque)
+{
+	m_material->opaque = opaque;
+}
+
 int lSetData(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	Vector<MeshGenerators::SimpleVertex> newData;
@@ -142,6 +147,13 @@ int lSetPrimitiveType(lua_State* L) {
 	return 0;
 }
 
+int lSetOpaque(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	bool opaque = lua_toboolean(L, 2);
+	object->SetOpaque(opaque);
+	return 0;
+}
+
 int lSetParam(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	if (lua_isinteger(L, 3)) {
@@ -228,6 +240,7 @@ int __index(lua_State* L) {
 	fmap.Add("SetData", lSetData);
 	fmap.Add("SetBlendMode", lSetBlendMode);
 	fmap.Add("SetPrimitiveType", lSetPrimitiveType);
+	fmap.Add("SetOpaque", lSetOpaque);
 
 	constMap.Add("BLEND_ADD",  (int)MaterialBlendMode::Additive);
 	constMap.Add("BLEND_MULT", (int)MaterialBlendMode::Multiply);

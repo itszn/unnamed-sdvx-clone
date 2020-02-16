@@ -68,6 +68,10 @@ Sets the blending mode for the ShadedMesh object. Available blending modes are::
     BLEND_NORM (default)
     BLEND_ADD
     BLEND_MULT
+    
+ShadedMesh:SetOpaque(bool opaque)
+*********************************
+Sets the material as opaque or non-opaque, non-opaque is the default.
 
 ShadedMesh:SetPrimitiveType(int type)
 *************************************

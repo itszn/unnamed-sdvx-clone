@@ -12,6 +12,7 @@ public:
 	void AddSkinTexture(const String& name, const String& file);
 	void SetBlendMode(const MaterialBlendMode& mode);
 	void SetPrimitiveType(const PrimitiveType& type);
+	void SetOpaque(bool opaque);
 
 	template<typename T>
 	void SetParam(const String& name, const T& value) {
