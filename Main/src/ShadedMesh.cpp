@@ -3,28 +3,6 @@
 #include "Application.hpp"
 #include "lua.hpp"
 
-static void stackDump(lua_State* L) {
-	int i = lua_gettop(L);
-	Log(" ----------------  Stack Dump ----------------");
-	while (i) {
-		int t = lua_type(L, i);
-		switch (t) {
-		case LUA_TSTRING:
-			Logf("%d:`%s'",Logger::Info, i, lua_tostring(L, i));
-			break;
-		case LUA_TBOOLEAN:
-			Logf("%d: %s", Logger::Info, i, lua_toboolean(L, i) ? "true" : "false");
-			break;
-		case LUA_TNUMBER:
-			Logf("%d: %g", Logger::Info, i, lua_tonumber(L, i));
-			break;
-		default: Logf("%d: %s", Logger::Info, i, lua_typename(L, t)); break;
-		}
-		i--;
-	}
-	Log("--------------- Stack Dump Finished ---------------");
-}
-
 ShadedMesh::ShadedMesh() {
 	m_material = g_application->LoadMaterial("guiTex");
 	m_material->opaque = false;
@@ -67,6 +45,11 @@ void ShadedMesh::AddSkinTexture(const String& name, const String& file) {
 void ShadedMesh::SetBlendMode(const MaterialBlendMode& mode)
 {
 	m_material->blendMode = mode;
+}
+
+void ShadedMesh::SetPrimitiveType(const PrimitiveType& type)
+{
+	m_mesh->SetPrimitiveType(type);
 }
 
 int lSetData(lua_State* L) {
@@ -152,6 +135,13 @@ int lSetBlendMode(lua_State* L) {
 	return 0;
 }
 
+int lSetPrimitiveType(lua_State* L) {
+	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
+	PrimitiveType type = (PrimitiveType)luaL_checkinteger(L, 2);
+	object->SetPrimitiveType(type);
+	return 0;
+}
+
 int lSetParam(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	if (lua_isinteger(L, 3)) {
@@ -227,7 +217,7 @@ int __index(lua_State* L) {
 	ShadedMesh* object = *static_cast<ShadedMesh**>(lua_touserdata(L, 1));
 	String fname = lua_tostring(L, 2);
 	Map<String, lua_CFunction> fmap;
-	Map<String, MaterialBlendMode> blendmap;
+	Map<String, int> constMap;
 	fmap.Add("Draw", lDraw);
 	fmap.Add("AddTexture", lAddTexture);
 	fmap.Add("AddSkinTexture", lAddSkinTexture);
@@ -237,10 +227,18 @@ int __index(lua_State* L) {
 	fmap.Add("SetParamVec4", lSetParamVec4);
 	fmap.Add("SetData", lSetData);
 	fmap.Add("SetBlendMode", lSetBlendMode);
+	fmap.Add("SetPrimitiveType", lSetPrimitiveType);
 
-	blendmap.Add("BLEND_ADD", MaterialBlendMode::Additive);
-	blendmap.Add("BLEND_MULT", MaterialBlendMode::Multiply);
-	blendmap.Add("BLEND_NORM", MaterialBlendMode::Normal);
+	constMap.Add("BLEND_ADD",  (int)MaterialBlendMode::Additive);
+	constMap.Add("BLEND_MULT", (int)MaterialBlendMode::Multiply);
+	constMap.Add("BLEND_NORM", (int)MaterialBlendMode::Normal);
+	constMap.Add("PRIM_TRILIST", (int)PrimitiveType::TriangleList);
+	constMap.Add("PRIM_TRIFAN", (int)PrimitiveType::TriangleFan);
+	constMap.Add("PRIM_TRISTRIP", (int)PrimitiveType::TriangleStrip);
+	constMap.Add("PRIM_LINELIST", (int)PrimitiveType::LineList);
+	constMap.Add("PRIM_LINESTRIP", (int)PrimitiveType::LineStrip);
+	constMap.Add("PRIM_POINTLIST", (int)PrimitiveType::PointList);
+	
 
 	auto function = fmap.find(fname);
 
@@ -250,11 +248,11 @@ int __index(lua_State* L) {
 		return 1;
 	}
 
-	auto blendMode = blendmap.find(fname);
+	auto constValue = constMap.find(fname);
 
-	if (blendMode != blendmap.end())
+	if (constValue != constMap.end())
 	{
-		lua_pushinteger(L, (int)blendMode->second);
+		lua_pushinteger(L, constValue->second);
 		return 1;
 	}
 		
