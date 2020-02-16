@@ -344,6 +344,9 @@ void WobbleDSP::SetLength(double length)
 }
 void WobbleDSP::Process(float* out, uint32 numSamples)
 {
+	if (m_length == 0)
+		return;
+
 	static Interpolation::CubicBezier easing(Interpolation::EaseInExpo);
 	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
@@ -380,6 +383,9 @@ void PhaserDSP::SetLength(double length)
 }
 void PhaserDSP::Process(float* out, uint32 numSamples)
 {
+	if (m_length == 0)
+		return;
+
 	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
