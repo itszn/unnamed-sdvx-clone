@@ -14,6 +14,9 @@ class TransitionScreen_Impl : public TransitionScreen
 	Texture m_fromTexture;
 	Mesh m_bgMesh;
 	lua_State* m_lua = nullptr;
+	lua_State* m_songlua = nullptr;
+	Vector<DelegateHandle> m_lamdasToRemove;
+	Vector<void*> m_handlesToRemove;
 
 	enum Transition
 	{
@@ -29,22 +32,35 @@ class TransitionScreen_Impl : public TransitionScreen
 	bool m_isGame = false;
 	bool m_stopped = false;
 	bool m_canCancel = true;
+	bool m_initialized = false;
+
+	//0 = normal, 1 = song
+	bool m_legacy[2] = { false, false };
 	int m_jacketImg = 0;
 
+	void m_InitTransition(IAsyncLoadableApplicationTickable* next)
+	{
+		if (m_loadingJob && !m_loadingJob->IsFinished())
+		{
+			m_loadingJob->Terminate();
+		}
+
+		m_loadingJob = JobBase::CreateLambda([&]()
+		{
+			return DoLoad();
+		});
+		m_loadingJob->OnFinished.Add(this, &TransitionScreen_Impl::OnFinished);
+		m_fromTexture = TextureRes::CreateFromFrameBuffer(g_gl, g_resolution);
+		m_bgMesh = MeshGenerators::Quad(g_gl, Vector2(0, g_resolution.y), Vector2(g_resolution.x, -g_resolution.y));
+		m_tickableToLoad = next;
+		m_stopped = false;
+		m_loadComplete = false;
+		m_transitionTimer = 0.0f;
+		m_lastComplete = false;
+		m_transition = In;
+	}
+
 public:
-	TransitionScreen_Impl(IAsyncLoadableApplicationTickable* next, bool noCancel)
-	{
-		m_tickableToLoad = next;
-		m_canCancel = !noCancel;
-	}
-
-	TransitionScreen_Impl(Game* next)
-	{
-		m_tickableToLoad = next;
-		m_isGame = true;
-
-	}
-
 	~TransitionScreen_Impl()
 	{
 		// In case of forced removal of this screen
@@ -54,10 +70,20 @@ public:
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
 
+		if (m_songlua)
+			g_application->DisposeLua(m_songlua);
+
 		if (m_jacketImg)
 			nvgDeleteImage(g_application->GetVGContext(), m_jacketImg);
-		//g_rootCanvas->Remove(m_loadingOverlay.As<GUIElementBase>());
 	}
+
+	virtual void RemoveAllOnComplete(void* handle) {
+		m_handlesToRemove.Add(handle);
+	}
+	virtual void RemoveOnComplete(DelegateHandle handle) {
+		m_lamdasToRemove.Add(handle);
+	}
+
 	virtual void Tick(float deltaTime)
 	{
 		m_transitionTimer += deltaTime;
@@ -72,7 +98,7 @@ public:
 		}
 		else if(m_transition == End)
 		{
-			g_application->RemoveTickable(this);
+			g_application->RemoveTickable(this, true);
 			if (m_tickableToLoad)
 			{
 				Log("[Transition] Finished loading tickable", Logger::Info);
@@ -83,69 +109,145 @@ public:
 	}
 	virtual bool Init()
 	{
-		if(!m_tickableToLoad)
-			return false;
+		if (m_initialized)
+			return true;
 
-		m_fromTexture = TextureRes::CreateFromFrameBuffer(g_gl, g_resolution);
-		m_bgMesh = MeshGenerators::Quad(g_gl, Vector2(0, g_resolution.y), Vector2(g_resolution.x, -g_resolution.y));
 
-		if (m_isGame)
+		auto validateLua = [&](lua_State* L) {
+			lua_getglobal(L, "reset");
+			bool valid = lua_isfunction(L, -1);
+			lua_settop(L, 0);
+			return valid;
+		};
+
+		m_songlua = g_application->LoadScript("songtransition", false);
+		m_lua = g_application->LoadScript("transition", false);
+		if (!validateLua(m_songlua))
 		{
-			m_lua = g_application->LoadScript("songtransition", true);
-			if (m_lua)
-			{
-				Game* game = (Game*)m_tickableToLoad;
-				String path = Path::RemoveLast(game->GetDifficultyIndex().path);
-				auto& gameSettings = game->GetDifficultyIndex().settings;
-
-				m_jacketImg = nvgCreateImage(g_application->GetVGContext(), (path + Path::sep + gameSettings.jacketPath).c_str(), 0);
-
-				auto pushStringToTable = [this](const char* name, String data)
-				{
-					lua_pushstring(m_lua, name);
-					lua_pushstring(m_lua, *data);
-					lua_settable(m_lua, -3);
-				};
-
-				auto pushIntToTable = [this](const char* name, int data)
-				{
-					lua_pushstring(m_lua, name);
-					lua_pushnumber(m_lua, data);
-					lua_settable(m_lua, -3);
-				};
-
-				lua_newtable(m_lua);
-				{
-					pushStringToTable("title", gameSettings.title);
-					pushStringToTable("artist", gameSettings.artist);
-					pushStringToTable("effector", gameSettings.effector);
-					pushStringToTable("illustrator", gameSettings.illustrator);
-					pushStringToTable("bpm", gameSettings.bpm);
-					pushIntToTable("level", gameSettings.level);
-					pushIntToTable("difficulty", gameSettings.difficulty);
-					pushIntToTable("jacket", m_jacketImg);
-				}
-				lua_setglobal(m_lua, "song");
-			}
+			g_application->DisposeLua(m_songlua);
+			m_songlua = nullptr;
+			Log("Song transition lua has no reset function.", Logger::Warning);
+			m_legacy[1] = true;
 		}
-		else
-			m_lua = g_application->LoadScript("transition", true);
 
+		if (!validateLua(m_lua))
+		{
+			g_application->DisposeLua(m_lua);
+			m_lua = nullptr;
+			m_legacy[0] = true;
+			Log("Transition lua has no reset function.", Logger::Warning);
+		}
 
 		m_loadingJob = JobBase::CreateLambda([&]()
 		{
 			return DoLoad();
 		});
 		m_loadingJob->OnFinished.Add(this, &TransitionScreen_Impl::OnFinished);
-		if(m_lua == nullptr)
-			g_jobSheduler->Queue(m_loadingJob);
-
+		m_initialized = true;
 		return true;
 	}
 
+	virtual void TransitionTo(IAsyncLoadableApplicationTickable* next, bool noCancel)
+	{
+		m_isGame = false;
+		m_InitTransition(next);
+		m_canCancel = !noCancel;
+		if (m_legacy[0])
+		{
+			if (m_lua != nullptr)
+			{
+				g_application->DisposeLua(m_lua);
+			}
+			m_lua = g_application->LoadScript("transition", false);
+		}
+		else if (m_lua != nullptr)
+		{
+			lua_getglobal(m_lua, "reset");
+			lua_pcall(m_lua, 0, 0, 0);
+			lua_settop(m_lua, 0);
+		}
+		
+
+		if (m_lua == nullptr)
+		{
+			g_jobSheduler->Queue(m_loadingJob);
+		}
+
+		g_application->AddTickable(this);
+	}
+
+	virtual void TransitionTo(Game* next)
+	{
+		m_isGame = true;
+		m_canCancel = true;
+		m_InitTransition(next);
+
+		if (m_legacy[1])
+		{
+			if (m_songlua != nullptr)
+			{
+				g_application->DisposeLua(m_songlua);
+			}
+			m_songlua = g_application->LoadScript("songtransition", false);
+		}
+
+		if (m_songlua)
+		{
+			String path = Path::RemoveLast(next->GetDifficultyIndex().path);
+			auto& gameSettings = next->GetDifficultyIndex().settings;
+
+			if (m_jacketImg)
+				nvgDeleteImage(g_application->GetVGContext(), m_jacketImg);
+			m_jacketImg = nvgCreateImage(g_application->GetVGContext(), (path + Path::sep + gameSettings.jacketPath).c_str(), 0);
+
+			auto pushStringToTable = [this](const char* name, String data)
+			{
+				lua_pushstring(m_songlua, name);
+				lua_pushstring(m_songlua, *data);
+				lua_settable(m_songlua, -3);
+			};
+
+			auto pushIntToTable = [this](const char* name, int data)
+			{
+				lua_pushstring(m_songlua, name);
+				lua_pushnumber(m_songlua, data);
+				lua_settable(m_songlua, -3);
+			};
+
+			lua_newtable(m_songlua);
+			{
+				pushStringToTable("title", gameSettings.title);
+				pushStringToTable("artist", gameSettings.artist);
+				pushStringToTable("effector", gameSettings.effector);
+				pushStringToTable("illustrator", gameSettings.illustrator);
+				pushStringToTable("bpm", gameSettings.bpm);
+				pushIntToTable("level", gameSettings.level);
+				pushIntToTable("difficulty", gameSettings.difficulty);
+				pushIntToTable("jacket", m_jacketImg);
+			}
+			lua_setglobal(m_songlua, "song");
+			if (!m_legacy[1])
+			{
+				lua_getglobal(m_songlua, "reset");
+				lua_pcall(m_songlua, 0, 0, 0);
+				lua_settop(m_songlua, 0);
+			}
+		}
+		else {
+			g_jobSheduler->Queue(m_loadingJob);
+		}
+		g_application->AddTickable(this);
+	}
+
+
 	void Render(float deltaTime)
 	{
-		if (m_lua == nullptr)
+		lua_State* lua = m_lua;
+		if (m_isGame) {
+			lua = m_songlua;
+		}
+
+		if (lua == nullptr)
 			return;
 
 		auto rq = g_application->GetRenderQueueBase();
@@ -168,24 +270,22 @@ public:
 			g_application->ForceRender();
 			
 			//draw lua
-			lua_getglobal(m_lua, "render_out");
-			lua_pushnumber(m_lua, deltaTime);
-			if (lua_pcall(m_lua, 1, 1, 0) != 0)
+			lua_getglobal(lua, "render_out");
+			lua_pushnumber(lua, deltaTime);
+			if (lua_pcall(lua, 1, 1, 0) != 0)
 			{
 				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				g_application->DisposeLua(m_lua);
-				m_lua = nullptr;
 				m_transition = End;
 				assert(false);
 			}
 			else
 			{
-				if (lua_toboolean(m_lua, lua_gettop(m_lua)))
+				if (lua_toboolean(lua, lua_gettop(lua)))
 				{
 					m_transition = End;
 				}
-				lua_pop(m_lua, 1);
+				lua_pop(lua, 1);
 			}
 		}
 		else
@@ -199,21 +299,19 @@ public:
 			g_application->ForceRender();
 
 			//draw lua
-			lua_getglobal(m_lua, "render");
-			lua_pushnumber(m_lua, deltaTime);
-			if (lua_pcall(m_lua, 1, 1, 0) != 0)
+			lua_getglobal(lua, "render");
+			lua_pushnumber(lua, deltaTime);
+			if (lua_pcall(lua, 1, 1, 0) != 0)
 			{
 				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				g_application->DisposeLua(m_lua);
 				g_jobSheduler->Queue(m_loadingJob);
 				m_transition = Wait;
-				m_lua = nullptr;
 				assert(false);
 			}
 			else
 			{
-				if (lua_toboolean(m_lua, lua_gettop(m_lua)))
+				if (lua_toboolean(lua, lua_gettop(lua)))
 				{
 					if (m_transition == In)
 					{
@@ -221,10 +319,9 @@ public:
 						m_transition = Wait;
 					}
 				}
-				lua_pop(m_lua, 1);
+				lua_pop(lua, 1);
 			}
 		}
-
 	}
 
 	void OnFinished(Job job)
@@ -254,8 +351,20 @@ public:
 		}
 
 		OnLoadingComplete.Call(m_tickableToLoad);
+
+		for (void* v : m_handlesToRemove)
+		{
+			OnLoadingComplete.RemoveAll(v);
+		}
+		for (DelegateHandle h : m_lamdasToRemove) 
+		{
+			OnLoadingComplete.Remove(h);
+		}
+		m_lamdasToRemove.clear();
+		m_handlesToRemove.clear();
+
 		m_loadComplete = true;
-		if (m_lua == nullptr)
+		if ((!m_isGame && m_lua == nullptr) || (m_isGame && m_songlua == nullptr))
 			m_transition = End;
 		m_transitionTimer = 0.0f;
 	}
@@ -290,17 +399,30 @@ public:
 			if (m_tickableToLoad)
 				delete m_tickableToLoad;
 			m_tickableToLoad = nullptr;
-			g_application->RemoveTickable(this);
+			g_application->RemoveTickable(this, true);
+			OnLoadingComplete.Call(m_tickableToLoad);
+
+			for (void* v : m_handlesToRemove)
+			{
+				OnLoadingComplete.RemoveAll(v);
+			}
+			for (DelegateHandle h : m_lamdasToRemove)
+			{
+				OnLoadingComplete.Remove(h);
+			}
+			m_lamdasToRemove.clear();
+			m_handlesToRemove.clear();
 		}
 	}
 };
 
-TransitionScreen* TransitionScreen::Create(IAsyncLoadableApplicationTickable* next, bool noCancel)
+TransitionScreen* TransitionScreen::Create()
 {
-	return new TransitionScreen_Impl(next, noCancel);
-}
-
-TransitionScreen* TransitionScreen::Create(Game* game)
-{
-	return new TransitionScreen_Impl(game);
+	auto transition = new TransitionScreen_Impl();
+	if (!transition->Init()) 
+	{
+		delete transition;
+		transition = nullptr;
+	}
+	return transition;
 }

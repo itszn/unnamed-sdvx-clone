@@ -1,17 +1,12 @@
 local transitionTimer = 0
 local resx, resy = game.GetResolution()
 local outTimer = 1
-local jacket = 0
+local noJacket = gfx.CreateSkinImage("song_select/loading.png", 0)
 
 function render(deltaTime)
     render_screen(transitionTimer)
     transitionTimer = transitionTimer + deltaTime * 2
     transitionTimer = math.min(transitionTimer,1)
-    if song.jacket == 0 and jacket == 0 then
-        jacket = gfx.CreateSkinImage("song_select/loading.png", 0)
-    elseif jacket == 0 then
-        jacket = song.jacket
-    end
     return transitionTimer >= 1
 end
 
@@ -42,6 +37,7 @@ function render_screen(progress)
     gfx.Save()
     gfx.BeginPath()
     gfx.Translate(resx/2, y)
+    local jacket = song.jacket == 0 and noJacket or song.jacket
     gfx.ImageRect(-150,-150,300,300,jacket,1,0)
     gfx.Restore()
     gfx.Translate(resx/2, resy - y - 50)
@@ -51,4 +47,10 @@ function render_screen(progress)
     gfx.Text(song.title,0,0)
     gfx.FontSize(55)
     gfx.Text(song.artist,0,80)
+end
+
+function reset()
+    transitionTimer = 0
+    resx, resy = game.GetResolution()
+    outTimer = 1
 end

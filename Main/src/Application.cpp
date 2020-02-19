@@ -43,6 +43,7 @@ OpenGL* g_gl = nullptr;
 Graphics::Window* g_gameWindow = nullptr;
 Application* g_application = nullptr;
 JobSheduler* g_jobSheduler = nullptr;
+TransitionScreen* g_transition = nullptr;
 Input g_input;
 
 // Tickable queue
@@ -54,6 +55,7 @@ struct TickableChange
 	{
 		Added,
 		Removed,
+		RemovedNoDelete,
 	};
 	Mode mode;
 	IApplicationTickable* tickable;
@@ -109,6 +111,12 @@ void Application::ApplySettings()
 		m_skin = newskin;
 		ReloadSkin();
 	}
+
+	if (g_transition) {
+		delete g_transition;
+		g_transition = TransitionScreen::Create();
+	}
+
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
@@ -762,6 +770,11 @@ bool Application::m_Init()
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 
+	{
+		ProfilerScope $("Load Transition Screens");
+		g_transition = TransitionScreen::Create();
+	}
+
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));
 	Path::CreateDir(Path::Absolute("songs"));
@@ -808,7 +821,7 @@ void Application::m_MainLoop()
 				
 				restoreTop = true;
 			}
-			else if(ch.mode == TickableChange::Removed)
+			else if(ch.mode == TickableChange::Removed || ch.mode == TickableChange::RemovedNoDelete)
 			{
 				// Remove focus
 				ch.tickable->m_Suspend();
@@ -817,7 +830,8 @@ void Application::m_MainLoop()
 				if(g_tickables.back() == ch.tickable)
 					restoreTop = true;
 				g_tickables.Remove(ch.tickable);
-				delete ch.tickable;
+				if(ch.mode == TickableChange::Removed)
+					delete ch.tickable;
 			}
 		}
 		if(restoreTop && !g_tickables.empty())
@@ -994,6 +1008,11 @@ void Application::m_Cleanup()
 		delete m_gauge;
 		m_gauge = nullptr;
 	}
+	if (g_transition)
+	{
+		delete g_transition;
+		g_transition = nullptr;
+	}
 
 	//if (m_skinHtpp)
 	//{
@@ -1025,8 +1044,7 @@ void Application::m_Cleanup()
 class Game* Application::LaunchMap(const String& mapPath)
 {
 	Game* game = Game::Create(mapPath, GameFlags::None);
-	TransitionScreen* screen = TransitionScreen::Create(game);
-	AddTickable(screen);
+	g_transition->TransitionTo(game);
 	return game;
 }
 void Application::Shutdown()
@@ -1041,10 +1059,17 @@ void Application::AddTickable(class IApplicationTickable* tickable, class IAppli
 	change.tickable = tickable;
 	change.insertBefore = insertBefore;
 }
-void Application::RemoveTickable(IApplicationTickable* tickable)
+void Application::RemoveTickable(IApplicationTickable* tickable, bool noDelete)
 {
 	TickableChange& change = g_tickableChanges.Add();
-	change.mode = TickableChange::Removed;
+	if (noDelete)
+	{
+		change.mode = TickableChange::RemovedNoDelete;
+	}
+	else 
+	{
+		change.mode = TickableChange::Removed;
+	}
 	change.tickable = tickable;
 }
 
@@ -1376,7 +1401,6 @@ void Application::JoinMultiFromInvite(String secret)
 {
 	MultiplayerScreen* mpScreen = new MultiplayerScreen();
 	IApplicationTickable* title = (IApplicationTickable*)TitleScreen::Create();
-	auto transition = TransitionScreen::Create(mpScreen);
 	String* token = new String(*secret);
 	auto tokenInput = [=](void* screen)
 	{
@@ -1384,12 +1408,13 @@ void Application::JoinMultiFromInvite(String secret)
 		mpScreen->JoinRoomWithToken(*token);
 		delete token;
 	};
-	transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
+	auto handle = g_transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
+	g_transition->RemoveOnComplete(handle);
 	title->m_Suspend();
 
 	//Remove all tickables and add back a titlescreen as a base
 	AddTickable(title);
-	AddTickable(transition);
+	g_transition->TransitionTo(mpScreen);
 	for(IApplicationTickable* tickable : g_tickables)
 	{
 		RemoveTickable(tickable);

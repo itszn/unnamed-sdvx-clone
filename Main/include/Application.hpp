@@ -15,6 +15,7 @@ extern class Application* g_application;
 extern class JobSheduler* g_jobSheduler;
 extern class Input g_input;
 extern class SkinConfig* g_skinConfig;
+extern class TransitionScreen* g_transition;
 
 class Application
 {
@@ -40,7 +41,7 @@ public:
 	void Shutdown();
 
 	void AddTickable(class IApplicationTickable* tickable, class IApplicationTickable* insertBefore = nullptr);
-	void RemoveTickable(class IApplicationTickable* tickable);
+	void RemoveTickable(class IApplicationTickable* tickable, bool noDelete = false);
 
 	// Current running map path (full file path)
 	String GetCurrentMapPath();

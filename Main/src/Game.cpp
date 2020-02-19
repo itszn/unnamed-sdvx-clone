@@ -218,6 +218,7 @@ public:
 		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
 		g_input.OnButtonPressed.RemoveAll(this);
+		g_transition->OnLoadingComplete.RemoveAll(this);
 	}
 
 
@@ -492,7 +493,6 @@ public:
 			}
 		}
 
-
 		return true;
 	}
 	virtual bool Init() override
@@ -504,7 +504,6 @@ public:
 	virtual void Restart()
 	{
 		m_camera = Camera();
-
 		//bool audioReinit = m_audioPlayback.Init(m_playback, m_mapRootPath);
 		//assert(audioReinit);
 
@@ -1128,6 +1127,8 @@ public:
 		}
 		if (m_outroCompleted && !m_transitioning)
 		{
+			g_transition->OnLoadingComplete.RemoveAll(this);
+			g_transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 			if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
 				(m_manualExit && m_demo))
 			{
@@ -1147,26 +1148,21 @@ public:
 				game->SetSongDB(m_db);
 
 				// Transition to game
-				TransitionScreen* transition = TransitionScreen::Create(game);
-				g_application->AddTickable(transition);
+				g_transition->TransitionTo(game);
 				m_transitioning = true;
-				transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 			}
 			else
 			{
-				TransitionScreen* transition;
 				// Transition to score screen
 				if (IsMultiplayerGame())
 				{
-					transition = TransitionScreen::Create(ScoreScreen::Create(
+					g_transition->TransitionTo(ScoreScreen::Create(
 						this, m_multiplayer->GetUserId(), m_multiplayer->GetFinalStats()));
 				}
 				else
 				{
-					transition = TransitionScreen::Create(ScoreScreen::Create(this));
+					g_transition->TransitionTo(ScoreScreen::Create(this));
 				}
-				transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
-				g_application->AddTickable(transition);
 				m_transitioning = true;
 			}
 		}
@@ -1201,10 +1197,8 @@ public:
 			game->SetSongDB(m_db);
 
 			// Transition to game
-			TransitionScreen* transition = TransitionScreen::Create(game);
-			g_application->AddTickable(transition);
+			g_transition->TransitionTo(game);
 			m_transitioning = true;
-			transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 		}
 		else
 		{

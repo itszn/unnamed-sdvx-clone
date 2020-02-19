@@ -1315,8 +1315,7 @@ public:
 				m_suspended = true;
 
 				// Transition to game
-				TransitionScreen* transistion = TransitionScreen::Create(game);
-				g_application->AddTickable(transistion);
+				g_transition->TransitionTo(game);
 			}
 		}
 		else
@@ -1546,8 +1545,7 @@ public:
 				m_suspended = true;
 
 				// Transition to game
-				TransitionScreen* transistion = TransitionScreen::Create(game);
-				g_application->AddTickable(transistion);
+				g_transition->TransitionTo(game);
 			}
 			else if (key == SDLK_F9)
 			{

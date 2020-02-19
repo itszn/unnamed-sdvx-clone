@@ -380,8 +380,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_suspended = true;
 
 	// Switch to the new tickable
-	TransitionScreen* transistion = TransitionScreen::Create(game);
-	g_application->AddTickable(transistion);
+	g_transition->TransitionTo(game);
 	return false;
 }
 

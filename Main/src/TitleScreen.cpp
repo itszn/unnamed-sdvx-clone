@@ -55,8 +55,7 @@ private:
 
 	int lMultiplayer(lua_State* L)
 	{
-		auto multiTransition = TransitionScreen::Create(new MultiplayerScreen());
-		g_application->AddTickable(multiTransition);
+		g_transition->TransitionTo(new MultiplayerScreen());
 		return 0;
 	}
 

@@ -531,7 +531,7 @@ public:
 				IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
 				if (nk_button_label(m_nctx, "Calibrate offsets")) {
 					CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
-					g_application->AddTickable(TransitionScreen::Create(cscreen));
+					g_transition->TransitionTo(cscreen);
 				}
 				FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier (%.1f):", 0.0f, 20.0f);
 				IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
