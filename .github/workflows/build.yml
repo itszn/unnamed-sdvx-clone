@@ -13,6 +13,7 @@ jobs:
               uses: lukka/run-vcpkg@v0
               with:
                 vcpkgArguments: '@${{ github.workspace }}/build.windows'
+                vcpkgDirectory: '${{ env.VCPKG_INSTALLATION_ROOT }}'
             - name: cmake
               run: cmake -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_INSTALLATION_ROOT}}/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: MSBuild
