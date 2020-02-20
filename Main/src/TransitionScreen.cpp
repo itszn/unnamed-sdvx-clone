@@ -120,9 +120,9 @@ public:
 			return valid;
 		};
 
-		m_songlua = g_application->LoadScript("songtransition", false);
-		m_lua = g_application->LoadScript("transition", false);
-		if (!validateLua(m_songlua))
+		m_songlua = g_application->LoadScript("songtransition", true);
+		m_lua = g_application->LoadScript("transition", true);
+		if (m_songlua != nullptr && !validateLua(m_songlua))
 		{
 			g_application->DisposeLua(m_songlua);
 			m_songlua = nullptr;
@@ -130,7 +130,7 @@ public:
 			m_legacy[1] = true;
 		}
 
-		if (!validateLua(m_lua))
+		if (m_lua != nullptr && !validateLua(m_lua))
 		{
 			g_application->DisposeLua(m_lua);
 			m_lua = nullptr;
@@ -158,7 +158,7 @@ public:
 			{
 				g_application->DisposeLua(m_lua);
 			}
-			m_lua = g_application->LoadScript("transition", false);
+			m_lua = g_application->LoadScript("transition", true);
 		}
 		else if (m_lua != nullptr)
 		{
@@ -188,7 +188,7 @@ public:
 			{
 				g_application->DisposeLua(m_songlua);
 			}
-			m_songlua = g_application->LoadScript("songtransition", false);
+			m_songlua = g_application->LoadScript("songtransition", true);
 		}
 
 		if (m_songlua)
