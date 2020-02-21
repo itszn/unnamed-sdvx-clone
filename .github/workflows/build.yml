@@ -26,3 +26,31 @@ jobs:
               with:
                 name: Game
                 path: bin
+    linux_build:
+        name: Linux build
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v1
+            - name: Checkout submodules
+              run: git submodule update --init --recursive
+            - name: Install packages
+              run: sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
+            - name: cmake
+              run: cmake -DCMAKE_BUILD_TYPE=Release .
+            - name: make
+              run: make
+    macos_build:
+        name: macOS build
+        runs-on: macos-latest
+        steps:
+            - name: Checkout repo
+              uses: actions/checkout@v1
+            - name: Checkout submodules
+              run: git submodule update --init --recursive
+            - name: Install packages
+              run: brew install cmake freetype libvorbis sdl2 libpng jpeg libarchive
+            - name: cmake
+              run: cmake . -DLibArchive_LIBRARY=/usr/local/opt/libarchive/lib/libarchive.dylib -DLibArchive_INCLUDE_DIR=/usr/local/opt/libarchive/include -DCMAKE_BUILD_TYPE=Release
+            - name: make
+              run: make
