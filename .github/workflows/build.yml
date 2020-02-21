@@ -18,7 +18,9 @@ jobs:
             - name: Setup MSBuild.exe
               uses: warrenbuckley/Setup-MSBuild@v1
             - name: MSBuild
-              run: msbuild USC.sln /m /verbosity:minimal
+              run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
+            - name: Tests
+              run: rm ./bin/Tests.*
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
