@@ -14,6 +14,6 @@ jobs:
                 vcpkg integrate install
                 vcpkg install '@${{ github.workspace }}/build.windows'
             - name: cmake
-              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{env.VCPKG_INSTALLATION_ROOT}}/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
+              run: cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: MSBuild
               run: msbuild USC.sln /m /verbosity:minimal
