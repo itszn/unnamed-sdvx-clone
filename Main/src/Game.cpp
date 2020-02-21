@@ -2000,9 +2000,12 @@ public:
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "rotation"); // rotation based on laser roll
-			lua_pushnumber(L, -atan2f(line.y, line.x));
+			lua_pushnumber(L, -(line.y / line.x));
 			lua_settable(L, -3);
 
+			lua_pushstring(L, "xOffset");
+			lua_pushnumber(L, -m_camera.GetLaserRoll() * 360);
+			lua_settable(L, -3);
 
 			//track x critline corners
 			lua_getfield(L, -1, "line");
