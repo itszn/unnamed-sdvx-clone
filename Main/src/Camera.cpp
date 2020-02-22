@@ -120,7 +120,20 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedLimit = Math::Max(m_rollIntensity * ROLL_SPEED, MAX_ROLL_ANGLE);
+	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	bool skipLerp = false;
+
+	// Lerp crit line position
+	if (m_slowTilt)
+		// Roll even slower when roll is less than 1 / 10 of tilt
+		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
+
+	float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
+	// Get the roll speed based on the larger tilt value
+	// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
+	float rollSpeedFactor = Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE;
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 
 	if (pManualTiltEnabled)
 	{
@@ -129,41 +142,30 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	}
 	else if (!m_rollKeep)
 	{
-		if (m_rollIntensityChanged)
+		if (m_rollIntensityChanged || m_rollKeepChanged)
 		{
-			// Get new roll value based off of the new tilt value
-			float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
-
-			// Get the roll speed based on the larger tilt value
-			// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
-			float rollSpeedFactor = Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE;
-			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
 			m_actualTargetLaserRoll = target;
-
-			// Check if roll has met target
-			m_rollIntensityChanged = m_actualRoll != target;
 		}
-		else if (m_actualRoll != m_laserRoll && m_rollIntensity == MAX_ROLL_ANGLE)
+		else
 		{
-			// Catch up to regular roll position if for some reason they're not the same
-			m_actualTargetLaserRoll = m_laserRoll;
-		}
-		else if (m_slowTilt)
-		{
-			// Roll even slower when roll is less than 1 / 10 of tilt
-			speedLimit /= fabsf(m_actualRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+			// Use crit line position for highway tilt
+			m_actualRoll = target;
+			skipLerp = true;
 		}
 	}
 
-	// Lerp highway tilt
-	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+	if (!skipLerp)
+	{
+		// Lerp highway tilt
+		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
 
-	// Lerp crit line position
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED; // Reset roll speed to normal
-	if (m_slowTilt)
-		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
-	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
+		// Check if roll has met target
+		if (m_actualRoll == target)
+		{
+			m_rollIntensityChanged = false;
+			m_rollKeepChanged = false;
+		}
+	}
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -276,6 +278,7 @@ bool Camera::GetRollKeep()
 
 void Camera::SetRollKeep(bool rollKeep)
 {
+	m_rollKeepChanged = m_rollKeep ^ rollKeep;
 	m_rollKeep = rollKeep;
 }
 
@@ -384,12 +387,7 @@ void Camera::SetTargetRoll(float target)
 	float slamRollTotal = m_slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
 	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
-	if (!m_rollKeep)
-	{
-		m_actualTargetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * m_rollIntensity;
-		m_targetRollSet = true;
-	}
-	else
+	if (m_rollKeep)
 	{
 		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
 		if (ShouldRollDuringKeep(actualTarget, m_actualTargetLaserRoll))

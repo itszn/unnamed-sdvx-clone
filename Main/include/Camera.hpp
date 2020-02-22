@@ -146,6 +146,7 @@ private:
 	// Checks if camera roll needs to roll quickly due to a new tilt value
 	bool m_rollIntensityChanged = false;
 	bool m_rollKeep = false;
+	bool m_rollKeepChanged = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
