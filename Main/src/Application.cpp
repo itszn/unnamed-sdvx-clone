@@ -359,8 +359,17 @@ void Application::m_unpackSkins()
 			const char* currentFile = archive_entry_pathname(entry);
 			const std::string fullOutputPath = dest + currentFile;
 
+			const String dot_dot_win = "..\\";
+			const String dot_dot_unix = "../";
+
 			// Check for zipslip
-			if (fullOutputPath.find(".."+Path::sep) != String::npos) {
+			if (fullOutputPath.find(dot_dot_win) != String::npos) {
+				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_win.c_str(), fullOutputPath.c_str());
+				extractOk = false;
+				break;
+			}
+			if (fullOutputPath.find(dot_dot_unix) != String::npos) {
+				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_unix.c_str(), fullOutputPath.c_str());
 				extractOk = false;
 				break;
 			}

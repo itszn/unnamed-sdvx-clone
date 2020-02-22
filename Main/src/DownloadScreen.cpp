@@ -310,6 +310,18 @@ bool DownloadScreen::m_extractFile(archive * a, String path)
 		Path::CreateDir(path);
 		return true;
 	}
+
+	const String dot_dot_win = "..\\";
+	const String dot_dot_unix = "../";
+
+	if (path.find(dot_dot_win) != String::npos) {
+		Logf("[Archive] Error reading chart archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_win.c_str(), path.c_str());
+		return false;
+	}
+	if (path.find(dot_dot_unix) != String::npos) {
+		Logf("[Archive] Error reading chart archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_unix.c_str(), path.c_str());
+		return false;
+	}
 	
 	if (!f.OpenWrite(Path::Normalize(path)))
 	{
