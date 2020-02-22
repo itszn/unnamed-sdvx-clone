@@ -203,6 +203,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_bgSpin = 0.0f;
 		m_spinRoll = 0.0f;
 		m_spinProgress = 0.0f;
+		m_spinBounceOffset = 0.0f;
 	}
 
 	m_totalRoll = m_spinRoll + m_actualRoll;
