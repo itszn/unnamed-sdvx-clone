@@ -284,7 +284,6 @@ private:
 	MapTime m_buttonGuardTime[6] = { 0, 0, 0, 0, 0, 0 };
 	// Max number of ticks to assist
 	float m_assistLevel = 1.5f;
-	float m_assistSlamBoost = 1.5f;
 	float m_assistPunish = 1.5f;
 	float m_assistChangePeriod = 50.0f;
 	float m_assistChangeExponent = 1.0f;
