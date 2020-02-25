@@ -121,7 +121,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
-	bool skipLerp = false;
 
 	// Lerp crit line position
 	if (m_slowTilt)
@@ -129,7 +128,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
 
-	float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	// Get the roll speed based on the larger tilt value
 	// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
 	float rollSpeedFactor = Math::Max(Math::Max(m_oldRollIntensity, m_rollIntensity), MAX_ROLL_ANGLE) / MAX_ROLL_ANGLE; // Ensures rollSpeedFactor is never 0
@@ -137,35 +135,18 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
+		// Lerp to manual tilt value
 		m_actualTargetLaserRoll = pLaneTilt;
 		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
 	}
 	else if (!m_rollKeep)
 	{
-		if (m_rollIntensityChanged || m_rollKeepChanged)
-		{
-			m_actualTargetLaserRoll = target;
-		}
-		else
-		{
-			// Use crit line position for highway tilt
-			m_actualRoll = target;
-			skipLerp = true;
-		}
+		// Get highway tilt target based off of crit line position
+		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
-	if (!skipLerp)
-	{
-		// Lerp highway tilt
-		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
-
-		// Check if roll has met target
-		if (m_actualRoll == target)
-		{
-			m_rollIntensityChanged = false;
-			m_rollKeepChanged = false;
-		}
-	}
+	// Lerp highway tilt
+	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -264,9 +245,6 @@ void Camera::AddRollImpulse(float dir, float strength)
 
 void Camera::SetRollIntensity(float val)
 {
-	if (m_rollIntensity != val)
-		m_rollIntensityChanged = true;
-
 	m_oldRollIntensity = m_rollIntensity;
 	m_rollIntensity = val;
 }
@@ -278,7 +256,6 @@ bool Camera::GetRollKeep()
 
 void Camera::SetRollKeep(bool rollKeep)
 {
-	m_rollKeepChanged = m_rollKeep ^ rollKeep;
 	m_rollKeep = rollKeep;
 }
 
