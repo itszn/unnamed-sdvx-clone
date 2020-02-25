@@ -655,6 +655,7 @@ public:
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
 		m_track->centerSplit = m_playback.GetZoom(4);
 		m_camera.pManualTiltEnabled = m_manualTiltEnabled;
+		m_camera.SetManualTiltInstant(m_playback.CheckIfManualTiltInstant());
 		m_camera.track = m_track;
 		m_camera.Tick(deltaTime,m_playback);
 		m_track->Tick(m_playback, deltaTime);

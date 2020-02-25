@@ -825,6 +825,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					point->time = mapTime;
 					point->index = 3;
 					point->zoom = atof(*p.second) / -(360.0 / 10.0);
+					point->instant = m_zoomControlPoints.back()->time == point->time && m_zoomControlPoints.back()->index == 3;
 
 					if (fabsf(point->zoom) > 10 / 360.f)
 					{

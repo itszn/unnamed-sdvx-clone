@@ -83,6 +83,9 @@ public:
 	// Get interpolated top or bottom zoom as set by the map
 	float GetZoom(uint8 index);
 
+	// Checks if current manual tilt value is instant
+	bool CheckIfManualTiltInstant();
+
 	/* Playback events */
 	// Called when an object became within the 'hittableObjectTreshold'
 	Delegate<ObjectState*> OnObjectEntered;

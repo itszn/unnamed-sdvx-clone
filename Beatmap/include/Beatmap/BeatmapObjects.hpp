@@ -315,6 +315,8 @@ struct ZoomControlPoint
 	// in the range -1 to 1
 	// 1 being fully zoomed in
 	float zoom = 0.0f;
+	// Used to check if a manual tilt assignment is instant
+	bool instant = false;
 };
 
 // Chart stop object

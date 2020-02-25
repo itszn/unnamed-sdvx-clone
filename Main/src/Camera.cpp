@@ -135,9 +135,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
-		// Lerp to manual tilt value
-		m_actualTargetLaserRoll = pLaneTilt;
-		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
+		if (m_manualTiltInstant)
+		{
+			m_actualRoll = pLaneTilt;
+		}
+		else
+		{
+			// Lerp to manual tilt value
+			m_actualTargetLaserRoll = pLaneTilt;
+			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
+		}
 	}
 	else if (!m_rollKeep)
 	{
@@ -145,8 +152,9 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
-	// Lerp highway tilt
-	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+	if (!m_manualTiltInstant) // Don't lerp if manual tilt value instantly snaps from one value to another
+		// Lerp highway tilt
+		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -296,6 +304,11 @@ void Camera::SetRollIgnoreDuration(float duration)
 void Camera::SetSlamLength(float length)
 {
 	m_slamLength = length;
+}
+
+void Camera::SetManualTiltInstant(bool instant)
+{
+	m_manualTiltInstant = instant;
 }
 
 Vector2 Camera::Project(const Vector3& pos)

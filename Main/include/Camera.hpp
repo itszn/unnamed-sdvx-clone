@@ -71,6 +71,7 @@ public:
 	bool GetRollKeep();
 	void SetRollIgnoreDuration(float duration);
 	void SetSlamLength(float length);
+	void SetManualTiltInstant(bool instant);
 	
 	/*
 	Gets roll ignore timer for a laser
@@ -144,6 +145,7 @@ private:
 	float m_rollIntensity = MAX_ROLL_ANGLE;
 	float m_oldRollIntensity = MAX_ROLL_ANGLE;
 	bool m_rollKeep = false;
+	bool m_manualTiltInstant = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
