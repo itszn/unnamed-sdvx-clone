@@ -539,7 +539,6 @@ public:
 				{
 					FloatSetting(GameConfigKeys::LaserAssistLevel, "Base Laser Assist: (%.1f)", 0.0f, 10.0f);
 					FloatSetting(GameConfigKeys::LaserPunish, "Base Laser Punish: (%.1f)", 0.0f, 10.0f);
-					FloatSetting(GameConfigKeys::LaserSlamBoost, "Post Slam Assist: (%.1f)", 0.0f, 10.0f);
 					FloatSetting(GameConfigKeys::LaserChangeTime, "Direction Change Duration: (%.0fms)", 0.0f, 1000.0f, 1.0f);
 					FloatSetting(GameConfigKeys::LaserChangeExponent, "Direction Change Curve Exponent: (%.1f)", 0.0f, 10.0f);
 

@@ -168,6 +168,8 @@ struct ObjectTypeData_Laser
 	// Convert normal range to extended range
 	static float ConvertToExtendedRange(float inputRange);
 
+	// Time to a direction change, returns -1 if there are no direction changes in this section
+	MapTime GetTimeToDirectionChange(MapTime currentTime, MapTime maxDelta);
 	// Duration of laser segment
 	MapTime duration = 0;
 	// 0 or 1 for left and right respectively

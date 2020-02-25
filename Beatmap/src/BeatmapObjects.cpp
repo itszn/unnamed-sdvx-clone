@@ -66,6 +66,43 @@ float ObjectTypeData_Laser::ConvertToExtendedRange(float inputRange)
 	return inputRange * 2.0f - 0.5f;
 }
 
+MapTime ObjectTypeData_Laser::GetTimeToDirectionChange(MapTime currentTime, MapTime maxDelta)
+{
+	const LaserObjectState* state = (LaserObjectState*)this;
+	MapTime result = -1;
+	LaserObjectState* n = state->next;
+	float currentDir = state->GetDirection();
+
+	//upcoming changes
+	while (n) {
+		if (n->time - currentTime > maxDelta)
+			break;
+		if (n->GetDirection() != currentDir) {
+			result = Math::Max(0, n->time - currentTime);
+			break;
+		}
+		n = n->next;
+	}
+
+	//previous changes
+	n = state->prev;
+	while (n) {
+		MapTime changeTime = n->time + n->duration;
+		if (currentTime - changeTime > maxDelta)
+			break;
+		if (n->GetDirection() != currentDir) {
+			if (result == -1)
+				result = Math::Max(currentTime - changeTime, 0);
+			else
+				result = Math::Min(Math::Max(currentTime - changeTime, 0), result);
+
+			break;
+		}
+		n = n->prev;
+	}
+	return result;
+}
+
 // Enum OR, AND
 TrackRollBehaviour operator|(const TrackRollBehaviour& l, const TrackRollBehaviour& r)
 {

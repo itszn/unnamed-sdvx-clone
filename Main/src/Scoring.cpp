@@ -143,7 +143,6 @@ void Scoring::Reset()
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
 	// Get laser assist level
 	m_assistLevel = g_gameConfig.GetFloat(GameConfigKeys::LaserAssistLevel);
-	m_assistSlamBoost = g_gameConfig.GetFloat(GameConfigKeys::LaserSlamBoost);
 	m_assistPunish = g_gameConfig.GetFloat(GameConfigKeys::LaserPunish);
 	m_assistChangeExponent = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeExponent);
 	m_assistChangePeriod = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeTime);
@@ -856,7 +855,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 			// Set laser pointer position after hitting slam
 			laserTargetPositions[object->index] = object->points[1];
 			laserPositions[object->index] = object->points[1];
-			m_autoLaserTime[object->index] = m_assistTime * m_assistSlamBoost;
+			m_autoLaserTime[object->index] = m_assistTime;
 		}
 
 		currentGauge += tickGaugeGain;
@@ -1120,9 +1119,10 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 				float punishMult = 1.0f;
 				//if next segment is the opposite direction then allow for some extra wrong turning
-				if (currentSegment->next && currentSegment->next->GetDirection() != laserDir && currentSegment->next->GetDirection() != 0.0f)
+				MapTime dirChangeTime = currentSegment->GetTimeToDirectionChange(mapTime, m_assistChangePeriod);
+				if (dirChangeTime > -1)
 				{
-					punishMult -= (float)Math::Max(0.0f, mapTime - currentSegment->next->time + m_assistChangePeriod) / m_assistChangePeriod;
+					punishMult = Math::Clamp((float)dirChangeTime / m_assistChangePeriod, 0.0f, 1.0f);
 					punishMult = powf(punishMult, m_assistChangeExponent);
 				}
 
