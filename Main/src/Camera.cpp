@@ -121,6 +121,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	bool skipLerp = false;
 
 	// Lerp crit line position
 	if (m_slowTilt)
@@ -138,23 +139,39 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		if (m_manualTiltInstant)
 		{
 			m_actualRoll = pLaneTilt;
+			skipLerp = true;
 		}
 		else
 		{
-			// Lerp to manual tilt value
-			m_actualTargetLaserRoll = pLaneTilt;
-			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
+			if (m_manualTiltRecentlyToggled)
+			{
+				// Lerp to manual tilt value
+				m_actualTargetLaserRoll = pLaneTilt;
+				speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
+			}
+			else
+			{
+				m_actualRoll = pLaneTilt;
+				skipLerp = true;
+			}
 		}
 	}
 	else if (!m_rollKeep)
 	{
 		// Get highway tilt target based off of crit line position
 		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
+
+		if (m_manualTiltRecentlyToggled)
+			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
 	}
 
-	if (!m_manualTiltInstant) // Don't lerp if manual tilt value instantly snaps from one value to another
+	if (!skipLerp)
 		// Lerp highway tilt
 		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+
+	if (m_manualTiltRecentlyToggled)
+		// Check if roll has met target
+		m_manualTiltRecentlyToggled = m_actualRoll != m_actualTargetLaserRoll;
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -304,6 +321,14 @@ void Camera::SetRollIgnoreDuration(float duration)
 void Camera::SetSlamLength(float length)
 {
 	m_slamLength = length;
+}
+
+void Camera::SetManualTilt(bool manualTilt)
+{
+	if (pManualTiltEnabled != manualTilt)
+		m_manualTiltRecentlyToggled = true;
+
+	pManualTiltEnabled = manualTilt;
 }
 
 void Camera::SetManualTiltInstant(bool instant)
