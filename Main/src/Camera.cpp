@@ -135,9 +135,10 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
-		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled)
+		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled || fabsf(pLaneTilt * 360) > 25)
 		{
 			// Don't lerp as we've caught up to manual tilt roll
+			// or instantly snap to it if the tilt angle is greater than 25
 			m_actualRoll = pLaneTilt;
 			skipLerp = true;
 		}
