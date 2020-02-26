@@ -575,10 +575,7 @@ float BeatmapPlayback::GetZoom(uint8 index)
 
 bool BeatmapPlayback::CheckIfManualTiltInstant()
 {
-	if (m_zoomStartPoints[3])
-		return m_zoomStartPoints[3]->instant;
-	else
-		return false;
+	return m_zoomStartPoints[3] ? m_zoomStartPoints[3]->instant : false;
 }
 
 MapTime BeatmapPlayback::GetLastTime() const

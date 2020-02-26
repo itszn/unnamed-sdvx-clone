@@ -826,10 +826,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					point->time = mapTime;
 					point->index = 3;
 					point->zoom = atof(*p.second) / -(360.0 / 10.0);
-					if (lastManualTiltPoint)
-						point->instant = lastManualTiltPoint->time == point->time;
-					else
-						point->instant = false;
+					point->instant = lastManualTiltPoint ? point->instant = lastManualTiltPoint->time == point->time : false;
 
 					if (fabsf(point->zoom) > 10 / 360.f)
 					{
