@@ -129,10 +129,9 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
 
-	// Get the roll speed based on the larger tilt value
-	// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
-	float rollSpeedFactor = Math::Max(Math::Max(m_oldRollIntensity, m_rollIntensity), MAX_ROLL_ANGLE) / MAX_ROLL_ANGLE; // Ensures rollSpeedFactor is never 0
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
+	// Catch up to crit line position or roll to roll keep value with respect to roll intensity
+	// 2.5 corresponds to BIGGEST roll speed
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * (m_rollKeep ? m_rollIntensity / MAX_ROLL_ANGLE : 2.5);
 
 	if (pManualTiltEnabled)
 	{
@@ -147,7 +146,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 			{
 				// Lerp to manual tilt value
 				m_actualTargetLaserRoll = pLaneTilt;
-				speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
 			}
 			else
 			{
@@ -160,9 +158,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		// Get highway tilt target based off of crit line position
 		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
-
-		if (m_manualTiltRecentlyToggled)
-			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
 	}
 
 	if (!skipLerp)
@@ -270,7 +265,6 @@ void Camera::AddRollImpulse(float dir, float strength)
 
 void Camera::SetRollIntensity(float val)
 {
-	m_oldRollIntensity = m_rollIntensity;
 	m_rollIntensity = val;
 }
 
