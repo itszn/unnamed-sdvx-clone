@@ -581,6 +581,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 	ZoomControlPoint *firstControlPoints[5] = {nullptr};
 	MapTime lastMapTime = 0;
 	uint32 currentTick = 0;
+	ZoomControlPoint* lastManualTiltPoint = nullptr;
 	for (KShootMap::TickIterator it(kshootMap); it; ++it)
 	{
 		const KShootBlock &block = it.GetCurrentBlock();
@@ -825,9 +826,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					point->time = mapTime;
 					point->index = 3;
 					point->zoom = atof(*p.second) / -(360.0 / 10.0);
-					ZoomControlPoint* lastZoomPoint = m_zoomControlPoints.empty() ? nullptr : m_zoomControlPoints.back();
-					if (lastZoomPoint)
-						point->instant = lastZoomPoint->time == point->time && lastZoomPoint->index == 3;
+					if (lastManualTiltPoint)
+						point->instant = lastManualTiltPoint->time == point->time;
 					else
 						point->instant = false;
 
@@ -840,7 +840,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 						point->zoom = Math::Sign(point->zoom) * ((((angle - 1) * 0.5f) + angle) / 36.f);
 					}
 
-					m_zoomControlPoints.Add(point);
+					lastManualTiltPoint = m_zoomControlPoints.Add(point);
 					CHECK_FIRST;
 
 					isManualTilt = true;
