@@ -135,23 +135,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
-		if (m_manualTiltInstant)
+		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled)
 		{
+			// Don't lerp as we've caught up to manual tilt roll
 			m_actualRoll = pLaneTilt;
 			skipLerp = true;
 		}
 		else
 		{
-			if (m_manualTiltRecentlyToggled)
-			{
-				// Lerp to manual tilt value
-				m_actualTargetLaserRoll = pLaneTilt;
-			}
-			else
-			{
-				m_actualRoll = pLaneTilt;
-				skipLerp = true;
-			}
+			// Lerp to manual tilt value
+			m_actualTargetLaserRoll = pLaneTilt;
 		}
 	}
 	else if (!m_rollKeep)
