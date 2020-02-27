@@ -160,7 +160,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (m_manualTiltRecentlyToggled)
 		// Check if roll has met target
-		m_manualTiltRecentlyToggled = m_actualRoll != m_actualTargetLaserRoll;
+		m_manualTiltRecentlyToggled = m_actualRoll != pLaneTilt;
 	
 	for (int index = 0; index < 2; ++index)
 	{
