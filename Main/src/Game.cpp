@@ -2000,7 +2000,7 @@ public:
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "rotation"); // rotation based on laser roll
-			lua_pushnumber(L, line.x != 0 ? -(line.y / line.x) : 0);
+			lua_pushnumber(L, -atan2f(line.y, line.x));
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "xOffset");
