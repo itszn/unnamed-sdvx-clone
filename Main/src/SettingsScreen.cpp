@@ -592,10 +592,6 @@ public:
 				nk_slider_float(m_nctx, 0, m_laserColors + 1, 360, 0.1);
 
 				nk_layout_row_dynamic(m_nctx, 30, 1);
-
-				FloatSetting(GameConfigKeys::RollIgnoreDuration, "Roll Ignore Duration (%g ms)", 0, 100, 1);
-				FloatSetting(GameConfigKeys::LaserSlamLength, "Laser Slam Duration (%g ms)", 0, 100, 1);
-
 				nk_tree_pop(m_nctx);
 			}
 
