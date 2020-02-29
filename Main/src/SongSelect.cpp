@@ -9,6 +9,7 @@
 #include "TransitionScreen.hpp"
 #include "GameConfig.hpp"
 #include "SongFilter.hpp"
+#include "ChatOverlay.hpp"
 #include "CollectionDialog.hpp"
 #include "GameplaySettingsDialog.hpp"
 #include <Audio/Audio.hpp>
@@ -88,7 +89,8 @@ public:
 		}
 		else
 		{
-			SDL_StopTextInput();
+			// XXX This seems to break nuklear so I commented it out
+			//SDL_StopTextInput();
 			g_gameWindow->OnTextInput.RemoveAll(this);
 			g_gameWindow->OnTextComposition.RemoveAll(this);
 			g_gameWindow->OnKeyRepeat.RemoveAll(this);
@@ -1610,6 +1612,8 @@ public:
 
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
@@ -1720,7 +1724,13 @@ public:
 
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
+<<<<<<< HEAD
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
+=======
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
+		if (m_suspended || m_collDiag.IsActive())
+>>>>>>> Add simple chat functionality to multi
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1764,7 +1774,15 @@ public:
 	}
 	virtual void OnKeyPressed(int32 key)
 	{
+<<<<<<< HEAD
 		if (m_collDiag.IsActive() || m_settDiag.IsActive())
+=======
+		if (m_multiplayer &&
+				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(key))
+			return;
+
+		if (m_collDiag.IsActive())
+>>>>>>> Add simple chat functionality to multi
 			return;
 
 		if (m_filterSelection->Active)
@@ -1898,6 +1916,8 @@ public:
 			}
 			m_settDiag.Tick(deltaTime);
 		}
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
 	virtual void Render(float deltaTime)
@@ -1922,7 +1942,13 @@ public:
 		{
 			m_collDiag.Render(deltaTime);
 		}
+<<<<<<< HEAD
 		m_settDiag.Render(deltaTime);
+=======
+
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Render(deltaTime);
+>>>>>>> Add simple chat functionality to multi
 	}
 
 	void TickNavigation(float deltaTime)

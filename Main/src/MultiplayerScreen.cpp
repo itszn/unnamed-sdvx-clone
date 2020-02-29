@@ -10,6 +10,7 @@
 #include "SongSelect.hpp"
 #include "SettingsScreen.hpp"
 #include "SkinConfig.hpp"
+#include "ChatOverlay.hpp"
 
 #include <ctime>
 #include <string>
@@ -92,7 +93,8 @@ public:
 		}
 		else
 		{
-			SDL_StopTextInput();
+			// XXX This seems to break nuklear so I commented it out
+			//SDL_StopTextInput();
 			g_gameWindow->OnTextInput.RemoveAll(this);
 			g_gameWindow->OnTextComposition.RemoveAll(this);
 			g_gameWindow->OnKeyRepeat.RemoveAll(this);
@@ -116,6 +118,9 @@ public:
 
 MultiplayerScreen::MultiplayerScreen()
 {
+	delete m_chatOverlay;
+	delete m_bindable;
+	delete m_lua;
 }
 
 MultiplayerScreen::~MultiplayerScreen()
@@ -135,8 +140,7 @@ MultiplayerScreen::~MultiplayerScreen()
 bool MultiplayerScreen::Init()
 {
 
-
-    return true;
+	return true;
 }
 
 void MultiplayerScreen::JoinRoomWithToken(String token)
@@ -178,6 +182,7 @@ void MultiplayerScreen::m_handleSocketClose()
 	// Don't exit if we are in game or selection
 	if (m_suspended)
 		return;
+
 	g_application->RemoveTickable(this);
 }
 
@@ -196,6 +201,7 @@ void MultiplayerScreen::m_render(float deltaTime)
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
 		g_gameWindow->ShowMessageBox("Lua Error in render", lua_tostring(m_lua, -1), 0);
+
 		g_application->RemoveTickable(this);
 	}
 }
@@ -232,12 +238,18 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	if (m_textInput->active)
 		m_textInput->SetActive(false);
 
+
 	m_screenState = MultiplayerScreenState::IN_ROOM;
 	lua_pushstring(m_lua, "inRoom");
 	lua_setglobal(m_lua, "screenState");
 	packet["room"]["id"].get_to(m_roomId);
 	packet["room"]["join_token"].get_to(m_joinToken);
 	g_application->DiscordPresenceMulti(m_joinToken, 1, 8, "test");
+
+	String roomname;
+	packet["room"]["name"].get_to(roomname);
+	m_chatOverlay->AddMessage("You joined "+roomname, 207, 178, 41);
+
 	return true;
 }
 
@@ -280,6 +292,10 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 	m_joinToken = packet.value("join_token", "");
 	g_application->DiscordPresenceMulti(m_joinToken, userCount, 8, "test");
 	m_handleSongChange(packet);
+
+	String hostid;
+	packet["host"].get_to(hostid);
+
 	return true;
 }
 bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
@@ -820,8 +836,11 @@ void MultiplayerScreen::Tick(float deltaTime)
 	m_PushStringToTable("text", Utility::ConvertToUTF8(m_textInput->input).c_str());
 	lua_setglobal(m_lua, "textInput");
 
+
 	if (IsSuspended())
 		return;
+
+	m_chatOverlay->Tick(deltaTime);
 
 	// Lock mouse to screen when active
 	if (m_screenState == MultiplayerScreenState::ROOM_LIST && 
@@ -954,13 +973,16 @@ void MultiplayerScreen::SendFinalScore(class Game* game, int clearState)
 
 void MultiplayerScreen::Render(float deltaTime)
 {
-	if (!IsSuspended())
+	if (!IsSuspended()) {
 		m_render(deltaTime);
+		m_chatOverlay->Render(deltaTime);
+	}
 }
 
 void MultiplayerScreen::ForceRender(float deltaTime)
 {
 	m_render(deltaTime);
+	m_chatOverlay->Render(deltaTime);
 }
 
 void MultiplayerScreen::OnSearchStatusUpdated(String status)
@@ -973,6 +995,9 @@ void MultiplayerScreen::OnSearchStatusUpdated(String status)
 void MultiplayerScreen::OnKeyPressed(int32 key)
 {
 	if (IsSuspended())
+		return;
+
+	if (m_chatOverlay->OnKeyPressedConsume(key))
 		return;
 
 	lua_getglobal(m_lua, "key_pressed");
@@ -1032,6 +1057,8 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 			if (m_textInput->active)
 				m_textInput->SetActive(false);
 
+			m_chatOverlay->AddMessage("You left the lobby", 207, 178, 41);
+
 			m_screenState = MultiplayerScreenState::ROOM_LIST;
 			lua_pushstring(m_lua, "roomList");
 			lua_setglobal(m_lua, "screenState");
@@ -1062,7 +1089,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 
 void MultiplayerScreen::OnKeyReleased(int32 key)
 {
-	if (IsSuspended())
+	if (IsSuspended() || m_chatOverlay->IsOpen())
 		return;
 
 	lua_getglobal(m_lua, "key_released");
@@ -1083,7 +1110,7 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 	if (IsSuspended())
 		return;
 
-	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_textInput->active)
+	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && (m_textInput->active || m_chatOverlay->IsOpen()))
 		return;
 
 	lua_getglobal(m_lua, "button_pressed");
@@ -1101,7 +1128,7 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 
 void MultiplayerScreen::m_OnButtonReleased(Input::Button buttonCode)
 {
-	if (IsSuspended())
+	if (IsSuspended() || m_chatOverlay->IsOpen())
 		return;
 
 	if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_textInput->active)
@@ -1288,6 +1315,9 @@ bool MultiplayerScreen::AsyncFinalize()
 	{
 		m_authenticate();
 	}
+
+	m_chatOverlay = new ChatOverlay(this);
+	m_chatOverlay->Init();
 
 	return true;
 }
