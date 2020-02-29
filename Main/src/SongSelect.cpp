@@ -89,8 +89,7 @@ public:
 		}
 		else
 		{
-			// XXX This seems to break nuklear so I commented it out
-			//SDL_StopTextInput();
+			SDL_StopTextInput();
 			g_gameWindow->OnTextInput.RemoveAll(this);
 			g_gameWindow->OnTextComposition.RemoveAll(this);
 			g_gameWindow->OnKeyRepeat.RemoveAll(this);

@@ -173,8 +173,14 @@ void ChatOverlay::m_drawWindow()
 	}
 	m_inEdit = nk_edit_isfocused(m_nctx);
 
-	nk_edit_string_zero_terminated(m_nctx, NK_EDIT_FIELD, m_chatDraft, sizeof(m_chatDraft)-1, nk_filter_default);
+	nk_flags event = nk_edit_string_zero_terminated(m_nctx, NK_EDIT_FIELD, m_chatDraft, sizeof(m_chatDraft)-1, nk_filter_default);
 
+	if (event & NK_EDIT_ACTIVATED) {
+		SDL_StartTextInput();
+	}
+	if (event & NK_EDIT_DEACTIVATED) {
+		SDL_StopTextInput();
+	}
 
 	nk_end(m_nctx);
 }
