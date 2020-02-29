@@ -53,6 +53,56 @@ void nk_sdl_text(nk_flags event)
 	}
 }
 
+int nk_get_property_state(struct nk_context *ctx, const char *name)
+{
+    if (!ctx || !ctx->current || !ctx->current->layout)
+        return NK_PROPERTY_DEFAULT;
+	struct nk_window* win = ctx->current;
+	nk_hash hash = 0;
+    if (name[0] == '#') {
+        hash = nk_murmur_hash(name, (int)nk_strlen(name), win->property.seq++);
+        name++; /* special number hash */
+    } else hash = nk_murmur_hash(name, (int)nk_strlen(name), 42);
+
+	if (win->property.active && hash == win->property.name)
+		return win->property.state;
+	return NK_PROPERTY_DEFAULT;
+}
+
+int nk_propertyi_sdl_text(struct nk_context *ctx, const char *name, int min, int val,
+		    int max, int step, float inc_per_pixel)
+{
+	int oldState = nk_get_property_state(ctx, name);
+	int value = nk_propertyi(ctx, name, min, val, max, step, inc_per_pixel);
+	int newState = nk_get_property_state(ctx, name);
+
+	if (oldState != newState) {
+		if (newState == NK_PROPERTY_DEFAULT)
+			SDL_StopTextInput();
+		else
+			SDL_StartTextInput();
+	}
+
+	return value;
+}
+
+float nk_propertyf_sdl_text(struct nk_context *ctx, const char *name, float min,
+		    float val, float max, float step, float inc_per_pixel)
+{
+	int oldState = nk_get_property_state(ctx, name);
+	float value = nk_propertyf(ctx, name, min, val, max, step, inc_per_pixel);
+	int newState = nk_get_property_state(ctx, name);
+
+	if (oldState != newState) {
+		if (newState == NK_PROPERTY_DEFAULT)
+			SDL_StopTextInput();
+		else
+			SDL_StartTextInput();
+	}
+
+	return value;
+}
+
 class SettingsScreen_Impl : public SettingsScreen
 {
 private:
@@ -299,7 +349,8 @@ private:
 	int IntSetting(GameConfigKeys key, String label, int min, int max, int step = 1, int perpixel = 1)
 	{
 		int value = g_gameConfig.GetInt(key);
-		value = nk_propertyi(m_nctx, *label, min, value, max, step, perpixel);
+		value = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
+
 		g_gameConfig.Set(key, value);
 		return value;
 	}
@@ -996,7 +1047,8 @@ void SkinSettingsScreen::Exit()
 void SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
 {
 	int value = m_skinConfig->GetInt(key);
-	value = nk_propertyi(m_nctx, *label, min, value, max, step, perpixel);
+	value = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
+
 	m_skinConfig->Set(key, value);
 }
 
@@ -1070,18 +1122,18 @@ void SkinSettingsScreen::ColorSetting(String key, String label)
 
 		nk_layout_row_dynamic(m_nctx, 25, 1);
 		if (!m_hsvMap[key]) {
-			nkCol.r = nk_propertyf(m_nctx, "#R:", 0, nkCol.r, 1.0f, 0.01f, 0.005f);
-			nkCol.g = nk_propertyf(m_nctx, "#G:", 0, nkCol.g, 1.0f, 0.01f, 0.005f);
-			nkCol.b = nk_propertyf(m_nctx, "#B:", 0, nkCol.b, 1.0f, 0.01f, 0.005f);
-			nkCol.a = nk_propertyf(m_nctx, "#A:", 0, nkCol.a, 1.0f, 0.01f, 0.005f);
+			nkCol.r = nk_propertyf_sdl_text(m_nctx, "#R:", 0, nkCol.r, 1.0f, 0.01f, 0.005f);
+			nkCol.g = nk_propertyf_sdl_text(m_nctx, "#G:", 0, nkCol.g, 1.0f, 0.01f, 0.005f);
+			nkCol.b = nk_propertyf_sdl_text(m_nctx, "#B:", 0, nkCol.b, 1.0f, 0.01f, 0.005f);
+			nkCol.a = nk_propertyf_sdl_text(m_nctx, "#A:", 0, nkCol.a, 1.0f, 0.01f, 0.005f);
 		}
 		else {
 			float hsva[4];
 			nk_colorf_hsva_fv(hsva, nkCol);
-			hsva[0] = nk_propertyf(m_nctx, "#H:", 0, hsva[0], 1.0f, 0.01f, 0.05f);
-			hsva[1] = nk_propertyf(m_nctx, "#S:", 0, hsva[1], 1.0f, 0.01f, 0.05f);
-			hsva[2] = nk_propertyf(m_nctx, "#V:", 0, hsva[2], 1.0f, 0.01f, 0.05f);
-			hsva[3] = nk_propertyf(m_nctx, "#A:", 0, hsva[3], 1.0f, 0.01f, 0.05f);
+			hsva[0] = nk_propertyf_sdl_text(m_nctx, "#H:", 0, hsva[0], 1.0f, 0.01f, 0.05f);
+			hsva[1] = nk_propertyf_sdl_text(m_nctx, "#S:", 0, hsva[1], 1.0f, 0.01f, 0.05f);
+			hsva[2] = nk_propertyf_sdl_text(m_nctx, "#V:", 0, hsva[2], 1.0f, 0.01f, 0.05f);
+			hsva[3] = nk_propertyf_sdl_text(m_nctx, "#A:", 0, hsva[3], 1.0f, 0.01f, 0.05f);
 			nkCol = nk_hsva_colorfv(hsva);
 		}
 		nk_combo_end(m_nctx);
