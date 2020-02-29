@@ -41,6 +41,18 @@
 #define MAX_ELEMENT_MEMORY 128 * 1024
 #define FULL_FONT_TEXTURE_HEIGHT 32768 //needed to load all CJK glyphs
 
+void nk_sdl_text(nk_flags event)
+{
+	if (event & NK_EDIT_ACTIVATED)
+	{
+		    SDL_StartTextInput();
+	}
+	if (event & NK_EDIT_DEACTIVATED)
+	{
+		   SDL_StopTextInput();
+	}
+}
+
 class SettingsScreen_Impl : public SettingsScreen
 {
 private:
@@ -577,7 +589,7 @@ public:
 				EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 
 				nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default);
+				nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
 
 				if (m_skins.size() > 0)
 				{
@@ -623,13 +635,13 @@ public:
 			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", NK_MINIMIZED))
 			{
 				nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default);
+				nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default));
 
 				nk_label(m_nctx, "Multiplayer Server Username:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerUsername, &m_multiplayerUsernameLen, 1024, nk_filter_default);
+				nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerUsername, &m_multiplayerUsernameLen, 1024, nk_filter_default));
 
 				nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default);
+				nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
 				nk_tree_pop(m_nctx);
 			}
 
@@ -1020,7 +1032,7 @@ void SkinSettingsScreen::TextSetting(String key, String label, bool secret)
 		for (int i = 0; i < len; i++)
 			buf[i] = '*';
 
-		nk_edit_string(m_nctx, NK_EDIT_FIELD, buf, &len, 64, nk_filter_default);
+		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, buf, &len, 64, nk_filter_default));
 		if (old_len < len)
 		{
 			memcpy(&display[old_len], &buf[old_len], (nk_size)(len - old_len));
@@ -1029,7 +1041,7 @@ void SkinSettingsScreen::TextSetting(String key, String label, bool secret)
 	else
 	{
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-		nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default);
+		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default));
 	}
 	value = String(display, len);
 
