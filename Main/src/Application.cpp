@@ -1500,11 +1500,41 @@ void Application::StoreNamedSample(String name, Sample sample)
 }
 void Application::PlayNamedSample(String name, bool loop)
 {
-	m_samples[name]->Play(loop);
+	if (m_samples.Contains(name))
+	{
+		Sample sample = m_samples[name];
+		if (sample)
+		{
+			sample->Play(loop);
+		}
+		else
+		{
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+		}
+	}
+	else
+	{
+		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+	}
 }
 void Application::StopNamedSample(String name)
 {
-	m_samples[name]->Stop();
+	if (m_samples.Contains(name))
+	{
+		Sample sample = m_samples[name];
+		if (sample)
+		{
+			sample->Stop();
+		}
+		else
+		{
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+		}
+	}
+	else
+	{
+		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+	}
 }
 void Application::m_OnKeyPressed(int32 key)
 {
@@ -1759,7 +1789,18 @@ static int lLoadSkinFont(lua_State* L /*const char* name */)
 static int lLoadSkinSample(lua_State* L /*char* name */)
 {
 	const char* name = luaL_checkstring(L, 1);
-	g_application->StoreNamedSample(name, g_application->LoadSample(name));
+	Sample newSample = g_application->LoadSample(name);
+	if (!newSample)
+	{
+		lua_Debug ar;
+		lua_getstack(L, 1, &ar);
+		lua_getinfo(L, "Snl", &ar);
+		String luaFilename;
+		Path::RemoveLast(ar.source, &luaFilename);
+		lua_pushstring(L, *Utility::Sprintf("Failed to load sample \"%s\" at line %d in \"%s\"", name, ar.currentline, luaFilename));
+		return lua_error(L);
+	}
+	g_application->StoreNamedSample(name, newSample);
 	return 0;
 }
 
