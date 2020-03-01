@@ -135,15 +135,19 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	if (pManualTiltEnabled)
 	{
-		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled || fabsf(pLaneTilt * 360) > 25)
+		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled)
 		{
 			// Don't lerp as we've caught up to manual tilt roll
-			// or instantly snap to it if the tilt angle is greater than 25
 			m_actualRoll = pLaneTilt;
 			skipLerp = true;
 		}
 		else
 		{
+			if (fabsf(m_actualRoll - pLaneTilt) > MAX_ROLL_ANGLE)
+				// If there's a large discrepancy between the manual tilt target and the current roll,
+				// increase roll speed to catch up
+				speedLimit *= 1 + (fabsf(m_actualRoll - pLaneTilt) - MAX_ROLL_ANGLE) * 36;
+
 			// Lerp to manual tilt value
 			m_actualTargetLaserRoll = pLaneTilt;
 		}
