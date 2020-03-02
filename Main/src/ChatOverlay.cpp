@@ -112,11 +112,41 @@ void ChatOverlay::NKRender()
 bool
 nk_edit_isfocused(struct nk_context *ctx)
 {
-    struct nk_window *win;
-    if (!ctx || !ctx->current) return false;
+	struct nk_window *win;
+	if (!ctx || !ctx->current) return false;
 
-    win = ctx->current;
+	win = ctx->current;
 	return win->edit.active;
+}
+
+void ChatOverlay::m_drawChatAlert()
+{
+	const int windowFlag = NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR;
+
+	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
+	float x = g_resolution.x / 2 - w / 2;
+
+	if (!nk_begin(m_nctx, "Chat Alert", nk_rect(g_resolution.x - 250, g_resolution.y - 40, 250, 40), windowFlag))
+	{
+		return;
+	}
+
+
+	nk_layout_row_dynamic(m_nctx, 30, 1);
+
+	if (m_newMessages > 0)
+	{
+		String s = Utility::Sprintf("Press ` to chat (%u new)", m_newMessages);
+		const char* cs = *s;
+		nk_text_colored(m_nctx, cs, strlen(cs), NK_TEXT_CENTERED, nk_rgb(255, 175, 38));
+	}
+	else
+	{
+		const char* cs = "Press ` to chat";
+		nk_text_colored(m_nctx, cs, strlen(cs), NK_TEXT_CENTERED, nk_rgb(255,255,255));
+	}
+
+	nk_end(m_nctx);
 }
 
 void ChatOverlay::m_drawWindow()
@@ -144,43 +174,47 @@ void ChatOverlay::m_drawWindow()
 		nk_layout_row_dynamic(m_nctx, 30, 1);
 
 		for(auto v : m_messages) {
-			nk_label_colored(m_nctx, v.first.c_str(), NK_LEFT, v.second);
+			const char* s = v.first.c_str();
+			nk_text_colored(m_nctx, s, strlen(s), NK_LEFT, v.second);
 		}
 		
 		struct nk_vec2 end_pos = nk_widget_position(m_nctx);
-		if (m_newMessage)
+		if (m_newMessages > 0 || m_forceToBottom)
 		{
 			float end_pos_rel = end_pos.y - box_height;
 			if (end_pos_rel < 250 || m_forceToBottom)
 			{
 				m_chatScroll.y = end_pos.y - start_pos.y;
 			}
-			m_newMessage = false;
+			m_newMessages = 0;
+			m_forceToBottom = false;
 		}
 
 		nk_group_scrolled_end(m_nctx);
-
 	}
 
 
 	nk_layout_row_dynamic(m_nctx, 40, 1);
 
-	if (m_forceToBottom)
+
+	if (m_focusText)
 	{
 		nk_edit_focus(m_nctx, NK_EDIT_ALWAYS_INSERT_MODE);
-		memset(m_chatDraft, 0, sizeof(m_chatDraft));
-		m_forceToBottom = false;
+		m_focusText = false;
 	}
-	m_inEdit = nk_edit_isfocused(m_nctx);
-
-	nk_flags event = nk_edit_string_zero_terminated(m_nctx, NK_EDIT_FIELD, m_chatDraft, sizeof(m_chatDraft)-1, nk_filter_default);
-
-	if (event & NK_EDIT_ACTIVATED) {
+	bool isFocused = nk_edit_isfocused(m_nctx);
+	if (!m_inEdit && isFocused)
+	{
 		SDL_StartTextInput();
 	}
-	if (event & NK_EDIT_DEACTIVATED) {
+	if (m_inEdit && !isFocused)
+	{
 		SDL_StopTextInput();
 	}
+
+	m_inEdit = isFocused;
+
+	nk_flags event = nk_edit_string_zero_terminated(m_nctx, NK_EDIT_FIELD, m_chatDraft, sizeof(m_chatDraft)-1, nk_filter_default);
 
 	nk_end(m_nctx);
 }
@@ -194,6 +228,10 @@ void ChatOverlay::Render(float deltatime) {
 	{
 		m_drawWindow();
 	}
+	else
+	{
+		m_drawChatAlert();
+	}
 
 	g_application->ForceRender();
 	NKRender();
@@ -202,14 +240,20 @@ void ChatOverlay::Render(float deltatime) {
 void ChatOverlay::CloseChat()
 {
 	m_isOpen = false;
-	m_inEdit = false;
+	if (m_inEdit)
+	{
+		SDL_StopTextInput();
+		m_inEdit = false;
+	}
 	m_forceToBottom = false;
+	m_focusText = false;
 }
 
 void ChatOverlay::OpenChat()
 {
 	m_isOpen = true;
 	m_forceToBottom = true;
+	m_focusText = true;
 }
 
 bool ChatOverlay::OnKeyPressedConsume(int32 key)
@@ -258,13 +302,13 @@ void ChatOverlay::SendChatMessage(const String& message)
 	packet["message"] = message;
 	m_multi->GetTCP().SendJSON(packet);
 
-    time_t t = time(NULL);
+	time_t t = time(NULL);
 	struct tm ttm = * localtime(&t);
 	String out = Utility::Sprintf("%02u:%02u [%s] %s", ttm.tm_hour, ttm.tm_min, m_multi->GetUserName(), message);
 
 
+	m_forceToBottom = true;
 	AddMessage(out, 200, 200, 200);
-
 }
 
 bool ChatOverlay::m_handleChatReceived(nlohmann::json& packet)
@@ -272,21 +316,20 @@ bool ChatOverlay::m_handleChatReceived(nlohmann::json& packet)
 	String message;
 	packet["message"].get_to(message);
 
-    time_t t = time(NULL);
+	time_t t = time(NULL);
 	struct tm ttm = * localtime(&t);
 
 	String out = Utility::Sprintf("%02u:%02u %s", ttm.tm_hour, ttm.tm_min, message);
+	m_newMessages++;
 	AddMessage(out);
 }
 
 void ChatOverlay::AddMessage(const String& message, int r, int g, int b)
 {
 	m_messages.push_back(std::make_pair(message, nk_rgb(r,g,b)));
-	m_newMessage = true;
 }
 
 void ChatOverlay::AddMessage(const String& message)
 {
 	m_messages.push_back(std::make_pair(message, nk_rgb(256, 256, 256)));
-	m_newMessage = true;
 }

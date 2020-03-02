@@ -24,7 +24,7 @@
 #include "../third_party/nuklear/nuklear.h"
 #include "nuklear/nuklear_sdl_gles2.h"
 #else
-#undef  NK_SDL_GL3_IMPLEMENTATION
+#undef	NK_SDL_GL3_IMPLEMENTATION
 #include "../third_party/nuklear/nuklear.h"
 #include "nuklear/nuklear_sdl_gl3.h"
 #endif
@@ -58,6 +58,7 @@ public:
 private:
 	bool m_handleChatReceived(nlohmann::json& packet);
 	void m_drawWindow();
+	void m_drawChatAlert();
 
 	struct nk_context* m_nctx = NULL;
 	std::queue<SDL_Event> m_eventQueue;
@@ -66,8 +67,9 @@ private:
 	char m_chatDraft[512] = {0};
 	bool m_isOpen = false;
 	struct nk_scroll m_chatScroll = {0};
-	bool m_newMessage = false;
+	int m_newMessages = 0;
 	bool m_inEdit = false;
 	bool m_forceToBottom = false;
+	bool m_focusText = false;
 	Vector<std::pair<String,nk_color>> m_messages;
 };

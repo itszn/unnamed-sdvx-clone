@@ -1723,13 +1723,9 @@ public:
 
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
-<<<<<<< HEAD
-		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
-=======
 		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 			return;
-		if (m_suspended || m_collDiag.IsActive())
->>>>>>> Add simple chat functionality to multi
+		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1758,6 +1754,9 @@ public:
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
+
 		if (m_sortSelection->Active)
 		{
 			m_sortSelection->AdvanceSelection(steps);
@@ -1773,15 +1772,11 @@ public:
 	}
 	virtual void OnKeyPressed(int32 key)
 	{
-<<<<<<< HEAD
-		if (m_collDiag.IsActive() || m_settDiag.IsActive())
-=======
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(key))
 			return;
 
-		if (m_collDiag.IsActive())
->>>>>>> Add simple chat functionality to multi
+		if (m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
 		if (m_filterSelection->Active)
@@ -1941,13 +1936,10 @@ public:
 		{
 			m_collDiag.Render(deltaTime);
 		}
-<<<<<<< HEAD
 		m_settDiag.Render(deltaTime);
-=======
 
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Render(deltaTime);
->>>>>>> Add simple chat functionality to multi
 	}
 
 	void TickNavigation(float deltaTime)
