@@ -576,7 +576,7 @@ public:
 		}
 	}
 
-	void AddScore(const DifficultyIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+	void AddScore(const ChartIndex& chart, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
 	{
 		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,hitstats,timestamp,diffid) VALUES(?,?,?,?,?,?,?,?,?)");
 		Buffer hitstats;
@@ -593,7 +593,7 @@ public:
 		addScore.BindInt(6, gameflags);
 		addScore.BindBlob(7, hitstats);
 		addScore.BindInt64(8, timestamp);
-		addScore.BindInt(9, diff.id);
+		addScore.BindInt(9, chart.id);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -1055,7 +1055,7 @@ void MapDatabase::RemoveSearchPath(const String& path)
 {
 	m_impl->RemoveSearchPath(path);
 }
-void MapDatabase::AddScore(const DifficultyIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+void MapDatabase::AddScore(const ChartIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
 {
 	m_impl->AddScore(diff, score, crit, almost, miss, gauge, gameflags, simpleHitStats, timestamp);
 }

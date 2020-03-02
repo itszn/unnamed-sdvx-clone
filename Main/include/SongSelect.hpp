@@ -8,27 +8,27 @@ struct SongSelectIndex
 {
 public:
 	SongSelectIndex() = default;
-	SongSelectIndex(MapIndex* map)
-		: m_map(map), m_diffs(map->difficulties),
+	SongSelectIndex(FolderIndex* folder)
+		: m_folder(folder), m_charts(folder->charts),
+		id(folder->selectId * 10)
+	{
+	}
+
+	SongSelectIndex(FolderIndex* map, Vector<ChartIndex*> charts)
+		: m_folder(map), m_charts(charts),
 		id(map->selectId * 10)
 	{
 	}
 
-	SongSelectIndex(MapIndex* map, Vector<DifficultyIndex*> diffs)
-		: m_map(map), m_diffs(diffs),
-		id(map->selectId * 10)
+	SongSelectIndex(FolderIndex* map, ChartIndex* chart)
+		: m_folder(map)
 	{
-	}
-
-	SongSelectIndex(MapIndex* map, DifficultyIndex* diff)
-		: m_map(map)
-	{
-		m_diffs.Add(diff);
+		m_charts.Add(chart);
 
 		int32 i = 0;
-		for (auto mapDiff : map->difficulties)
+		for (auto mapDiff : map->charts)
 		{
-			if (mapDiff == diff)
+			if (mapDiff == chart)
 				break;
 			i++;
 		}
@@ -41,12 +41,12 @@ public:
 
 	// use accessor functions just in case these need to be virtual for some reason later
 	// keep the api easy to play with
-	MapIndex* GetMap() const { return m_map; }
-	Vector<DifficultyIndex*> GetDifficulties() const { return m_diffs; }
+	FolderIndex* GetFolder() const { return m_folder; }
+	Vector<ChartIndex*> GetCharts() const { return m_charts; }
 
 private:
-	MapIndex * m_map;
-	Vector<DifficultyIndex*> m_diffs;
+	FolderIndex* m_folder;
+	Vector<ChartIndex*> m_charts;
 };
 
 

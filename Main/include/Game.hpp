@@ -28,6 +28,7 @@ struct ScoreReplay
 	int32 currentScore = 0;
 	int32 maxScore = 0;
 	int32 nextHitStat = 0;
+	Vector<SimpleHitStat> replay;
 };
 GameFlags operator|(const GameFlags& a, const GameFlags& b);
 GameFlags operator&(const GameFlags& a, const GameFlags& b);
@@ -42,8 +43,8 @@ protected:
 	Game() = default;
 public:
 	virtual ~Game() = default;
-	static Game* Create(const DifficultyIndex& mapPath, GameFlags flags);
-	static Game* Create(MultiplayerScreen*, const DifficultyIndex& mapPath, GameFlags flags);
+	static Game* Create(const ChartIndex& mapPath, GameFlags flags);
+	static Game* Create(MultiplayerScreen*, const ChartIndex& mapPath, GameFlags flags);
 	static Game* Create(const String& mapPath, GameFlags flags);
 
 public:
@@ -61,7 +62,7 @@ public:
 	// Map jacket image
 	virtual Texture GetJacketImage() = 0;
 	// Difficulty data
-	virtual const DifficultyIndex& GetDifficultyIndex() const = 0;
+	virtual const ChartIndex& GetChartIndex() const = 0;
 	// The beatmap
 	virtual Ref<class Beatmap> GetBeatmap() = 0;
 	// Song was manually ended
@@ -74,12 +75,12 @@ public:
 	// Set song db so a random song can be selected
 	virtual void SetSongDB(class MapDatabase* db) = 0;
 	// The folder that contians the map
-	virtual const String& GetMapRootPath() const = 0;
+	virtual const String& GetChartRootPath() const = 0;
 	// Setup and set gameplay lua
 	virtual void SetInitialGameplayLua(struct lua_State* L) = 0;
 	virtual void SetGameplayLua(struct lua_State* L) = 0;
 	// Full path to map
-	virtual const String& GetMapPath() const = 0;
+	virtual const String& GetChartPath() const = 0;
 	// Is this a multiplayer game
 	virtual bool IsMultiplayerGame() const = 0;
 };

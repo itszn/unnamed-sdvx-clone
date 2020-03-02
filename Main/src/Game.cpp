@@ -58,9 +58,9 @@ class Game_Impl : public Game
 {
 public:
 	// Startup parameters
-	String m_mapRootPath;
-	String m_mapPath;
-	DifficultyIndex m_diffIndex;
+	String m_chartRootPath;
+	String m_chartPath;
+	ChartIndex m_chartIndex;
 
 private:
 	bool m_playing = true;
@@ -165,26 +165,26 @@ public:
 	Game_Impl(const String& mapPath, GameFlags flags)
 	{
 		// Store path to map
-		m_mapPath = Path::Normalize(mapPath);
+		m_chartPath = Path::Normalize(mapPath);
 		// Get Parent path
-		m_mapRootPath = Path::RemoveLast(m_mapPath, nullptr);
+		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 		m_flags = flags;
-		m_diffIndex.id = -1;
-		m_diffIndex.mapId = -1;
+		m_chartIndex.id = -1;
+		m_chartIndex.folderId = -1;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
-	Game_Impl(const DifficultyIndex& difficulty, GameFlags flags)
+	Game_Impl(const ChartIndex& chart, GameFlags flags)
 	{
 		// Store path to map
-		m_mapPath = Path::Normalize(difficulty.path);
-		m_diffIndex = difficulty;
+		m_chartPath = Path::Normalize(chart.path);
+		m_chartIndex = chart;
 		m_flags = flags;
 		// Get Parent path
-		m_mapRootPath = Path::RemoveLast(m_mapPath, nullptr);
+		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
@@ -227,13 +227,13 @@ public:
 	{
 		ProfilerScope $("AsyncLoad Game");
 
-		if(!Path::FileExists(m_mapPath))
+		if(!Path::FileExists(m_chartPath))
 		{
-			Logf("Couldn't find map at %s", Logger::Error, m_mapPath);
+			Logf("Couldn't find chart at %s", Logger::Error, m_chartPath);
 			return false;
 		}
 
-		m_beatmap = TryLoadMap(m_mapPath);
+		m_beatmap = TryLoadMap(m_chartPath);
 
 		// Check failure of above loading attempts
 		if(!m_beatmap)
@@ -314,12 +314,25 @@ public:
 			m_hispeed = m_modSpeed / m_beatmap->GetLinearTimingPoints().front()->GetBPM();
 		}
 
+
+		// Load replays
+		for (ScoreIndex* score : m_chartIndex.scores)
+		{
+			m_scoreReplays[score] = ScoreReplay();
+			m_scoreReplays[score].maxScore = score->score;
+			File replayFile;
+			if (replayFile.OpenRead(score->replayPath)) {
+				FileReader replayReader(replayFile);
+				replayReader.SerializeObject(m_scoreReplays[score].replay);
+			}
+		}
+
 		// Initialize input/scoring
 		if(!InitGameplay())
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_mapRootPath))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
 			return false;
 
 		// Get fps limit
@@ -397,7 +410,7 @@ public:
 		int64 endTime = startTime + (m_endTime / 1000) + 5;
 		g_application->DiscordPresenceSong(mapSettings, startTime, endTime);
 
-		String jacketPath = m_mapRootPath + "/" + mapSettings.jacketPath;
+		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
 		//Set gameplay table
 		SetInitialGameplayLua(m_lua);
 
@@ -541,9 +554,10 @@ public:
 			}
 		}
 
-		for (ScoreIndex* score : m_diffIndex.scores)
+		for (auto& replay : m_scoreReplays)
 		{
-			m_scoreReplays[score] = ScoreReplay();
+			replay.second.currentScore = 0;
+			replay.second.nextHitStat = 0;
 		}
 
 		m_track->ClearEffects();
@@ -968,7 +982,7 @@ public:
 			}
 			else
 			{
-				m_fxSamples[i] = g_application->LoadSample(m_mapRootPath + "/" + samples[i], true);
+				m_fxSamples[i] = g_application->LoadSample(m_chartRootPath + "/" + samples[i], true);
 			}
 			if (!m_fxSamples[i])
 			{
@@ -1140,8 +1154,8 @@ public:
 				Game* game = nullptr;
 				while (!game) // ensure a working game
 				{
-					DifficultyIndex* diff = m_db->GetRandomDiff();
-					game = Game::Create(*diff, m_flags);
+					ChartIndex* chart = m_db->GetRandomChart();
+					game = Game::Create(*chart, m_flags);
 				}
 				game->GetScoring().autoplay = true;
 				game->SetDemoMode(true);
@@ -1189,7 +1203,7 @@ public:
 			Game* game = nullptr;
 			while (!game) // ensure a working game
 			{
-				DifficultyIndex* diff = m_db->GetRandomDiff();
+				ChartIndex* diff = m_db->GetRandomChart();
 				game = Game::Create(*diff, m_flags);
 			}
 			game->GetScoring().autoplay = true;
@@ -1870,21 +1884,21 @@ public:
 	{
 		return m_audioPlayback.GetPlaybackSpeed();
 	}
-	virtual const String& GetMapRootPath() const
+	virtual const String& GetChartRootPath() const
 	{
-		return m_mapRootPath;
+		return m_chartRootPath;
 	}
-	virtual const String& GetMapPath() const
+	virtual const String& GetChartPath() const
 	{
-		return m_mapPath;
+		return m_chartPath;
 	}
 	virtual bool IsMultiplayerGame() const
 	{
 		return m_multiplayer != nullptr;
 	}
-	virtual const DifficultyIndex& GetDifficultyIndex() const
+	virtual const ChartIndex& GetChartIndex() const
 	{
-		return m_diffIndex;
+		return m_chartIndex;
 	}
 	virtual void SetDemoMode(bool value)
 	{
@@ -1909,31 +1923,31 @@ public:
 		// Update score replays
 		lua_getfield(L, -1, "scoreReplays");
 		int replayCounter = 1;
-		for (ScoreIndex* index : m_diffIndex.scores)
+		for (auto& r: m_scoreReplays)
 		{
-			m_scoreReplays[index].maxScore = index->score;
-			if (index->hitStats.size() > 0)
+			ScoreReplay& replay = r.second;
+			if (replay.replay.size() > 0)
 			{
-				while (m_scoreReplays[index].nextHitStat < index->hitStats.size()
-					&& index->hitStats[m_scoreReplays[index].nextHitStat].time < m_lastMapTime)
+				while (replay.nextHitStat < replay.replay.size()
+					&& replay.replay[replay.nextHitStat].time < m_lastMapTime)
 				{
-					SimpleHitStat shs = index->hitStats[m_scoreReplays[index].nextHitStat];
+					SimpleHitStat shs = replay.replay[replay.nextHitStat];
 					if (shs.rating < 3)
 					{
-						m_scoreReplays[index].currentScore += shs.rating;
+						replay.currentScore += shs.rating;
 					}
-					m_scoreReplays[index].nextHitStat++;
+					replay.nextHitStat++;
 				}
 			}
 			lua_pushnumber(L, replayCounter);
 			lua_newtable(L);
 
 			lua_pushstring(L, "maxScore");
-			lua_pushnumber(L, index->score);
+			lua_pushnumber(L, replay.maxScore);
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "currentScore");
-			lua_pushnumber(L, m_scoring.CalculateScore(m_scoreReplays[index].currentScore));
+			lua_pushnumber(L, m_scoring.CalculateScore(replay.currentScore));
 			lua_settable(L, -3);
 
 			lua_settable(L, -3);
@@ -2089,7 +2103,7 @@ public:
 
 		auto mapSettings = GetBeatmap()->GetMapSettings();
 		lua_newtable(L);
-		String jacketPath = m_mapRootPath + "/" + mapSettings.jacketPath;
+		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
 		pushStringToTable("jacketPath", jacketPath);
 		pushStringToTable("title", mapSettings.title);
 		pushStringToTable("artist", mapSettings.artist);
@@ -2145,13 +2159,13 @@ public:
 	}
 };
 
-Game* Game::Create(const DifficultyIndex& difficulty, GameFlags flags)
+Game* Game::Create(const ChartIndex& difficulty, GameFlags flags)
 {
 	Game_Impl* impl = new Game_Impl(difficulty, flags);
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, const DifficultyIndex& difficulty, GameFlags flags)
+Game* Game::Create(MultiplayerScreen* multiplayer, const ChartIndex& difficulty, GameFlags flags)
 {
 	Game_Impl* impl = new Game_Impl(difficulty, flags);
 	impl->MakeMultiplayer(multiplayer);

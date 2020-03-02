@@ -146,7 +146,7 @@ public:
 		else
 		{
 			//if skin doesn't have it, try loading from chart folder
-			folderPath = game->GetMapRootPath() + Path::sep +
+			folderPath = game->GetChartRootPath() + Path::sep +
 						 game->GetBeatmap()->GetMapSettings().foregroundPath +
 						 Path::sep;
 			folderPath = Path::Absolute(folderPath);

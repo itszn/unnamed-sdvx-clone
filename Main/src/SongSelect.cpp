@@ -265,7 +265,7 @@ public:
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
 	}
-	void OnMapsAdded(Vector<MapIndex*> maps)
+	void OnFoldersAdded(Vector<FolderIndex*> maps)
 	{
 		for(auto m : maps)
 		{
@@ -275,7 +275,7 @@ public:
 		AdvanceSelection(0);
 		m_SetLuaMaps(true);
 	}
-	void OnMapsRemoved(Vector<MapIndex*> maps)
+	void OnFoldersRemoved(Vector<FolderIndex*> maps)
 	{
 		for(auto m : maps)
 		{
@@ -288,14 +288,14 @@ public:
 		}
 		m_SetLuaMaps(true);
 	}
-	void OnMapsUpdated(Vector<MapIndex*> maps)
+	void OnFoldersUpdated(Vector<FolderIndex*> maps)
 	{
 		for(auto m : maps)
 		{
 			SongSelectIndex index(m);
 		}
 	}
-	void OnMapsCleared(Map<int32, MapIndex*> newList)
+	void OnFoldersCleared(Map<int32, FolderIndex*> newList)
 	{
 		m_filterSet = false;
 		m_mapFilter.clear();
@@ -334,7 +334,7 @@ public:
 	{
 		for (const auto& it : m_SourceCollection())
 		{
-			if (it.second.GetMap()->id == id)
+			if (it.second.GetFolder()->id == id)
 			{
 				SelectMap(it.first);
 				break;
@@ -416,7 +416,7 @@ public:
 		SongSelectIndex* map = maps.Find(m_currentlySelectedId);
 		if(map)
 		{
-			OnDifficultySelected.Call(map[0].GetDifficulties()[m_currentlySelectedDiff]);
+			OnChartSelected.Call(map[0].GetCharts()[m_currentlySelectedDiff]);
 		}
 	}
 	void AdvanceDifficultySelection(int32 offset)
@@ -424,16 +424,16 @@ public:
 		Map<int32, SongSelectIndex> maps = m_SourceCollection();
 		SongSelectIndex map = maps[m_currentlySelectedId];
 		int32 newIdx = m_currentlySelectedDiff + offset;
-		newIdx = Math::Clamp(newIdx, 0, (int32)map.GetDifficulties().size() - 1);
+		newIdx = Math::Clamp(newIdx, 0, (int32)map.GetCharts().size() - 1);
 		SelectDifficulty(newIdx);
 	}
 
 	// Called when a new map is selected
-	Delegate<MapIndex*> OnMapSelected;
-	Delegate<DifficultyIndex*> OnDifficultySelected;
+	Delegate<FolderIndex*> OnFolderSelected;
+	Delegate<ChartIndex*> OnChartSelected;
 
 	// Set display filter
-	void SetFilter(Map<int32, MapIndex *> filter)
+	void SetFilter(Map<int32, FolderIndex*> filter)
 	{
 		m_mapFilter.clear();
 		for (auto m : filter)
@@ -471,18 +471,18 @@ public:
 		}
 	}
 
-	MapIndex* GetSelection() const
+	FolderIndex* GetSelection() const
 	{
 		SongSelectIndex const* map = m_SourceCollection().Find(m_currentlySelectedId);
 		if(map)
-			return map->GetMap();
+			return map->GetFolder();
 		return nullptr;
 	}
-	DifficultyIndex* GetSelectedDifficulty() const
+	ChartIndex* GetSelectedChart() const
 	{
 		SongSelectIndex const* map = m_SourceCollection().Find(m_currentlySelectedId);
 		if(map)
-			return map->GetDifficulties()[m_currentlySelectedDiff];
+			return map->GetCharts()[m_currentlySelectedDiff];
 		return nullptr;
 	}
 
@@ -581,25 +581,24 @@ private:
 		{
 			lua_pushinteger(m_lua, ++songIndex);
 			lua_newtable(m_lua);
-			m_PushStringToTable("title", song.second.GetDifficulties()[0]->settings.title.c_str());
-			m_PushStringToTable("artist", song.second.GetDifficulties()[0]->settings.artist.c_str());
-			m_PushStringToTable("bpm", song.second.GetDifficulties()[0]->settings.bpm.c_str());
-			m_PushIntToTable("id", song.second.GetMap()->id);
-			m_PushStringToTable("path", song.second.GetMap()->path.c_str());
+			m_PushStringToTable("title", song.second.GetCharts()[0]->title.c_str());
+			m_PushStringToTable("artist", song.second.GetCharts()[0]->artist.c_str());
+			m_PushStringToTable("bpm", song.second.GetCharts()[0]->bpm.c_str());
+			m_PushIntToTable("id", song.second.GetFolder()->id);
+			m_PushStringToTable("path", song.second.GetFolder()->path.c_str());
 			int diffIndex = 0;
 			lua_pushstring(m_lua, "difficulties");
 			lua_newtable(m_lua);
-			for (auto& diff : song.second.GetDifficulties())
+			for (auto& diff : song.second.GetCharts())
 			{
 				lua_pushinteger(m_lua, ++diffIndex);
 				lua_newtable(m_lua);
-				auto settings = diff->settings;
-				m_PushStringToTable("jacketPath", Path::Normalize(song.second.GetMap()->path + "/" + settings.jacketPath).c_str());
-				m_PushIntToTable("level", settings.level);
-				m_PushIntToTable("difficulty", settings.difficulty);
+				m_PushStringToTable("jacketPath", Path::Normalize(song.second.GetFolder()->path + "/" + diff->jacket_path).c_str());
+				m_PushIntToTable("level", diff->level);
+				m_PushIntToTable("difficulty", diff->diff_index);
 				m_PushIntToTable("id", diff->id);
-				m_PushStringToTable("effector", settings.effector.c_str());
-				m_PushStringToTable("illustrator", settings.illustrator.c_str());
+				m_PushStringToTable("effector", diff->effector.c_str());
+				m_PushStringToTable("illustrator", diff->illustrator.c_str());
 				m_PushIntToTable("topBadge", Scoring::CalculateBestBadge(diff->scores));
 				lua_pushstring(m_lua, "scores");
 				lua_newtable(m_lua);
@@ -635,14 +634,14 @@ private:
 
 		// Clamp diff selection
 		int32 selectDiff = m_currentlySelectedDiff;
-		if(m_currentlySelectedDiff >= (int32)index.GetDifficulties().size())
+		if(m_currentlySelectedDiff >= (int32)index.GetCharts().size())
 		{
-			selectDiff = (int32)index.GetDifficulties().size() - 1;
+			selectDiff = (int32)index.GetCharts().size() - 1;
 		}
 		SelectDifficulty(selectDiff);
 
-		OnMapSelected.Call(index.GetMap());
-		m_currentlySelectedMapId = index.GetMap()->id;
+		OnFolderSelected.Call(index.GetFolder());
+		m_currentlySelectedMapId = index.GetFolder()->id;
 	}
 };
 
@@ -1112,7 +1111,7 @@ private:
 	PreviewPlayer m_previewPlayer;
 
 	// Current map that has music being preview played
-	MapIndex* m_currentPreviewAudio;
+	ChartIndex* m_currentPreviewAudio;
 
 	// Select sound
 	Sample m_selectSound;
@@ -1153,15 +1152,15 @@ public:
 		if (!m_filterSelection->Init())
 			return false;
 		m_filterSelection->SetMapDB(&m_mapDatabase);
-		m_selectionWheel->OnMapSelected.Add(this, &SongSelect_Impl::OnMapSelected);
-		m_selectionWheel->OnDifficultySelected.Add(this, &SongSelect_Impl::OnDifficultySelected);
+		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
+		m_selectionWheel->OnChartSelected.Add(this, &SongSelect_Impl::OnChartSelected);
 		// Setup the map database
 		m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
 
-		m_mapDatabase.OnMapsAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnMapsAdded);
-		m_mapDatabase.OnMapsUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnMapsUpdated);
-		m_mapDatabase.OnMapsCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnMapsCleared);
-		m_mapDatabase.OnMapsRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnMapsRemoved);
+		m_mapDatabase.OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
+		m_mapDatabase.OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
+		m_mapDatabase.OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
+		m_mapDatabase.OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
 		m_mapDatabase.OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
 		m_mapDatabase.StartSearching();
 
@@ -1190,7 +1189,7 @@ public:
 	~SongSelect_Impl()
 	{
 		// Clear callbacks
-		m_mapDatabase.OnMapsCleared.Clear();
+		m_mapDatabase.OnFoldersCleared.Clear();
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_gameWindow->OnMouseScroll.RemoveAll(this);
@@ -1205,14 +1204,14 @@ public:
 		OnSearchTermChanged(m_searchInput->input);
 	}
 
-	void m_updatePreview(DifficultyIndex *diff, bool mapChanged)
+	void m_updatePreview(ChartIndex *diff, bool mapChanged)
 	{
 		String mapRootPath = diff->path.substr(0, diff->path.find_last_of(Path::sep));
 
 		// Set current preview audio
-		String audioPath = mapRootPath + Path::sep + diff->settings.audioNoFX;
+		String audioPath = mapRootPath + Path::sep + diff->preview_file;
 
-		PreviewParams params = { audioPath, static_cast<uint32>(diff->settings.previewOffset), static_cast<uint32>(diff->settings.previewDuration) };
+		PreviewParams params = { audioPath, static_cast<uint32>(diff->preview_offset), static_cast<uint32>(diff->preview_length) };
 
 		/* A lot of pre-effected charts use different audio files for each difficulty; these
 		 * files differ only in their effects, so the preview offset and duration remain the
@@ -1231,7 +1230,7 @@ public:
 			Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
 			if (previewAudio && previewAudio.GetData())
 			{
-				previewAudio->SetPosition(diff->settings.previewOffset);
+				previewAudio->SetPosition(diff->preview_offset);
 
 				m_previewPlayer.FadeTo(previewAudio);
 
@@ -1252,15 +1251,15 @@ public:
 	}
 
 	// When a map is selected in the song wheel
-	void OnMapSelected(MapIndex* map)
+	void OnFolderSelected(FolderIndex* folder)
 	{
-		if (!map->difficulties.empty() && map->difficulties.size() > m_selectionWheel->GetSelectedDifficultyIndex())
-			m_updatePreview(map->difficulties[m_selectionWheel->GetSelectedDifficultyIndex()], true);
+		if (!folder->charts.empty() && folder->charts.size() > m_selectionWheel->GetSelectedDifficultyIndex())
+			m_updatePreview(folder->charts[m_selectionWheel->GetSelectedDifficultyIndex()], true);
 	}
 	// When a difficulty is selected in the song wheel
-	void OnDifficultySelected(DifficultyIndex* diff)
+	void OnChartSelected(ChartIndex* chart)
 	{
-		m_updatePreview(diff, false);
+		m_updatePreview(chart, false);
 	}
 
 	/// TODO: Fix some conflicts between search field and filter selection
@@ -1271,7 +1270,7 @@ public:
 		else
 		{
 			String utf8Search = Utility::ConvertToUTF8(search);
-			Map<int32, MapIndex*> filter = m_mapDatabase.FindMaps(utf8Search);
+			Map<int32, FolderIndex*> filter = m_mapDatabase.FindFolders(utf8Search);
 			m_selectionWheel->SetFilter(filter);
 		}
 	}
@@ -1290,22 +1289,22 @@ public:
 		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
 		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
-			MapIndex* map = m_selectionWheel->GetSelection();
-			if (map)
+			FolderIndex* folder = m_selectionWheel->GetSelection();
+			if (folder)
 			{
 				if (m_multiplayer != nullptr)
 				{
 					// When we are in multiplayer, just report the song and exit instead
-					m_multiplayer->SetSelectedMap(map, m_selectionWheel->GetSelectedDifficulty());
+					m_multiplayer->SetSelectedMap(folder, m_selectionWheel->GetSelectedChart());
 
 					m_suspended = true;
 					g_application->RemoveTickable(this);
 					return;
 				}
 
-				DifficultyIndex* diff = m_selectionWheel->GetSelectedDifficulty();
+				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
 
-				Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
+				Game* game = Game::Create(*chart, m_settingsWheel->GetGameFlags());
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1366,11 +1365,11 @@ public:
 				{
 				case Input::Button::BT_1:
 					if (g_input.GetButton(Input::Button::BT_2))
-						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+						m_collDiag.Open(*m_selectionWheel->GetSelectedChart());
 					break;
 				case Input::Button::BT_2:
 					if (g_input.GetButton(Input::Button::BT_1))
-						m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+						m_collDiag.Open(*m_selectionWheel->GetSelectedChart());
 					break;
 
 				case Input::Button::FX_1:
@@ -1523,7 +1522,7 @@ public:
 			}
 			else if (key == SDLK_F1 && m_hasCollDiag)
 			{
-				m_collDiag.Open(*m_selectionWheel->GetSelectedDifficulty());
+				m_collDiag.Open(*m_selectionWheel->GetSelectedChart());
 			}
 			else if (key == SDLK_F2)
 			{
@@ -1531,9 +1530,9 @@ public:
 			}
 			else if (key == SDLK_F8) // start demo mode
 			{
-				DifficultyIndex* diff = m_mapDatabase.GetRandomDiff();
+				ChartIndex* chart = m_mapDatabase.GetRandomChart();
 
-				Game* game = Game::Create(*diff, m_settingsWheel->GetGameFlags());
+				Game* game = Game::Create(*chart, m_settingsWheel->GetGameFlags());
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1559,7 +1558,7 @@ public:
 				String paramFormat = g_gameConfig.GetString(GameConfigKeys::EditorParamsFormat);
 				String path = Path::Normalize(g_gameConfig.GetString(GameConfigKeys::EditorPath));
 				String param = Utility::Sprintf(paramFormat.c_str(),
-					Utility::Sprintf("\"%s\"", Path::Absolute(m_selectionWheel->GetSelectedDifficulty()->path)));
+					Utility::Sprintf("\"%s\"", Path::Absolute(m_selectionWheel->GetSelectedChart()->path)));
 				Path::Run(path, param.GetData());
 			}
 			else if (key == SDLK_F12)
