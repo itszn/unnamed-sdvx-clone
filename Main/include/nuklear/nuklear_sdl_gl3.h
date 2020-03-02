@@ -382,6 +382,8 @@ nk_sdl_handle_event(SDL_Event *evt)
             nk_input_key(ctx, NK_KEY_TEXT_LINE_START, down && state[SDL_SCANCODE_LCTRL]);
         else if (sym == SDLK_e)
             nk_input_key(ctx, NK_KEY_TEXT_LINE_END, down && state[SDL_SCANCODE_LCTRL]);
+        else if (sym == SDLK_a)
+            nk_input_key(ctx, NK_KEY_TEXT_SELECT_ALL, down && state[SDL_SCANCODE_LCTRL]);
         else if (sym == SDLK_UP)
             nk_input_key(ctx, NK_KEY_UP, down);
         else if (sym == SDLK_DOWN)

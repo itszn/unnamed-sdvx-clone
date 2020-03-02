@@ -17,7 +17,7 @@
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 
-#define MULTIPLAYER_VERSION "v0.17"
+#define MULTIPLAYER_VERSION "v0.19"
 
 // XXX probably should be moved with the songselect one to its own class file?
 class TextInputMultiplayer

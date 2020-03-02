@@ -126,7 +126,7 @@ void ChatOverlay::m_drawChatAlert()
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 	float x = g_resolution.x / 2 - w / 2;
 
-	if (!nk_begin(m_nctx, "Chat Alert", nk_rect(g_resolution.x - 250, g_resolution.y - 40, 250, 40), windowFlag))
+	if (!nk_begin(m_nctx, "Chat Alert", nk_rect(g_resolution.x - 250, 0/*g_resolution.y - 40*/, 250, 40), windowFlag))
 	{
 		return;
 	}
@@ -136,13 +136,13 @@ void ChatOverlay::m_drawChatAlert()
 
 	if (m_newMessages > 0)
 	{
-		String s = Utility::Sprintf("Press ` to chat (%u new)", m_newMessages);
+		String s = Utility::Sprintf("Press F8 to chat (%u new)", m_newMessages);
 		const char* cs = *s;
 		nk_text_colored(m_nctx, cs, strlen(cs), NK_TEXT_CENTERED, nk_rgb(255, 175, 38));
 	}
 	else
 	{
-		const char* cs = "Press ` to chat";
+		const char* cs = "Press F8 to chat";
 		nk_text_colored(m_nctx, cs, strlen(cs), NK_TEXT_CENTERED, nk_rgb(255,255,255));
 	}
 
@@ -213,7 +213,6 @@ void ChatOverlay::m_drawWindow()
 			// TODO this is broken atm
 			float scroll_height = scroll_end_pos.y - scroll_start_pos.y;
 			float bottom_rel = scroll_end_pos.y - chat_box_height - chat_box_pos.y;
-			printf("%f %f\n", scroll_height, bottom_rel);
 			if (bottom_rel < 200 || m_forceToBottom)
 			{
 				m_chatScroll.y = scroll_height;
@@ -227,6 +226,8 @@ void ChatOverlay::m_drawWindow()
 
 
 	nk_layout_row_dynamic(m_nctx, 40, 1);
+
+	bool res = nk_input_is_key_pressed(&m_nctx->input, NK_KEY_TEXT_SELECT_ALL);
 
 
 	if (m_focusText)
@@ -316,10 +317,8 @@ bool ChatOverlay::OnKeyPressedConsume(int32 key)
 		return true;
 	}
 
-	if (m_inEdit)
-		return true;
 
-	if (key == SDLK_BACKQUOTE)
+	if (key == SDLK_F8)
 	{
 		// Toggle open
 		if (m_isOpen)
@@ -328,6 +327,9 @@ bool ChatOverlay::OnKeyPressedConsume(int32 key)
 			OpenChat();
 		return true;
 	}
+
+	if (m_inEdit)
+		return true;
 
 	return m_isOpen;
 
