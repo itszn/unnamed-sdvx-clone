@@ -131,7 +131,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	// Catch up to crit line position or roll to roll keep value with respect to roll intensity
 	// 2.5 corresponds to BIGGEST roll speed
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * (m_rollKeep ? m_rollIntensity / MAX_ROLL_ANGLE : 2.5);
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * (m_rollKeep && !pManualTiltEnabled ? m_rollIntensity / MAX_ROLL_ANGLE : 2.5);
 
 	if (pManualTiltEnabled)
 	{
