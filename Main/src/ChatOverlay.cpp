@@ -5,6 +5,11 @@
 
 #include "MultiplayerScreen.hpp"
 
+ChatOverlay::~ChatOverlay()
+{
+    ShutdownNuklear();
+}
+
 
 void ChatOverlay::UpdateNuklearInput(SDL_Event evt)
 {
@@ -13,11 +18,32 @@ void ChatOverlay::UpdateNuklearInput(SDL_Event evt)
 	m_eventQueue.push(evt);
 }
 
-// TODO write clweanup function
+void ChatOverlay::ShutdownNuklear()
+{
+    if (!m_nuklearRunning)
+        return;
+
+    g_gameWindow->OnAnyEvent.RemoveAll(this);
+    nk_sdl_shutdown();
+
+    m_nuklearRunning = false;
+}
 
 
 bool ChatOverlay::Init()
 {
+    InitNuklearIfNeeded();
+
+	// Init the socket callbacks
+	m_multi->GetTCP().SetTopicHandler("server.chat.received", this, &ChatOverlay::m_handleChatReceived);
+
+	AddMessage("Note: This chat is currently not encrypted", 179, 73, 73); 
+}
+
+void ChatOverlay::InitNuklearIfNeeded()
+{
+    if (m_nuklearRunning)
+        return;
 	m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 
 	g_gameWindow->OnAnyEvent.Add(this, &ChatOverlay::UpdateNuklearInput);
@@ -81,10 +107,7 @@ bool ChatOverlay::Init()
 	m_nctx->style.slider.bar_hover = nk_rgb(20, 20, 20);
 	m_nctx->style.slider.bar_active = nk_rgb(20, 20, 20);
 
-	// Init the socket callbacks
-	m_multi->GetTCP().SetTopicHandler("server.chat.received", this, &ChatOverlay::m_handleChatReceived);
-
-	AddMessage("Note: This chat is currently not encrypted", 179, 73, 73); 
+    m_nuklearRunning = true;
 }
 
 void ChatOverlay::Tick(float deltatime)

@@ -118,9 +118,6 @@ public:
 
 MultiplayerScreen::MultiplayerScreen()
 {
-	delete m_chatOverlay;
-	delete m_bindable;
-	delete m_lua;
 }
 
 MultiplayerScreen::~MultiplayerScreen()
@@ -135,6 +132,9 @@ MultiplayerScreen::~MultiplayerScreen()
 		g_application->DisposeLua(m_lua);
 		m_tcp.ClearState(m_lua);
 	}
+
+	delete m_chatOverlay;
+	delete m_bindable;
 }
 
 bool MultiplayerScreen::Init()
@@ -1181,6 +1181,8 @@ int MultiplayerScreen::lSongSelect(lua_State* L)
 int MultiplayerScreen::lSettings(lua_State* L)
 {
 	m_suspended = true;
+    // We have to shut down Nuklear because the settings menu will restart it
+    m_chatOverlay->ShutdownNuklear();
 	g_application->AddTickable(SettingsScreen::Create());
 	return 0;
 }
@@ -1188,6 +1190,9 @@ int MultiplayerScreen::lSettings(lua_State* L)
 void MultiplayerScreen::OnRestore()
 {
 	m_suspended = false;
+
+    // Restart nuklear if we turned it off during suspend
+    m_chatOverlay->InitNuklearIfNeeded();
 
 	// If we disconnected while playing or selecting wait until we get back before exiting
 	/*if (!m_tcp.IsOpen())

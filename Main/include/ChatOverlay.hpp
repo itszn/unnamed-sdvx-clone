@@ -39,7 +39,7 @@ class ChatOverlay: public IApplicationTickable
 {
 public:
 	ChatOverlay(MultiplayerScreen* m) : m_multi(m), m_nctx(), m_eventQueue() {};
-	~ChatOverlay() {};
+	~ChatOverlay();
 	
 	bool Init() override;
 	void Tick(float deltaTime) override;
@@ -52,6 +52,8 @@ public:
 	bool OnKeyPressedConsume(int32 key);
 	void OpenChat();
 	void CloseChat();
+    void ShutdownNuklear();
+    void InitNuklearIfNeeded();
 	bool IsOpen() {
 		return m_isOpen;
 	}
@@ -59,6 +61,8 @@ private:
 	bool m_handleChatReceived(nlohmann::json& packet);
 	void m_drawWindow();
 	void m_drawChatAlert();
+
+    bool m_nuklearRunning = false;
 
 	struct nk_context* m_nctx = NULL;
 	std::queue<SDL_Event> m_eventQueue;
