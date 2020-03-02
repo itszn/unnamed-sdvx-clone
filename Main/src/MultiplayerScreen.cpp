@@ -293,9 +293,6 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 	g_application->DiscordPresenceMulti(m_joinToken, userCount, 8, "test");
 	m_handleSongChange(packet);
 
-	String hostid;
-	packet["host"].get_to(hostid);
-
 	return true;
 }
 bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
