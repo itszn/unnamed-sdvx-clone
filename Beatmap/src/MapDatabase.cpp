@@ -361,7 +361,7 @@ public:
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path) VALUES(?)");
-		DBStatement update = m_database.Query("UPDATE Charts SET lwt=?,metadata=?,hash=? WHERE rowid=?");
+		DBStatement update = m_database.Query("UPDATE Charts SET lwt=?,metadata=?,hash=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 
@@ -467,6 +467,7 @@ public:
 			}
 			else if(e.action == Event::Updated)
 			{
+				//TODO: this
 				//Buffer metadata;
 				//MemoryWriter metadataWriter(metadata);
 				//metadataWriter.SerializeObject(*e.mapData);
