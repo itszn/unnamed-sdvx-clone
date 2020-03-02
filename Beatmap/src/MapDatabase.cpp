@@ -5,6 +5,7 @@
 #include "TinySHA1.hpp"
 #include "Shared/Profiling.hpp"
 #include "Shared/Files.hpp"
+#include "Shared/Time.hpp"
 #include <thread>
 #include <mutex>
 #include <chrono>
@@ -356,11 +357,11 @@ public:
 			return;
 
 		DBStatement addChart = m_database.Query("INSERT INTO Charts("
-			"folderId,path,title,artist,title_translit,artist_translt,jacket_path,effector,illustrator,"
+			"folderId,path,title,artist,title_translit,artist_translit,jacket_path,effector,illustrator,"
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-		DBStatement addFolder = m_database.Query("INSERT INTO Maps(path) VALUES(?)");
-		DBStatement update = m_database.Query("UPDATE Difficulties SET lwt=?,metadata=?,hash=? WHERE rowid=?");
+		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path) VALUES(?)");
+		DBStatement update = m_database.Query("UPDATE Charts SET lwt=?,metadata=?,hash=? WHERE rowid=?");
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 
@@ -431,25 +432,25 @@ public:
 				m_SortCharts(folder);
 
 				// Add Chart
-				addChart.BindInt(0, chart->folderId);
-				addChart.BindString(1, chart->path);
-				addChart.BindString(2, chart->title);
-				addChart.BindString(3, chart->artist);
-				addChart.BindString(4, chart->title_translit);
-				addChart.BindString(5, chart->artist_translit);
-				addChart.BindString(6, chart->jacket_path);
-				addChart.BindString(7, chart->effector);
-				addChart.BindString(8, chart->illustrator);
-				addChart.BindString(9, chart->diff_name);
-				addChart.BindString(10, chart->diff_shortname);
-				addChart.BindString(11, chart->bpm);
-				addChart.BindInt(12, chart->diff_index);
-				addChart.BindInt(13, chart->level);
-				addChart.BindString(14, chart->hash);
-				addChart.BindString(15, chart->preview_file);
-				addChart.BindInt(16, chart->preview_offset);
-				addChart.BindInt(17, chart->preview_length);
-				addChart.BindInt(18, chart->lwt);
+				addChart.BindInt(1, chart->folderId);
+				addChart.BindString(2, chart->path);
+				addChart.BindString(3, chart->title);
+				addChart.BindString(4, chart->artist);
+				addChart.BindString(5, chart->title_translit);
+				addChart.BindString(6, chart->artist_translit);
+				addChart.BindString(7, chart->jacket_path);
+				addChart.BindString(8, chart->effector);
+				addChart.BindString(9, chart->illustrator);
+				addChart.BindString(10, chart->diff_name);
+				addChart.BindString(11, chart->diff_shortname);
+				addChart.BindString(12, chart->bpm);
+				addChart.BindInt(13, chart->diff_index);
+				addChart.BindInt(14, chart->level);
+				addChart.BindString(15, chart->hash);
+				addChart.BindString(16, chart->preview_file);
+				addChart.BindInt(17, chart->preview_offset);
+				addChart.BindInt(18, chart->preview_length);
+				addChart.BindInt(19, chart->lwt);
 
 				addChart.Step();
 				addChart.Rewind();
@@ -578,12 +579,20 @@ public:
 
 	void AddScore(const ChartIndex& chart, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,hitstats,timestamp,diffid) VALUES(?,?,?,?,?,?,?,?,?)");
-		Buffer hitstats;
-		MemoryWriter hitstatWriter(hitstats);
-		hitstatWriter.SerializeObject(simpleHitStats);
+		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash) VALUES(?,?,?,?,?,?,?,?,?)");
+		Path::CreateDir(Path::Absolute("replays/" + chart.hash));
+		String replayPath = Path::Normalize(Path::Absolute( "replays/" + chart.hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+		File replayFile;
+		
+		if (replayFile.OpenWrite(replayPath))
+		{
+			FileWriter fw(replayFile);
+			fw.SerializeObject(simpleHitStats);
+		}
 
 		m_database.Exec("BEGIN");
+
+		
 
 		addScore.BindInt(1, score);
 		addScore.BindInt(2, crit);
@@ -591,9 +600,9 @@ public:
 		addScore.BindInt(4, miss);
 		addScore.BindDouble(5, gauge);
 		addScore.BindInt(6, gameflags);
-		addScore.BindBlob(7, hitstats);
+		addScore.BindString(7, replayPath);
 		addScore.BindInt64(8, timestamp);
-		addScore.BindInt(9, chart.id);
+		addScore.BindString(9, chart.hash);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -707,7 +716,7 @@ private:
 		m_CleanupMapIndex();
 
 		// Select Maps
-		DBStatement mapScan = m_database.Query("SELECT rowid,path FROM Folders");
+		DBStatement mapScan = m_database.Query("SELECT rowid, path FROM Folders");
 		while(mapScan.StepRow())
 		{
 			FolderIndex* folder = new FolderIndex();
@@ -726,7 +735,7 @@ private:
 			",title"
 			",artist"
 			",title_translit"
-			",artist_translt"
+			",artist_translit"
 			",jacket_path"
 			",effector"
 			",illustrator"
@@ -740,7 +749,7 @@ private:
 			",preview_offset"
 			",preview_length"
 			",lwt "
-			"FROM Difficulties");
+			"FROM Charts");
 		while(chartScan.StepRow())
 		{
 			ChartIndex* chart = new ChartIndex();
@@ -929,42 +938,30 @@ private:
 						mapValid = true;
 					}
 				}
+				fileStream.Seek(0);
 
 				if(mapValid)
 				{
 					evt.mapData = new BeatmapSettings(map.GetMapSettings());
 
-					ProfilerScope $("Chart Database - Hash Chart Audio");
+					ProfilerScope $("Chart Database - Hash Chart");
+					char data_buffer[0x80];
+					uint32_t digest[5];
+					sha1::SHA1 s;
 
-					// TODO should we cache maps here for when the same file is used 3 times?
-					const String audioFile = Path::Normalize(Path::RemoveLast(f.first) + Path::sep + evt.mapData->audioNoFX);
-
-					File audioFileStream;
-					if (audioFileStream.OpenRead(audioFile))
+					size_t amount_read = 0;
+					size_t read_size;
+					do
 					{
-						char data_buffer[0x8000];
-						uint32_t digest[5];
-						sha1::SHA1 s;
-
-						size_t amount_read = 0;
-						size_t read_size;
-						do
-						{
-							read_size = audioFileStream.Read(data_buffer + amount_read, sizeof(data_buffer) - amount_read);
-							amount_read += read_size;
-						}
-						while (amount_read < sizeof(data_buffer) && read_size != 0);
+						read_size = fileStream.Read(data_buffer, sizeof(data_buffer));
+						amount_read += read_size;
+						s.processBytes(data_buffer, read_size);
+					}
+					while (read_size != 0);
 						
-						s.processBytes(data_buffer, amount_read);
-						s.getDigest(digest);
+					s.getDigest(digest);
 
-						evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
-					}
-					else
-					{
-						// If we can't open the file, the map isn't going to work, so remove it
-						mapValid = false;
-					}
+					evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 				}
 
 				if (!mapValid)

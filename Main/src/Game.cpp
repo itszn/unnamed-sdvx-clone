@@ -318,12 +318,12 @@ public:
 		// Load replays
 		for (ScoreIndex* score : m_chartIndex.scores)
 		{
-			m_scoreReplays[score] = ScoreReplay();
-			m_scoreReplays[score].maxScore = score->score;
 			File replayFile;
 			if (replayFile.OpenRead(score->replayPath)) {
+				ScoreReplay& replay = m_scoreReplays.Add(score, ScoreReplay());
+				replay.maxScore = score->score;
 				FileReader replayReader(replayFile);
-				replayReader.SerializeObject(m_scoreReplays[score].replay);
+				replayReader.SerializeObject(replay.replay);
 			}
 		}
 

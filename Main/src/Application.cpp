@@ -787,6 +787,7 @@ bool Application::m_Init()
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));
 	Path::CreateDir(Path::Absolute("songs"));
+	Path::CreateDir(Path::Absolute("replays"));
 
 	return true;
 }
