@@ -163,28 +163,60 @@ void ChatOverlay::m_drawWindow()
 		return;
 	}
 
+	struct nk_vec2 chat_box_pos = nk_widget_position(m_nctx);
+
 	nk_layout_set_min_row_height(m_nctx, 20);
-	float box_height = nk_window_get_height(m_nctx) - 110;
-	nk_layout_row_dynamic(m_nctx, box_height, 1);
+	float chat_box_height = nk_window_get_height(m_nctx) - 110;
+	float chat_box_width = nk_window_get_width(m_nctx) - 60;
+
+	nk_layout_row_dynamic(m_nctx, chat_box_height, 1);
 
 	if (nk_group_scrolled_begin(m_nctx, &m_chatScroll, "Chatbox", NK_WINDOW_BORDER)) {
 
-		struct nk_vec2 start_pos = nk_widget_position(m_nctx);
+		struct nk_vec2 scroll_start_pos = nk_widget_position(m_nctx);
 
 		nk_layout_row_dynamic(m_nctx, 30, 1);
 
+		const struct nk_user_font *font = m_nctx->style.font;
+
 		for(auto v : m_messages) {
 			const char* s = v.first.c_str();
-			nk_text_colored(m_nctx, s, strlen(s), NK_LEFT, v.second);
+
+			// Try to wrap text if needed
+			int textEnd = 0;
+			int maxlen = 0;
+			do
+			{
+				maxlen = strlen(s);
+				textEnd = maxlen;
+
+				// We are going to try to find the max length that fits
+				while(
+					font->width(font->userdata, font->height, s, textEnd) > chat_box_width
+					&& textEnd > 1)
+				{
+					// Decrease the size until it fits
+					textEnd--;
+				}
+
+				// Draw that part of the text
+				nk_text_colored(m_nctx, s, textEnd, NK_LEFT, v.second);
+
+				// Render the rest if there is more
+				s += textEnd;
+			} while( textEnd < maxlen);
 		}
 		
-		struct nk_vec2 end_pos = nk_widget_position(m_nctx);
+		struct nk_vec2 scroll_end_pos = nk_widget_position(m_nctx);
 		if (m_newMessages > 0 || m_forceToBottom)
 		{
-			float end_pos_rel = end_pos.y - box_height;
-			if (end_pos_rel < 250 || m_forceToBottom)
+			// TODO this is broken atm
+			float scroll_height = scroll_end_pos.y - scroll_start_pos.y;
+			float bottom_rel = scroll_end_pos.y - chat_box_height - chat_box_pos.y;
+			printf("%f %f\n", scroll_height, bottom_rel);
+			if (bottom_rel < 200 || m_forceToBottom)
 			{
-				m_chatScroll.y = end_pos.y - start_pos.y;
+				m_chatScroll.y = scroll_height;
 			}
 			m_newMessages = 0;
 			m_forceToBottom = false;
@@ -206,6 +238,16 @@ void ChatOverlay::m_drawWindow()
 	if (!m_inEdit && isFocused)
 	{
 		SDL_StartTextInput();
+
+		SDL_Rect boxrect;
+
+		struct nk_vec2 textBoxPos = nk_widget_position(m_nctx);
+		boxrect.x = textBoxPos.x;
+		boxrect.y = textBoxPos.y;
+		boxrect.w = chat_box_width;
+		boxrect.h = 40;
+
+		SDL_SetTextInputRect(&boxrect);
 	}
 	if (m_inEdit && !isFocused)
 	{
