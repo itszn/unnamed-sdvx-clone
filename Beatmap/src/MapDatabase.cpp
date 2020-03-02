@@ -24,11 +24,12 @@ public:
 	Set<String> m_searchPaths;
 	Database m_database;
 
-	Map<int32, MapIndex*> m_maps;
-	Map<int32, DifficultyIndex*> m_difficulties;
-	Map<String, MapIndex*> m_mapsByPath;
-	int32 m_nextMapId = 1;
-	int32 m_nextDiffId = 1;
+	Map<int32, FolderIndex*> m_folders;
+	Map<int32, ChartIndex*> m_charts;
+	Map<String, ChartIndex*> m_chartsByHash;
+	Map<String, FolderIndex*> m_foldersByPath;
+	int32 m_nextFolderId = 1;
+	int32 m_nextChartId = 1;
 	String m_sortField = "title";
 
 	struct SearchState
@@ -226,31 +227,31 @@ public:
 		return std::move(changes);
 	}
 
-	Map<int32, MapIndex*> FindMapsByHash(const String& hash)
+	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash)
 	{
 		String stmt = "SELECT DISTINCT Maps.rowid FROM Maps INNER JOIN Difficulties ON Maps.rowid = Difficulties.mapid "
-					  "WHERE Difficulties.hash = ?";
+					  "WHERE Difficulties.hash = ?"; //TODO: Update command
 		DBStatement search = m_database.Query(stmt);
 		search.BindString(1, hash);
 
-		Map<int32, MapIndex*> res;
+		Map<int32, FolderIndex*> res;
 		while (search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
-			MapIndex** map = m_maps.Find(id);
-			if (map)
+			FolderIndex** folder = m_folders.Find(id);
+			if (folder)
 			{
-				res.Add(id, *map);
+				res.Add(id, *folder);
 			}
 		}
 
 		return res;
 	}
 	
-	Map<int32, MapIndex*> FindMaps(const String& searchString)
+	Map<int32, FolderIndex*> FindFolders(const String& searchString)
 	{
 		WString test = Utility::ConvertToWString(searchString);
-		String stmt = "SELECT rowid FROM Maps WHERE";
+		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE";
 
 		//search.spl
 		Vector<String> terms = searchString.Explode(" ");
@@ -262,19 +263,20 @@ public:
 			stmt += " (artist LIKE \"%" + term + "%\"" + 
 				" OR title LIKE \"%" + term + "%\"" +
 				" OR path LIKE \"%" + term + "%\"" +
-				" OR tags LIKE \"%" + term + "%\")";
+				" OR artist_translit LIKE \"%" + term + "%\"" +
+				" OR title_translit LIKE \"%" + term + "%\")";
 			i++;
 		}
 
-		Map<int32, MapIndex*> res;
+		Map<int32, FolderIndex*> res;
 		DBStatement search = m_database.Query(stmt);
 		while(search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
-			MapIndex** map = m_maps.Find(id);
-			if(map)
+			FolderIndex** folder = m_folders.Find(id);
+			if(folder)
 			{
-				res.Add(id, *map);
+				res.Add(id, *folder);
 			}
 		}
 
@@ -304,19 +306,19 @@ public:
 		return res;
 	}
 
-	Map<int32, MapIndex*> FindMapsByCollection(const String& collection)
+	Map<int32, FolderIndex*> FindFoldersByCollection(const String& collection)
 	{
-		String stmt = Utility::Sprintf("SELECT mapid FROM Collections WHERE collection==\"%s\"", collection);
+		String stmt = Utility::Sprintf("SELECT folderid FROM Collections WHERE collection==\"%s\"", collection);
 
-		Map<int32, MapIndex*> res;
+		Map<int32, FolderIndex*> res;
 		DBStatement search = m_database.Query(stmt);
 		while (search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
-			MapIndex** map = m_maps.Find(id);
-			if (map)
+			FolderIndex** folder = m_folders.Find(id);
+			if (folder)
 			{
-				res.Add(id, *map);
+				res.Add(id, *folder);
 			}
 		}
 
@@ -324,23 +326,23 @@ public:
 	}
 
 
-	Map<int32, MapIndex*> FindMapsByFolder(const String& folder)
+	Map<int32, FolderIndex*> FindFoldersByFolder(const String& folder)
 	{
 		char csep[2];
 		csep[0] = Path::sep;
 		csep[1] = 0;
 		String sep(csep);
-		String stmt = "SELECT rowid FROM Maps WHERE path LIKE \"%" + sep + folder + sep + "%\"";
+		String stmt = "SELECT rowid FROM folders WHERE path LIKE \"%" + sep + folder + sep + "%\"";
 
-		Map<int32, MapIndex*> res;
+		Map<int32, FolderIndex*> res;
 		DBStatement search = m_database.Query(stmt);
 		while (search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
-			MapIndex** map = m_maps.Find(id);
-			if (map)
+			FolderIndex** folder = m_folders.Find(id);
+			if (folder)
 			{
-				res.Add(id, *map);
+				res.Add(id, *folder);
 			}
 		}
 
@@ -353,154 +355,178 @@ public:
 		if(changes.empty())
 			return;
 
-		DBStatement addDiff = m_database.Query("INSERT INTO Difficulties(path,lwt,metadata,rowid,mapid,hash) VALUES(?,?,?,?,?,?)");
-		DBStatement addMap = m_database.Query("INSERT INTO Maps(path,artist,title,tags,rowid) VALUES(?,?,?,?,?)");
+		DBStatement addChart = m_database.Query("INSERT INTO Charts("
+			"folderId,path,title,artist,title_translit,artist_translt,jacket_path,effector,illustrator,"
+			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
+			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+		DBStatement addFolder = m_database.Query("INSERT INTO Maps(path) VALUES(?)");
 		DBStatement update = m_database.Query("UPDATE Difficulties SET lwt=?,metadata=?,hash=? WHERE rowid=?");
-		DBStatement removeDiff = m_database.Query("DELETE FROM Difficulties WHERE rowid=?");
-		DBStatement removeMap = m_database.Query("DELETE FROM Maps WHERE rowid=?");
+		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
+		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 
-		Set<MapIndex*> addedEvents;
-		Set<MapIndex*> removeEvents;
-		Set<MapIndex*> updatedEvents;
+		Set<FolderIndex*> addedEvents;
+		Set<FolderIndex*> removeEvents;
+		Set<FolderIndex*> updatedEvents;
 
 		m_database.Exec("BEGIN");
 		for(Event& e : changes)
 		{
 			if(e.action == Event::Added)
 			{
-				Buffer metadata;
-				MemoryWriter metadataWriter(metadata);
-				metadataWriter.SerializeObject(*e.mapData);
-
-				String mapPath = Path::RemoveLast(e.path, nullptr);
+				String folderPath = Path::RemoveLast(e.path, nullptr);
 				bool existingUpdated;
-				MapIndex* map;
+				FolderIndex* folder;
 
-				// Add or get map
-				auto mapIt = m_mapsByPath.find(mapPath);
-				if(mapIt == m_mapsByPath.end())
+				// Add or get folder
+				auto folderIt = m_foldersByPath.find(folderPath);
+				if(folderIt == m_foldersByPath.end())
 				{
-					// Add map
-					map = new MapIndex();
-					map->id = m_nextMapId++;
-					map->path = mapPath;
-					map->selectId = m_maps.size();
+					// Add folder
+					folder = new FolderIndex();
+					folder->id = m_nextFolderId++;
+					folder->path = folderPath;
+					folder->selectId = m_folders.size();
 
-					m_maps.Add(map->id, map);
-					m_mapsByPath.Add(map->path, map);
+					m_folders.Add(folder->id, folder);
+					m_foldersByPath.Add(folder->path, folder);
 
-					addMap.BindString(1, map->path);
-					addMap.BindString(2, e.mapData->artist);
-					addMap.BindString(3, e.mapData->title);
-					addMap.BindString(4, e.mapData->tags);
-					addMap.BindInt(5, map->id);
-					addMap.Step();
-					addMap.Rewind();
+					addFolder.BindString(1, folder->path);
+					addFolder.Step();
+					addFolder.Rewind();
 
-					existingUpdated = false; // New map
+					existingUpdated = false; // New folder
 				}
 				else
 				{
-					map = mapIt->second;
-					existingUpdated = true; // Existing map
+					folder = folderIt->second;
+					existingUpdated = true; // Existing folder
 				}
 
-				DifficultyIndex* diff = new DifficultyIndex();
-				diff->id = m_nextDiffId++;
-				diff->lwt = e.lwt;
-				diff->mapId = map->id;
-				diff->path = e.path;
-				diff->settings = *e.mapData;
-				diff->hash = e.hash;
-				m_difficulties.Add(diff->id, diff);
+				const String diffShortNames[4] = { "NOV", "ADV", "EXH", "INF" };
+				const String diffNames[4] = { "Novice", "Advanced", "Exhaust", "Infinite" };
 
+				ChartIndex* chart = new ChartIndex();
+				chart->id = m_nextChartId++;
+				chart->lwt = e.lwt;
+				chart->folderId = folder->id;
+				chart->path = e.path;
+				chart->title = e.mapData->title;
+				chart->artist = e.mapData->artist;
+				chart->level = e.mapData->level;
+				chart->effector = e.mapData->effector;
+				chart->preview_file = e.mapData->audioNoFX;
+				chart->preview_offset = e.mapData->previewOffset;
+				chart->preview_length = e.mapData->previewDuration;
+				chart->diff_index = e.mapData->difficulty;
+				chart->diff_name = diffNames[e.mapData->difficulty];
+				chart->diff_shortname = diffShortNames[e.mapData->difficulty];
+				chart->bpm = e.mapData->bpm;
+				chart->illustrator = e.mapData->illustrator;
+				chart->jacket_path = e.mapData->jacketPath;
+				chart->hash = e.hash;
+				m_charts.Add(chart->id, chart);
+				m_chartsByHash.Add(chart->hash, chart);
 				// Add diff to map and resort
-				map->difficulties.Add(diff);
-				m_SortDifficulties(map);
+				folder->charts.Add(chart);
+				m_SortCharts(folder);
 
-				// Add Diff
-				addDiff.BindString(1, diff->path);
-				addDiff.BindInt64(2, diff->lwt);
-				addDiff.BindBlob(3, metadata);
-				addDiff.BindInt64(4, diff->id); // rowid
-				addDiff.BindInt64(5, diff->mapId); // mapid
-				addDiff.BindString(6, diff->hash);
-				addDiff.Step();
-				addDiff.Rewind();
+				// Add Chart
+				addChart.BindInt(0, chart->folderId);
+				addChart.BindString(1, chart->path);
+				addChart.BindString(2, chart->title);
+				addChart.BindString(3, chart->artist);
+				addChart.BindString(4, chart->title_translit);
+				addChart.BindString(5, chart->artist_translit);
+				addChart.BindString(6, chart->jacket_path);
+				addChart.BindString(7, chart->effector);
+				addChart.BindString(8, chart->illustrator);
+				addChart.BindString(9, chart->diff_name);
+				addChart.BindString(10, chart->diff_shortname);
+				addChart.BindString(11, chart->bpm);
+				addChart.BindInt(12, chart->diff_index);
+				addChart.BindInt(13, chart->level);
+				addChart.BindString(14, chart->hash);
+				addChart.BindString(15, chart->preview_file);
+				addChart.BindInt(16, chart->preview_offset);
+				addChart.BindInt(17, chart->preview_length);
+				addChart.BindInt(18, chart->lwt);
+
+				addChart.Step();
+				addChart.Rewind();
 
 				// Send appropriate notification
 				if(existingUpdated)
 				{
-					updatedEvents.Add(map);
+					updatedEvents.Add(folder);
 				}
 				else
 				{
-					addedEvents.Add(map);
+					addedEvents.Add(folder);
 				}
 			}
 			else if(e.action == Event::Updated)
 			{
-				Buffer metadata;
-				MemoryWriter metadataWriter(metadata);
-				metadataWriter.SerializeObject(*e.mapData);
+				//Buffer metadata;
+				//MemoryWriter metadataWriter(metadata);
+				//metadataWriter.SerializeObject(*e.mapData);
 
-				update.BindInt64(1, e.lwt);
-				update.BindBlob(2, metadata);
-				update.BindString(3, e.hash);
-				update.BindInt(4, e.id);
-				update.Step();
-				update.Rewind();
-				
-				auto itDiff = m_difficulties.find(e.id);
-				assert(itDiff != m_difficulties.end());
+				//update.BindInt64(1, e.lwt);
+				//update.BindBlob(2, metadata);
+				//update.BindString(3, e.hash);
+				//update.BindInt(4, e.id);
+				//update.Step();
+				//update.Rewind();
+				//
+				//auto itDiff = m_difficulties.find(e.id);
+				//assert(itDiff != m_difficulties.end());
 
-				itDiff->second->lwt = e.lwt;
-				itDiff->second->settings = *e.mapData;
-				itDiff->second->hash = e.hash;
+				//itDiff->second->lwt = e.lwt;
+				//itDiff->second->settings = *e.mapData;
+				//itDiff->second->hash = e.hash;
 
-				auto itMap = m_maps.find(itDiff->second->mapId);
-				assert(itMap != m_maps.end());
+				//auto itMap = m_maps.find(itDiff->second->mapId);
+				//assert(itMap != m_maps.end());
 
-				// Send notification
-				updatedEvents.Add(itMap->second);
+				//// Send notification
+				//updatedEvents.Add(itMap->second);
 			}
 			else if(e.action == Event::Removed)
 			{
-				auto itDiff = m_difficulties.find(e.id);
-				assert(itDiff != m_difficulties.end());
+				auto itChart = m_charts.find(e.id);
+				assert(itChart != m_charts.end());
 
-				auto itMap = m_maps.find(itDiff->second->mapId);
-				assert(itMap != m_maps.end());
+				auto itFolder = m_folders.find(itChart->second->folderId);
+				assert(itFolder != m_folders.end());
 
-				itMap->second->difficulties.Remove(itDiff->second);
+				itFolder->second->charts.Remove(itChart->second);
 
-				for (auto s : itDiff->second->scores)
+				for (auto s : itChart->second->scores)
 				{
 					delete s;
 				}
-				itDiff->second->scores.clear();
-				delete itDiff->second;
-				m_difficulties.erase(e.id);
+				itChart->second->scores.clear();
+				delete itChart->second;
+				m_charts.erase(e.id);
 
 				// Remove diff in db
-				removeDiff.BindInt(1, e.id);
-				removeDiff.Step();
-				removeDiff.Rewind();
+				removeChart.BindInt(1, e.id);
+				removeChart.Step();
+				removeChart.Rewind();
 
-				if(itMap->second->difficulties.empty()) // Remove map as well
+				if(itFolder->second->charts.empty()) // Remove map as well
 				{
-					removeEvents.Add(itMap->second);
+					removeEvents.Add(itFolder->second);
 
-					removeMap.BindInt(1, itMap->first);
-					removeMap.Step();
-					removeMap.Rewind();
+					removeFolder.BindInt(1, itFolder->first);
+					removeFolder.Step();
+					removeFolder.Rewind();
 
-					m_mapsByPath.erase(itMap->second->path);
-					m_maps.erase(itMap);
+					m_foldersByPath.erase(itFolder->second->path);
+					m_folders.erase(itFolder);
 				}
 				else
 				{
-					updatedEvents.Add(itMap->second);
+					updatedEvents.Add(itFolder->second);
 				}
 			}
 			if(e.mapData)
@@ -511,7 +537,7 @@ public:
 		// Fire events
 		if(!removeEvents.empty())
 		{
-			Vector<MapIndex*> eventsArray;
+			Vector<FolderIndex*> eventsArray;
 			for(auto i : removeEvents)
 			{
 				// Don't send 'updated' or 'added' events for removed maps
@@ -520,7 +546,7 @@ public:
 				eventsArray.Add(i);
 			}
 
-			m_outer.OnMapsRemoved.Call(eventsArray);
+			m_outer.OnFoldersRemoved.Call(eventsArray);
 			for(auto e : eventsArray)
 			{
 				delete e;
@@ -528,7 +554,7 @@ public:
 		}
 		if(!addedEvents.empty())
 		{
-			Vector<MapIndex*> eventsArray;
+			Vector<FolderIndex*> eventsArray;
 			for(auto i : addedEvents)
 			{
 				// Don't send 'updated' events for added maps
@@ -536,17 +562,17 @@ public:
 				eventsArray.Add(i);
 			}
 
-			m_outer.OnMapsAdded.Call(eventsArray);
+			m_outer.OnFoldersAdded.Call(eventsArray);
 		}
 		if(!updatedEvents.empty())
 		{
-			Vector<MapIndex*> eventsArray;
+			Vector<FolderIndex*> eventsArray;
 			for(auto i : updatedEvents)
 			{
 				eventsArray.Add(i);
 			}
 
-			m_outer.OnMapsUpdated.Call(eventsArray);
+			m_outer.OnFoldersUpdated.Call(eventsArray);
 		}
 	}
 
@@ -595,10 +621,10 @@ public:
 		}
 	}
 
-	DifficultyIndex* GetRandomDiff()
+	ChartIndex* GetRandomChart()
 	{
-		auto it = m_difficulties.begin();
-		uint32 selection = Random::IntRange(0, (int32)m_difficulties.size() - 1);
+		auto it = m_charts.begin();
+		uint32 selection = Random::IntRange(0, (int32)m_charts.size() - 1);
 		std::advance(it, selection);
 		return it->second;
 	}
@@ -606,44 +632,69 @@ public:
 private:
 	void m_CleanupMapIndex()
 	{
-		for(auto m : m_maps)
+		for(auto m : m_folders)
 		{
 			delete m.second;
 		}
-		for(auto m : m_difficulties)
+		for(auto m : m_charts)
 		{
 			for (auto s : m.second->scores)
 			{
-				s->hitStats.clear();
 				delete s;
 			}
 			m.second->scores.clear();
 			delete m.second;
 		}
-		m_maps.clear();
-		m_difficulties.clear();
+		m_folders.clear();
+		m_charts.clear();
 	}
 	void m_CreateTables()
 	{
-		m_database.Exec("DROP TABLE IF EXISTS Maps");
+		m_database.Exec("DROP TABLE IF EXISTS Folders");
 		m_database.Exec("DROP TABLE IF EXISTS Difficulties");
 		m_database.Exec("DROP TABLE IF EXISTS Scores");
+		m_database.Exec("DROP TABLE IF EXISTS Collections");
 
-		m_database.Exec("CREATE TABLE Maps"
-			"(artist TEXT, title TEXT, tags TEXT, path TEXT)");
+		m_database.Exec("CREATE TABLE Folders"
+			"(path TEXT)");
 
-		m_database.Exec("CREATE TABLE Difficulties"
-			"(metadata BLOB, path TEXT, lwt INTEGER, mapid INTEGER, hash TEXT, "
-			"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
+		m_database.Exec("CREATE TABLE Charts"
+			"(folderid INTEGER,"
+			"title TEXT,"
+			"artist TEXT,"
+			"title_translit TEXT,"
+			"artist_translit TEXT,"
+			"jacket_path TEXT,"
+			"effector TEXT,"
+			"illustrator TEXT,"
+			"diff_name TEXT,"
+			"diff_shortname TEXT,"
+			"path TEXT,"
+			"bpm TEXT,"
+			"diff_index INTEGER,"
+			"level INTEGER,"
+			"preview_offset INTEGER,"
+			"preview_length INTEGER,"
+			"lwt INTEGER,"
+			"hash TEXT,"
+			"preview_file TEXT,"
+			"FOREIGN KEY(folderid) REFERENCES folders(rowid))");
 
 		m_database.Exec("CREATE TABLE Scores"
-			"(score INTEGER, crit INTEGER, near INTEGER, miss INTEGER, gauge REAL, gameflags INTEGER, diffid INTEGER, hitstats BLOB, timestamp INTEGER, "
-			"FOREIGN KEY(diffid) REFERENCES Difficulties(rowid))");
+			"(score INTEGER,"
+			"crit INTEGER,"
+			"near INTEGER,"
+			"miss INTEGER,"
+			"gauge REAL,"
+			"gameflags INTEGER,"
+			"timestamp INTEGER,"
+			"replay TEXT,"
+			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"
-			"(collection TEXT, mapid INTEGER, "
-			"UNIQUE(collection,mapid), "
-			"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
+			"(collection TEXT, folderid INTEGER, "
+			"UNIQUE(collection,folderid), "
+			"FOREIGN KEY(folderid) REFERENCES Folders(rowid))");
 	}
 	void m_LoadInitialData()
 	{
@@ -656,57 +707,90 @@ private:
 		m_CleanupMapIndex();
 
 		// Select Maps
-		DBStatement mapScan = m_database.Query("SELECT rowid,path FROM Maps ORDER BY " + m_sortField + " COLLATE NOCASE");
+		DBStatement mapScan = m_database.Query("SELECT rowid,path FROM Folders");
 		while(mapScan.StepRow())
 		{
-			MapIndex* map = new MapIndex();
-			map->id = mapScan.IntColumn(0);
-			map->path = mapScan.StringColumn(1);
-			map->selectId = m_maps.size();
-			m_maps.Add(map->id, map);
-			m_mapsByPath.Add(map->path, map);
+			FolderIndex* folder = new FolderIndex();
+			folder->id = mapScan.IntColumn(0);
+			folder->path = mapScan.StringColumn(1);
+			folder->selectId = m_folders.size();
+			m_folders.Add(folder->id, folder);
+			m_foldersByPath.Add(folder->path, folder);
 		}
-		m_nextMapId = m_maps.empty() ? 1 : (m_maps.rbegin()->first + 1);
+		m_nextFolderId = m_folders.empty() ? 1 : (m_folders.rbegin()->first + 1);
 
 		// Select Difficulties
-		DBStatement diffScan = m_database.Query("SELECT rowid,path,lwt,metadata,mapid,hash FROM Difficulties");
-		while(diffScan.StepRow())
+		DBStatement chartScan = m_database.Query("SELECT rowid"
+			",folderId"
+			",path"
+			",title"
+			",artist"
+			",title_translit"
+			",artist_translt"
+			",jacket_path"
+			",effector"
+			",illustrator"
+			",diff_name"
+			",diff_shortname"
+			",bpm"
+			",diff_index"
+			",level"
+			",hash"
+			",preview_file"
+			",preview_offset"
+			",preview_length"
+			",lwt "
+			"FROM Difficulties");
+		while(chartScan.StepRow())
 		{
-			DifficultyIndex* diff = new DifficultyIndex();
-			diff->id = diffScan.IntColumn(0);
-			diff->path = diffScan.StringColumn(1);
-			diff->lwt = diffScan.Int64Column(2);
-			Buffer metadata = diffScan.BlobColumn(3);
-			diff->mapId = diffScan.IntColumn(4);
-			MemoryReader metadataReader(metadata);
-			metadataReader.SerializeObject(diff->settings);
-			diff->hash = diffScan.StringColumnEmptyOnNull(5);
+			ChartIndex* chart = new ChartIndex();
+			chart->id = chartScan.IntColumn(0);
+			chart->folderId = chartScan.IntColumn(1);
+			chart->path = chartScan.StringColumn(2);
+			chart->title = chartScan.StringColumn(3);
+			chart->artist = chartScan.StringColumn(4);
+			chart->title_translit = chartScan.StringColumn(5);
+			chart->artist_translit = chartScan.StringColumn(6);
+			chart->jacket_path = chartScan.StringColumn(7);
+			chart->effector = chartScan.StringColumn(8);
+			chart->illustrator = chartScan.StringColumn(9);
+			chart->diff_name = chartScan.StringColumn(10);
+			chart->diff_shortname = chartScan.StringColumn(11);
+			chart->bpm = chartScan.StringColumn(12);
+			chart->diff_index = chartScan.IntColumn(13);
+			chart->level = chartScan.IntColumn(14);
+			chart->hash = chartScan.StringColumn(15);
+			chart->preview_file = chartScan.StringColumn(16);
+			chart->preview_offset = chartScan.IntColumn(17);
+			chart->preview_length = chartScan.IntColumn(18);
+			chart->lwt = chartScan.IntColumn(19);
 
 			// Add existing diff
-			m_difficulties.Add(diff->id, diff);
+			m_charts.Add(chart->id, chart);
+			m_chartsByHash.Add(chart->hash, chart);
 
 			// Add difficulty to map and resort difficulties
-			auto mapIt = m_maps.find(diff->mapId);
-			assert(mapIt != m_maps.end());
-			mapIt->second->difficulties.Add(diff);
-			m_SortDifficulties(mapIt->second);
+			auto folderIt = m_folders.find(chart->folderId);
+			assert(folderIt != m_folders.end());
+			folderIt->second->charts.Add(chart);
+			m_SortCharts(folderIt->second);
 
 			// Add to search state
 			SearchState::ExistingDifficulty ed;
-			ed.id = diff->id;
-			if (diff->hash.length() == 0)
+			ed.id = chart->id;
+			if (chart->hash.length() == 0)
 			{
 				ed.lwt = 0;
 			}
 			else {
-				ed.lwt = diff->lwt;
+				ed.lwt = chart->lwt;
 
 			}
-			m_searchState.difficulties.Add(diff->path, ed);
+			m_searchState.difficulties.Add(chart->path, ed);
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,hitstats,timestamp,diffid FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -718,20 +802,15 @@ private:
 			score->miss = scoreScan.IntColumn(4);
 			score->gauge = scoreScan.DoubleColumn(5);
 			score->gameflags = scoreScan.IntColumn(6);
-
-			Buffer hitstats = scoreScan.BlobColumn(7);
-			MemoryReader hitstatreader(hitstats);
-			if(hitstats.size() > 0)
-				hitstatreader.SerializeObject(score->hitStats);
+			score->replayPath = scoreScan.StringColumn(7);
 
 			score->timestamp = scoreScan.Int64Column(8);
-			score->diffid = scoreScan.IntColumn(9);
+			score->chartHash = scoreScan.StringColumn(9);
 
 			// Add difficulty to map and resort difficulties
-			auto diffIt = m_difficulties.find(score->diffid);
-			if (diffIt == m_difficulties.end()) // If for whatever reason the diff that the score is attatched to is not in the db, ignore the score.
+			auto diffIt = m_chartsByHash.find(score->chartHash);
+			if (diffIt == m_chartsByHash.end()) // If for whatever reason the diff that the score is attatched to is not in the db, ignore the score.
 			{
-				score->hitStats.clear();
 				delete score;
 				continue;
 			}
@@ -742,19 +821,19 @@ private:
 
 
 
-		m_nextDiffId = m_difficulties.empty() ? 1 : (m_difficulties.rbegin()->first + 1);
-
-		m_outer.OnMapsCleared.Call(m_maps);
+		m_outer.OnFoldersCleared.Call(m_folders);
 	}
-	void m_SortDifficulties(MapIndex* mapIndex)
+	void m_SortCharts(FolderIndex* folderIndex)
 	{
-		mapIndex->difficulties.Sort([](DifficultyIndex* a, DifficultyIndex* b)
+		folderIndex->charts.Sort([](ChartIndex* a, ChartIndex* b)
 		{
-			return a->settings.difficulty < b->settings.difficulty;
+			if (a->diff_index == b->diff_index)
+				return a->level < b->level;
+			return a->diff_index < b->diff_index;
 		});
 	}
 
-	void m_SortScores(DifficultyIndex* diffIndex)
+	void m_SortScores(ChartIndex* diffIndex)
 	{
 		diffIndex->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
 		{
@@ -935,26 +1014,26 @@ void MapDatabase::StopSearching()
 {
 	m_impl->StopSearching();
 }
-Map<int32, MapIndex*> MapDatabase::FindMaps(const String& search)
+Map<int32, FolderIndex*> MapDatabase::FindFolders(const String& search)
 {
-	return m_impl->FindMaps(search);
+	return m_impl->FindFolders(search);
 }
-Map<int32, MapIndex*> MapDatabase::FindMapsByHash(const String& hash)
+Map<int32, FolderIndex*> MapDatabase::FindFoldersByHash(const String& hash)
 {
-	return m_impl->FindMapsByHash(hash);
+	return m_impl->FindFoldersByHash(hash);
 }
-Map<int32, MapIndex*> MapDatabase::FindMapsByFolder(const String & folder)
+Map<int32, FolderIndex*> MapDatabase::FindFoldersByFolder(const String & folder)
 {
-	return m_impl->FindMapsByFolder(folder);
+	return m_impl->FindFoldersByFolder(folder);
 }
-Map<int32, MapIndex*> MapDatabase::FindMapsByCollection(const String& category)
+Map<int32, FolderIndex*> MapDatabase::FindFoldersByCollection(const String& category)
 {
-	return m_impl->FindMapsByCollection(category);
+	return m_impl->FindFoldersByCollection(category);
 }
-MapIndex* MapDatabase::GetMap(int32 idx)
+FolderIndex* MapDatabase::GetFolder(int32 idx)
 {
-	MapIndex** mapIdx = m_impl->m_maps.Find(idx);
-	return mapIdx ? *mapIdx : nullptr;
+	FolderIndex** folderIdx = m_impl->m_folders.Find(idx);
+	return folderIdx ? *folderIdx : nullptr;
 }
 Vector<String> MapDatabase::GetCollections()
 {
@@ -980,7 +1059,7 @@ void MapDatabase::AddScore(const DifficultyIndex& diff, int score, int crit, int
 {
 	m_impl->AddScore(diff, score, crit, almost, miss, gauge, gameflags, simpleHitStats, timestamp);
 }
-DifficultyIndex* MapDatabase::GetRandomDiff()
+ChartIndex* MapDatabase::GetRandomChart()
 {
-	return m_impl->GetRandomDiff();
+	return m_impl->GetRandomChart();
 }
