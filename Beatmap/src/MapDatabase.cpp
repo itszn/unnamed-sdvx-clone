@@ -29,7 +29,8 @@ public:
 	Map<String, MapIndex*> m_mapsByPath;
 	int32 m_nextMapId = 1;
 	int32 m_nextDiffId = 1;
-	String m_sortField = "title";
+	String m_sortField = "artist";
+    String m_songQueryString = "";
 
 	struct SearchState
 	{
@@ -71,6 +72,8 @@ public:
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
 	{
+        SortByTitle(true);
+
 		String databasePath = Path::Absolute("maps.db");
 		if(!m_database.Open(databasePath))
 		{
@@ -154,6 +157,12 @@ public:
 				delete c.mapData;
 		}
 	}
+
+    void m_changeSort()
+    {
+        StopSearching();
+        StartSearching();
+    }
 
 	void StartSearching()
 	{
@@ -603,6 +612,45 @@ public:
 		return it->second;
 	}
 
+    void SortByTitle(bool ascending)
+    {
+        Logf("[Database] Sorting by title (ascending=%u)",Logger::Info,ascending);
+        String s =
+            "SELECT rowid,path FROM Maps ORDER BY title COLLATE NOCASE ";
+        if (!ascending)
+            s += "DESC;";
+        else
+            s += "ASC;";
+        m_songQueryString = s;
+        m_changeSort();
+    }
+
+    void SortByScore(bool ascending)
+    {
+        Logf("[Database] Sorting by score (ascending=%u)",Logger::Info,ascending);
+        String s = "select ms.rowid, ms.path FROM Maps ms LEFT JOIN (SELECT ds.mapid as mapid, maxscores.MaxScore as MaxScore FROM Difficulties ds INNER JOIN (SELECT diffid, MAX(score) as MaxScore FROM scores GROUP BY diffid) maxscores ON ds.rowid = maxscores.diffid) diffscores ON ms.rowid = diffscores.mapid ORDER BY diffscores.MaxScore ";
+        if (!ascending)
+            s += "DESC";
+        else
+            s += "ASC";
+        s += ", ms.title COLLATE NOCASE;";
+        m_songQueryString = s;
+        m_changeSort();
+    }
+
+    void SortByDate(bool ascending)
+    {
+        Logf("[Database] Sorting by date (ascending=%u)",Logger::Info,ascending);
+        String s = "select ms.rowid, ms.path FROM maps ms LEFT JOIN (SELECT mapid, MAX(lwt) as MaxTime FROM difficulties GROUP BY mapid) maxdiffs ON ms.rowid = maxdiffs.mapid ORDER BY maxdiffs.MaxTime ";
+        if (!ascending)
+            s += "DESC";
+        else
+            s += "ASC";
+        s += ", ms.title COLLATE NOCASE;";
+        m_songQueryString = s;
+        m_changeSort();
+    }
+
 private:
 	void m_CleanupMapIndex()
 	{
@@ -623,6 +671,8 @@ private:
 		m_maps.clear();
 		m_difficulties.clear();
 	}
+    
+
 	void m_CreateTables()
 	{
 		m_database.Exec("DROP TABLE IF EXISTS Maps");
@@ -655,8 +705,9 @@ private:
 		// Scan original maps
 		m_CleanupMapIndex();
 
-		// Select Maps
-		DBStatement mapScan = m_database.Query("SELECT rowid,path FROM Maps ORDER BY " + m_sortField + " COLLATE NOCASE");
+		// Select Maps With Sort
+		DBStatement mapScan = m_database.Query(m_songQueryString);
+
 		while(mapScan.StepRow())
 		{
 			MapIndex* map = new MapIndex();
@@ -934,6 +985,18 @@ void MapDatabase::StartSearching()
 void MapDatabase::StopSearching()
 {
 	m_impl->StopSearching();
+}
+void MapDatabase::SortByTitle(bool b)
+{
+	m_impl->SortByTitle(b);
+}
+void MapDatabase::SortByScore(bool b)
+{
+	m_impl->SortByScore(b);
+}
+void MapDatabase::SortByDate(bool b)
+{
+	m_impl->SortByDate(b);
 }
 Map<int32, MapIndex*> MapDatabase::FindMaps(const String& search)
 {

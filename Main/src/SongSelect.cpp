@@ -1079,6 +1079,16 @@ private:
 	lua_State* m_lua = nullptr;
 };
 
+enum SortType {
+    TITLE_ASC,
+    TITLE_DESC,
+    SCORE_ASC,
+    SCORE_DESC,
+    DATE_ASC,
+    DATE_DESC,
+    SORT_COUNT
+};
+
 /*
 	Song select window/screen
 */
@@ -1133,6 +1143,8 @@ private:
 	MultiplayerScreen* m_multiplayer = nullptr;
 	CollectionDialog m_collDiag;
 	bool m_hasCollDiag = false;
+
+    int m_sortType = 0;
 
 public:
 
@@ -1528,6 +1540,27 @@ public:
 			else if (key == SDLK_F2)
 			{
 				m_selectionWheel->SelectRandom();
+			}
+			else if (key == SDLK_F3)
+			{
+                m_sortType++;
+                if (m_sortType >= SortType::SORT_COUNT)
+                    m_sortType = SortType::TITLE_ASC;
+                switch (m_sortType)
+                {
+                    case SortType::TITLE_ASC:
+                    case SortType::TITLE_DESC:
+                        m_mapDatabase.SortByTitle(m_sortType==SortType::TITLE_ASC);
+                        break;
+                    case SortType::SCORE_ASC:
+                    case SortType::SCORE_DESC:
+                        m_mapDatabase.SortByScore(m_sortType==SortType::SCORE_ASC);
+                        break;
+                    case SortType::DATE_ASC:
+                    case SortType::DATE_DESC:
+                        m_mapDatabase.SortByDate(m_sortType==SortType::DATE_ASC);
+                        break;
+                }
 			}
 			else if (key == SDLK_F8) // start demo mode
 			{
