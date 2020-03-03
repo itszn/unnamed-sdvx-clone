@@ -299,7 +299,7 @@ public:
 	Vector<String> GetCollectionsForMap(int32 mapid)
 	{
 		Vector<String> res;
-		DBStatement search = m_database.Query(Utility::Sprintf("SELECT DISTINCT collection FROM collections WHERE mapid==%d", mapid));
+		DBStatement search = m_database.Query(Utility::Sprintf("SELECT DISTINCT collection FROM collections WHERE folderid==%d", mapid));
 		while (search.StepRow())
 		{
 			res.Add(search.StringColumn(0));
@@ -360,7 +360,7 @@ public:
 			"folderId,path,title,artist,title_translit,artist_translit,jacket_path,effector,illustrator,"
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path) VALUES(?)");
+		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path,rowid) VALUES(?,?)");
 		DBStatement update = m_database.Query("UPDATE Charts SET lwt=?,metadata=?,hash=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
@@ -392,6 +392,7 @@ public:
 					m_foldersByPath.Add(folder->path, folder);
 
 					addFolder.BindString(1, folder->path);
+					addFolder.BindInt(2, folder->id);
 					addFolder.Step();
 					addFolder.Rewind();
 
@@ -450,7 +451,7 @@ public:
 				addChart.BindString(16, chart->preview_file);
 				addChart.BindInt(17, chart->preview_offset);
 				addChart.BindInt(18, chart->preview_length);
-				addChart.BindInt(19, chart->lwt);
+				addChart.BindInt64(19, chart->lwt);
 
 				addChart.Step();
 				addChart.Rewind();
@@ -614,7 +615,7 @@ public:
 
 	void AddOrRemoveToCollection(const String& name, int32 mapid)
 	{
-		DBStatement addColl = m_database.Query("INSERT INTO Collections(mapid,collection) VALUES(?,?)");
+		DBStatement addColl = m_database.Query("INSERT INTO Collections(folderid,collection) VALUES(?,?)");
 		m_database.Exec("BEGIN");
 
 		addColl.BindInt(1, mapid);
@@ -773,7 +774,7 @@ private:
 			chart->preview_file = chartScan.StringColumn(16);
 			chart->preview_offset = chartScan.IntColumn(17);
 			chart->preview_length = chartScan.IntColumn(18);
-			chart->lwt = chartScan.IntColumn(19);
+			chart->lwt = chartScan.Int64Column(19);
 
 			// Add existing diff
 			m_charts.Add(chart->id, chart);

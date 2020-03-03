@@ -71,7 +71,7 @@ struct ChartIndex
 	String preview_file;
 	int32 preview_offset;
 	int32 preview_length;
-	int32 lwt;
+	uint64 lwt;
 	Vector<ScoreIndex*> scores;
 };
 
