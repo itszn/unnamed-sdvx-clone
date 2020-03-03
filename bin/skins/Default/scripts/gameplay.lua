@@ -306,7 +306,7 @@ end
 -- Utility function which returns the magnitude of an offset to center the    --
 --  crit line on the screen based on its position and rotation.               --
 function GetCritLineCenteringOffset()
-    return gameplay.critLine.xOffset * 10;
+    return gameplay.critLine.xOffset * 10
 end
 -- -------------------------------------------------------------------------- --
 -- render_crit_base:                                                          --
