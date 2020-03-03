@@ -16,6 +16,7 @@
 #include <mutex>
 #include <MultiplayerScreen.hpp>
 #include <unordered_set>
+#include "SongSort.hpp"
 
 
 class TextInput
@@ -204,7 +205,7 @@ class SelectionWheel
 	// keyed on SongSelectIndex::id
 	Map<int32, SongSelectIndex> m_maps;
 	Map<int32, SongSelectIndex> m_mapFilter;
-	Vector<int32> m_sortVec;
+	Vector<uint32> m_sortVec;
 	bool m_filterSet = false;
 	IApplicationTickable* m_owner;
 
@@ -225,6 +226,9 @@ class SelectionWheel
 	String m_lastStatus = "";
 	std::mutex m_lock;
 
+	// TODO(itszn) some gui for sorts
+	SongSort* m_currentSort;
+
 public:
 	SelectionWheel(IApplicationTickable* owner) : m_owner(owner)
 	{
@@ -234,6 +238,7 @@ public:
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/songwheel"));
 		lua_newtable(m_lua);
 		lua_setglobal(m_lua, "songwheel");
+		m_currentSort = new TitleSort("Title ^",true);
 		return true;
 	}
 	void ReloadScript()
@@ -462,6 +467,47 @@ public:
 	Delegate<MapIndex*> OnMapSelected;
 	Delegate<DifficultyIndex*> OnDifficultySelected;
 
+	SortType GetSortType() const
+	{
+		return m_currentSort->GetType();
+	}
+
+	// TODO(itszn) Sort GUI instead of hardcode
+	void SetSort(SortType type)
+	{
+		if (type == m_currentSort->GetType())
+			return;
+
+		delete m_currentSort;
+
+		switch(type)
+		{
+			case SortType::TITLE_ASC:
+				m_currentSort = new TitleSort("Title ^", false);
+				break;
+			case SortType::TITLE_DESC:
+				m_currentSort = new TitleSort("Title v", true);
+				break;
+			case SortType::SCORE_ASC:
+				m_currentSort = new ScoreSort("Score ^", false);
+				break;
+			case SortType::SCORE_DESC:
+				m_currentSort = new ScoreSort("Score v", true);
+				break;
+			case SortType::DATE_ASC:
+				m_currentSort = new DateSort("Date ^", false);
+				break;
+			case SortType::DATE_DESC:
+				m_currentSort = new DateSort("Date v", true);
+				break;
+			default:
+				assert(0);
+		}
+		m_doSort();
+		m_SetLuaMaps(false);
+		AdvanceSelection(0);
+	}
+
 	// Set display filter
 	void SetFilter(Map<int32, MapIndex *> filter)
 	{
@@ -566,8 +612,8 @@ public:
 private:
 	void m_doSort()
 	{
-		// TODO(itszn) do actual sort
-		return;
+		printf("Sorting with %s\n",m_currentSort->GetName().c_str());
+		m_currentSort->SortInplace(m_sortVec, m_SourceCollection());
 	}
 	int32 m_getSortIndexFromMapIndex(uint32 mapId) const
 	{
@@ -1156,16 +1202,6 @@ private:
 	lua_State* m_lua = nullptr;
 };
 
-enum SortType {
-	TITLE_ASC,
-	TITLE_DESC,
-	SCORE_ASC,
-	SCORE_DESC,
-	DATE_ASC,
-	DATE_DESC,
-	SORT_COUNT
-};
-
 /*
 	Song select window/screen
 */
@@ -1221,10 +1257,8 @@ private:
 	CollectionDialog m_collDiag;
 	bool m_hasCollDiag = false;
 
-	int m_sortType = 0;
 
 public:
-
 	bool Init() override
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
@@ -1620,24 +1654,13 @@ public:
 			}
 			else if (key == SDLK_F3)
 			{
-				m_sortType++;
-				if (m_sortType >= SortType::SORT_COUNT)
-					m_sortType = SortType::TITLE_ASC;
-				switch (m_sortType)
-				{
-					case SortType::TITLE_ASC:
-					case SortType::TITLE_DESC:
-						m_mapDatabase.SortByTitle(m_sortType==SortType::TITLE_ASC);
-						break;
-					case SortType::SCORE_ASC:
-					case SortType::SCORE_DESC:
-						m_mapDatabase.SortByScore(m_sortType==SortType::SCORE_ASC);
-						break;
-					case SortType::DATE_ASC:
-					case SortType::DATE_DESC:
-						m_mapDatabase.SortByDate(m_sortType==SortType::DATE_ASC);
-						break;
-				}
+				SortType s = static_cast<SortType>(static_cast<int>(
+						m_selectionWheel->GetSortType()) + 1);
+				printf("sort is %u\n",s);
+
+				if (s >= SortType::SORT_COUNT)
+					s = SortType::TITLE_ASC;
+				m_selectionWheel->SetSort(s);
 			}
 			else if (key == SDLK_F8) // start demo mode
 			{
