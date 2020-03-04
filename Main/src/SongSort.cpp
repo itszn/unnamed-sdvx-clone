@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SongSort.hpp"
+#include "Shared/Profiling.hpp"
 
 const SongSelectIndex& getSongFromCollection(uint32 index, const Map<int32,
 	SongSelectIndex>& collection)
@@ -15,6 +16,7 @@ const SongSelectIndex& getSongFromCollection(uint32 index, const Map<int32,
 void TitleSort::SortInplace(Vector<uint32>& vec, const Map<int32, 
 		SongSelectIndex>& collection)
 {
+	ProfilerScope $(Utility::Sprintf("Sort by: %s", m_name));
 	std::sort (vec.begin(), vec.end(),
 		[&](uint32 a, uint32 b) -> bool
 	{
@@ -28,13 +30,20 @@ void TitleSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 bool TitleSort::CompareSongs(const SongSelectIndex& song_a,
 		const SongSelectIndex& song_b)
 {
-	return (song_a.GetDifficulties()[0]->settings.title <
-			song_b.GetDifficulties()[0]->settings.title);
+	String a = song_a.GetDifficulties()[0]->settings.title;
+	String b = song_b.GetDifficulties()[0]->settings.title;
+	a.ToUpper();
+	b.ToUpper();
+	int strres = a.compare(b);
+	if (strres == 0)
+		return song_a.id < song_b.id;
+	return strres < 0;
 }
 
 void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32, 
 		SongSelectIndex>& collection)
 {
+	ProfilerScope $(Utility::Sprintf("Sort by: %s", m_name));
 	m_scoreMap.clear();
 	for (uint32 mapIndex : vec)
 	{
@@ -75,6 +84,7 @@ void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 void DateSort::SortInplace(Vector<uint32>& vec, const Map<int32, 
 		SongSelectIndex>& collection)
 {
+	ProfilerScope $(Utility::Sprintf("Sort by: %s", m_name));
 	m_dateMap.clear();
 	for (uint32 mapIndex : vec)
 	{
