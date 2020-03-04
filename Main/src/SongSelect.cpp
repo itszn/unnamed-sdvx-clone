@@ -210,7 +210,7 @@ class SelectionWheel
 	IApplicationTickable* m_owner;
 
 	// Currently selected sort index
-	int32 m_selectedSortIndex = 0;
+	uint32 m_selectedSortIndex = 0;
 
 	// Currently selected selection ID
 	int32 m_currentlySelectedMapId = 0;
@@ -370,8 +370,9 @@ public:
 	void SelectMapBySortIndex(uint32 sortIndex)
 	{
 		uint32 vecLen = m_sortVec.size();
-		if (sortIndex >= vecLen)
+		if (vecLen == 0)
 			return;
+		sortIndex = sortIndex % vecLen;
 
 		m_selectedSortIndex = sortIndex;
 
@@ -385,25 +386,31 @@ public:
 
 			//set index in lua
 			m_currentlySelectedLuaSortIndex = sortIndex;
-			//m_currentlySelectedLuaMapIndex = std::distance(srcCollection.begin(), it);
 			m_SetLuaMapIndex();
+		}
+		else
+		{
+			Logf("Could not find map for sort index %u -> %u", Logger::Warning, sortIndex, songIndex);
 		}
 	}
 
-	void SelectMapByMapIndex(uint32 mapIndex)
+	int32 SelectMapByMapIndex(int32 mapIndex)
 	{
+		if (mapIndex < 0)
+			return -1;
 		int32 foundSortIndex = m_getSortIndexFromMapIndex(mapIndex);
 		if (foundSortIndex != -1)
 			SelectMapBySortIndex(foundSortIndex);
+		return foundSortIndex;
 	}
 
-	void AdvanceSelection(int32 offset)
+	void AdvanceSelection(uint32 offset)
 	{
-		int32 vecLen = m_sortVec.size();
+		uint32 vecLen = m_sortVec.size();
 		if (vecLen == 0)
 			return;
 
-		int32 newIndex = m_selectedSortIndex + offset;
+		uint32 newIndex = m_selectedSortIndex + offset;
 		if (newIndex < 0) // Rolled under
 		{
 			newIndex += vecLen;
@@ -504,14 +511,15 @@ public:
 		m_doSort();
 
 		// When resorting, jump back to the top
-		m_selectedSortIndex = 0;
-		AdvanceSelection(0);
+		SelectMapBySortIndex(0);
 		m_SetLuaMaps(false);
 	}
 
 	// Set display filter
 	void SetFilter(Map<int32, MapIndex *> filter)
 	{
+		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 		m_mapFilter.clear();
 		for (auto m : filter)
 		{
@@ -528,11 +536,16 @@ public:
 		}
 		m_doSort();
 
-		AdvanceSelection(0);
+		// Try to go back to selected song in new sort
+		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+		if (newSortIndex == -1)
+			SelectMapBySortIndex(0);
 		m_SetLuaMaps(false);
 	}
 	void SetFilter(SongFilter* filter[2])
 	{
+		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 		bool isFiltered = false;
 		m_mapFilter = m_maps;
 		for (size_t i = 0; i < 2; i++)
@@ -553,13 +566,18 @@ public:
 		}
 		m_doSort();
 
-		AdvanceSelection(0);
+		// Try to go back to selected song in new sort
+		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+		if (newSortIndex == -1)
+			SelectMapBySortIndex(0);
 		m_SetLuaMaps(false);
 	}
 	void ClearFilter()
 	{
 		if(m_filterSet)
 		{
+			uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 			m_filterSet = false;
 
 			// Reset sort vec to all maps and then sort
@@ -570,7 +588,10 @@ public:
 			}
 			m_doSort();
 
-			AdvanceSelection(0);
+			// Try to go back to selected song in new sort
+			int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+			if (newSortIndex == -1)
+				SelectMapBySortIndex(0);
 			m_SetLuaMaps(false);
 		}
 	}
@@ -619,6 +640,9 @@ private:
 	}
 	int32 m_getSortIndexFromMapIndex(uint32 mapId) const
 	{
+		if (m_sortVec.size() == 0)
+			return -1;
+
 		const auto& it = std::find(m_sortVec.begin(), m_sortVec.end(), mapId);
 		if (it == m_sortVec.end())
 			return -1;
@@ -626,7 +650,11 @@ private:
 	}
 	int32 m_getCurrentlySelectedMapIndex() const
 	{
-		// TODO(itszn) bounds checking?
+		uint32 vecLen = m_sortVec.size();
+		if (vecLen == 0)
+			return -1;
+		if (m_selectedSortIndex >= vecLen)
+			return -1;
 		return m_sortVec[m_selectedSortIndex];
 	}
 	const Map<int32, SongSelectIndex>& m_SourceCollection() const
@@ -654,7 +682,7 @@ private:
 	void m_SetLuaDiffIndex()
 	{
 		lua_getglobal(m_lua, "set_diff");
-		lua_pushinteger(m_lua, m_currentlySelectedDiff + 1);
+		lua_pushinteger(m_lua, (uint64)m_currentlySelectedDiff + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -665,7 +693,7 @@ private:
 	void m_SetLuaMapIndex()
 	{
 		lua_getglobal(m_lua, "set_index");
-		lua_pushinteger(m_lua, m_currentlySelectedLuaSortIndex + 1);
+		lua_pushinteger(m_lua, (uint64)m_currentlySelectedLuaSortIndex + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on set_index: %s", Logger::Error, lua_tostring(m_lua, -1));
