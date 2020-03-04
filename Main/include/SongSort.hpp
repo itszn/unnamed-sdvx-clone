@@ -67,5 +67,5 @@ class DateSort : public TitleSort
 			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
 		};
 	private:
-		Map<uint32, uint32> m_dateMap;
+		Map<uint32, uint64> m_dateMap;
 };

@@ -1,15 +1,27 @@
 #include "stdafx.h"
 #include "SongSort.hpp"
 
+const SongSelectIndex& getSongFromCollection(uint32 index, const Map<int32,
+	SongSelectIndex>& collection)
+{
+	auto& it = collection.find(index);
+	if (it == collection.end())
+	{
+		Logf("Could not find song id %u", Logger::Error, index);
+	}
+	return it->second;
+}
+
 void TitleSort::SortInplace(Vector<uint32>& vec, const Map<int32, 
 		SongSelectIndex>& collection)
 {
 	std::sort (vec.begin(), vec.end(),
 		[&](uint32 a, uint32 b) -> bool
 	{
-		const SongSelectIndex& song_a = collection.find(a)->second;
-		const SongSelectIndex& song_b = collection.find(b)->second;
-		return m_dir ^ CompareSongs(song_a, song_b);
+		const SongSelectIndex& song_a = getSongFromCollection(a, collection);
+		const SongSelectIndex& song_b = getSongFromCollection(b, collection);
+		bool res = CompareSongs(song_a, song_b);
+		return m_dir ? !res : res;
 	});
 }
 
@@ -26,7 +38,7 @@ void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 	m_scoreMap.clear();
 	for (uint32 mapIndex : vec)
 	{
-		const SongSelectIndex& song = collection.find(mapIndex)->second;
+		const SongSelectIndex& song = getSongFromCollection(mapIndex, collection);
 		uint32 maxScore = 0;
 		for (auto& diff : song.GetDifficulties())
 		{
@@ -48,11 +60,13 @@ void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 
 		// For same scores sort by title
 		if (score_a == score_b) {
-			const SongSelectIndex& song_a = collection.find(a)->second;
-			const SongSelectIndex& song_b = collection.find(b)->second;
-			return m_dir ^ CompareSongs(song_a, song_b);
+			const SongSelectIndex& song_a = getSongFromCollection(a, collection);
+			const SongSelectIndex& song_b = getSongFromCollection(b, collection);
+			bool res = CompareSongs(song_a, song_b);
+			return res;
 		}
-		return m_dir ^ (score_a < score_b);
+		bool res = score_a < score_b;
+		return m_dir ? !res : res;
 	});
 
 	m_scoreMap.clear();
@@ -64,8 +78,8 @@ void DateSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 	m_dateMap.clear();
 	for (uint32 mapIndex : vec)
 	{
-		const SongSelectIndex& song = collection.find(mapIndex)->second;
-		uint32 maxDate = 0;
+		const SongSelectIndex& song = getSongFromCollection(mapIndex, collection);
+		uint64 maxDate = 0;
 		for (auto& diff : song.GetDifficulties())
 		{
 			if (diff->lwt < maxDate)
@@ -78,16 +92,18 @@ void DateSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 	std::sort (vec.begin(), vec.end(),
 		[&](uint32 a, uint32 b) -> bool
 	{
-		const uint32 date_a = m_dateMap.find(a)->second;
-		const uint32 date_b = m_dateMap.find(b)->second;
+		const uint64 date_a = m_dateMap.find(a)->second;
+		const uint64 date_b = m_dateMap.find(b)->second;
 
 		// For same scores sort by title
 		if (date_a == date_b) {
-			const SongSelectIndex& song_a = collection.find(a)->second;
-			const SongSelectIndex& song_b = collection.find(b)->second;
-			return m_dir ^ CompareSongs(song_a, song_b);
+			const SongSelectIndex& song_a = getSongFromCollection(a, collection);
+			const SongSelectIndex& song_b = getSongFromCollection(b, collection);
+			bool res = CompareSongs(song_a, song_b);
+			return res;
 		}
-		return m_dir ^ (date_a < date_b);
+		bool res = date_a < date_b;
+		return m_dir ? !res : res;
 	});
 
 	m_dateMap.clear();

@@ -238,7 +238,7 @@ public:
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/songwheel"));
 		lua_newtable(m_lua);
 		lua_setglobal(m_lua, "songwheel");
-		m_currentSort = new TitleSort("Title ^",true);
+		m_currentSort = new TitleSort("Title Ascending",false);
 		return true;
 	}
 	void ReloadScript()
@@ -338,11 +338,7 @@ public:
 			if (!m_filterSet)
 				m_doSort();
 
-			// Doing this here, before applying filters, causes our wheel to go
-			//	back to the top when a filter should be applied
-			// TODO(local): Go through everything in this file and try to clean
-			//	up all calls to things like this, to keep it from updating like 7 times >.>
-			//AdvanceSelection(0);
+			AdvanceSelection(0);
 			m_SetLuaMaps(true);
 		}
 	}
@@ -483,29 +479,34 @@ public:
 		switch(type)
 		{
 			case SortType::TITLE_ASC:
-				m_currentSort = new TitleSort("Title ^", false);
+				m_currentSort = new TitleSort("Title Ascending", false);
 				break;
 			case SortType::TITLE_DESC:
-				m_currentSort = new TitleSort("Title v", true);
+				m_currentSort = new TitleSort("Title Descending", true);
 				break;
 			case SortType::SCORE_ASC:
-				m_currentSort = new ScoreSort("Score ^", false);
+				m_currentSort = new ScoreSort("Score Ascending", false);
 				break;
 			case SortType::SCORE_DESC:
-				m_currentSort = new ScoreSort("Score v", true);
+				m_currentSort = new ScoreSort("Score Descending", true);
 				break;
 			case SortType::DATE_ASC:
-				m_currentSort = new DateSort("Date ^", false);
+				m_currentSort = new DateSort("Date Ascending", false);
 				break;
 			case SortType::DATE_DESC:
-				m_currentSort = new DateSort("Date v", true);
+				m_currentSort = new DateSort("Date Descending", true);
 				break;
 			default:
 				assert(0);
 		}
+		// TODO(itszn) some actual ui
+		OnSearchStatusUpdated("Sorting by " + m_currentSort->GetName());
 		m_doSort();
-		m_SetLuaMaps(false);
+
+		// When resorting, jump back to the top
+		m_selectedSortIndex = 0;
 		AdvanceSelection(0);
+		m_SetLuaMaps(false);
 	}
 
 	// Set display filter
@@ -517,6 +518,7 @@ public:
 			SongSelectIndex index(m.second);
 			m_mapFilter.Add(index.id, index);
 		}
+		m_filterSet = true;
 
 		// Add the filtered maps into the sort vec then sort
 		m_sortVec.clear();
@@ -526,9 +528,8 @@ public:
 		}
 		m_doSort();
 
-		m_filterSet = true;
-		m_SetLuaMaps(false);
 		AdvanceSelection(0);
+		m_SetLuaMaps(false);
 	}
 	void SetFilter(SongFilter* filter[2])
 	{
@@ -542,6 +543,7 @@ public:
 			if (!filter[i]->IsAll())
 				isFiltered = true;
 		}
+		m_filterSet = isFiltered;
 
 		// Add the filtered maps into the sort vec then sort
 		m_sortVec.clear();
@@ -551,17 +553,14 @@ public:
 		}
 		m_doSort();
 
-		m_filterSet = isFiltered;
-		m_SetLuaMaps(false);
 		AdvanceSelection(0);
+		m_SetLuaMaps(false);
 	}
 	void ClearFilter()
 	{
 		if(m_filterSet)
 		{
 			m_filterSet = false;
-			AdvanceSelection(0);
-			m_SetLuaMaps(false);
 
 			// Reset sort vec to all maps and then sort
 			m_sortVec.clear();
@@ -570,6 +569,9 @@ public:
 				m_sortVec.push_back(it.first);
 			}
 			m_doSort();
+
+			AdvanceSelection(0);
+			m_SetLuaMaps(false);
 		}
 	}
 
@@ -612,7 +614,7 @@ public:
 private:
 	void m_doSort()
 	{
-		printf("Sorting with %s\n",m_currentSort->GetName().c_str());
+		Logf("Sorting with %s", Logger::Info,m_currentSort->GetName().c_str());
 		m_currentSort->SortInplace(m_sortVec, m_SourceCollection());
 	}
 	int32 m_getSortIndexFromMapIndex(uint32 mapId) const
@@ -1656,7 +1658,6 @@ public:
 			{
 				SortType s = static_cast<SortType>(static_cast<int>(
 						m_selectionWheel->GetSortType()) + 1);
-				printf("sort is %u\n",s);
 
 				if (s >= SortType::SORT_COUNT)
 					s = SortType::TITLE_ASC;
