@@ -77,10 +77,6 @@ public:
 	void StartSearching();
 	void StopSearching();
 
-    void SortByTitle(bool);
-    void SortByScore(bool);
-    void SortByDate(bool);
-
 	// Grab all the maps, with their id's
 	Map<int32, MapIndex*> GetMaps();
 	// Finds maps using the search query provided
