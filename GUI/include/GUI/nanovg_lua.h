@@ -8,6 +8,7 @@
 #include "Shared/Transform.hpp"
 #include "Shared/Files.hpp"
 #include "Shared/Thread.hpp"
+#include <atomic>
 
 struct Label
 {
@@ -30,7 +31,8 @@ struct ImageAnimation
 	int h;
 	float SecondsPerFrame;
 	float Timer;
-	bool LoadComplete;
+	std::atomic_bool LoadComplete;
+	std::atomic_bool Cancelled;
 	Vector<Graphics::Image> Frames;
 	Thread* JobThread;
 	lua_State* State;
@@ -122,13 +124,21 @@ static int lBeginPath(lua_State* L)
 static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
 {
 	ia->FrameCount = files.size();
+	files.Sort([](FileInfo& a, FileInfo& b) {
+		String af, bf;
+		Path::RemoveLast(a.fullPath, &af);
+		Path::RemoveLast(b.fullPath, &bf);
+		return af.compare(bf) < 0;
+	});
 	ia->Timer = 0;
 
 	for (size_t i = 0; i < ia->FrameCount; i++)
 	{
+		if(ia->Cancelled.load())
+			break;
 		ia->Frames.Add(Graphics::ImageRes::Create(files[i].fullPath));
 	}
-	ia->LoadComplete = true;
+	ia->LoadComplete.store(true);
 }
 
 static int lTickAnimation(lua_State* L)
@@ -139,7 +149,7 @@ static int lTickAnimation(lua_State* L)
 	deltatime = luaL_checknumber(L, 2);
 
 	ImageAnimation* ia = g_guiState.animations[key];
-	if (!ia->LoadComplete)
+	if (!ia->LoadComplete.load())
 		return 0;
 
 	ia->Timer += deltatime;
@@ -173,7 +183,8 @@ static int LoadAnimation(lua_State* L, const char* path, float frametime, int lo
 	ia->TimesToLoop = loopcount;
 	ia->LoopCounter = 0;
 	ia->SecondsPerFrame = frametime;
-	ia->LoadComplete = false;
+	ia->LoadComplete.store(false);
+	ia->Cancelled.store(false);
 	ia->State = L;
 	ia->JobThread = new Thread(AnimationLoader, files, ia);
 	g_guiState.animations[key] = ia;
@@ -966,6 +977,8 @@ static int DisposeGUI(lua_State* state)
 	{
 		if (anim.second->State != state)
 			continue;
+
+		anim.second->Cancelled.store(true);
 
 		if(anim.second->JobThread && anim.second->JobThread->joinable())
 			anim.second->JobThread->join();
