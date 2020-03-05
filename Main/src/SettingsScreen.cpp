@@ -183,6 +183,8 @@ private:
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
 
+	String m_skinBeforeSkinSettings = "";
+
 	std::queue<SDL_Event> eventQueue;
 
 	void UpdateNuklearInput(SDL_Event evt)
@@ -697,9 +699,17 @@ public:
 			}
 
 			nk_spacing(m_nctx, 1);
-			if (nk_button_label(m_nctx, "Skin Settings"))
+			if (nk_button_label(m_nctx, "Skin Settings")
+				|| (m_skinBeforeSkinSettings != "" && 
+					m_skinBeforeSkinSettings != g_gameConfig.GetString(GameConfigKeys::Skin))
+				)
 			{
+				m_skinBeforeSkinSettings = g_gameConfig.GetString(GameConfigKeys::Skin);
 				g_application->AddTickable(new SkinSettingsScreen(g_gameConfig.GetString(GameConfigKeys::Skin), m_nctx));
+			}
+			else
+			{
+				m_skinBeforeSkinSettings = "";
 			}
 			if (nk_button_label(m_nctx, "Exit")) Exit();
 			nk_end(m_nctx);
@@ -1012,7 +1022,11 @@ LaserSensCalibrationScreen* LaserSensCalibrationScreen::Create()
 }
 
 
-
+bool SkinSettingsScreen::Init()
+{
+	m_allSkins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+	return true;
+}
 
 void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
 {
@@ -1037,6 +1051,29 @@ void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSe
 	nk_combobox(m_nctx, displayData.data(), setting.selectionSetting.numOptions, &selection, 30, nk_vec2(w - 30, 250));
 	value = options[selection];
 	m_skinConfig->Set(key, value);
+}
+
+String SkinSettingsScreen::MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
+{
+	String value = g_gameConfig.GetString(key);
+	int selection;
+	auto stringSearch = std::find(options.begin(), options.end(), value);
+	if (stringSearch != options.end())
+		selection = stringSearch - options.begin();
+	else
+		selection = 0;
+
+	Vector<const char*> displayData;
+	for (String& s : options)
+	{
+		displayData.Add(*s);
+	}
+
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_combobox(m_nctx, displayData.data(), options.size(), &selection, 30, nk_vec2(1050, 250));
+	value = options[selection];
+	g_gameConfig.Set(key, value);
+	return value;
 }
 
 void SkinSettingsScreen::Exit()
@@ -1188,6 +1225,16 @@ void SkinSettingsScreen::Render(float deltaTime)
 	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
 	{
 		nk_layout_row_dynamic(m_nctx, 30, 1);
+
+		if (m_allSkins.size() > 0)
+		{
+			String sel = MainConfigStringSelectionSetting(GameConfigKeys::Skin, m_allSkins, "Selected Skin:");
+			if (sel != m_skin)
+			{
+				Exit();
+			}
+		}
+
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", *m_skin);
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
 		for (auto s : m_skinConfig->GetSettings())
