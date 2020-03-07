@@ -361,13 +361,17 @@ public:
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path,rowid) VALUES(?,?)");
-		DBStatement update = m_database.Query("UPDATE Charts SET lwt=?,metadata=?,hash=? WHERE rowid=?"); //TODO: update
+		DBStatement update = m_database.Query("UPDATE Charts SET path=?,title=?,artist=?,title_translit=?,artist_translit=?,jacket_path=?,effector=?,illustrator=?,"
+			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 
 		Set<FolderIndex*> addedEvents;
 		Set<FolderIndex*> removeEvents;
 		Set<FolderIndex*> updatedEvents;
+
+		const String diffShortNames[4] = { "NOV", "ADV", "EXH", "INF" };
+		const String diffNames[4] = { "Novice", "Advanced", "Exhaust", "Infinite" };
 
 		m_database.Exec("BEGIN");
 		for(Event& e : changes)
@@ -404,8 +408,6 @@ public:
 					existingUpdated = true; // Existing folder
 				}
 
-				const String diffShortNames[4] = { "NOV", "ADV", "EXH", "INF" };
-				const String diffNames[4] = { "Novice", "Advanced", "Exhaust", "Infinite" };
 
 				ChartIndex* chart = new ChartIndex();
 				chart->id = m_nextChartId++;
@@ -468,30 +470,56 @@ public:
 			}
 			else if(e.action == Event::Updated)
 			{
-				//TODO: this
-				//Buffer metadata;
-				//MemoryWriter metadataWriter(metadata);
-				//metadataWriter.SerializeObject(*e.mapData);
+				update.BindString(1, e.path);
+				update.BindString(2, e.mapData->title);
+				update.BindString(3, e.mapData->artist);
+				update.BindString(4, "");
+				update.BindString(5, "");
+				update.BindString(6, e.mapData->jacketPath);
+				update.BindString(7, e.mapData->effector);
+				update.BindString(8, e.mapData->illustrator);
+				update.BindString(9, diffNames[e.mapData->difficulty]);
+				update.BindString(10, diffShortNames[e.mapData->difficulty]);
+				update.BindString(11, e.mapData->bpm);
+				update.BindInt(12, e.mapData->difficulty);
+				update.BindInt(13, e.mapData->level);
+				update.BindString(14, e.hash);
+				update.BindString(15, e.mapData->audioNoFX);
+				update.BindInt(16, e.mapData->previewOffset);
+				update.BindInt(17, e.mapData->previewDuration);
+				update.BindInt64(18, e.lwt);
+				update.BindInt(19, e.id);
 
-				//update.BindInt64(1, e.lwt);
-				//update.BindBlob(2, metadata);
-				//update.BindString(3, e.hash);
-				//update.BindInt(4, e.id);
-				//update.Step();
-				//update.Rewind();
-				//
-				//auto itDiff = m_difficulties.find(e.id);
-				//assert(itDiff != m_difficulties.end());
+				update.Step();
+				update.Rewind();
 
-				//itDiff->second->lwt = e.lwt;
-				//itDiff->second->settings = *e.mapData;
-				//itDiff->second->hash = e.hash;
+				auto itChart = m_charts.find(e.id);
+				assert(itChart != m_charts.end());
 
-				//auto itMap = m_maps.find(itDiff->second->mapId);
-				//assert(itMap != m_maps.end());
+				ChartIndex* chart = itChart->second;
+				chart->lwt = e.lwt;
+				chart->path = e.path;
+				chart->title = e.mapData->title;
+				chart->artist = e.mapData->artist;
+				chart->level = e.mapData->level;
+				chart->effector = e.mapData->effector;
+				chart->preview_file = e.mapData->audioNoFX;
+				chart->preview_offset = e.mapData->previewOffset;
+				chart->preview_length = e.mapData->previewDuration;
+				chart->diff_index = e.mapData->difficulty;
+				chart->diff_name = diffNames[e.mapData->difficulty];
+				chart->diff_shortname = diffShortNames[e.mapData->difficulty];
+				chart->bpm = e.mapData->bpm;
+				chart->illustrator = e.mapData->illustrator;
+				chart->jacket_path = e.mapData->jacketPath;
+				chart->hash = e.hash;
 
-				//// Send notification
-				//updatedEvents.Add(itMap->second);
+
+				auto itFolder = m_folders.find(chart->folderId);
+				assert(itFolder != m_folders.end());
+
+				// Send notification
+				updatedEvents.Add(itFolder->second);
 			}
 			else if(e.action == Event::Removed)
 			{
