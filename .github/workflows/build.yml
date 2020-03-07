@@ -11,8 +11,17 @@ jobs:
               run: git submodule update --init --recursive
             - name: vcpkg
               run: |
-                vcpkg integrate install
-                vcpkg install '@${{ github.workspace }}/build.windows'
+                git clone https://github.com/microsoft/vcpkg.git
+                cd vcpkg
+                echo "set(VCPKG_BUILD_TYPE release)" >> triplets/x64-windows.cmake
+                .\bootstrap-vcpkg.bat
+                .\vcpkg.exe integrate install
+                .\vcpkg.exe install '@${{ github.workspace }}/build.windows'
+            - name: Cache vcpkg
+              uses: actions/cache@v1
+              with:
+                path: vcpkg
+                key: ${{ runner.os }}-vcpkg-${{ hashFiles('build.windows') }}
             - name: cmake
               run: cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: Setup MSBuild.exe
