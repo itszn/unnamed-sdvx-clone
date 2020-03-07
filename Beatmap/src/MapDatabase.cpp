@@ -225,6 +225,7 @@ public:
 					addScore.Rewind();
 				}
 				m_database.Exec("END");
+				m_database.Exec("VACUUM");
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 		}
