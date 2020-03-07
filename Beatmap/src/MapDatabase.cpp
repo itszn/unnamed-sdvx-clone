@@ -111,6 +111,7 @@ public:
 		}
 		else if (update)
 		{
+			ProfilerScope $(Utility::Sprintf("Upgrading db (%d -> %d)", gotVersion, m_version));
 			///TODO: Make loop for doing iterative upgrades
 			if (gotVersion == 8)  //upgrade from 8 to 9
 			{
@@ -140,11 +141,26 @@ public:
 				//back up old db file
 				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db.bak"));
 				DBStatement diffScan = m_database.Query("SELECT rowid,path FROM Difficulties");
+
 				Vector<ScoreIndex> scoresToAdd;
 				while (diffScan.StepRow())
 				{
+					bool noScores = true;
 					int diffid = diffScan.IntColumn(0);
 					String diffpath = diffScan.StringColumn(1);
+					DBStatement scoreCount = m_database.Query("SELECT COUNT(*) FROM scores WHERE diffid=?");
+					scoreCount.BindInt(1, diffid);
+					if (scoreCount.StepRow())
+					{
+						noScores = scoreCount.IntColumn(0) == 0;
+					}
+
+					if (noScores)
+					{
+						continue;
+					}
+
+
 					String hash;
 					File diffFile;
 					if (diffFile.OpenRead(diffpath))
