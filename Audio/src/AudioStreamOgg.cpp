@@ -231,6 +231,7 @@ Ref<AudioStream> AudioStreamOgg::Create(class Audio* audio, const String& path, 
 	{
 		delete impl;
 		impl = nullptr;
+		return Ref<AudioStream>();
 	}
 	return Ref<AudioStream>(impl);
 }

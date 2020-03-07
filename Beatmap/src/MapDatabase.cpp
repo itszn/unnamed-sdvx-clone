@@ -68,7 +68,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 12;
+	static const int32 m_version = 13;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
@@ -134,6 +134,97 @@ public:
 					"UNIQUE(collection,mapid), "
 					"FOREIGN KEY(mapid) REFERENCES Maps(rowid))");
 				gotVersion = 12;
+			}
+			if (gotVersion == 12) //upgrade from 12 to 13
+			{
+				//back up old db file
+				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db.bak"));
+				DBStatement diffScan = m_database.Query("SELECT rowid,path FROM Difficulties");
+				Vector<ScoreIndex> scoresToAdd;
+				while (diffScan.StepRow())
+				{
+					int diffid = diffScan.IntColumn(0);
+					String diffpath = diffScan.StringColumn(1);
+					String hash;
+					File diffFile;
+					if (diffFile.OpenRead(diffpath))
+					{
+						char data_buffer[0x80];
+						uint32_t digest[5];
+						sha1::SHA1 s;
+
+						size_t amount_read = 0;
+						size_t read_size;
+						do
+						{
+							read_size = diffFile.Read(data_buffer, sizeof(data_buffer));
+							amount_read += read_size;
+							s.processBytes(data_buffer, read_size);
+						} while (read_size != 0);
+
+						s.getDigest(digest);
+						hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+					}
+					else {
+						Logf("Could not open chart file at \"%s\" scores will be lost.", Logger::Warning, diffpath);
+						continue;
+					}
+
+
+					DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,hitstats,timestamp,diffid FROM Scores WHERE diffid=?");
+					scoreScan.BindInt(1, diffid);
+					while (scoreScan.StepRow())
+					{
+						ScoreIndex score;
+						score.id = scoreScan.IntColumn(0);
+						score.score = scoreScan.IntColumn(1);
+						score.crit = scoreScan.IntColumn(2);
+						score.almost = scoreScan.IntColumn(3);
+						score.miss = scoreScan.IntColumn(4);
+						score.gauge = scoreScan.DoubleColumn(5);
+						score.gameflags = scoreScan.IntColumn(6);
+						Buffer hitstats = scoreScan.BlobColumn(7);
+						score.timestamp = scoreScan.Int64Column(8);
+						auto timestamp = Shared::Time(score.timestamp);
+						score.chartHash = hash;
+						score.replayPath = Path::Normalize(Path::Absolute("replays/" + hash + "/" + timestamp.ToString() + ".urf"));
+						Path::CreateDir(Path::Absolute("replays/" + hash));
+						File replayFile;
+						if (replayFile.OpenWrite(score.replayPath))
+						{
+							replayFile.Write(hitstats.data(), hitstats.size());
+						}
+						else
+						{
+							Logf("Could not open replay file at \"%s\" replay data will be lost.", Logger::Warning, score.replayPath);
+						}
+						scoresToAdd.Add(score);
+					}
+				}
+
+				m_database.Exec("DROP TABLE IF EXISTS Maps");
+				m_database.Exec("DROP TABLE IF EXISTS Difficulties");
+				m_CreateTables();
+
+				DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash) VALUES(?,?,?,?,?,?,?,?,?)");
+				
+				m_database.Exec("BEGIN");
+				for (ScoreIndex& score : scoresToAdd)
+				{
+					addScore.BindInt(1, score.score);
+					addScore.BindInt(2, score.crit);
+					addScore.BindInt(3, score.almost);
+					addScore.BindInt(4, score.miss);
+					addScore.BindDouble(5, score.gauge);
+					addScore.BindInt(6, score.gameflags);
+					addScore.BindString(7, score.replayPath);
+					addScore.BindInt64(8, score.timestamp);
+					addScore.BindString(9, score.chartHash);
+
+					addScore.Step();
+					addScore.Rewind();
+				}
+				m_database.Exec("END");
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 		}
