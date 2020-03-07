@@ -9,12 +9,24 @@ jobs:
               uses: actions/checkout@v1
             - name: Checkout submodules
               run: git submodule update --init --recursive
+            - name: Cache vcpkg
+              uses: actions/cache@v1
+              with:
+                path: vcpkg
+                key: ${{ runner.os }}-vcpkg-${{ hashFiles('build.windows') }}
             - name: vcpkg
               run: |
-                vcpkg integrate install
-                vcpkg install '@${{ github.workspace }}/build.windows'
+                if(!(Test-Path .\vcpkg))
+                {
+                git clone https://github.com/microsoft/vcpkg.git
+                cd vcpkg
+                echo "set(VCPKG_BUILD_TYPE release)" >> triplets/x64-windows.cmake
+                .\bootstrap-vcpkg.bat
+                .\vcpkg.exe integrate install
+                .\vcpkg.exe install '@${{ github.workspace }}/build.windows'
+                }
             - name: cmake
-              run: cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
+              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: Setup MSBuild.exe
               uses: warrenbuckley/Setup-MSBuild@v1
             - name: MSBuild
@@ -35,7 +47,9 @@ jobs:
             - name: Checkout submodules
               run: git submodule update --init --recursive
             - name: Install packages
-              run: sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
+              run: |
+                sudo apt-get update
+                sudo apt-get install g++ libegl1-mesa-dev libfreetype6-dev libogg-dev libvorbis-dev libsdl2-dev libarchive-dev zlib1g-dev libjpeg-dev libpng-dev
             - name: cmake
               run: cmake -DCMAKE_BUILD_TYPE=Release .
             - name: make
