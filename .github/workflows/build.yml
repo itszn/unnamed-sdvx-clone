@@ -23,7 +23,7 @@ jobs:
                 .\vcpkg.exe integrate install
                 .\vcpkg.exe install '@${{ github.workspace }}/build.windows'
             - name: cmake
-              run: cmake -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
+              run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: Setup MSBuild.exe
               uses: warrenbuckley/Setup-MSBuild@v1
             - name: MSBuild
