@@ -122,8 +122,7 @@ DefineEnum(GameConfigKeys,
 	MultiplayerPassword,
 	MultiplayerUsername,
 
-	RollIgnoreDuration,
-	LaserSlamLength
+	EnableFancyHighwayRoll
 	);
 
 DefineEnum(SpeedMods,

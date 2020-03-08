@@ -170,8 +170,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
-		// Apply slam roll for 0 to 100ms (depending on user config)
-		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
+		// Apply slam roll for 100ms
+		if (m_rollIgnoreTimer[index] <= ROLL_IGNORE_DURATION)
 			m_slamRoll[index] = 0;
 	}
 
@@ -284,13 +284,18 @@ void Camera::SetSlowTilt(bool tilt)
 void Camera::SetSlamAmount(uint32 index, float amount)
 {
 	assert(index >= 0 && index <= 1);
-	m_slamRoll[index] = amount;
-	SetRollIgnore(index, true);
+	if (m_fancyHighwayTilt)
+	{
+		m_slamRoll[index] = amount;
+		SetRollIgnore(index, true);
+	}
 }
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamLength : 0);
+	assert(index >= 0 && index <= 1);
+	if (m_fancyHighwayTilt)
+		m_rollIgnoreTimer[index] = ROLL_IGNORE_DURATION + (slam ? SLAM_DURATION : 0);
 }
 
 float Camera::GetRollIgnoreTimer(uint32 index)
@@ -305,16 +310,6 @@ float Camera::GetSlamAmount(uint32 index)
 	return m_slamRoll[index];
 }
 
-void Camera::SetRollIgnoreDuration(float duration)
-{
-	m_rollIgnoreDuration = duration;
-}
-
-void Camera::SetSlamLength(float length)
-{
-	m_slamLength = length;
-}
-
 void Camera::SetManualTilt(bool manualTilt)
 {
 	if (pManualTiltEnabled != manualTilt)
@@ -326,6 +321,11 @@ void Camera::SetManualTilt(bool manualTilt)
 void Camera::SetManualTiltInstant(bool instant)
 {
 	m_manualTiltInstant = instant;
+}
+
+void Camera::SetFancyHighwayTilt(bool setting)
+{
+	m_fancyHighwayTilt = setting;
 }
 
 Vector2 Camera::Project(const Vector3& pos)
@@ -390,8 +390,7 @@ void Camera::SetTargetRoll(float target)
 		return false;
 	};
 
-	// Work around for slams being applied for at least 1 frame
-	float slamRollTotal = m_slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
+	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
 	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
 	if (m_rollKeep)

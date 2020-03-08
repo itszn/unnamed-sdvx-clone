@@ -135,6 +135,5 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MultiplayerPassword, "");
 	Set(GameConfigKeys::MultiplayerUsername, "");
 
-	Set(GameConfigKeys::RollIgnoreDuration, 100.f);
-	Set(GameConfigKeys::LaserSlamLength, 100.f);
+	Set(GameConfigKeys::EnableFancyHighwayRoll, true);
 }
