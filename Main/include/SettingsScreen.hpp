@@ -39,6 +39,7 @@ public:
 	~SkinSettingsScreen();
 	void Tick(float deltatime) override;
 	void Render(float deltaTime) override;
+	bool Init() override;
 private:
 	bool ToggleSetting(String key, String label);
 	float PercentSetting(String key, String label);
@@ -47,10 +48,12 @@ private:
 	float FloatSetting(String key, String label, float min, float max, float step = 0.01);
 	void IntSetting(String key, String label, int min, int max, int step = 1, int perpixel = 1);
 	void StringSelectionSetting(String key, String label, SkinSetting& setting);
+	String MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label);
 	void Exit();
 
 	class SkinConfig* m_skinConfig;
 	struct nk_context* m_nctx;
 	String m_skin;
 	Map<String, bool> m_hsvMap;
+	Vector<String> m_allSkins;
 };
