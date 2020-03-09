@@ -40,9 +40,7 @@ jobs:
                 path: bin
             - name: Trigger artifact distribution
               continue-on-error: true
-              run: |
-                choco install curl -y
-                curl -o - -X POST -H "Content-Type: application/json" --data '{ "id": ${{ github.run_id }}, "branch": "${{github.ref}}", "commit": "${{github.sha}}" }' ${{ secrets.WEBHOOK_URL }}
+              run: Invoke-RestMethod -Method POST -ContentType "application/json" -Body '{ "id": ${{ github.run_id }}, "branch": "${{github.ref}}", "commit": "${{github.sha}}" }' -Uri ${{ secrets.WEBHOOK_URL }}
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
