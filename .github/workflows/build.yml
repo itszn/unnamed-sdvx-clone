@@ -39,11 +39,10 @@ jobs:
                 name: Game
                 path: bin
             - name: Trigger artifact distribution
-              uses: joelwmale/webhook-action@master
               continue-on-error: true
-              env:
-                WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-                data: "{'id': '${GITHUB_RUN_ID}', 'branch': '${GITHUB_REF##*/}', 'commit': '${GITHUB_SHA}' }"
+              run: |
+                choco install curl -y
+                curl -X POST -H "Content-Type: application/json" --data "{'id': '${GITHUB_RUN_ID}', 'branch': '${GITHUB_REF##*/}', 'commit': '${GITHUB_SHA}' }" ${{ secrets.WEBHOOK_URL }}
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
