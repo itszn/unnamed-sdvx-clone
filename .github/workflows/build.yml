@@ -42,7 +42,7 @@ jobs:
               continue-on-error: true
               run: |
                 choco install curl -y
-                curl -o - -X POST -H "Content-Type: application/json" --data "{'id': '${{ github.run_id }}', 'branch': '${{github.ref}}', 'commit': '${{github.sha}}' }" ${{ secrets.WEBHOOK_URL }}
+                curl -o - -X POST -H "Content-Type: application/json" --data '{ "id": ${{ github.run_id }}, "branch": "${{github.ref}}", "commit": "${{github.sha}}" }' ${{ secrets.WEBHOOK_URL }}
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
