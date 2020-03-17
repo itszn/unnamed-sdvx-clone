@@ -513,10 +513,14 @@ Uses the same parameter values as ``GlobalCompositeBlendFunc``
 
 .. _nanovg.h:177: https://github.com/memononen/nanovg/blob/master/src/nanovg.h#L177
 
-LoadAnimation(char* path, float frametime, int loopcount = 0)
-*************************************************************
+LoadAnimation(char* path, float frametime, int loopcount = 0, bool compressed = false)
+**************************************************************************************
 Loads all the images in a specified folder as an animation. ``frametime`` is used for the speed of the animation
 and if ``loopcount`` is set to something that isn't 0 then the animation will stop after playing that many times.
+
+If ``compressed`` is set to true then the animation will be stored in memory in a compressed format and each frame
+will be decoded on-demand which means that the animation uses much less RAM but it uses more CPU and the animation
+might stutter or skip frames if it's too heavy.
 
 Returns a numer that is used the same way a regular image is used.
 
@@ -525,8 +529,8 @@ GlobalAlpha(float alpha)
 Sets a global alpha value for all nanovg drawing. Already transparent objects will have their tranparency
 adjusted relative to the global value.
 
-LoadSkinAnimation(char* path, float frametime, int loopcount = 0)
-*****************************************************************
+LoadSkinAnimation(char* path, float frametime, int loopcount = 0, bool compressed = false)
+******************************************************************************************
 Same as LoadAnimation but prepends ``"skins/[skinfolder]/textures/"`` to the path.
 
 TickAnimation(int animation, float deltaTime)

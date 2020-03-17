@@ -108,13 +108,7 @@ void Application::ApplySettings()
 	String newskin = g_gameConfig.GetString(GameConfigKeys::Skin);
 	if (m_skin != newskin)
 	{
-		m_skin = newskin;
-		ReloadSkin();
-	}
-
-	if (g_transition) {
-		delete g_transition;
-		g_transition = TransitionScreen::Create();
+		m_needSkinReload = true;
 	}
 
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
@@ -923,6 +917,8 @@ void Application::m_Tick()
 		tickable->Tick(m_deltaTime);
 	}
 
+
+
 	// Not minimized / Valid resolution
 	if(g_resolution.x > 0 && g_resolution.y > 0)
 	{
@@ -966,6 +962,12 @@ void Application::m_Tick()
 		glCullFace(GL_FRONT);
 		// Swap buffers
 		g_gl->SwapBuffers();
+	}
+
+	if (m_needSkinReload)
+	{
+		ReloadSkin();
+		m_needSkinReload = false;
 	}
 }
 
@@ -1265,6 +1267,8 @@ void Application::ReloadScript(const String& name, lua_State* L)
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	DisposeGUI(L);
+	m_skinHttp.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1290,6 +1294,22 @@ void Application::ReloadSkin()
 	g_guiState.nextPaintId.clear();
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
+	
+
+	if (g_transition) {
+		delete g_transition;
+		g_transition = TransitionScreen::Create();
+	}
+
+	//remove all tickables
+	for (auto* t : g_tickables)
+	{
+		RemoveTickable(t);
+	}
+
+	//push new titlescreen
+	TitleScreen* t = TitleScreen::Create();
+	AddTickable(t);
 
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);
@@ -1760,6 +1780,7 @@ static int lLoadSkinAnimation(lua_State* L)
 	const char* p;
 	float frametime;
 	int loopcount = 0;
+	bool compressed = false;
 
 	p = luaL_checkstring(L, 1);
 	frametime = luaL_checknumber(L, 2);
@@ -1767,10 +1788,15 @@ static int lLoadSkinAnimation(lua_State* L)
 	{
 		loopcount = luaL_checkinteger(L, 3);
 	}
+	else if (lua_gettop(L) == 4)
+	{
+		loopcount = luaL_checkinteger(L, 3);
+		compressed = lua_toboolean(L, 4) == 1;
+	}
 
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + p;
 	path = Path::Absolute(path);
-	int result = LoadAnimation(L, *path, frametime, loopcount);
+	int result = LoadAnimation(L, *path, frametime, loopcount, compressed);
 	if (result == -1)
 		return 0;
 
