@@ -343,8 +343,15 @@ private:
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
-		value = options[selection];
-		g_gameConfig.Set(key, value);
+		
+		String newValue = options[selection];
+		if (value != newValue) {
+			value = newValue;
+			g_gameConfig.Set(key, value);
+			// Window cursor
+			Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + value + "/textures/cursor.png"));
+			g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
+		}
 		return value;
 	}
 
