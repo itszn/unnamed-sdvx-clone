@@ -593,11 +593,10 @@ bool Application::m_Init()
 #endif // GIT_COMMIT
 
 
-
-
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
 
+	// Load config
 	if(!m_LoadConfig())
 	{
 		Log("Failed to load config file", Logger::Warning);
@@ -642,6 +641,10 @@ bool Application::m_Init()
 			}
 		}
 	}
+
+	// Init font library
+	if (!Graphics::FontRes::InitLibrary())
+		return false;
 
 	// Create the game window
 	g_resolution = Vector2i(
@@ -1036,6 +1039,8 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
+	Graphics::FontRes::FreeLibrary();
+
 	Discord_Shutdown();
 
 #ifdef EMBEDDED
@@ -1331,7 +1336,7 @@ void Application::ReloadSkin()
 #endif
 #endif
 
-	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
+	nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 }
 void Application::DisposeLua(lua_State* state)
 {
