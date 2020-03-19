@@ -288,15 +288,16 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	if (packet["song"].is_null())
 		return true;
 
-	const String& hash = packet.value("hash", "");
+	const String& chart_hash = packet.value("chart_hash", "");
+	const String& audio_hash = packet.value("audio_hash", "");
 	const String& song = packet.value("song", "");
 
 	// Fallback case for no hash provided from the server
-	if (m_hasSelectedMap && hash.length() == 0 && song == m_selectedMapShortPath)
+	if (m_hasSelectedMap && chart_hash.length() == 0 && song == m_selectedMapShortPath)
 		return true;
 
 	// Case for same song as before
-	if (m_hasSelectedMap && packet["hash"] == m_selectedMapHash)
+	if (m_hasSelectedMap && chart_hash == m_selectedMapHash)
 		return true;
 
 	// Clear jacket variable to force image reload
@@ -305,7 +306,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	ChartIndex* newChart = m_getChartByHash(hash, song, &diff_ind, packet["level"]);
+	ChartIndex* newChart = m_getChartByHash(chart_hash, song, &diff_ind, packet["level"]);
 
 	if (newChart == nullptr)
 	{
@@ -326,7 +327,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	m_updateSelectedMap(newChart->folderId, diff_ind, false);
 
 	m_selectedMapShortPath = song;
-	m_selectedMapHash = hash;
+	m_selectedMapHash = chart_hash;
 
 	return true;
 }
@@ -763,7 +764,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		packet["song"] = shortPath;
 		packet["diff"] = diff_ind;
 		packet["level"] = chart->level;
-		packet["hash"] = chart->hash;
+		packet["chart_hash"] = chart->hash;
 		m_tcp.SendJSON(packet);
 	}
 	else
