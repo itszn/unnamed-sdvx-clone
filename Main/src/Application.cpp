@@ -1156,11 +1156,11 @@ Texture Application::LoadTexture(const String& name, const bool& external)
 		return ret;
 	}
 }
-Material Application::LoadMaterial(const String& name)
+Material Application::LoadMaterial(const String& name, const String& path)
 {
-	String pathV = String("skins/") + m_skin + String("/shaders/") + name + ".vs";
-	String pathF = String("skins/") + m_skin + String("/shaders/") + name + ".fs";
-	String pathG = String("skins/") + m_skin + String("/shaders/") + name + ".gs";
+	String pathV = path + name + ".vs";
+	String pathF = path + name + ".fs";
+	String pathG = path + name + ".gs";
 	pathV = Path::Absolute(pathV);
 	pathF = Path::Absolute(pathF);
 	pathG = Path::Absolute(pathG);
@@ -1174,6 +1174,10 @@ Material Application::LoadMaterial(const String& name)
 	}
 	assert(ret);
 	return ret;
+}
+Material Application::LoadMaterial(const String& name)
+{
+	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
 }
 Sample Application::LoadSample(const String& name, const bool& external)
 {
