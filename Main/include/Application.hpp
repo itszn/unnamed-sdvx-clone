@@ -84,6 +84,8 @@ public:
 	void StoreNamedSample(String name, Sample sample);
 	void PlayNamedSample(String name, bool loop);
 	void StopNamedSample(String name);
+	// -1 if no sample exists, 0 if stopped, 1 if playing
+	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
 	void DisposeLua(lua_State* state);
 	void SetGaugeColor(int i, Color c);

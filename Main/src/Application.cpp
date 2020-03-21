@@ -1317,6 +1317,13 @@ void Application::ReloadSkin()
 	g_guiState.nextPaintId.clear();
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
+
+	for (auto& sample : m_samples)
+	{
+		sample.second->Stop();
+	}
+	m_samples.clear();
+
 	
 
 	if (g_transition) {
@@ -1577,6 +1584,27 @@ void Application::StopNamedSample(String name)
 	else
 	{
 		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+	}
+}
+int Application::IsNamedSamplePlaying(String name)
+{
+	if (m_samples.Contains(name))
+	{
+		Sample sample = m_samples[name];
+		if (sample)
+		{
+			return sample->IsPlaying() ? 1 : 0;
+		}
+		else
+		{
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			return -1;
+		}
+	}
+	else
+	{
+		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		return -1;
 	}
 }
 void Application::m_OnKeyPressed(int32 key)
@@ -1864,6 +1892,17 @@ static int lPlaySample(lua_State* L /*char* name, bool loop */)
 
 	g_application->PlayNamedSample(name, loop);
 	return 0;
+}
+
+static int lIsSamplePlaying(lua_State* L /* char* name */)
+{
+	const char* name = luaL_checkstring(L, 1);
+	int res = g_application->IsNamedSamplePlaying(name);
+	if (res == -1)
+		return 0;
+
+	lua_pushboolean(L, res);
+	return 1;
 }
 
 static int lStopSample(lua_State* L /* char* name */)
@@ -2179,6 +2218,7 @@ void Application::SetLuaBindings(lua_State * state)
 		pushFuncToTable("LoadSkinSample", lLoadSkinSample);
 		pushFuncToTable("PlaySample", lPlaySample);
 		pushFuncToTable("StopSample", lStopSample);
+		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
 		pushFuncToTable("GetLaserColor", lGetLaserColor);
 		pushFuncToTable("GetButton", lGetButton);
 		pushFuncToTable("GetKnob", lGetKnob);

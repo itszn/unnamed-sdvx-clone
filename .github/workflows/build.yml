@@ -36,7 +36,7 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
-                name: Game_windows
+                name: Game
                 path: bin
             - name: Trigger artifact distribution
               continue-on-error: true
