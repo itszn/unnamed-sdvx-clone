@@ -1170,7 +1170,7 @@ void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 	if (buttonCode < Input::Button::BT_S)
 	{
 		int32 guardDelta = m_playback->GetLastTime() - m_buttonGuardTime[(uint32)buttonCode];
-		if (guardDelta < m_bounceGuard && guardDelta >= 0)
+		if (guardDelta < m_bounceGuard && guardDelta >= 0 && m_playback->GetLastTime() > 0.0)
 		{
 			//Logf("Button %d press bounce guard hit at %dms", Logger::Info, buttonCode, m_playback->GetLastTime());
 			return;

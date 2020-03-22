@@ -4,6 +4,7 @@
 class ShadedMesh {
 public:
 	ShadedMesh(const String& name);
+	ShadedMesh(const String& name, const String& path);
 	ShadedMesh();
 
 	void Draw();

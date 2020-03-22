@@ -108,13 +108,7 @@ void Application::ApplySettings()
 	String newskin = g_gameConfig.GetString(GameConfigKeys::Skin);
 	if (m_skin != newskin)
 	{
-		m_skin = newskin;
-		ReloadSkin();
-	}
-
-	if (g_transition) {
-		delete g_transition;
-		g_transition = TransitionScreen::Create();
+		m_needSkinReload = true;
 	}
 
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
@@ -599,11 +593,23 @@ bool Application::m_Init()
 #endif // GIT_COMMIT
 
 
-
-
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
 
+	// Flags read _before_ config load
+	for(auto& cl : m_commandLine)
+	{
+		String k, v;
+		if(cl.Split("=", &k, &v))
+		{
+			if (k == "-gamedir")
+			{
+				Path::gameDir = v;
+			}
+		}
+	}
+
+	// Load config
 	if(!m_LoadConfig())
 	{
 		Log("Failed to load config file", Logger::Warning);
@@ -622,6 +628,7 @@ bool Application::m_Init()
 		startFullscreen = true;
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
+	// Flags read _after_ config load
 	for(auto& cl : m_commandLine)
 	{
 		String k, v;
@@ -648,6 +655,10 @@ bool Application::m_Init()
 			}
 		}
 	}
+
+	// Init font library
+	if (!Graphics::FontRes::InitLibrary())
+		return false;
 
 	// Create the game window
 	g_resolution = Vector2i(
@@ -923,6 +934,8 @@ void Application::m_Tick()
 		tickable->Tick(m_deltaTime);
 	}
 
+
+
 	// Not minimized / Valid resolution
 	if(g_resolution.x > 0 && g_resolution.y > 0)
 	{
@@ -966,6 +979,12 @@ void Application::m_Tick()
 		glCullFace(GL_FRONT);
 		// Swap buffers
 		g_gl->SwapBuffers();
+	}
+
+	if (m_needSkinReload)
+	{
+		ReloadSkin();
+		m_needSkinReload = false;
 	}
 }
 
@@ -1033,6 +1052,8 @@ void Application::m_Cleanup()
 	{
 		delete img.second;
 	}
+
+	Graphics::FontRes::FreeLibrary();
 
 	Discord_Shutdown();
 
@@ -1135,11 +1156,11 @@ Texture Application::LoadTexture(const String& name, const bool& external)
 		return ret;
 	}
 }
-Material Application::LoadMaterial(const String& name)
+Material Application::LoadMaterial(const String& name, const String& path)
 {
-	String pathV = String("skins/") + m_skin + String("/shaders/") + name + ".vs";
-	String pathF = String("skins/") + m_skin + String("/shaders/") + name + ".fs";
-	String pathG = String("skins/") + m_skin + String("/shaders/") + name + ".gs";
+	String pathV = path + name + ".vs";
+	String pathF = path + name + ".fs";
+	String pathG = path + name + ".gs";
 	pathV = Path::Absolute(pathV);
 	pathF = Path::Absolute(pathF);
 	pathG = Path::Absolute(pathG);
@@ -1153,6 +1174,10 @@ Material Application::LoadMaterial(const String& name)
 	}
 	assert(ret);
 	return ret;
+}
+Material Application::LoadMaterial(const String& name)
+{
+	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
 }
 Sample Application::LoadSample(const String& name, const bool& external)
 {
@@ -1265,6 +1290,8 @@ void Application::ReloadScript(const String& name, lua_State* L)
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	DisposeGUI(L);
+	m_skinHttp.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1291,6 +1318,29 @@ void Application::ReloadSkin()
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
 
+	for (auto& sample : m_samples)
+	{
+		sample.second->Stop();
+	}
+	m_samples.clear();
+
+	
+
+	if (g_transition) {
+		delete g_transition;
+		g_transition = TransitionScreen::Create();
+	}
+
+	//remove all tickables
+	for (auto* t : g_tickables)
+	{
+		RemoveTickable(t);
+	}
+
+	//push new titlescreen
+	TitleScreen* t = TitleScreen::Create();
+	AddTickable(t);
+
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);
 #else
@@ -1311,7 +1361,7 @@ void Application::ReloadSkin()
 #endif
 #endif
 
-	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
+	nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 }
 void Application::DisposeLua(lua_State* state)
 {
@@ -1534,6 +1584,27 @@ void Application::StopNamedSample(String name)
 	else
 	{
 		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+	}
+}
+int Application::IsNamedSamplePlaying(String name)
+{
+	if (m_samples.Contains(name))
+	{
+		Sample sample = m_samples[name];
+		if (sample)
+		{
+			return sample->IsPlaying() ? 1 : 0;
+		}
+		else
+		{
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			return -1;
+		}
+	}
+	else
+	{
+		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		return -1;
 	}
 }
 void Application::m_OnKeyPressed(int32 key)
@@ -1760,6 +1831,7 @@ static int lLoadSkinAnimation(lua_State* L)
 	const char* p;
 	float frametime;
 	int loopcount = 0;
+	bool compressed = false;
 
 	p = luaL_checkstring(L, 1);
 	frametime = luaL_checknumber(L, 2);
@@ -1767,10 +1839,15 @@ static int lLoadSkinAnimation(lua_State* L)
 	{
 		loopcount = luaL_checkinteger(L, 3);
 	}
+	else if (lua_gettop(L) == 4)
+	{
+		loopcount = luaL_checkinteger(L, 3);
+		compressed = lua_toboolean(L, 4) == 1;
+	}
 
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + p;
 	path = Path::Absolute(path);
-	int result = LoadAnimation(L, *path, frametime, loopcount);
+	int result = LoadAnimation(L, *path, frametime, loopcount, compressed);
 	if (result == -1)
 		return 0;
 
@@ -1815,6 +1892,17 @@ static int lPlaySample(lua_State* L /*char* name, bool loop */)
 
 	g_application->PlayNamedSample(name, loop);
 	return 0;
+}
+
+static int lIsSamplePlaying(lua_State* L /* char* name */)
+{
+	const char* name = luaL_checkstring(L, 1);
+	int res = g_application->IsNamedSamplePlaying(name);
+	if (res == -1)
+		return 0;
+
+	lua_pushboolean(L, res);
+	return 1;
 }
 
 static int lStopSample(lua_State* L /* char* name */)
@@ -2130,6 +2218,7 @@ void Application::SetLuaBindings(lua_State * state)
 		pushFuncToTable("LoadSkinSample", lLoadSkinSample);
 		pushFuncToTable("PlaySample", lPlaySample);
 		pushFuncToTable("StopSample", lStopSample);
+		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
 		pushFuncToTable("GetLaserColor", lGetLaserColor);
 		pushFuncToTable("GetButton", lGetButton);
 		pushFuncToTable("GetKnob", lGetKnob);

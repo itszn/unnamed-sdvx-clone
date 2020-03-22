@@ -183,6 +183,8 @@ private:
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
 
+	String m_skinBeforeSkinSettings = "";
+
 	std::queue<SDL_Event> eventQueue;
 
 	void UpdateNuklearInput(SDL_Event evt)
@@ -269,39 +271,53 @@ private:
 		g_application->RemoveTickable(this);
 	}
 
-	float FloatSetting(GameConfigKeys key, String label, float min, float max, float step = 0.01)
+	bool FloatSetting(GameConfigKeys key, String label, float min, float max, float step = 0.01)
 	{
 		float value = g_gameConfig.GetFloat(key);
+		auto prevValue = value;
+
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
 		nk_slider_float(m_nctx, min, &value, max, step);
-		g_gameConfig.Set(key, value);
-		return value;
+		if (value != prevValue) {
+			g_gameConfig.Set(key, value);
+			return true;
+		}
+		return false;
 	}
 
-	float PercentSetting(GameConfigKeys key, String label)
+	bool PercentSetting(GameConfigKeys key, String label)
 	{
 		float value = g_gameConfig.GetFloat(key);
+		auto prevValue = value;
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
 		nk_slider_float(m_nctx, 0, &value, 1, 0.005);
-		g_gameConfig.Set(key, value);
-		return value;
+		if (value != prevValue) {
+			g_gameConfig.Set(key, value);
+			return true;
+		}
+		return false;
 	}
 
 	bool ToggleSetting(GameConfigKeys key, String label)
 	{
 		int value = g_gameConfig.GetBool(key) ? 0 : 1;
+		auto prevValue = value;
 		nk_checkbox_label(m_nctx, *label, &value);
-		g_gameConfig.Set(key, value == 0);
-		return value;
+		if (value != prevValue) {
+			g_gameConfig.Set(key, value == 0);
+			return true;
+		}
+		return false;
 	}
 
 	template<typename EnumClass>
-	typename EnumClass::EnumType EnumSetting(GameConfigKeys key, String label)
+	bool EnumSetting(GameConfigKeys key, String label)
 	{
 		
 		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
 		Vector<const char*> names;
 		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
+		auto prevValue = value;
 
 		for (auto it = nameMap.begin(); it != nameMap.end(); it++)
 		{
@@ -310,20 +326,27 @@ private:
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, names.data(), names.size(), &value, m_buttonheight, m_comboBoxSize);
-		g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[value]));
-		return nameMap.FromString(names[value]);
+		if (prevValue != value) {
+			g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[value]));
+			return true;
+		}
+		return false;
 	}
 
-	int SelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
+	bool SelectionSetting(GameConfigKeys key, Vector<const char*> options, String label)
 	{
 		int value = g_gameConfig.GetInt(key) % options.size();
+		auto prevValue = value;
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, options.data(), options.size(), &value, m_buttonheight, m_comboBoxSize);
-		g_gameConfig.Set(key, value);
-		return value;
+		if (prevValue != value) {
+			g_gameConfig.Set(key, value);
+			return true;
+		}
+		return false;
 	}
 
-	String StringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
+	bool StringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
 	{
 		String value = g_gameConfig.GetString(key);
 		int selection;
@@ -332,6 +355,7 @@ private:
 			selection = stringSearch - options.begin();
 		else
 			selection = 0;
+		auto prevSelection = selection;
 
 		Vector<const char*> displayData;
 		for (String& s : options)
@@ -341,18 +365,25 @@ private:
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
-		value = options[selection];
-		g_gameConfig.Set(key, value);
-		return value;
+		
+		if (prevSelection != selection) {
+			String newValue = options[selection];
+			value = newValue;
+			g_gameConfig.Set(key, value);
+			return true;
+		}
+		return false;
 	}
 
-	int IntSetting(GameConfigKeys key, String label, int min, int max, int step = 1, int perpixel = 1)
+	bool IntSetting(GameConfigKeys key, String label, int min, int max, int step = 1, int perpixel = 1)
 	{
 		int value = g_gameConfig.GetInt(key);
-		value = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
-
-		g_gameConfig.Set(key, value);
-		return value;
+		auto newValue = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
+		if (newValue != value) {
+			g_gameConfig.Set(key, newValue);
+			return true;
+		}
+		return false;
 	}
 
 
@@ -644,7 +675,11 @@ public:
 
 				if (m_skins.size() > 0)
 				{
-					StringSelectionSetting(GameConfigKeys::Skin, m_skins, "Selected Skin:");
+					if (StringSelectionSetting(GameConfigKeys::Skin, m_skins, "Selected Skin:")) {
+						// Window cursor
+						Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + g_gameConfig.GetString(GameConfigKeys::Skin) + "/textures/cursor.png"));
+						g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
+					}
 				}
 
 				nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
@@ -697,9 +732,17 @@ public:
 			}
 
 			nk_spacing(m_nctx, 1);
-			if (nk_button_label(m_nctx, "Skin Settings"))
+			if (nk_button_label(m_nctx, "Skin Settings")
+				|| (m_skinBeforeSkinSettings != "" && 
+					m_skinBeforeSkinSettings != g_gameConfig.GetString(GameConfigKeys::Skin))
+				)
 			{
+				m_skinBeforeSkinSettings = g_gameConfig.GetString(GameConfigKeys::Skin);
 				g_application->AddTickable(new SkinSettingsScreen(g_gameConfig.GetString(GameConfigKeys::Skin), m_nctx));
+			}
+			else
+			{
+				m_skinBeforeSkinSettings = "";
 			}
 			if (nk_button_label(m_nctx, "Exit")) Exit();
 			nk_end(m_nctx);
@@ -1012,9 +1055,13 @@ LaserSensCalibrationScreen* LaserSensCalibrationScreen::Create()
 }
 
 
+bool SkinSettingsScreen::Init()
+{
+	m_allSkins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+	return true;
+}
 
-
-void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
+bool SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
 {
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 
@@ -1026,7 +1073,7 @@ void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSe
 		selection = (stringSearch - options);
 	else
 		selection = 0;
-
+	auto prevSelection = selection;
 	Vector<const char*> displayData;
 	for (size_t i = 0; i < setting.selectionSetting.numOptions; i++)
 	{
@@ -1035,8 +1082,38 @@ void SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSe
 
 	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 	nk_combobox(m_nctx, displayData.data(), setting.selectionSetting.numOptions, &selection, 30, nk_vec2(w - 30, 250));
-	value = options[selection];
-	m_skinConfig->Set(key, value);
+	if (prevSelection != selection) {
+		value = options[selection];
+		m_skinConfig->Set(key, value);
+		return true;
+	}
+	return false;
+}
+
+bool SkinSettingsScreen::MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
+{
+	String value = g_gameConfig.GetString(key);
+	int selection;
+	auto stringSearch = std::find(options.begin(), options.end(), value);
+	if (stringSearch != options.end())
+		selection = stringSearch - options.begin();
+	else
+		selection = 0;
+	int prevSelection = selection;
+	Vector<const char*> displayData;
+	for (String& s : options)
+	{
+		displayData.Add(*s);
+	}
+
+	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
+	nk_combobox(m_nctx, displayData.data(), options.size(), &selection, 30, nk_vec2(1050, 250));
+	if (prevSelection != selection) {
+		value = options[selection];
+		g_gameConfig.Set(key, value);
+		return true;
+	}
+	return false;
 }
 
 void SkinSettingsScreen::Exit()
@@ -1044,33 +1121,47 @@ void SkinSettingsScreen::Exit()
 	g_application->RemoveTickable(this);
 }
 
-void SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
+bool SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
 {
 	int value = m_skinConfig->GetInt(key);
+	auto prevValue = value;
 	value = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
-
-	m_skinConfig->Set(key, value);
+	if (prevValue != value) {
+		m_skinConfig->Set(key, value);
+		return true;
+	}
+	return false;
 }
 
-float SkinSettingsScreen::FloatSetting(String key, String label, float min, float max, float step)
+bool SkinSettingsScreen::FloatSetting(String key, String label, float min, float max, float step)
 {
 	float value = m_skinConfig->GetFloat(key);
+	auto prevValue = value;
+
 	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
 	nk_slider_float(m_nctx, min, &value, max, step);
-	m_skinConfig->Set(key, value);
-	return value;
+	if (prevValue != value) {
+		m_skinConfig->Set(key, value);
+		return true;
+	}
+	return false;
 }
 
-float SkinSettingsScreen::PercentSetting(String key, String label)
+bool SkinSettingsScreen::PercentSetting(String key, String label)
 {
 	float value = m_skinConfig->GetFloat(key);
+	auto prevValue = value;
+
 	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
 	nk_slider_float(m_nctx, 0, &value, 1, 0.005);
-	m_skinConfig->Set(key, value);
-	return value;
+	if (prevValue != value) {
+		m_skinConfig->Set(key, value);
+		return true;
+	}
+	return false;
 }
 
-void SkinSettingsScreen::TextSetting(String key, String label, bool secret)
+bool SkinSettingsScreen::TextSetting(String key, String label, bool secret)
 {
 	String value = m_skinConfig->GetString(key);
 	char display[1024];
@@ -1095,12 +1186,15 @@ void SkinSettingsScreen::TextSetting(String key, String label, bool secret)
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default));
 	}
-	value = String(display, len);
-
-	m_skinConfig->Set(key, value);
+	auto newValue = String(display, len);
+	if (newValue != value) {
+		m_skinConfig->Set(key, newValue);
+		return true;
+	}
+	return false;
 }
 
-void SkinSettingsScreen::ColorSetting(String key, String label)
+bool SkinSettingsScreen::ColorSetting(String key, String label)
 {
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0) - 100;
 	Color value = m_skinConfig->GetColor(key);
@@ -1138,19 +1232,26 @@ void SkinSettingsScreen::ColorSetting(String key, String label)
 		}
 		nk_combo_end(m_nctx);
 	}
-	m_skinConfig->Set(key, Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a));
-
-
 	nk_layout_row_dynamic(m_nctx, 30, 1);
 
+	Color newValue = Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a);
+	if (newValue != value) {
+		m_skinConfig->Set(key, newValue);
+		return true;
+	}
+	return false;
 }
 
 bool SkinSettingsScreen::ToggleSetting(String key, String label)
 {
 	int value = m_skinConfig->GetBool(key) ? 0 : 1;
+	auto prevValue = value;
 	nk_checkbox_label(m_nctx, *label, &value);
-	m_skinConfig->Set(key, value == 0);
-	return value;
+	if (prevValue != value) {
+		m_skinConfig->Set(key, value == 0);
+		return true;
+	}
+	return false;
 }
 
 SkinSettingsScreen::SkinSettingsScreen(String skin, nk_context* ctx)
@@ -1188,6 +1289,18 @@ void SkinSettingsScreen::Render(float deltaTime)
 	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
 	{
 		nk_layout_row_dynamic(m_nctx, 30, 1);
+
+		if (m_allSkins.size() > 0)
+		{
+			if (MainConfigStringSelectionSetting(GameConfigKeys::Skin, m_allSkins, "Selected Skin:"))
+			{
+				// Window cursor
+				Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + g_gameConfig.GetString(GameConfigKeys::Skin) + "/textures/cursor.png"));
+				g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
+				Exit();
+			}
+		}
+
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", *m_skin);
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
 		for (auto s : m_skinConfig->GetSettings())
