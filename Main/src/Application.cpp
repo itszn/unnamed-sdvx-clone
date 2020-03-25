@@ -517,7 +517,7 @@ void __updateChecker()
 	else
 	{
 #ifdef GIT_COMMIT
-		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits" });
+		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/actions/runs" });
 		if (response.status_code != 200)
 		{
 			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
@@ -530,34 +530,49 @@ void __updateChecker()
 		
 		if (commits.contains("message"))
 		{
-			//some error message was sent
+			String errormsg;
+			commits.at("message").get_to(errormsg);
+			Logf("Failed to get update information: %s", Logger::Warning, *errormsg);
 			return;
 		}
 
-		int commit = 0;
-		while (commit < 30)
+		commits = commits.at("workflow_runs");
+		for(auto& commit_kvp : commits.items())
 		{
-			String new_hash = commits[commit]["sha"];
-			if (current_hash == new_hash.substr(0, current_hash.length()))
+			auto commit = commit_kvp.value();
+
+			String branch;
+			commit.at("head_branch").get_to(branch);
+			String status;
+			commit.at("status").get_to(status);
+			String conclusion;
+			commit.at("conclusion").get_to(conclusion);
+
+			if (branch == "master" && status == "completed" && conclusion == "success")
 			{
-				return;
+				String new_hash;
+				commit.at("head_sha").get_to(new_hash);
+				if (current_hash == new_hash.substr(0, current_hash.length())) //up to date
+				{
+					return;
+				}
+				else //update available
+				{
+					auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash });
+					String updateUrl = "https://github.com/drewol/unnamed-sdvx-clone";
+					if (response.status_code != 200)
+					{
+						Logf("Failed to get update information: %s", Logger::Warning, response.error.message.c_str());
+					}
+					else
+					{
+						auto commit_status = nlohmann::json::parse(response.text);
+						commit_status.at("html_url").get_to(updateUrl);
+					}
+					g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					return;
+				}
 			}
-			printf("Getting build status for commit \"%s\"", new_hash.c_str());
-			auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash + "/status" });
-			if (response.status_code != 200)
-			{
-				Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
-			}
-			auto commit_status = nlohmann::json::parse(response.text);
-			String state = commit_status["state"];
-			if (state == "success")
-			{
-				String updateUrl;
-				commits[commit].at("html_url").get_to(updateUrl);
-				g_application->SetUpdateAvailable(new_hash.substr(0,7), updateUrl, "http://drewol.me/Downloads/Game.zip");
-				return;
-			}
-			commit++;
 		}
 #endif
 	}
