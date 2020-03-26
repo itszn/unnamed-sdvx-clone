@@ -6,6 +6,7 @@
 #include "Mesh.hpp"
 #include "OpenGL.hpp"
 #include <Shared/Timer.hpp>
+#include <Shared/Profiling.hpp>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -353,6 +354,7 @@ namespace Graphics
 
 	bool FontRes::InitLibrary()
 	{
+		ProfilerScope $("Font library initialization");
 		if(!FT_Init_FreeType(&library) == FT_Err_Ok)
 			return false;
 
