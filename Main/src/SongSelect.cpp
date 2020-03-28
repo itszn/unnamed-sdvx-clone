@@ -1096,7 +1096,7 @@ private:
 	} m_previewParams;
 
 	Timer m_dbUpdateTimer;
-	MapDatabase m_mapDatabase;
+	MapDatabase* m_mapDatabase;
 
 	// Map selection wheel
 	Ref<SelectionWheel> m_selectionWheel;
@@ -1135,61 +1135,78 @@ private:
 
 public:
 
-	bool Init() override
+	bool AsyncLoad() override 
+	{
+		m_settingsWheel = Ref<GameSettingsWheel>(new GameSettingsWheel());
+		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
+		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel(this));
+		m_filterSelection = Ref<FilterSelection>(new FilterSelection(m_selectionWheel));
+		m_mapDatabase = new MapDatabase();
+
+		// Setup the map database
+		m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
+
+		return true;
+	}
+
+	bool AsyncFinalize() override 
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
 		g_input.OnButtonPressed.Add(this, &SongSelect_Impl::m_OnButtonPressed);
 		g_input.OnButtonReleased.Add(this, &SongSelect_Impl::m_OnButtonReleased);
 		g_gameWindow->OnMouseScroll.Add(this, &SongSelect_Impl::m_OnMouseScroll);
-		m_settingsWheel = Ref<GameSettingsWheel>(new GameSettingsWheel());
+
+
 		if (!m_settingsWheel->Init())
 			return false;
-		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
-		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel(this));
 		if (!m_selectionWheel->Init())
 			return false;
-		m_filterSelection = Ref<FilterSelection>(new FilterSelection(m_selectionWheel));
 		if (!m_filterSelection->Init())
 			return false;
-		m_filterSelection->SetMapDB(&m_mapDatabase);
+
+		m_filterSelection->SetMapDB(m_mapDatabase);
 		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
 		m_selectionWheel->OnChartSelected.Add(this, &SongSelect_Impl::OnChartSelected);
-		// Setup the map database
-		m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
-
-		m_mapDatabase.OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
-		m_mapDatabase.OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
-		m_mapDatabase.OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
-		m_mapDatabase.OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
-		m_mapDatabase.OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
-		m_mapDatabase.StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
 		m_selectionWheel->SelectByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
+		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
+		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
+		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
+		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
+		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
+		m_mapDatabase->StartSearching();
+
 		m_searchInput = Ref<TextInput>(new TextInput());
 		m_searchInput->OnTextChanged.Add(this, &SongSelect_Impl::OnSearchTermChanged);
 
-
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
+
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
-
 		m_previewParams = { "", 0, 0 };
-
-		m_hasCollDiag = m_collDiag.Init(&m_mapDatabase);
+		m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
 
 		if (m_hasCollDiag)
 		{
 			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
 		}
+	}
 
+
+	bool Init() override
+	{
 		return true;
 	}
 	~SongSelect_Impl()
 	{
 		// Clear callbacks
-		m_mapDatabase.OnFoldersCleared.Clear();
+		if (m_mapDatabase)
+		{
+			m_mapDatabase->OnFoldersCleared.Clear();
+			delete m_mapDatabase;
+		}
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_input.OnButtonReleased.RemoveAll(this);
 		g_gameWindow->OnMouseScroll.RemoveAll(this);
@@ -1270,7 +1287,7 @@ public:
 		else
 		{
 			String utf8Search = Utility::ConvertToUTF8(search);
-			Map<int32, FolderIndex*> filter = m_mapDatabase.FindFolders(utf8Search);
+			Map<int32, FolderIndex*> filter = m_mapDatabase->FindFolders(utf8Search);
 			m_selectionWheel->SetFilter(filter);
 		}
 	}
@@ -1517,7 +1534,7 @@ public:
 			}
 			else if (key == SDLK_F5)
 			{
-				m_mapDatabase.StartSearching();
+				m_mapDatabase->StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
 			}
 			else if (key == SDLK_F1 && m_hasCollDiag)
@@ -1530,7 +1547,7 @@ public:
 			}
 			else if (key == SDLK_F8) // start demo mode
 			{
-				ChartIndex* chart = m_mapDatabase.GetRandomChart();
+				ChartIndex* chart = m_mapDatabase->GetRandomChart();
 
 				Game* game = Game::Create(*chart, m_settingsWheel->GetGameFlags());
 				if (!game)
@@ -1540,7 +1557,7 @@ public:
 				}
 				game->GetScoring().autoplay = true;
 				game->SetDemoMode(true);
-				game->SetSongDB(&m_mapDatabase);
+				game->SetSongDB(m_mapDatabase);
 				m_suspended = true;
 
 				// Transition to game
@@ -1583,7 +1600,7 @@ public:
 	{
 		if(m_dbUpdateTimer.Milliseconds() > 500)
 		{
-			m_mapDatabase.Update();
+			m_mapDatabase->Update();
 			m_dbUpdateTimer.Restart();
 		}
 
@@ -1603,7 +1620,7 @@ public:
 
 	virtual void Render(float deltaTime)
 	{
-		if (IsSuspended())
+		if (m_suspended)
 			return;
 
 		lua_getglobal(m_lua, "render");
@@ -1688,7 +1705,7 @@ public:
 	{
 		m_suspended = true;
 		m_previewPlayer.Pause();
-		m_mapDatabase.StopSearching();
+		m_mapDatabase->StopSearching();
 		if (m_lockMouse)
 			m_lockMouse.Release();
 
@@ -1698,7 +1715,7 @@ public:
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;
 		m_previewPlayer.Restore();
-		m_mapDatabase.StartSearching();
+		m_mapDatabase->StartSearching();
 		m_filterSelection->UpdateFilters();
 		OnSearchTermChanged(m_searchInput->input);
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))

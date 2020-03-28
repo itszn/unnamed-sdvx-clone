@@ -338,8 +338,7 @@ public:
 
 	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash)
 	{
-		String stmt = "SELECT DISTINCT Maps.rowid FROM Maps INNER JOIN Difficulties ON Maps.rowid = Difficulties.mapid "
-					  "WHERE Difficulties.hash = ?"; //TODO: Update command
+		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE hash = ?";
 		DBStatement search = m_database.Query(stmt);
 		search.BindString(1, hash);
 

@@ -193,7 +193,7 @@ private:
 	bool m_hasSelectedMap = false;
 
 	// Instance of the database, used to look up songs
-	MapDatabase m_mapDatabase;
+	MapDatabase* m_mapDatabase;
 
 	float m_advanceDiff = 0.0f;
 	float m_advanceRoom = 0.0f;

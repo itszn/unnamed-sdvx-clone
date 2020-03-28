@@ -38,7 +38,7 @@ private:
 
 	void Start()
 	{
-		g_application->AddTickable(SongSelect::Create());
+		g_transition->TransitionTo(SongSelect::Create());
 	}
 
 	int lStart(lua_State* L)

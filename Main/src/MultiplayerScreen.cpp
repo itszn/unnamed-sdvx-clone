@@ -124,7 +124,7 @@ MultiplayerScreen::~MultiplayerScreen()
 	g_input.OnButtonReleased.RemoveAll(this);
 	g_gameWindow->OnMouseScroll.RemoveAll(this);
 	g_gameWindow->OnMousePressed.RemoveAll(this);
-	m_mapDatabase.OnFoldersCleared.Clear();
+	m_mapDatabase->OnFoldersCleared.Clear();
 	if (m_lua)
 	{
 		g_application->DisposeLua(m_lua);
@@ -349,7 +349,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_finalStats.clear();
 
 	// Grab the map from the database
-	FolderIndex* folder = m_mapDatabase.GetFolder(m_selectedMapId);
+	FolderIndex* folder = m_mapDatabase->GetFolder(m_selectedMapId);
 	ChartIndex* chart = folder->charts[m_selectedDiffIndex];
 
 	// Reset score time before playing
@@ -400,7 +400,7 @@ ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String
 		return m_getChartByShortPath(path, diffIndex, level, true);
 	
 	Logf("[Multiplayer] looking up song hash '%s' level %u", Logger::Info, *hash, level);
-	for (auto folder : m_mapDatabase.FindFoldersByHash(hash))
+	for (auto folder : m_mapDatabase->FindFoldersByHash(hash))
 	{
 		ChartIndex* newChart = NULL;
 
@@ -440,7 +440,7 @@ ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32*
 {
 	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Info, path.c_str(), level, *diffIndex);
 
-	for (auto folder : m_mapDatabase.FindFolders(path))
+	for (auto folder : m_mapDatabase->FindFolders(path))
 	{
 		ChartIndex* newChart = NULL;
 
@@ -536,7 +536,7 @@ void MultiplayerScreen::m_changeSelectedRoom(int offset)
 
 void MultiplayerScreen::m_changeDifficulty(int offset)
 {
-	FolderIndex* folder = m_mapDatabase.GetFolder(this->m_selectedMapId);
+	FolderIndex* folder = m_mapDatabase->GetFolder(this->m_selectedMapId);
 	int oldDiff = this->m_selectedDiffIndex;
 	int newInd = this->m_selectedDiffIndex + offset;
 	if (newInd < 0 || newInd >= folder->charts.size())
@@ -670,7 +670,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	this->m_selectedDiffIndex = diff_ind;
 
 	// Get the current map from the database
-	FolderIndex* folder = m_mapDatabase.GetFolder(mapid);
+	FolderIndex* folder = m_mapDatabase->GetFolder(mapid);
 	ChartIndex* chart = folder->charts[diff_ind];
 
 	// Find "short" path for the selected map
@@ -808,7 +808,7 @@ void MultiplayerScreen::Tick(float deltaTime)
 
 	if (m_dbUpdateTimer.Milliseconds() > 500)
 	{
-		m_mapDatabase.Update();
+		m_mapDatabase->Update();
 		m_dbUpdateTimer.Restart();
 	}
 
@@ -1147,7 +1147,7 @@ int MultiplayerScreen::lExit(lua_State * L)
 int MultiplayerScreen::lSongSelect(lua_State* L)
 {
 	m_suspended = true;
-	g_application->AddTickable(SongSelect::Create(this));
+	g_transition->TransitionTo(SongSelect::Create(this));
 	return 0;
 }
 
@@ -1170,7 +1170,7 @@ void MultiplayerScreen::OnRestore()
 		return;
 	}*/
 
-	m_mapDatabase.StartSearching();
+	m_mapDatabase->StartSearching();
 
 	// Retrive the lobby info now that we are out of the game
 	if (m_inGame)
@@ -1204,6 +1204,8 @@ bool MultiplayerScreen::AsyncLoad()
 		return false;
 
 	m_textInput = Ref<TextInputMultiplayer>(new TextInputMultiplayer());
+	m_mapDatabase = new MapDatabase();
+	m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
 	return true;
 }
 
@@ -1241,9 +1243,8 @@ bool MultiplayerScreen::AsyncFinalize()
 	lua_setglobal(m_lua, "screenState");
 
 	// Start the map database
-	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
-	m_mapDatabase.OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
-	m_mapDatabase.StartSearching();
+	m_mapDatabase->OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
+	m_mapDatabase->StartSearching();
 
 	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 	if (m_userName == "")
@@ -1265,7 +1266,7 @@ bool MultiplayerScreen::AsyncFinalize()
 void MultiplayerScreen::OnSuspend()
 {
 	m_suspended = true;
-	m_mapDatabase.StopSearching();
+	m_mapDatabase->StopSearching();
 
 	if (m_lockMouse)
 		m_lockMouse.Release();

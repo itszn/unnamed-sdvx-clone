@@ -53,7 +53,7 @@ private:
 /*
 	Song select screen
 */
-class SongSelect : public IApplicationTickable
+class SongSelect : public IAsyncLoadableApplicationTickable
 {
 protected:
 	SongSelect() = default;
