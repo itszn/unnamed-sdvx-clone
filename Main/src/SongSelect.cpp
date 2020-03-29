@@ -197,6 +197,8 @@ private:
 const float PreviewPlayer::m_fadeDuration = 0.5f;
 const float PreviewPlayer::m_fadeDelayDuration = 0.5f;
 
+//TODO: Abstract away some selection-wheel stuff(?)
+
 /*
 	Song selection wheel
 */
@@ -226,8 +228,7 @@ class SelectionWheel
 	String m_lastStatus = "";
 	std::mutex m_lock;
 
-	// TODO(itszn) some gui for sorts
-	SongSort* m_currentSort;
+	SongSort* m_currentSort = nullptr;
 
 public:
 	SelectionWheel(IApplicationTickable* owner) : m_owner(owner)
@@ -238,7 +239,6 @@ public:
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/songwheel"));
 		lua_newtable(m_lua);
 		lua_setglobal(m_lua, "songwheel");
-		m_currentSort = new TitleSort("Title Ascending",false);
 		return true;
 	}
 	void ReloadScript()
@@ -476,36 +476,13 @@ public:
 	}
 
 	// TODO(itszn) Sort GUI instead of hardcode
-	void SetSort(SortType type)
+	void SetSort(SongSort* sort)
 	{
-		if (type == m_currentSort->GetType())
+		if (sort == m_currentSort)
 			return;
 
-		delete m_currentSort;
+		m_currentSort = sort;
 
-		switch(type)
-		{
-			case SortType::TITLE_ASC:
-				m_currentSort = new TitleSort("Title Ascending", false);
-				break;
-			case SortType::TITLE_DESC:
-				m_currentSort = new TitleSort("Title Descending", true);
-				break;
-			case SortType::SCORE_ASC:
-				m_currentSort = new ScoreSort("Score Ascending", false);
-				break;
-			case SortType::SCORE_DESC:
-				m_currentSort = new ScoreSort("Score Descending", true);
-				break;
-			case SortType::DATE_ASC:
-				m_currentSort = new DateSort("Date Ascending", false);
-				break;
-			case SortType::DATE_DESC:
-				m_currentSort = new DateSort("Date Descending", true);
-				break;
-			default:
-				assert(0);
-		}
 		// TODO(itszn) some actual ui
 		OnSearchStatusUpdated("Sorting by " + m_currentSort->GetName());
 		m_doSort();
@@ -635,6 +612,11 @@ public:
 private:
 	void m_doSort()
 	{
+		if (m_currentSort == nullptr)
+		{
+			Log("No sorting set", Logger::Warning);
+			return;
+		}
 		Logf("Sorting with %s", Logger::Info,m_currentSort->GetName().c_str());
 		m_currentSort->SortInplace(m_sortVec, m_SourceCollection());
 	}
@@ -830,7 +812,7 @@ public:
 	{
 		g_application->ReloadScript("songselect/filterwheel", m_lua);
 	}
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime)
 	{
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
@@ -1097,6 +1079,136 @@ private:
 	std::unordered_set<std::string> m_collections;
 };
 
+
+/*
+	Sorting selection element
+*/
+class SortSolection {
+public:
+
+	bool Active = false;
+	bool Initialized = false;
+
+	SortSolection(Ref<SelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) { }
+	~SortSolection()
+	{
+		for (SongSort* s : m_sorts)
+		{
+			TitleSort* t = (TitleSort*)s;
+			ScoreSort* sc = (ScoreSort*)s;
+			DateSort* d = (DateSort*)s;
+			switch (s->GetType())
+			{
+			case TITLE_ASC:
+			case TITLE_DESC:
+				delete t;
+				break;
+			case SCORE_DESC:
+			case SCORE_ASC:
+				delete sc;
+				break;
+			case DATE_DESC:
+			case DATE_ASC:
+				delete d;
+				break;
+			}
+		}
+		m_sorts.clear();
+	}
+
+	bool Init()
+	{
+		m_sorts.Add(new TitleSort("Title ^", false));
+		m_sorts.Add(new TitleSort("Title v", true));
+		m_sorts.Add(new ScoreSort("Score ^", false));
+		m_sorts.Add(new ScoreSort("Score v", true));
+		m_sorts.Add(new DateSort("Date ^", false));
+		m_sorts.Add(new DateSort("Date v", true));
+
+		CheckedLoad(m_lua = g_application->LoadScript("songselect/sortwheel"));
+		m_SetLuaTable();
+
+		Initialized = true;
+		return true;
+	}
+
+	void SetSelection(SongSort* s) 
+	{
+		m_selection = std::find(m_sorts.begin(), m_sorts.end(), s) - m_sorts.begin();
+		m_selectionWheel->SetSort(s);
+
+		lua_getglobal(m_lua, "set_selection");
+		lua_pushnumber(m_lua, m_selection + 1);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on set_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void Render(float deltaTime)
+	{
+		lua_getglobal(m_lua, "render");
+		lua_pushnumber(m_lua, deltaTime);
+		lua_pushboolean(m_lua, Active);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void AdvanceSelection(int offset)
+	{
+		int newSelection = (m_selection + offset) % (int)m_sorts.size();
+		if (newSelection < 0)
+		{
+			newSelection = m_sorts.size() + newSelection;
+		}
+
+		SetSelection(m_sorts.at(newSelection));
+	}
+
+
+private:
+	void m_PushStringToArray(int index, const char* data)
+	{
+		lua_pushinteger(m_lua, index);
+		lua_pushstring(m_lua, data);
+		lua_settable(m_lua, -3);
+	}
+
+	void m_SetLuaTable()
+	{
+		lua_newtable(m_lua);
+		{
+			for (size_t i = 0; i < m_sorts.size(); i++)
+			{
+				m_PushStringToArray(i + 1, m_sorts[i]->GetName().c_str());
+			}
+		}
+		lua_setglobal(m_lua, "sorts");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+
+	}
+
+	Ref<SelectionWheel> m_selectionWheel;
+	Vector<SongSort*> m_sorts;
+	int m_selection = 0;
+	lua_State* m_lua = nullptr;
+};
+
 class GameSettingsWheel{
 public:
 	GameSettingsWheel()
@@ -1258,6 +1370,8 @@ private:
 	Ref<FilterSelection> m_filterSelection;
 	// Game settings wheel
 	Ref<GameSettingsWheel> m_settingsWheel;
+	// Sort selection
+	Ref<SortSolection> m_sortSelection;
 	// Search text logic object
 	Ref<TextInput> m_searchInput;
 
@@ -1306,6 +1420,17 @@ public:
 		if (!m_filterSelection->Init())
 			return false;
 		m_filterSelection->SetMapDB(&m_mapDatabase);
+
+		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
+		if (!m_sortSelection->Init())
+		{
+			g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
+				"Copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin.", 2);
+			return false;
+		}
+		m_sortSelection->AdvanceSelection(0);
+		
+
 		m_selectionWheel->OnMapSelected.Add(this, &SongSelect_Impl::OnMapSelected);
 		m_selectionWheel->OnDifficultySelected.Add(this, &SongSelect_Impl::OnDifficultySelected);
 		// Setup the map database
@@ -1513,6 +1638,17 @@ public:
 					break;
 				}
 			}
+			else if (m_sortSelection->Active)
+			{
+				switch (buttonCode)
+				{
+				case Input::Button::Back:
+					m_sortSelection->Active = false;
+					break;
+				default:
+					break;
+				}
+			}
 			else
 			{
 				switch (buttonCode)
@@ -1565,29 +1701,15 @@ public:
 		switch (buttonCode)
 		{
 		case Input::Button::FX_0:
-			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_settingsWheel->Active)
-			{
-				if (!m_filterSelection->Active)
-				{
-					m_filterSelection->Active = !m_filterSelection->Active;
-				}
-				else
-				{
-					m_filterSelection->Active = !m_filterSelection->Active;
-				}
+			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_settingsWheel->Active && !m_sortSelection->Active)
+			{				
+				m_filterSelection->Active = !m_filterSelection->Active;	
 			}
 			break;
 		case Input::Button::FX_1:
-			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_settingsWheel->Active)
+			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_settingsWheel->Active && !m_filterSelection->Active)
 			{
-				if (!m_showScores)
-				{
-					m_showScores = !m_showScores;
-				}
-				else
-				{
-					m_showScores = !m_showScores;
-				}
+				m_sortSelection->Active = !m_sortSelection->Active;
 			}
 			break;
 		}
@@ -1601,6 +1723,10 @@ public:
 		if (m_settingsWheel->Active)
 		{
 			m_settingsWheel->AdvanceSelection(steps);
+		}
+		else if (m_sortSelection->Active)
+		{
+			m_sortSelection->AdvanceSelection(steps);
 		}
 		else if (m_filterSelection->Active)
 		{
@@ -1643,6 +1769,18 @@ public:
 				m_filterSelection->AdvanceSelection(-1);
 			}
 		}
+		else if (m_sortSelection->Active)
+		{
+			if (key == SDLK_DOWN)
+			{
+				m_sortSelection->AdvanceSelection(1);
+
+			}
+			else if (key == SDLK_UP)
+			{
+				m_sortSelection->AdvanceSelection(-1);
+			}
+		}
 		else
 		{
 			if (key == SDLK_DOWN)
@@ -1681,15 +1819,6 @@ public:
 			else if (key == SDLK_F2)
 			{
 				m_selectionWheel->SelectRandom();
-			}
-			else if (key == SDLK_F3)
-			{
-				SortType s = static_cast<SortType>(static_cast<int>(
-						m_selectionWheel->GetSortType()) + 1);
-
-				if (s >= SortType::SORT_COUNT)
-					s = SortType::TITLE_ASC;
-				m_selectionWheel->SetSort(s);
 			}
 			else if (key == SDLK_F8) // start demo mode
 			{
@@ -1780,6 +1909,7 @@ public:
 
 		m_selectionWheel->Render(deltaTime);
 		m_filterSelection->Render(deltaTime);
+		m_sortSelection->Render(deltaTime);
 		m_settingsWheel->Render(deltaTime);
 
 		if (m_collDiag.IsActive())
@@ -1834,6 +1964,13 @@ public:
 				m_filterSelection->AdvanceSelection(advanceDiffActual);
 			if (advanceSongActual != 0)
 				m_filterSelection->AdvanceSelection(advanceSongActual);
+		}
+		else if (m_sortSelection->Active)
+		{
+			if (advanceDiffActual != 0)
+				m_sortSelection->AdvanceSelection(advanceDiffActual);
+			if (advanceSongActual != 0)
+				m_sortSelection->AdvanceSelection(advanceSongActual);
 		}
 		else
 		{
