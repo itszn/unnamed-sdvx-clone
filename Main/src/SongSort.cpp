@@ -5,7 +5,7 @@
 const SongSelectIndex& getSongFromCollection(uint32 index, const Map<int32,
 	SongSelectIndex>& collection)
 {
-	auto& it = collection.find(index);
+	auto it = collection.find(index);
 	if (it == collection.end())
 	{
 		Logf("Could not find song id %u", Logger::Error, index);
