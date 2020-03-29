@@ -10,6 +10,8 @@ function render(deltaTime, shown)
     if not shown then
         return
     end
+    gfx.Save()
+    gfx.ResetTransform()
     resx,resy = game.GetResolution();
     gfx.FillColor(0,0,0,200)
     gfx.FastRect(0,0,resx,resy)
@@ -30,7 +32,7 @@ function render(deltaTime, shown)
         local ypos = resy/2 + 50  * (i - selection - yoff)
         gfx.DrawLabel(sortLabels[i], xpos, ypos);
     end
-
+    gfx.Restore()
     yoff = yoff * 0.7
 end
 
