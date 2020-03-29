@@ -472,6 +472,7 @@ public:
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp FROM Scores WHERE chart_hash=?");
 
 		Set<FolderIndex*> addedEvents;
 		Set<FolderIndex*> removeEvents;
@@ -535,6 +536,28 @@ public:
 				chart->illustrator = e.mapData->illustrator;
 				chart->jacket_path = e.mapData->jacketPath;
 				chart->hash = e.hash;
+
+				// Check for existing scores for this chart
+				scoreScan.BindString(1, chart->hash);
+				while (scoreScan.StepRow())
+				{
+					ScoreIndex* score = new ScoreIndex();
+					score->id = scoreScan.IntColumn(0);
+					score->score = scoreScan.IntColumn(1);
+					score->crit = scoreScan.IntColumn(2);
+					score->almost = scoreScan.IntColumn(3);
+					score->miss = scoreScan.IntColumn(4);
+					score->gauge = scoreScan.DoubleColumn(5);
+					score->gameflags = scoreScan.IntColumn(6);
+					score->replayPath = scoreScan.StringColumn(7);
+
+					score->timestamp = scoreScan.Int64Column(8);
+					score->chartHash = chart->hash;
+					chart->scores.Add(score);
+				}
+				scoreScan.Rewind();
+
+
 				m_charts.Add(chart->id, chart);
 				m_chartsByHash.Add(chart->hash, chart);
 				// Add diff to map and resort

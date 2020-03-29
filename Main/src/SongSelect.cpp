@@ -824,6 +824,10 @@ public:
 			assert(false);
 		}
 	}
+	void OnFoldersAdded(Vector<FolderIndex*> maps)
+	{
+		UpdateFilters();
+	}
 
 	// Check if any new folders or collections should be added and add them
 	void UpdateFilters()
@@ -838,7 +842,7 @@ public:
 			}
 		}
 
-		for (std::string p : Path::GetSubDirs(g_gameConfig.GetString(GameConfigKeys::SongFolder)))
+		for (std::string p : Path::GetSubDirs(Path::Absolute(g_gameConfig.GetString(GameConfigKeys::SongFolder))))
 		{
 			if (m_folders.find(p) == m_folders.end())
 			{
@@ -1172,6 +1176,7 @@ public:
 		m_selectionWheel->SelectByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
 		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
+		m_mapDatabase->OnFoldersAdded.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersAdded);
 		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
 		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
 		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
