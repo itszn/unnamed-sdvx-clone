@@ -1,0 +1,3 @@
+#!/bin/sh
+SELF=$(readlink -f "$0")
+exec "${SELF%/*}/usr/bin/usc-game" "-gamedir=$(dirname $APPIMAGE)" "$@"

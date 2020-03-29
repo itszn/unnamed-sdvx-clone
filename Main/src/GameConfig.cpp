@@ -22,7 +22,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Fullscreen, false);
 	Set(GameConfigKeys::FullscreenMonitorIndex, 0);
 	Set(GameConfigKeys::WindowedFullscreen, false);
-	Set(GameConfigKeys::AntiAliasing, 0);
+	Set(GameConfigKeys::AntiAliasing, 1);
 	Set(GameConfigKeys::MasterVolume, 1.0f);
 	Set(GameConfigKeys::ScreenX, -1);
 	Set(GameConfigKeys::ScreenY, -1);
@@ -55,6 +55,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::ShowCover, true);
 	Set(GameConfigKeys::DistantButtonScale, 1.0f);
 	Set(GameConfigKeys::BTOverFXScale, 0.8f);
+	Set(GameConfigKeys::DisableBackgrounds, false);
 
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);

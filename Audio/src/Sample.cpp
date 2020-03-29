@@ -114,6 +114,10 @@ public:
 	{
 		return g_audio->GetSampleRate();
 	}
+	bool IsPlaying() const
+	{
+		return m_playing;
+	}
 
 };
 

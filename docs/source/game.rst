@@ -61,9 +61,9 @@ Example::
 
 LoadSkinSample(char* name)
 ********************************
-Loads a .wav sample from the audio directory in the current skin folder.
+Loads an audio sample from the audio directory in the current skin folder.
 
-.wav should not be included in *name*.
+if no file extension is included in *name* ``.wav`` is assumed.
 
 
 PlaySample(char* name, bool loop = false)
@@ -74,6 +74,11 @@ Plays a loaded sample. Will loop the sample if loop == true.
 StopSample(char* name)
 *******************************************
 Stop playing a sample instantly.
+
+IsSamplePlaying(char* name)
+***************************
+Returns true if a sample with that *name* is playing, false if it's stopped, and
+nil if no sample with that *name* exists.
 
 
 GetLaserColor(int laser)
