@@ -1118,12 +1118,15 @@ public:
 
 	bool Init()
 	{
-		m_sorts.Add(new TitleSort("Title ^", false));
-		m_sorts.Add(new TitleSort("Title v", true));
-		m_sorts.Add(new ScoreSort("Score ^", false));
-		m_sorts.Add(new ScoreSort("Score v", true));
-		m_sorts.Add(new DateSort("Date ^", false));
-		m_sorts.Add(new DateSort("Date v", true));
+		if (m_sorts.size() == 0)
+		{
+			m_sorts.Add(new TitleSort("Title ^", false));
+			m_sorts.Add(new TitleSort("Title v", true));
+			m_sorts.Add(new ScoreSort("Score ^", false));
+			m_sorts.Add(new ScoreSort("Score v", true));
+			m_sorts.Add(new DateSort("Date ^", false));
+			m_sorts.Add(new DateSort("Date v", true));
+		}
 
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/sortwheel"));
 		m_SetLuaTable();
@@ -1424,9 +1427,18 @@ public:
 		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
 		if (!m_sortSelection->Init())
 		{
-			g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
-				"Copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin.", 2);
-			return false;
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
+			if (!copyDefault)
+				return false;
+			String defaultPath = Path::Absolute("skins/default/scripts/songselect/sortwheel.lua");
+			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
+			Path::Copy(defaultPath, skinPath);
+			if (!m_sortSelection->Init())
+			{
+				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default",2);
+				return false;
+			}
 		}
 		m_sortSelection->AdvanceSelection(0);
 		
