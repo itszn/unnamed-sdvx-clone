@@ -16,6 +16,7 @@
 #include <mutex>
 #include <MultiplayerScreen.hpp>
 #include <unordered_set>
+#include "SongSort.hpp"
 
 
 class TextInput
@@ -196,6 +197,8 @@ private:
 const float PreviewPlayer::m_fadeDuration = 0.5f;
 const float PreviewPlayer::m_fadeDelayDuration = 0.5f;
 
+//TODO: Abstract away some selection-wheel stuff(?)
+
 /*
 	Song selection wheel
 */
@@ -204,10 +207,13 @@ class SelectionWheel
 	// keyed on SongSelectIndex::id
 	Map<int32, SongSelectIndex> m_maps;
 	Map<int32, SongSelectIndex> m_mapFilter;
+	Vector<uint32> m_sortVec;
 	bool m_filterSet = false;
 	IApplicationTickable* m_owner;
-	// Currently selected selection ID
-	int32 m_currentlySelectedId = 0;
+
+	// Currently selected sort index
+	uint32 m_selectedSortIndex = 0;
+
 	// Currently selected selection ID
 	int32 m_currentlySelectedMapId = 0;
 
@@ -215,12 +221,14 @@ class SelectionWheel
 	int32 m_currentlySelectedDiff = 0;
 
 	// current lua map index
-	uint32 m_currentlySelectedLuaMapIndex = 0;
+	uint32 m_currentlySelectedLuaSortIndex = 0;
 
 	// Style to use for everything song select related
 	lua_State* m_lua = nullptr;
 	String m_lastStatus = "";
 	std::mutex m_lock;
+
+	SongSort* m_currentSort = nullptr;
 
 public:
 	SelectionWheel(IApplicationTickable* owner) : m_owner(owner)
@@ -271,7 +279,15 @@ public:
 		{
 			SongSelectIndex index(m);
 			m_maps.Add(index.id, index);
+
+			// Add only if we are not filtering (otherwise the filter will add)
+			if (!m_filterSet)
+				m_sortVec.push_back(index.id);
 		}
+
+		if (!m_filterSet)
+			m_doSort();
+
 		AdvanceSelection(0);
 		m_SetLuaMaps(true);
 	}
@@ -281,15 +297,21 @@ public:
 		{
 			SongSelectIndex index(m);
 			m_maps.erase(index.id);
+
+			// Check if the map was in the sort set
+			int32 foundSortIndex = m_getSortIndexFromMapIndex(index.id);
+			if (foundSortIndex != -1)
+				m_sortVec.erase(m_sortVec.begin()+foundSortIndex);
 		}
-		if(!m_maps.Contains(m_currentlySelectedId))
-		{
-			AdvanceSelection(1);
-		}
+		if (m_selectedSortIndex >= m_sortVec.size())
+			AdvanceSelection(0);
+
+		// TODO What if the map is still in the filterset?
 		m_SetLuaMaps(true);
 	}
 	void OnMapsUpdated(Vector<MapIndex*> maps)
 	{
+		// TODO what does this actually do?
 		for(auto m : maps)
 		{
 			SongSelectIndex index(m);
@@ -300,18 +322,23 @@ public:
 		m_filterSet = false;
 		m_mapFilter.clear();
 		m_maps.clear();
+		m_sortVec.clear();
 		for (auto m : newList)
 		{
 			SongSelectIndex index(m.second);
 			m_maps.Add(index.id, index);
+
+			// Add only if we are not filtering (otherwise the filter will add)
+			if (!m_filterSet)
+				m_sortVec.push_back(index.id);
 		}
+
 		if(m_maps.size() > 0)
 		{
-			// Doing this here, before applying filters, causes our wheel to go
-			//  back to the top when a filter should be applied
-			// TODO(local): Go through everything in this file and try to clean
-			//  up all calls to things like this, to keep it from updating like 7 times >.>
-			//AdvanceSelection(0);
+			if (!m_filterSet)
+				m_doSort();
+
+			AdvanceSelection(0);
 			m_SetLuaMaps(true);
 		}
 	}
@@ -325,67 +352,75 @@ public:
 	{
 		if(m_SourceCollection().empty())
 			return;
-		uint32 selection = Random::IntRange(0, (int32)m_SourceCollection().size() - 1);
-		auto it = m_SourceCollection().begin();
-		std::advance(it, selection);
-		SelectMap(it->first);
+		uint32 selection = Random::IntRange(0, (int32)m_sortVec.size() - 1);
+		SelectMapBySortIndex(selection);
 	}
-	void SelectByMapId(uint32 id)
+	void SelectMapByMapId(uint32 id)
 	{
 		for (const auto& it : m_SourceCollection())
 		{
 			if (it.second.GetMap()->id == id)
 			{
-				SelectMap(it.first);
+				SelectMapByMapIndex(it.first);
 				break;
 			}
 		}
 	}
 
-	void SelectMap(int32 newIndex)
+	void SelectMapBySortIndex(uint32 sortIndex)
 	{
-		Set<int32> visibleIndices;
+		uint32 vecLen = m_sortVec.size();
+		if (vecLen == 0)
+			return;
+		sortIndex = sortIndex % vecLen;
+
+		m_selectedSortIndex = sortIndex;
+
+		uint32 songIndex = m_sortVec[sortIndex];
+
 		auto& srcCollection = m_SourceCollection();
-		auto it = srcCollection.find(newIndex);
+		auto it = srcCollection.find(songIndex);
 		if(it != srcCollection.end())
 		{
 			m_OnMapSelected(it->second);
 
 			//set index in lua
-			m_currentlySelectedLuaMapIndex = std::distance(srcCollection.begin(), it);
+			m_currentlySelectedLuaSortIndex = sortIndex;
 			m_SetLuaMapIndex();
 		}
-		m_currentlySelectedId = newIndex;
+		else
+		{
+			Logf("Could not find map for sort index %u -> %u", Logger::Warning, sortIndex, songIndex);
+		}
 	}
-	void AdvanceSelection(int32 offset)
+
+	int32 SelectMapByMapIndex(int32 mapIndex)
 	{
-		auto& srcCollection = m_SourceCollection();
-		if (srcCollection.size() == 0)
+		if (mapIndex < 0)
+			return -1;
+		int32 foundSortIndex = m_getSortIndexFromMapIndex(mapIndex);
+		if (foundSortIndex != -1)
+			SelectMapBySortIndex(foundSortIndex);
+		return foundSortIndex;
+	}
+
+	void AdvanceSelection(uint32 offset)
+	{
+		uint32 vecLen = m_sortVec.size();
+		if (vecLen == 0)
 			return;
-		auto it = srcCollection.find(m_currentlySelectedId);
-		if(it == srcCollection.end())
+
+		uint32 newIndex = m_selectedSortIndex + offset;
+		if (newIndex < 0) // Rolled under
 		{
-			it = srcCollection.begin();
+			newIndex += vecLen;
 		}
-		for(uint32 i = 0; i < (uint32)abs(offset); i++)
+		if (newIndex >= vecLen) // Rolled over
 		{
-			auto itn = it;
-			if(offset < 0)
-			{
-				if(itn == srcCollection.begin())
-					break;
-				itn--;
-			}
-			else
-				itn++;
-			if(itn == srcCollection.end())
-				break;
-			it = itn;
+			newIndex -= vecLen;
 		}
-		if(it != srcCollection.end())
-		{
-			SelectMap(it->first);
-		}
+
+		SelectMapBySortIndex(newIndex);
 	}
 	void AdvancePage(int32 direction)
 	{
@@ -412,19 +447,22 @@ public:
 		m_currentlySelectedDiff = newDiff;
 		m_SetLuaDiffIndex();
 
-		Map<int32, SongSelectIndex> maps = m_SourceCollection();
-		SongSelectIndex* map = maps.Find(m_currentlySelectedId);
-		if(map)
-		{
-			OnDifficultySelected.Call(map[0].GetDifficulties()[m_currentlySelectedDiff]);
-		}
+		const Map<int32, SongSelectIndex>& maps = m_SourceCollection();
+		const SongSelectIndex* map = maps.Find(m_getCurrentlySelectedMapIndex());
+		if(map == NULL)
+			return;
+		OnDifficultySelected.Call(map[0].GetDifficulties()[m_currentlySelectedDiff]);
 	}
 	void AdvanceDifficultySelection(int32 offset)
 	{
-		Map<int32, SongSelectIndex> maps = m_SourceCollection();
-		SongSelectIndex map = maps[m_currentlySelectedId];
+		const Map<int32, SongSelectIndex>& maps = m_SourceCollection();
+
+		const SongSelectIndex* map = maps.Find(m_getCurrentlySelectedMapIndex());
+		if (map == NULL)
+			return;
+
 		int32 newIdx = m_currentlySelectedDiff + offset;
-		newIdx = Math::Clamp(newIdx, 0, (int32)map.GetDifficulties().size() - 1);
+		newIdx = Math::Clamp(newIdx, 0, (int32)map->GetDifficulties().size() - 1);
 		SelectDifficulty(newIdx);
 	}
 
@@ -432,9 +470,33 @@ public:
 	Delegate<MapIndex*> OnMapSelected;
 	Delegate<DifficultyIndex*> OnDifficultySelected;
 
+	SortType GetSortType() const
+	{
+		return m_currentSort->GetType();
+	}
+
+	// TODO(itszn) Sort GUI instead of hardcode
+	void SetSort(SongSort* sort)
+	{
+		if (sort == m_currentSort)
+			return;
+
+		m_currentSort = sort;
+
+		// TODO(itszn) some actual ui
+		OnSearchStatusUpdated("Sorting by " + m_currentSort->GetName());
+		m_doSort();
+
+		// When resorting, jump back to the top
+		SelectMapBySortIndex(0);
+		m_SetLuaMaps(false);
+	}
+
 	// Set display filter
 	void SetFilter(Map<int32, MapIndex *> filter)
 	{
+		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 		m_mapFilter.clear();
 		for (auto m : filter)
 		{
@@ -442,11 +504,25 @@ public:
 			m_mapFilter.Add(index.id, index);
 		}
 		m_filterSet = true;
+
+		// Add the filtered maps into the sort vec then sort
+		m_sortVec.clear();
+		for (auto& it : m_mapFilter)
+		{
+			m_sortVec.push_back(it.first);
+		}
+		m_doSort();
+
+		// Try to go back to selected song in new sort
+		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+		if (newSortIndex == -1)
+			SelectMapBySortIndex(0);
 		m_SetLuaMaps(false);
-		AdvanceSelection(0);
 	}
 	void SetFilter(SongFilter* filter[2])
 	{
+		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 		bool isFiltered = false;
 		m_mapFilter = m_maps;
 		for (size_t i = 0; i < 2; i++)
@@ -458,29 +534,57 @@ public:
 				isFiltered = true;
 		}
 		m_filterSet = isFiltered;
+
+		// Add the filtered maps into the sort vec then sort
+		m_sortVec.clear();
+		for (auto& it : m_mapFilter)
+		{
+			m_sortVec.push_back(it.first);
+		}
+		m_doSort();
+
+		// Try to go back to selected song in new sort
+		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+		if (newSortIndex == -1)
+			SelectMapBySortIndex(0);
 		m_SetLuaMaps(false);
-		AdvanceSelection(0);
 	}
 	void ClearFilter()
 	{
 		if(m_filterSet)
 		{
+			uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
+
 			m_filterSet = false;
-			AdvanceSelection(0);
+
+			// Reset sort vec to all maps and then sort
+			m_sortVec.clear();
+			for (auto& it : m_maps)
+			{
+				m_sortVec.push_back(it.first);
+			}
+			m_doSort();
+
+			// Try to go back to selected song in new sort
+			int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
+			if (newSortIndex == -1)
+				SelectMapBySortIndex(0);
 			m_SetLuaMaps(false);
 		}
 	}
 
 	MapIndex* GetSelection() const
 	{
-		SongSelectIndex const* map = m_SourceCollection().Find(m_currentlySelectedId);
+		SongSelectIndex const* map = m_SourceCollection().Find(
+				m_getCurrentlySelectedMapIndex());
 		if(map)
 			return map->GetMap();
 		return nullptr;
 	}
 	DifficultyIndex* GetSelectedDifficulty() const
 	{
-		SongSelectIndex const* map = m_SourceCollection().Find(m_currentlySelectedId);
+		SongSelectIndex const* map = m_SourceCollection().Find(
+				m_getCurrentlySelectedMapIndex());
 		if(map)
 			return map->GetDifficulties()[m_currentlySelectedDiff];
 		return nullptr;
@@ -506,6 +610,35 @@ public:
 	}
 
 private:
+	void m_doSort()
+	{
+		if (m_currentSort == nullptr)
+		{
+			Log("No sorting set", Logger::Warning);
+			return;
+		}
+		Logf("Sorting with %s", Logger::Info,m_currentSort->GetName().c_str());
+		m_currentSort->SortInplace(m_sortVec, m_SourceCollection());
+	}
+	int32 m_getSortIndexFromMapIndex(uint32 mapId) const
+	{
+		if (m_sortVec.size() == 0)
+			return -1;
+
+		const auto& it = std::find(m_sortVec.begin(), m_sortVec.end(), mapId);
+		if (it == m_sortVec.end())
+			return -1;
+		return std::distance(m_sortVec.begin(), it);
+	}
+	int32 m_getCurrentlySelectedMapIndex() const
+	{
+		uint32 vecLen = m_sortVec.size();
+		if (vecLen == 0)
+			return -1;
+		if (m_selectedSortIndex >= vecLen)
+			return -1;
+		return m_sortVec[m_selectedSortIndex];
+	}
 	const Map<int32, SongSelectIndex>& m_SourceCollection() const
 	{
 		return m_filterSet ? m_mapFilter : m_maps;
@@ -531,7 +664,7 @@ private:
 	void m_SetLuaDiffIndex()
 	{
 		lua_getglobal(m_lua, "set_diff");
-		lua_pushinteger(m_lua, m_currentlySelectedDiff + 1);
+		lua_pushinteger(m_lua, (uint64)m_currentlySelectedDiff + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -542,7 +675,7 @@ private:
 	void m_SetLuaMapIndex()
 	{
 		lua_getglobal(m_lua, "set_index");
-		lua_pushinteger(m_lua, m_currentlySelectedLuaMapIndex + 1);
+		lua_pushinteger(m_lua, (uint64)m_currentlySelectedLuaSortIndex + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on set_index: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -577,24 +710,29 @@ private:
 		lua_pushstring(m_lua, key);
 		lua_newtable(m_lua);
 		int songIndex = 0;
-		for (auto& song : collection)
+
+		// sortVec should only have the current maps in the collection
+		for (auto& mapIndex : m_sortVec)
 		{
+			// Grab the song for this sort index
+			SongSelectIndex song = collection.find(mapIndex)->second;
+
 			lua_pushinteger(m_lua, ++songIndex);
 			lua_newtable(m_lua);
-			m_PushStringToTable("title", song.second.GetDifficulties()[0]->settings.title.c_str());
-			m_PushStringToTable("artist", song.second.GetDifficulties()[0]->settings.artist.c_str());
-			m_PushStringToTable("bpm", song.second.GetDifficulties()[0]->settings.bpm.c_str());
-			m_PushIntToTable("id", song.second.GetMap()->id);
-			m_PushStringToTable("path", song.second.GetMap()->path.c_str());
+			m_PushStringToTable("title", song.GetDifficulties()[0]->settings.title.c_str());
+			m_PushStringToTable("artist", song.GetDifficulties()[0]->settings.artist.c_str());
+			m_PushStringToTable("bpm", song.GetDifficulties()[0]->settings.bpm.c_str());
+			m_PushIntToTable("id", song.GetMap()->id);
+			m_PushStringToTable("path", song.GetMap()->path.c_str());
 			int diffIndex = 0;
 			lua_pushstring(m_lua, "difficulties");
 			lua_newtable(m_lua);
-			for (auto& diff : song.second.GetDifficulties())
+			for (auto& diff : song.GetDifficulties())
 			{
 				lua_pushinteger(m_lua, ++diffIndex);
 				lua_newtable(m_lua);
 				auto settings = diff->settings;
-				m_PushStringToTable("jacketPath", Path::Normalize(song.second.GetMap()->path + "/" + settings.jacketPath).c_str());
+				m_PushStringToTable("jacketPath", Path::Normalize(song.GetMap()->path + "/" + settings.jacketPath).c_str());
 				m_PushIntToTable("level", settings.level);
 				m_PushIntToTable("difficulty", settings.difficulty);
 				m_PushIntToTable("id", diff->id);
@@ -630,9 +768,6 @@ private:
 	// TODO(local): pretty sure this should be m_OnIndexSelected, and we should filter a call to OnMapSelected
 	void m_OnMapSelected(SongSelectIndex index)
 	{
-		//if(map && map->id == m_currentlySelectedId)
-		//	return;
-
 		// Clamp diff selection
 		int32 selectDiff = m_currentlySelectedDiff;
 		if(m_currentlySelectedDiff >= (int32)index.GetDifficulties().size())
@@ -677,7 +812,7 @@ public:
 	{
 		g_application->ReloadScript("songselect/filterwheel", m_lua);
 	}
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime)
 	{
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
@@ -944,6 +1079,139 @@ private:
 	std::unordered_set<std::string> m_collections;
 };
 
+
+/*
+	Sorting selection element
+*/
+class SortSolection {
+public:
+
+	bool Active = false;
+	bool Initialized = false;
+
+	SortSolection(Ref<SelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) { }
+	~SortSolection()
+	{
+		for (SongSort* s : m_sorts)
+		{
+			TitleSort* t = (TitleSort*)s;
+			ScoreSort* sc = (ScoreSort*)s;
+			DateSort* d = (DateSort*)s;
+			switch (s->GetType())
+			{
+			case TITLE_ASC:
+			case TITLE_DESC:
+				delete t;
+				break;
+			case SCORE_DESC:
+			case SCORE_ASC:
+				delete sc;
+				break;
+			case DATE_DESC:
+			case DATE_ASC:
+				delete d;
+				break;
+			}
+		}
+		m_sorts.clear();
+	}
+
+	bool Init()
+	{
+		if (m_sorts.size() == 0)
+		{
+			m_sorts.Add(new TitleSort("Title ^", false));
+			m_sorts.Add(new TitleSort("Title v", true));
+			m_sorts.Add(new ScoreSort("Score ^", false));
+			m_sorts.Add(new ScoreSort("Score v", true));
+			m_sorts.Add(new DateSort("Date ^", false));
+			m_sorts.Add(new DateSort("Date v", true));
+		}
+
+		CheckedLoad(m_lua = g_application->LoadScript("songselect/sortwheel"));
+		m_SetLuaTable();
+
+		Initialized = true;
+		return true;
+	}
+
+	void SetSelection(SongSort* s) 
+	{
+		m_selection = std::find(m_sorts.begin(), m_sorts.end(), s) - m_sorts.begin();
+		m_selectionWheel->SetSort(s);
+
+		lua_getglobal(m_lua, "set_selection");
+		lua_pushnumber(m_lua, m_selection + 1);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on set_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void Render(float deltaTime)
+	{
+		lua_getglobal(m_lua, "render");
+		lua_pushnumber(m_lua, deltaTime);
+		lua_pushboolean(m_lua, Active);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void AdvanceSelection(int offset)
+	{
+		int newSelection = (m_selection + offset) % (int)m_sorts.size();
+		if (newSelection < 0)
+		{
+			newSelection = m_sorts.size() + newSelection;
+		}
+
+		SetSelection(m_sorts.at(newSelection));
+	}
+
+
+private:
+	void m_PushStringToArray(int index, const char* data)
+	{
+		lua_pushinteger(m_lua, index);
+		lua_pushstring(m_lua, data);
+		lua_settable(m_lua, -3);
+	}
+
+	void m_SetLuaTable()
+	{
+		lua_newtable(m_lua);
+		{
+			for (size_t i = 0; i < m_sorts.size(); i++)
+			{
+				m_PushStringToArray(i + 1, m_sorts[i]->GetName().c_str());
+			}
+		}
+		lua_setglobal(m_lua, "sorts");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+
+	}
+
+	Ref<SelectionWheel> m_selectionWheel;
+	Vector<SongSort*> m_sorts;
+	int m_selection = 0;
+	lua_State* m_lua = nullptr;
+};
+
 class GameSettingsWheel{
 public:
 	GameSettingsWheel()
@@ -1105,6 +1373,8 @@ private:
 	Ref<FilterSelection> m_filterSelection;
 	// Game settings wheel
 	Ref<GameSettingsWheel> m_settingsWheel;
+	// Sort selection
+	Ref<SortSolection> m_sortSelection;
 	// Search text logic object
 	Ref<TextInput> m_searchInput;
 
@@ -1134,8 +1404,8 @@ private:
 	CollectionDialog m_collDiag;
 	bool m_hasCollDiag = false;
 
-public:
 
+public:
 	bool Init() override
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
@@ -1153,6 +1423,26 @@ public:
 		if (!m_filterSelection->Init())
 			return false;
 		m_filterSelection->SetMapDB(&m_mapDatabase);
+
+		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
+		if (!m_sortSelection->Init())
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
+			if (!copyDefault)
+				return false;
+			String defaultPath = Path::Absolute("skins/default/scripts/songselect/sortwheel.lua");
+			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
+			Path::Copy(defaultPath, skinPath);
+			if (!m_sortSelection->Init())
+			{
+				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default",2);
+				return false;
+			}
+		}
+		m_sortSelection->AdvanceSelection(0);
+		
+
 		m_selectionWheel->OnMapSelected.Add(this, &SongSelect_Impl::OnMapSelected);
 		m_selectionWheel->OnDifficultySelected.Add(this, &SongSelect_Impl::OnDifficultySelected);
 		// Setup the map database
@@ -1166,7 +1456,7 @@ public:
 		m_mapDatabase.StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
-		m_selectionWheel->SelectByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
+		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
 		m_searchInput = Ref<TextInput>(new TextInput());
 		m_searchInput->OnTextChanged.Add(this, &SongSelect_Impl::OnSearchTermChanged);
@@ -1360,6 +1650,17 @@ public:
 					break;
 				}
 			}
+			else if (m_sortSelection->Active)
+			{
+				switch (buttonCode)
+				{
+				case Input::Button::Back:
+					m_sortSelection->Active = false;
+					break;
+				default:
+					break;
+				}
+			}
 			else
 			{
 				switch (buttonCode)
@@ -1412,29 +1713,15 @@ public:
 		switch (buttonCode)
 		{
 		case Input::Button::FX_0:
-			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_settingsWheel->Active)
-			{
-				if (!m_filterSelection->Active)
-				{
-					m_filterSelection->Active = !m_filterSelection->Active;
-				}
-				else
-				{
-					m_filterSelection->Active = !m_filterSelection->Active;
-				}
+			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_settingsWheel->Active && !m_sortSelection->Active)
+			{				
+				m_filterSelection->Active = !m_filterSelection->Active;	
 			}
 			break;
 		case Input::Button::FX_1:
-			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_settingsWheel->Active)
+			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_settingsWheel->Active && !m_filterSelection->Active)
 			{
-				if (!m_showScores)
-				{
-					m_showScores = !m_showScores;
-				}
-				else
-				{
-					m_showScores = !m_showScores;
-				}
+				m_sortSelection->Active = !m_sortSelection->Active;
 			}
 			break;
 		}
@@ -1448,6 +1735,10 @@ public:
 		if (m_settingsWheel->Active)
 		{
 			m_settingsWheel->AdvanceSelection(steps);
+		}
+		else if (m_sortSelection->Active)
+		{
+			m_sortSelection->AdvanceSelection(steps);
 		}
 		else if (m_filterSelection->Active)
 		{
@@ -1488,6 +1779,18 @@ public:
 			else if (key == SDLK_UP)
 			{
 				m_filterSelection->AdvanceSelection(-1);
+			}
+		}
+		else if (m_sortSelection->Active)
+		{
+			if (key == SDLK_DOWN)
+			{
+				m_sortSelection->AdvanceSelection(1);
+
+			}
+			else if (key == SDLK_UP)
+			{
+				m_sortSelection->AdvanceSelection(-1);
 			}
 		}
 		else
@@ -1553,7 +1856,7 @@ public:
 				m_settingsWheel->ReloadScript();
 				m_filterSelection->ReloadScript();
 				g_application->ReloadScript("songselect/background", m_lua);
-      }
+	  }
 			else if (key == SDLK_F11)
 			{
 				String paramFormat = g_gameConfig.GetString(GameConfigKeys::EditorParamsFormat);
@@ -1588,7 +1891,7 @@ public:
 			m_dbUpdateTimer.Restart();
 		}
 
-        // Tick navigation
+		// Tick navigation
 		if (!IsSuspended())
 		{
 			TickNavigation(deltaTime);
@@ -1618,6 +1921,7 @@ public:
 
 		m_selectionWheel->Render(deltaTime);
 		m_filterSelection->Render(deltaTime);
+		m_sortSelection->Render(deltaTime);
 		m_settingsWheel->Render(deltaTime);
 
 		if (m_collDiag.IsActive())
@@ -1626,8 +1930,8 @@ public:
 		}
 	}
 
-    void TickNavigation(float deltaTime)
-    {
+	void TickNavigation(float deltaTime)
+	{
 		// Lock mouse to screen when active
 		if(g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse && g_gameWindow->IsActive())
 		{
@@ -1647,14 +1951,14 @@ public:
 			m_timeSinceButtonReleased[(Input::Button)i] += deltaTime;
 		}
 
-        // Song navigation using laser inputs
+		// Song navigation using laser inputs
 		/// TODO: Investigate strange behaviour further and clean up.
 
-        float diff_input = g_input.GetInputLaserDir(0) * m_sensMult;
-        float song_input = g_input.GetInputLaserDir(1) * m_sensMult;
+		float diff_input = g_input.GetInputLaserDir(0) * m_sensMult;
+		float song_input = g_input.GetInputLaserDir(1) * m_sensMult;
 
-        m_advanceDiff += diff_input;
-        m_advanceSong += song_input;
+		m_advanceDiff += diff_input;
+		m_advanceSong += song_input;
 
 		int advanceDiffActual = (int)Math::Floor(m_advanceDiff * Math::Sign(m_advanceDiff)) * Math::Sign(m_advanceDiff);;
 		int advanceSongActual = (int)Math::Floor(m_advanceSong * Math::Sign(m_advanceSong)) * Math::Sign(m_advanceSong);;
@@ -1673,6 +1977,13 @@ public:
 			if (advanceSongActual != 0)
 				m_filterSelection->AdvanceSelection(advanceSongActual);
 		}
+		else if (m_sortSelection->Active)
+		{
+			if (advanceDiffActual != 0)
+				m_sortSelection->AdvanceSelection(advanceDiffActual);
+			if (advanceSongActual != 0)
+				m_sortSelection->AdvanceSelection(advanceSongActual);
+		}
 		else
 		{
 			if (advanceDiffActual != 0)
@@ -1682,8 +1993,8 @@ public:
 		}
 
 		m_advanceDiff -= advanceDiffActual;
-        m_advanceSong -= advanceSongActual;
-    }
+		m_advanceSong -= advanceSongActual;
+	}
 
 	virtual void OnSuspend()
 	{
