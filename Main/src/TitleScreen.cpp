@@ -185,9 +185,6 @@ public:
 	virtual void OnRestore()
 	{
 		g_gameWindow->SetCursorVisible(true);
-		g_application->ReloadScript("titlescreen", m_lua);
-		m_luaBinds->Push();
-		lua_settop(m_lua, 0);
 		g_application->DiscordPresenceMenu("Title Screen");
 	}
 

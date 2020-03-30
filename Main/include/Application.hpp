@@ -64,6 +64,7 @@ public:
 	Texture LoadTexture(const String& name);
 	Texture LoadTexture(const String & name, const bool& external);
 	Material LoadMaterial(const String& name);
+	Material LoadMaterial(const String& name, const String& path);
 	Sample LoadSample(const String& name, const bool& external = false);
 	Graphics::Font LoadFont(const String& name, const bool& external = false);
 	int LoadImageJob(const String& path, Vector2i size, int placeholder, const bool& web = false);
@@ -83,6 +84,8 @@ public:
 	void StoreNamedSample(String name, Sample sample);
 	void PlayNamedSample(String name, bool loop);
 	void StopNamedSample(String name);
+	// -1 if no sample exists, 0 if stopped, 1 if playing
+	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
 	void DisposeLua(lua_State* state);
 	void SetGaugeColor(int i, Color c);
@@ -140,6 +143,7 @@ private:
 	String m_updateVersion;
 	String m_currentVersion;
 	String m_skin;
+	bool m_needSkinReload = false;
 	Timer m_jobTimer;
 	//gauge colors, 0 = normal fail, 1 = normal clear, 2 = hard lower, 3 = hard upper
 	Color m_gaugeColors[4] = { Colori(0, 204, 255), Colori(255, 102, 255), Colori(200, 50, 0), Colori(255, 100, 0) };

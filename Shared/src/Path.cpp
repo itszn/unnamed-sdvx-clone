@@ -5,14 +5,15 @@
 /*
 	Common
 */
+String Path::gameDir = "";
+
 String Path::Absolute(const String& path)
 {
 	if(IsAbsolute(path))
 		return path;
 
-	String currentDir = GetExecutablePath();
-  currentDir = RemoveLast(currentDir);
-	return currentDir + sep + path;
+	String baseDir = !gameDir.empty() ? gameDir : RemoveLast(GetExecutablePath());
+	return baseDir + sep + path;
 }
 String Path::RemoveLast(const String& path, String* lastOut /*= nullptr*/)
 {

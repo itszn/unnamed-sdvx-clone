@@ -108,13 +108,7 @@ void Application::ApplySettings()
 	String newskin = g_gameConfig.GetString(GameConfigKeys::Skin);
 	if (m_skin != newskin)
 	{
-		m_skin = newskin;
-		ReloadSkin();
-	}
-
-	if (g_transition) {
-		delete g_transition;
-		g_transition = TransitionScreen::Create();
+		m_needSkinReload = true;
 	}
 
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
@@ -523,7 +517,7 @@ void __updateChecker()
 	else
 	{
 #ifdef GIT_COMMIT
-		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits" });
+		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/actions/runs" });
 		if (response.status_code != 200)
 		{
 			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
@@ -536,34 +530,49 @@ void __updateChecker()
 		
 		if (commits.contains("message"))
 		{
-			//some error message was sent
+			String errormsg;
+			commits.at("message").get_to(errormsg);
+			Logf("Failed to get update information: %s", Logger::Warning, *errormsg);
 			return;
 		}
 
-		int commit = 0;
-		while (commit < 30)
+		commits = commits.at("workflow_runs");
+		for(auto& commit_kvp : commits.items())
 		{
-			String new_hash = commits[commit]["sha"];
-			if (current_hash == new_hash.substr(0, current_hash.length()))
+			auto commit = commit_kvp.value();
+
+			String branch;
+			commit.at("head_branch").get_to(branch);
+			String status;
+			commit.at("status").get_to(status);
+			String conclusion;
+			commit.at("conclusion").get_to(conclusion);
+
+			if (branch == "master" && status == "completed" && conclusion == "success")
 			{
-				return;
+				String new_hash;
+				commit.at("head_sha").get_to(new_hash);
+				if (current_hash == new_hash.substr(0, current_hash.length())) //up to date
+				{
+					return;
+				}
+				else //update available
+				{
+					auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash });
+					String updateUrl = "https://github.com/drewol/unnamed-sdvx-clone";
+					if (response.status_code != 200)
+					{
+						Logf("Failed to get update information: %s", Logger::Warning, response.error.message.c_str());
+					}
+					else
+					{
+						auto commit_status = nlohmann::json::parse(response.text);
+						commit_status.at("html_url").get_to(updateUrl);
+					}
+					g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					return;
+				}
 			}
-			printf("Getting build status for commit \"%s\"", new_hash.c_str());
-			auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash + "/status" });
-			if (response.status_code != 200)
-			{
-				Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
-			}
-			auto commit_status = nlohmann::json::parse(response.text);
-			String state = commit_status["state"];
-			if (state == "success")
-			{
-				String updateUrl;
-				commits[commit].at("html_url").get_to(updateUrl);
-				g_application->SetUpdateAvailable(new_hash.substr(0,7), updateUrl, "http://drewol.me/Downloads/Game.zip");
-				return;
-			}
-			commit++;
 		}
 #endif
 	}
@@ -599,11 +608,23 @@ bool Application::m_Init()
 #endif // GIT_COMMIT
 
 
-
-
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
 
+	// Flags read _before_ config load
+	for(auto& cl : m_commandLine)
+	{
+		String k, v;
+		if(cl.Split("=", &k, &v))
+		{
+			if (k == "-gamedir")
+			{
+				Path::gameDir = v;
+			}
+		}
+	}
+
+	// Load config
 	if(!m_LoadConfig())
 	{
 		Log("Failed to load config file", Logger::Warning);
@@ -622,6 +643,7 @@ bool Application::m_Init()
 		startFullscreen = true;
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
+	// Flags read _after_ config load
 	for(auto& cl : m_commandLine)
 	{
 		String k, v;
@@ -648,6 +670,10 @@ bool Application::m_Init()
 			}
 		}
 	}
+
+	// Init font library
+	if (!Graphics::FontRes::InitLibrary())
+		return false;
 
 	// Create the game window
 	g_resolution = Vector2i(
@@ -924,6 +950,8 @@ void Application::m_Tick()
 		tickable->Tick(m_deltaTime);
 	}
 
+
+
 	// Not minimized / Valid resolution
 	if(g_resolution.x > 0 && g_resolution.y > 0)
 	{
@@ -967,6 +995,12 @@ void Application::m_Tick()
 		glCullFace(GL_FRONT);
 		// Swap buffers
 		g_gl->SwapBuffers();
+	}
+
+	if (m_needSkinReload)
+	{
+		ReloadSkin();
+		m_needSkinReload = false;
 	}
 }
 
@@ -1034,6 +1068,8 @@ void Application::m_Cleanup()
 	{
 		delete img.second;
 	}
+
+	Graphics::FontRes::FreeLibrary();
 
 	Discord_Shutdown();
 
@@ -1136,11 +1172,11 @@ Texture Application::LoadTexture(const String& name, const bool& external)
 		return ret;
 	}
 }
-Material Application::LoadMaterial(const String& name)
+Material Application::LoadMaterial(const String& name, const String& path)
 {
-	String pathV = String("skins/") + m_skin + String("/shaders/") + name + ".vs";
-	String pathF = String("skins/") + m_skin + String("/shaders/") + name + ".fs";
-	String pathG = String("skins/") + m_skin + String("/shaders/") + name + ".gs";
+	String pathV = path + name + ".vs";
+	String pathF = path + name + ".fs";
+	String pathG = path + name + ".gs";
 	pathV = Path::Absolute(pathV);
 	pathF = Path::Absolute(pathF);
 	pathG = Path::Absolute(pathG);
@@ -1154,6 +1190,10 @@ Material Application::LoadMaterial(const String& name)
 	}
 	assert(ret);
 	return ret;
+}
+Material Application::LoadMaterial(const String& name)
+{
+	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
 }
 Sample Application::LoadSample(const String& name, const bool& external)
 {
@@ -1266,6 +1306,8 @@ void Application::ReloadScript(const String& name, lua_State* L)
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
+	DisposeGUI(L);
+	m_skinHttp.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1292,6 +1334,29 @@ void Application::ReloadSkin()
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
 
+	for (auto& sample : m_samples)
+	{
+		sample.second->Stop();
+	}
+	m_samples.clear();
+
+	
+
+	if (g_transition) {
+		delete g_transition;
+		g_transition = TransitionScreen::Create();
+	}
+
+	//remove all tickables
+	for (auto* t : g_tickables)
+	{
+		RemoveTickable(t);
+	}
+
+	//push new titlescreen
+	TitleScreen* t = TitleScreen::Create();
+	AddTickable(t);
+
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);
 #else
@@ -1312,7 +1377,7 @@ void Application::ReloadSkin()
 #endif
 #endif
 
-	nvgCreateFont(g_guiState.vg, "fallback", "fonts/NotoSansCJKjp-Regular.otf");
+	nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 }
 void Application::DisposeLua(lua_State* state)
 {
@@ -1535,6 +1600,27 @@ void Application::StopNamedSample(String name)
 	else
 	{
 		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+	}
+}
+int Application::IsNamedSamplePlaying(String name)
+{
+	if (m_samples.Contains(name))
+	{
+		Sample sample = m_samples[name];
+		if (sample)
+		{
+			return sample->IsPlaying() ? 1 : 0;
+		}
+		else
+		{
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			return -1;
+		}
+	}
+	else
+	{
+		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		return -1;
 	}
 }
 void Application::m_OnKeyPressed(int32 key)
@@ -1761,6 +1847,7 @@ static int lLoadSkinAnimation(lua_State* L)
 	const char* p;
 	float frametime;
 	int loopcount = 0;
+	bool compressed = false;
 
 	p = luaL_checkstring(L, 1);
 	frametime = luaL_checknumber(L, 2);
@@ -1768,10 +1855,15 @@ static int lLoadSkinAnimation(lua_State* L)
 	{
 		loopcount = luaL_checkinteger(L, 3);
 	}
+	else if (lua_gettop(L) == 4)
+	{
+		loopcount = luaL_checkinteger(L, 3);
+		compressed = lua_toboolean(L, 4) == 1;
+	}
 
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + p;
 	path = Path::Absolute(path);
-	int result = LoadAnimation(L, *path, frametime, loopcount);
+	int result = LoadAnimation(L, *path, frametime, loopcount, compressed);
 	if (result == -1)
 		return 0;
 
@@ -1816,6 +1908,17 @@ static int lPlaySample(lua_State* L /*char* name, bool loop */)
 
 	g_application->PlayNamedSample(name, loop);
 	return 0;
+}
+
+static int lIsSamplePlaying(lua_State* L /* char* name */)
+{
+	const char* name = luaL_checkstring(L, 1);
+	int res = g_application->IsNamedSamplePlaying(name);
+	if (res == -1)
+		return 0;
+
+	lua_pushboolean(L, res);
+	return 1;
 }
 
 static int lStopSample(lua_State* L /* char* name */)
@@ -2131,6 +2234,7 @@ void Application::SetLuaBindings(lua_State * state)
 		pushFuncToTable("LoadSkinSample", lLoadSkinSample);
 		pushFuncToTable("PlaySample", lPlaySample);
 		pushFuncToTable("StopSample", lStopSample);
+		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
 		pushFuncToTable("GetLaserColor", lGetLaserColor);
 		pushFuncToTable("GetButton", lGetButton);
 		pushFuncToTable("GetKnob", lGetKnob);

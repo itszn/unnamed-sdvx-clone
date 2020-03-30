@@ -28,6 +28,11 @@ gfx.CreateShadedMesh(String material = "guiTex")
 Creates a new ShadedMesh object, the material is loaded from the skin shaders folder where
 ``material.fs`` and ``material.vs`` need to exist.
 
+gfx.CreateShadedMesh(String material, String path)
+************************************************
+Creates a new ShadedMesh object, the material is loaded from the given path where
+``material.fs`` and ``material.vs`` need to exist.
+
 ShadedMesh:Draw()
 *****************
 Renders the ShadedMesh object.

@@ -6,6 +6,7 @@
 #include "Mesh.hpp"
 #include "OpenGL.hpp"
 #include <Shared/Timer.hpp>
+#include <Shared/Profiling.hpp>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -64,15 +65,7 @@ namespace Graphics
 
 	FT_Face fallbackFont;
 	uint32 fallbackFontSize = 0;
-
-	struct FontLibrary
-	{
-		FontLibrary();
-		~FontLibrary();
-		bool LoadFallbackFont();
-		Buffer loadedFallbackFont;
-	};
-	static FontLibrary _libraryInitializer;
+	Buffer loadedFallbackFont;
 
 	struct CharInfo
 	{
@@ -359,36 +352,35 @@ namespace Graphics
 		}
 	}
 
-	bool FontLibrary::LoadFallbackFont()
+	bool FontRes::InitLibrary()
 	{
-		bool success = true;
+		ProfilerScope $("Font library initialization");
+		if(!FT_Init_FreeType(&library) == FT_Err_Ok)
+			return false;
 
-		// Load fallback font
+		if(!LoadFallbackFont())
+			Log("Failed to load embedded fallback font", Logger::Error);
+
+		return true;
+	}
+
+	void FontRes::FreeLibrary()
+	{
+		FT_Done_Face(fallbackFont);
+		FT_Done_FreeType(library);
+	}
+
+	bool FontRes::LoadFallbackFont()
+	{
 		File file;
 		if(!file.OpenRead(Path::Absolute("fonts/NotoSansCJKjp-Regular.otf")))
 			return false;
+
 		loadedFallbackFont.resize(file.GetSize());
 		file.Read(loadedFallbackFont.data(), loadedFallbackFont.size());
 		file.Close();
 
-		success = success && FT_New_Memory_Face(library, loadedFallbackFont.data(), (uint32)loadedFallbackFont.size(), 0, &fallbackFont) == 0;
-		success = success && FT_Select_Charmap(fallbackFont, FT_ENCODING_UNICODE) == 0;
-		return success;
-	}
-	FontLibrary::FontLibrary()
-	{
-		bool success = true;
-		success = success && FT_Init_FreeType(&library) == FT_Err_Ok;
-		if(!LoadFallbackFont())
-		{
-			Log("Failed to load embeded fallback font", Logger::Warning);
-		}
-		if(!success)
-			assert(false);
-	}
-	FontLibrary::~FontLibrary()
-	{
-		FT_Done_Face(fallbackFont);
-		FT_Done_FreeType(library);
+		return FT_New_Memory_Face(library, loadedFallbackFont.data(), (uint32)loadedFallbackFont.size(), 0, &fallbackFont) == 0
+				&& FT_Select_Charmap(fallbackFont, FT_ENCODING_UNICODE) == 0;
 	}
 }
