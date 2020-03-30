@@ -38,6 +38,10 @@ jobs:
               with:
                 name: Game
                 path: bin
+            - name: Trigger artifact distribution
+              continue-on-error: true
+              run: |
+                Invoke-RestMethod -Method POST -ContentType "application/json" -Body '{ "id": ${{ github.run_id }}, "branch": "${{github.ref}}", "commit": "${{github.sha}}" }' -Uri ${{ secrets.WEBHOOK_URL }}
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
@@ -54,6 +58,21 @@ jobs:
               run: cmake -DCMAKE_BUILD_TYPE=Release .
             - name: make
               run: make
+            - name: Prepare for bundling AppImage
+              run: |
+                sudo apt-get install appstream
+                wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+                chmod +x linuxdeploy-x86_64.AppImage
+            - name: Bundle AppImage
+              run: |
+                ./linuxdeploy-x86_64.AppImage --custom-apprun appimage/AppRun -d appimage/usc-game.desktop -i appimage/usc-game.png -e bin/usc-game --appdir usc-appdir --output appimage
+                mv usc-game*.AppImage bin/usc-game.AppImage
+                rm bin/usc-game bin/Tests.*
+            - name: Upload artifact
+              uses: actions/upload-artifact@master
+              with:
+                name: Game_linux_AppImage
+                path: bin
     macos_build:
         name: macOS build
         runs-on: macos-latest

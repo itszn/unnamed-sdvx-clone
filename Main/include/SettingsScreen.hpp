@@ -42,13 +42,13 @@ public:
 	bool Init() override;
 private:
 	bool ToggleSetting(String key, String label);
-	float PercentSetting(String key, String label);
-	void TextSetting(String key, String label, bool secret);
-	void ColorSetting(String key, String label);
-	float FloatSetting(String key, String label, float min, float max, float step = 0.01);
-	void IntSetting(String key, String label, int min, int max, int step = 1, int perpixel = 1);
-	void StringSelectionSetting(String key, String label, SkinSetting& setting);
-	String MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label);
+	bool PercentSetting(String key, String label);
+	bool TextSetting(String key, String label, bool secret);
+	bool ColorSetting(String key, String label);
+	bool FloatSetting(String key, String label, float min, float max, float step = 0.01);
+	bool IntSetting(String key, String label, int min, int max, int step = 1, int perpixel = 1);
+	bool StringSelectionSetting(String key, String label, SkinSetting& setting);
+	bool MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label);
 	void Exit();
 
 	class SkinConfig* m_skinConfig;

@@ -31,6 +31,8 @@ namespace Graphics
 	public:
 		virtual ~FontRes() = default;
 		static Ref<FontRes> Create(class OpenGL* gl, const String& assetPath);
+		static bool InitLibrary();
+		static void FreeLibrary();
 	public:
 		// Text rendering options
 		enum TextOptions
@@ -42,6 +44,8 @@ namespace Graphics
 		// Renders the input string into a drawable text object
 		virtual Ref<TextRes> CreateText(const WString& str, uint32 nFontSize, TextOptions options = TextOptions::None) = 0;
 
+	private:
+		static bool LoadFallbackFont();
 	};
 
 	typedef Ref<FontRes> Font;

@@ -18,6 +18,7 @@ public:
 	// Plays this sample from the start
 	virtual void Play(bool looping = false) = 0;
 	virtual void Stop() = 0;
+	virtual bool IsPlaying() const = 0;
 };
 
 typedef Ref<SampleRes> Sample;

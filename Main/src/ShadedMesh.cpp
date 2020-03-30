@@ -21,6 +21,13 @@ ShadedMesh::ShadedMesh(const String& name) {
 	m_mesh->SetPrimitiveType(Graphics::PrimitiveType::TriangleList);
 }
 
+ShadedMesh::ShadedMesh(const String& name, const String& path) {
+	m_material = g_application->LoadMaterial(name, path);
+	m_material->opaque = false;
+	m_mesh = MeshRes::Create(g_gl);
+	m_mesh->SetPrimitiveType(Graphics::PrimitiveType::TriangleList);
+}
+
 void ShadedMesh::Draw() {
 	auto rq = g_application->GetRenderQueueBase();
 	rq->DrawScissored(g_application->GetCurrentGUIScissor() ,g_application->GetCurrentGUITransform(), m_mesh, m_material, m_params);
@@ -281,7 +288,12 @@ int __gc(lua_State* L) {
 
 int ShadedMesh::lNew(lua_State* L)
 {
-	if (lua_gettop(L) == 1)
+	if (lua_gettop(L) == 2)
+	{
+		ShadedMesh** place = (ShadedMesh**)lua_newuserdata(L, sizeof(ShadedMesh*));
+		*place = new ShadedMesh(luaL_checkstring(L, 1), luaL_checkstring(L, 2));
+	}
+	else if (lua_gettop(L) == 1)
 	{
 		ShadedMesh** place = (ShadedMesh**)lua_newuserdata(L, sizeof(ShadedMesh*));
 		*place = new ShadedMesh(luaL_checkstring(L, 1));

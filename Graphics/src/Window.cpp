@@ -117,6 +117,31 @@ namespace Graphics
 			}
 			SDL_ShowSimpleMessageBox(flags, title.c_str(), message.c_str(), m_window);
 		}
+		bool ShowYesNoMessage(String title, String message)
+		{
+			const SDL_MessageBoxButtonData buttons[] = 
+			{
+				{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "no" },
+				{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "yes" },
+			};
+			const SDL_MessageBoxData messageboxdata = 
+			{
+				SDL_MESSAGEBOX_INFORMATION,
+				NULL,
+				*title,
+				*message,
+				SDL_arraysize(buttons),
+				buttons,
+				NULL
+			};
+			int buttonid;
+			if (SDL_ShowMessageBox(&messageboxdata, &buttonid) < 0)
+			{
+				Logf("Could not display message box for '%s'", Logger::Info, *message);
+				return false;
+			}
+			return buttonid == 1;
+		}
 		Vector2i GetWindowPos() const
 		{
 			Vector2i res;
@@ -557,6 +582,11 @@ namespace Graphics
 	void Window::ShowMessageBox(String title, String message, int severity)
 	{
 		m_impl->ShowMessageBox(title, message, severity);
+	}
+
+	bool Window::ShowYesNoMessage(String title, String message)
+	{
+		return m_impl->ShowYesNoMessage(title, message);
 	}
 
 	WString Window::GetClipboard() const

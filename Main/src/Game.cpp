@@ -407,8 +407,11 @@ public:
 
 		// Background 
 		/// TODO: Load this async
-		m_background = CreateBackground(this);
-		m_foreground = CreateBackground(this, true);
+		if (!g_gameConfig.GetBool(GameConfigKeys::DisableBackgrounds))
+		{
+			m_background = CreateBackground(this);
+			m_foreground = CreateBackground(this, true);
+		}
 		g_application->LoadGauge((m_flags & GameFlags::Hard) != GameFlags::None);
 
 
