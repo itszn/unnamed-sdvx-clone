@@ -230,6 +230,8 @@ class SelectionWheel
 
 	SongSort* m_currentSort = nullptr;
 
+	uint32 m_lastDiffIndex = 0;
+
 public:
 	SelectionWheel(IApplicationTickable* owner) : m_owner(owner)
 	{
@@ -286,10 +288,15 @@ public:
 		}
 
 		if (!m_filterSet)
+		{
 			m_doSort();
+			// Try to go back to selected song in new sort
+			SelectLastMapIndex(true);
 
-		AdvanceSelection(0);
-		m_SetLuaMaps(true);
+			m_SetLuaMaps(true);
+		}
+
+		// Filter will take care of sorting and setting lua
 	}
 	void OnMapsRemoved(Vector<MapIndex*> maps)
 	{
@@ -303,11 +310,16 @@ public:
 			if (foundSortIndex != -1)
 				m_sortVec.erase(m_sortVec.begin()+foundSortIndex);
 		}
-		if (m_selectedSortIndex >= m_sortVec.size())
-			AdvanceSelection(0);
 
-		// TODO What if the map is still in the filterset?
-		m_SetLuaMaps(true);
+		if (!m_filterSet)
+		{
+			// Try to go back to selected song in new sort
+			SelectLastMapIndex(true);
+
+			m_SetLuaMaps(true);
+		}
+
+		// Filter will take care of sorting and setting lua
 	}
 	void OnMapsUpdated(Vector<MapIndex*> maps)
 	{
@@ -319,6 +331,8 @@ public:
 	}
 	void OnMapsCleared(Map<int32, MapIndex*> newList)
 	{
+		bool wasFiltered = m_filterSet;
+
 		m_filterSet = false;
 		m_mapFilter.clear();
 		m_maps.clear();
@@ -333,14 +347,20 @@ public:
 				m_sortVec.push_back(index.id);
 		}
 
-		if(m_maps.size() > 0)
-		{
-			if (!m_filterSet)
-				m_doSort();
+		if (m_maps.size() == 0)
+			return;
 
-			AdvanceSelection(0);
+		if (!wasFiltered)
+		{
+			m_doSort();
+
+			SelectLastMapIndex(true);
+
+			// Try to go back to selected song in new sort
 			m_SetLuaMaps(true);
 		}
+
+		// Filter will take care of sorting and setting lua
 	}
 	void OnSearchStatusUpdated(String status)
 	{
@@ -392,6 +412,28 @@ public:
 		{
 			Logf("Could not find map for sort index %u -> %u", Logger::Warning, sortIndex, songIndex);
 		}
+
+		m_lastDiffIndex = songIndex;
+	}
+
+	int32 SelectLastMapIndex(bool mapsFirst)
+	{
+		// Get mapid from diffid
+		int32 lastMapIndex = m_lastDiffIndex - (m_lastDiffIndex % 10);
+
+		int32 res = SelectMapByMapIndex(mapsFirst ? lastMapIndex : m_lastDiffIndex);
+		
+		if (res == -1)
+			// Try other form
+			res = SelectMapByMapIndex(mapsFirst ? m_lastDiffIndex : lastMapIndex);
+
+		if (res == -1)
+		{
+			Logf("Couldn't find original map %u after map set change", Logger::Info, lastMapIndex);
+			SelectMapBySortIndex(0);
+		}
+
+		return res;
 	}
 
 	int32 SelectMapByMapIndex(int32 mapIndex)
@@ -464,6 +506,8 @@ public:
 		int32 newIdx = m_currentlySelectedDiff + offset;
 		newIdx = Math::Clamp(newIdx, 0, (int32)map->GetDifficulties().size() - 1);
 		SelectDifficulty(newIdx);
+
+		m_lastDiffIndex = newIdx;
 	}
 
 	// Called when a new map is selected
@@ -475,7 +519,6 @@ public:
 		return m_currentSort->GetType();
 	}
 
-	// TODO(itszn) Sort GUI instead of hardcode
 	void SetSort(SongSort* sort)
 	{
 		if (sort == m_currentSort)
@@ -483,7 +526,6 @@ public:
 
 		m_currentSort = sort;
 
-		// TODO(itszn) some actual ui
 		OnSearchStatusUpdated("Sorting by " + m_currentSort->GetName());
 		m_doSort();
 
@@ -495,8 +537,6 @@ public:
 	// Set display filter
 	void SetFilter(Map<int32, MapIndex *> filter)
 	{
-		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
-
 		m_mapFilter.clear();
 		for (auto m : filter)
 		{
@@ -514,15 +554,12 @@ public:
 		m_doSort();
 
 		// Try to go back to selected song in new sort
-		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
-		if (newSortIndex == -1)
-			SelectMapBySortIndex(0);
+		SelectLastMapIndex(true);
+
 		m_SetLuaMaps(false);
 	}
 	void SetFilter(SongFilter* filter[2])
 	{
-		uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
-
 		bool isFiltered = false;
 		m_mapFilter = m_maps;
 		for (size_t i = 0; i < 2; i++)
@@ -544,33 +581,29 @@ public:
 		m_doSort();
 
 		// Try to go back to selected song in new sort
-		int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
-		if (newSortIndex == -1)
-			SelectMapBySortIndex(0);
+		SelectLastMapIndex(isFiltered);
+
 		m_SetLuaMaps(false);
 	}
 	void ClearFilter()
 	{
-		if(m_filterSet)
+		if (!m_filterSet)
+			return;
+
+		m_filterSet = false;
+
+		// Reset sort vec to all maps and then sort
+		m_sortVec.clear();
+		for (auto& it : m_maps)
 		{
-			uint32 oldMapIndex = m_getCurrentlySelectedMapIndex();
-
-			m_filterSet = false;
-
-			// Reset sort vec to all maps and then sort
-			m_sortVec.clear();
-			for (auto& it : m_maps)
-			{
-				m_sortVec.push_back(it.first);
-			}
-			m_doSort();
-
-			// Try to go back to selected song in new sort
-			int32 newSortIndex = SelectMapByMapIndex(oldMapIndex);
-			if (newSortIndex == -1)
-				SelectMapBySortIndex(0);
-			m_SetLuaMaps(false);
+			m_sortVec.push_back(it.first);
 		}
+		m_doSort();
+
+		// Try to go back to selected song in new sort
+		SelectLastMapIndex(true);
+
+		m_SetLuaMaps(false);
 	}
 
 	MapIndex* GetSelection() const
