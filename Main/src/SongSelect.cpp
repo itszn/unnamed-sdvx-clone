@@ -452,7 +452,7 @@ public:
 		if (vecLen == 0)
 			return;
 
-		uint32 newIndex = m_selectedSortIndex + offset;
+		int32 newIndex = m_selectedSortIndex + offset;
 		if (newIndex < 0) // Rolled under
 		{
 			newIndex += vecLen;
