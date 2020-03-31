@@ -441,7 +441,7 @@ ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32*
 {
 	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Info, path.c_str(), level, *diffIndex);
 
-	for (auto folder : m_mapDatabase->FindFolders(path))
+	for (auto folder : m_mapDatabase->FindFoldersByPath(path))
 	{
 		ChartIndex* newChart = NULL;
 

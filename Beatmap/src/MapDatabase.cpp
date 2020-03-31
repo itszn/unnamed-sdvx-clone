@@ -355,11 +355,31 @@ public:
 
 		return res;
 	}
+
+	Map<int32, FolderIndex*> FindFoldersByPath(const String& searchString)
+	{
+		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE path LIKE \"%" + searchString + "%\"";
+
+		Map<int32, FolderIndex*> res;
+		DBStatement search = m_database.Query(stmt);
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			FolderIndex** folder = m_folders.Find(id);
+			if(folder)
+			{
+				res.Add(id, *folder);
+			}
+		}
+
+		return res;
+	}
 	
 	Map<int32, FolderIndex*> FindFolders(const String& searchString)
 	{
 		WString test = Utility::ConvertToWString(searchString);
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE";
+
 
 		//search.spl
 		Vector<String> terms = searchString.Explode(" ");
@@ -1170,6 +1190,10 @@ void MapDatabase::StartSearching()
 void MapDatabase::StopSearching()
 {
 	m_impl->StopSearching();
+}
+Map<int32, FolderIndex*> MapDatabase::FindFoldersByPath(const String& search)
+{
+	return m_impl->FindFoldersByPath(search);
 }
 Map<int32, FolderIndex*> MapDatabase::FindFolders(const String& search)
 {
