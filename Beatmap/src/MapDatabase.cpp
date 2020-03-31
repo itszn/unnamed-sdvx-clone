@@ -139,7 +139,7 @@ public:
 			if (gotVersion == 12) //upgrade from 12 to 13
 			{
 				//back up old db file
-				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db.bak"));
+				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
 				DBStatement diffScan = m_database.Query("SELECT rowid,path FROM Difficulties");
 
 				Vector<ScoreIndex> scoresToAdd;
