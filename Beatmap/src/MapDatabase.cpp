@@ -391,6 +391,7 @@ public:
 			stmt += " (artist LIKE \"%" + term + "%\"" + 
 				" OR title LIKE \"%" + term + "%\"" +
 				" OR path LIKE \"%" + term + "%\"" +
+				" OR effector LIKE \"%" + term + "%\"" +
 				" OR artist_translit LIKE \"%" + term + "%\"" +
 				" OR title_translit LIKE \"%" + term + "%\")";
 			i++;
