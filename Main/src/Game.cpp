@@ -157,7 +157,7 @@ private:
 	float m_shakeAmount = 2.5;
 	float m_shakeDuration = 0.1;
 
-	Map<ScoreIndex*, ScoreReplay> m_scoreReplays;
+	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
 
@@ -320,7 +320,7 @@ public:
 		{
 			File replayFile;
 			if (replayFile.OpenRead(score->replayPath)) {
-				ScoreReplay& replay = m_scoreReplays.Add(score, ScoreReplay());
+				ScoreReplay& replay = m_scoreReplays.Add(ScoreReplay());
 				replay.maxScore = score->score;
 				FileReader replayReader(replayFile);
 				replayReader.SerializeObject(replay.replay);
@@ -559,8 +559,8 @@ public:
 
 		for (auto& replay : m_scoreReplays)
 		{
-			replay.second.currentScore = 0;
-			replay.second.nextHitStat = 0;
+			replay.currentScore = 0;
+			replay.nextHitStat = 0;
 		}
 
 		m_track->ClearEffects();
@@ -1926,9 +1926,8 @@ public:
 		// Update score replays
 		lua_getfield(L, -1, "scoreReplays");
 		int replayCounter = 1;
-		for (auto& r: m_scoreReplays)
+		for (auto& replay: m_scoreReplays)
 		{
-			ScoreReplay& replay = r.second;
 			if (replay.replay.size() > 0)
 			{
 				while (replay.nextHitStat < replay.replay.size()

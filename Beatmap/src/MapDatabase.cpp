@@ -578,6 +578,8 @@ public:
 				}
 				scoreScan.Rewind();
 
+				m_SortScores(chart);
+
 
 				m_charts.Add(chart->id, chart);
 				m_chartsByHash.Add(chart->hash, chart);
