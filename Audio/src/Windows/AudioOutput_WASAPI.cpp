@@ -186,7 +186,14 @@ public:
 			throw _com_error(res);
 
 		WAVEFORMATEX* mixFormat = nullptr;
+		WAVEFORMATEX* closestFormat = nullptr;
 		res = m_audioClient->GetMixFormat(&mixFormat);
+		res = m_audioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, mixFormat, &closestFormat);
+		if (res != S_OK)
+		{
+			CoTaskMemFree(mixFormat);
+			mixFormat = closestFormat;
+		}
 		if (m_exclusive)
 		{
 			// Aquire format and initialize device for exclusive mode
