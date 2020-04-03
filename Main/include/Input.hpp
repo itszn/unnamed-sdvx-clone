@@ -55,6 +55,9 @@ public:
 	// Request laser input state
 	float GetInputLaserDir(uint32 laserIdx);
 
+	// Request laser input state without sensitivity applied
+	float GetAbsoluteInputLaserDir(uint32 laserIdx);
+
 	// Button delegates
 	Delegate<Button> OnButtonPressed;
 	Delegate<Button> OnButtonReleased;
@@ -78,6 +81,7 @@ private:
 	bool m_backComboInstant = false;
 	bool m_backSent = false;
 	float m_laserStates[2] = { 0.0f };
+	float m_rawLaserStates[2] = { 0.0f };
 	float m_rawKeyLaserStates[2] = { 0.0f };
 	float m_prevLaserStates[2] = { 0.0f };
 	float m_absoluteLaserStates[2] = { 0.0f };
