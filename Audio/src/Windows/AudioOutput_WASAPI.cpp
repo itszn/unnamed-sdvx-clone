@@ -188,12 +188,6 @@ public:
 		WAVEFORMATEX* mixFormat = nullptr;
 		WAVEFORMATEX* closestFormat = nullptr;
 		res = m_audioClient->GetMixFormat(&mixFormat);
-		res = m_audioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, mixFormat, &closestFormat);
-		if (res != S_OK)
-		{
-			CoTaskMemFree(mixFormat);
-			mixFormat = closestFormat;
-		}
 		if (m_exclusive)
 		{
 			// Aquire format and initialize device for exclusive mode
@@ -264,6 +258,12 @@ public:
 		}
 		else
 		{
+			res = m_audioClient->IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, mixFormat, &closestFormat);
+			if (res != S_OK)
+			{
+				CoTaskMemFree(mixFormat);
+				mixFormat = closestFormat;
+			}
 			// Init client
 			res = m_audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, 0,
 				bufferDuration, 0, mixFormat, nullptr);
