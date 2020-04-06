@@ -981,7 +981,7 @@ public:
 
 	void Tick(float deltatime)
 	{
-		m_delta += g_input.GetInputLaserDir(0);
+		m_delta += g_input.GetAbsoluteInputLaserDir(0);
 
 	}
 
@@ -989,7 +989,7 @@ public:
 	{
 		if (m_state)
 		{
-			float sens = 6.0 / (m_delta / m_currentSetting);
+			float sens = 6.0 / m_delta;
 			
 			g_application->FastText("Turn left knob one revolution clockwise", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText("then press start.", g_resolution.x / 2, g_resolution.y / 2 + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
@@ -1012,7 +1012,7 @@ public:
 				if (m_state)
 				{
 					// calc sens and then call delagate
-					SensSet.Call(6.0 / (m_delta / m_currentSetting));
+					SensSet.Call(6.0 / m_delta);
 					g_application->RemoveTickable(this);
 				}
 				else
