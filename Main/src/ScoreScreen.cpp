@@ -419,6 +419,17 @@ public:
 		///TODO: maybe push complete hit stats
 
 		lua_setglobal(m_lua, "result");
+
+		lua_getglobal(m_lua, "result_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
 	virtual bool AsyncFinalize() override
 	{
@@ -458,6 +469,16 @@ public:
 		if (key == SDLK_F9)
 		{
 			g_application->ReloadScript("result", m_lua);
+			lua_getglobal(m_lua, "result_set");
+			if (lua_isfunction(m_lua, -1))
+			{
+				if (lua_pcall(m_lua, 0, 0, 0) != 0)
+				{
+					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+				}
+			}
+			lua_settop(m_lua, 0);
 		}
 	}
 	virtual void OnKeyReleased(int32 key) override
