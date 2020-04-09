@@ -1125,6 +1125,7 @@ public:
 	SortSolection(Ref<SelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) { }
 	~SortSolection()
 	{
+		g_gameConfig.Set(GameConfigKeys::LastSort, m_selection);
 		for (SongSort* s : m_sorts)
 		{
 			TitleSort* t = (TitleSort*)s;
@@ -1165,6 +1166,8 @@ public:
 		m_SetLuaTable();
 
 		Initialized = true;
+		m_selection = g_gameConfig.GetInt(GameConfigKeys::LastSort);
+		AdvanceSelection(0);
 		return true;
 	}
 

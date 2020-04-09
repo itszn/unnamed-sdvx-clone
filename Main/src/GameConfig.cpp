@@ -112,6 +112,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::InputBounceGuard, 10);
 
 	Set(GameConfigKeys::LastSelected, 0);
+	Set(GameConfigKeys::LastSort, 0);
 	Set(GameConfigKeys::LevelFilter, 0);
 	Set(GameConfigKeys::FolderFilter, 0);
 
