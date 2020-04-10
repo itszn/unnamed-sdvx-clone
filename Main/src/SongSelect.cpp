@@ -1613,7 +1613,7 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !m_settingsWheel->Active && !IsSuspended())
 		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			MapIndex* map = m_selectionWheel->GetSelection();
@@ -1671,6 +1671,10 @@ public:
 				default:
 					break;
 				}
+			}
+			else if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
+			{
+				m_sortSelection->Active = false;
 			}
 			else if (m_filterSelection->Active)
 			{
