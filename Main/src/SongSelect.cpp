@@ -1492,8 +1492,6 @@ public:
 		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
 		m_selectionWheel->OnChartSelected.Add(this, &SongSelect_Impl::OnChartSelected);
 
-		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
-		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
 		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
 		m_mapDatabase->OnFoldersAdded.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersAdded);
@@ -1503,6 +1501,8 @@ public:
 		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
 		m_mapDatabase->StartSearching();
 
+		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
+		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 		m_searchInput = Ref<TextInput>(new TextInput());
 		m_searchInput->OnTextChanged.Add(this, &SongSelect_Impl::OnSearchTermChanged);
 
