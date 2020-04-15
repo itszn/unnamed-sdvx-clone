@@ -301,8 +301,8 @@ public:
 			m_doSort();
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
+			m_SetLuaMaps(true);
 		}
-		m_SetLuaMaps(true);
 
 		// Filter will take care of sorting and setting lua
 	}
@@ -323,10 +323,9 @@ public:
 		{
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
-
+			m_SetLuaMaps(true);
 		}
 
-		m_SetLuaMaps(true);
 		// Filter will take care of sorting and setting lua
 	}
 	void OnFoldersUpdated(Vector<FolderIndex *> maps)
@@ -363,11 +362,11 @@ public:
 			m_doSort();
 
 			SelectLastMapIndex(true);
+			m_SetLuaMaps(true);
 
 			// Try to go back to selected song in new sort
 		}
 
-		m_SetLuaMaps(true);
 		// Filter will take care of sorting and setting lua
 	}
 	void OnSearchStatusUpdated(String status)
@@ -1001,6 +1000,11 @@ public:
 		UpdateFilters();
 	}
 
+	void OnFoldersRemoved(Vector<FolderIndex*> maps)
+	{
+		UpdateFilters();
+	}
+
 	// Check if any new folders or collections should be added and add them
 	void UpdateFilters()
 	{
@@ -1489,20 +1493,21 @@ public:
 		}
 		m_sortSelection->AdvanceSelection(0);
 
-		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
-		m_selectionWheel->OnChartSelected.Add(this, &SongSelect_Impl::OnChartSelected);
-
-
 		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
 		m_mapDatabase->OnFoldersAdded.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersAdded);
 		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
 		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
 		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
+		m_mapDatabase->OnFoldersRemoved.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersRemoved);
 		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
 		m_mapDatabase->StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
 		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
+
+		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
+		m_selectionWheel->OnChartSelected.Add(this, &SongSelect_Impl::OnChartSelected);
+
 		m_searchInput = Ref<TextInput>(new TextInput());
 		m_searchInput->OnTextChanged.Add(this, &SongSelect_Impl::OnSearchTermChanged);
 

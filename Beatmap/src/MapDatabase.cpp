@@ -1121,10 +1121,10 @@ private:
 						mapValid = true;
 					}
 				}
-				fileStream.Seek(0);
 
 				if(mapValid)
 				{
+					fileStream.Seek(0);
 					evt.mapData = new BeatmapSettings(map.GetMapSettings());
 
 					ProfilerScope $("Chart Database - Hash Chart");
