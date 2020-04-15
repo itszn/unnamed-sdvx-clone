@@ -232,6 +232,9 @@ class SelectionWheel
 	uint32 m_lastDiffIndex = 0;
 
 public:
+	Delegate<> OnSongsChanged;
+
+
 	SelectionWheel(IApplicationTickable *owner) : m_owner(owner)
 	{
 	}
@@ -301,10 +304,10 @@ public:
 			m_doSort();
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
-			m_SetLuaMaps(true);
 		}
 
 		// Filter will take care of sorting and setting lua
+		OnSongsChanged.Call();
 	}
 	void OnFoldersRemoved(Vector<FolderIndex *> maps)
 	{
@@ -323,10 +326,10 @@ public:
 		{
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
-			m_SetLuaMaps(true);
 		}
 
 		// Filter will take care of sorting and setting lua
+		OnSongsChanged.Call();
 	}
 	void OnFoldersUpdated(Vector<FolderIndex *> maps)
 	{
@@ -335,12 +338,11 @@ public:
 		{
 			SongSelectIndex index(m);
 		}
+		OnSongsChanged.Call();
 	}
 	void OnFoldersCleared(Map<int32, FolderIndex *> newList)
 	{
-		bool wasFiltered = m_filterSet;
 
-		m_filterSet = false;
 		m_mapFilter.clear();
 		m_maps.clear();
 		m_sortVec.clear();
@@ -348,26 +350,30 @@ public:
 		{
 			SongSelectIndex index(m.second);
 			m_maps.Add(index.id, index);
-
-			// Add only if we are not filtering (otherwise the filter will add)
-			if (!m_filterSet)
-				m_sortVec.push_back(index.id);
+			m_sortVec.push_back(index.id);
 		}
 
 		if (m_maps.size() == 0)
 			return;
 
-		if (!wasFiltered)
+
+		//set all songs
+		m_SetLuaMaps("allSongs", m_maps);
+		lua_getglobal(m_lua, "songs_changed");
+		if (!lua_isfunction(m_lua, -1))
 		{
-			m_doSort();
-
-			SelectLastMapIndex(true);
-			m_SetLuaMaps(true);
-
-			// Try to go back to selected song in new sort
+			lua_pop(m_lua, 1);
+			return;
+		}
+		lua_pushboolean(m_lua, true);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
 		}
 
 		// Filter will take care of sorting and setting lua
+		OnSongsChanged.Call();
 	}
 	void OnSearchStatusUpdated(String status)
 	{
@@ -538,7 +544,7 @@ public:
 
 		// When resorting, jump back to the top
 		SelectMapBySortIndex(0);
-		m_SetLuaMaps(false);
+		m_SetLuaMaps();
 	}
 
 	// Set display filter
@@ -563,7 +569,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(true);
 
-		m_SetLuaMaps(false);
+		m_SetLuaMaps();
 	}
 	void SetFilter(SongFilter *filter[2])
 	{
@@ -590,7 +596,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(isFiltered);
 
-		m_SetLuaMaps(false);
+		m_SetLuaMaps();
 	}
 	void ClearFilter()
 	{
@@ -610,7 +616,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(true);
 
-		m_SetLuaMaps(false);
+		m_SetLuaMaps();
 	}
 
 	FolderIndex *GetSelection() const
@@ -723,13 +729,9 @@ private:
 			assert(false);
 		}
 	}
-	void m_SetLuaMaps(bool withAll)
+	void m_SetLuaMaps()
 	{
 		m_SetLuaMaps("songs", m_SourceCollection());
-		if (withAll)
-		{
-			m_SetLuaMaps("allSongs", m_maps);
-		}
 
 		lua_getglobal(m_lua, "songs_changed");
 		if (!lua_isfunction(m_lua, -1))
@@ -737,13 +739,14 @@ private:
 			lua_pop(m_lua, 1);
 			return;
 		}
-		lua_pushboolean(m_lua, withAll);
+		lua_pushboolean(m_lua, false);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
 		}
 	}
+
 	void m_SetLuaMaps(const char *key, const Map<int32, SongSelectIndex> &collection)
 	{
 		lua_getglobal(m_lua, "songwheel");
@@ -995,12 +998,7 @@ public:
 			assert(false);
 		}
 	}
-	void OnFoldersAdded(Vector<FolderIndex *> maps)
-	{
-		UpdateFilters();
-	}
-
-	void OnFoldersRemoved(Vector<FolderIndex*> maps)
+	void OnSongsChanged()
 	{
 		UpdateFilters();
 	}
@@ -1494,12 +1492,11 @@ public:
 		m_sortSelection->AdvanceSelection(0);
 
 		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
-		m_mapDatabase->OnFoldersAdded.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersAdded);
 		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
 		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
 		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
-		m_mapDatabase->OnFoldersRemoved.Add(m_filterSelection.GetData(), &FilterSelection::OnFoldersRemoved);
 		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
+		m_selectionWheel->OnSongsChanged.Add(m_filterSelection.GetData(), &FilterSelection::OnSongsChanged);
 		m_mapDatabase->StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
