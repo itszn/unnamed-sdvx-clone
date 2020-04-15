@@ -301,9 +301,8 @@ public:
 			m_doSort();
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
-
-			m_SetLuaMaps(true);
 		}
+		m_SetLuaMaps(true);
 
 		// Filter will take care of sorting and setting lua
 	}
@@ -325,9 +324,9 @@ public:
 			// Try to go back to selected song in new sort
 			SelectLastMapIndex(true);
 
-			m_SetLuaMaps(true);
 		}
 
+		m_SetLuaMaps(true);
 		// Filter will take care of sorting and setting lua
 	}
 	void OnFoldersUpdated(Vector<FolderIndex *> maps)
@@ -366,9 +365,9 @@ public:
 			SelectLastMapIndex(true);
 
 			// Try to go back to selected song in new sort
-			m_SetLuaMaps(true);
 		}
 
+		m_SetLuaMaps(true);
 		// Filter will take care of sorting and setting lua
 	}
 	void OnSearchStatusUpdated(String status)
