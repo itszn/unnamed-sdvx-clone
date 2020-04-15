@@ -99,6 +99,7 @@ DefineEnum(GameConfigKeys,
 	SongSelSensMult,
 
 	LastSelected,
+	LastSort,
 	LevelFilter,
 	FolderFilter,
 

@@ -1127,7 +1127,8 @@ public:
 	SortSolection(Ref<SelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) {}
 	~SortSolection()
 	{
-		for (SongSort *s : m_sorts)
+		g_gameConfig.Set(GameConfigKeys::LastSort, m_selection);
+		for (SongSort* s : m_sorts)
 		{
 			TitleSort *t = (TitleSort *)s;
 			ScoreSort *sc = (ScoreSort *)s;
@@ -1167,6 +1168,8 @@ public:
 		m_SetLuaTable();
 
 		Initialized = true;
+		m_selection = g_gameConfig.GetInt(GameConfigKeys::LastSort);
+		AdvanceSelection(0);
 		return true;
 	}
 
@@ -1620,7 +1623,7 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_settingsWheel->Active && !IsSuspended())
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !m_settingsWheel->Active && !IsSuspended())
 		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			FolderIndex *folder = m_selectionWheel->GetSelection();
@@ -1678,6 +1681,10 @@ public:
 				default:
 					break;
 				}
+			}
+			else if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
+			{
+				m_sortSelection->Active = false;
 			}
 			else if (m_filterSelection->Active)
 			{

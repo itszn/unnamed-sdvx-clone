@@ -109,10 +109,12 @@ void Input::Update(float deltaTime)
 			{
 				// INVALID MAPPING
 				m_laserStates[i] = 0.0f;
+				m_rawKeyLaserStates[i] = 0.0f;
 				continue;
 			}
 			
 			m_laserStates[i] = m_mouseSensitivity * m_mousePos[m_mouseAxisMapping[i]];
+			m_rawLaserStates[i] = m_mousePos[m_mouseAxisMapping[i]];
 			m_mousePos[m_mouseAxisMapping[i]] = 0;
 		}
 	}
@@ -157,9 +159,15 @@ void Input::Update(float deltaTime)
 				if (fabs(delta) > 1.5f)
 					delta += 2 * (Math::Sign(delta) * -1);
 				if (fabs(delta) < m_controllerDeadzone)
+				{
 					m_laserStates[i] = 0.0f;
+					m_rawLaserStates[i] = 0.0f;
+				}
 				else
+				{
+					m_rawLaserStates[i] = delta;
 					m_laserStates[i] = delta * m_controllerSensitivity;
+				}
 				m_prevLaserStates[i] = axisState;
 			}
 		}
@@ -237,6 +245,10 @@ Ref<int32> Input::LockMouse()
 float Input::GetInputLaserDir(uint32 laserIdx)
 {
 	return m_laserStates[laserIdx];
+}
+float Input::GetAbsoluteInputLaserDir(uint32 laserIdx)
+{
+	return m_rawLaserStates[laserIdx];
 }
 void Input::m_InitKeyboardMapping()
 {
