@@ -25,16 +25,16 @@ struct Label
 struct ImageAnimation
 {
 	int FrameCount;
-	std::atomic_int32_t CurrentFrame;
+	std::atomic<int32_t> CurrentFrame;
 	int TimesToLoop;
 	int LoopCounter;
 	int w;
 	int h;
 	float SecondsPerFrame;
 	float Timer;
-	std::atomic_bool Compressed;
-	std::atomic_bool LoadComplete;
-	std::atomic_bool Cancelled;
+	std::atomic<bool> Compressed;
+	std::atomic<bool> LoadComplete;
+	std::atomic<bool> Cancelled;
 	std::mutex LoadMutex;
 	Vector<Graphics::Image> Frames;
 	Vector<Buffer> FrameData; //for storing the file contents of the compressed frames
