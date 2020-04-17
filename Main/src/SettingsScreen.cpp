@@ -164,7 +164,6 @@ private:
 
 	Texture m_whiteTex;
 
-	int m_selectedGamepad = 0;
 	float m_laserColors[2] = { 0.25f, 0.75f };
 	String m_controllerButtonNames[8];
 	String m_controllerLaserNames[2];
@@ -195,18 +194,18 @@ private:
 	//TODO: Use argument instead of many functions if possible.
 	void SetBTBind(GameConfigKeys key)
 	{
-		g_application->AddTickable(ButtonBindingScreen::Create(key, m_useBTGamepad, m_selectedGamepad));
+		g_application->AddTickable(ButtonBindingScreen::Create(key, m_useBTGamepad, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
 	}
 
 	void SetLL()
 	{
 		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, lasermode == 2, m_selectedGamepad));
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
 	}
 	void SetRL()
 	{
 		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, lasermode == 2, m_selectedGamepad));
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
 	}
 
 	void CalibrateSens()
@@ -618,7 +617,7 @@ public:
 
 				if (m_gamePads.size() > 0)
 				{
-					m_selectedGamepad = SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
+					SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
 				}
 
 				IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);

@@ -6,11 +6,11 @@ Map<int32, SongSelectIndex> LevelFilter::GetFiltered(const Map<int32, SongSelect
 	Map<int32, SongSelectIndex> filtered;
 	for (auto kvp : source)
 	{
-		for (auto diff : kvp.second.GetDifficulties())
+		for (auto chart: kvp.second.GetCharts())
 		{
-			if (diff->settings.level == m_level)
+			if (chart->level == m_level)
 			{
-				SongSelectIndex index(kvp.second.GetMap(), diff);
+				SongSelectIndex index(kvp.second.GetFolder(), chart);
 				filtered.Add(index.id, index);
 			}
 		}
@@ -30,10 +30,10 @@ bool LevelFilter::IsAll() const
 
 Map<int32, SongSelectIndex> FolderFilter::GetFiltered(const Map<int32, SongSelectIndex>& source)
 {
-	Map<int32, MapIndex*> maps = m_mapDatabase->FindMapsByFolder(m_folder);
+	Map<int32, FolderIndex*> folders = m_mapDatabase->FindFoldersByFolder(m_folder);
 
 	Map<int32, SongSelectIndex> filtered;
-	for (auto m : maps)
+	for (auto m : folders)
 	{
 		SongSelectIndex index(m.second);
 		filtered.Add(index.id, index);
@@ -53,10 +53,10 @@ bool FolderFilter::IsAll() const
 
 Map<int32, SongSelectIndex> CollectionFilter::GetFiltered(const Map<int32, SongSelectIndex>& source)
 {
-	Map<int32, MapIndex*> maps = m_mapDatabase->FindMapsByCollection(m_collection);
+	Map<int32, FolderIndex*> folders = m_mapDatabase->FindFoldersByCollection(m_collection);
 
 	Map<int32, SongSelectIndex> filtered;
-	for (auto m : maps)
+	for (auto m : folders)
 	{
 		SongSelectIndex index(m.second);
 		filtered.Add(index.id, index);

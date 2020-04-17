@@ -285,6 +285,8 @@ Ref<AudioStream> AudioStreamMp3::Create(Audio* audio, const String& path, bool p
 	{
 		delete impl;
 		impl = nullptr;
+		return Ref<AudioStream>();
+
 	}
 	return Ref<AudioStream>(impl);
 }

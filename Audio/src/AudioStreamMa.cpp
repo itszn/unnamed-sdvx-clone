@@ -141,6 +141,7 @@ Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, b
 	{
 		delete impl;
 		impl = nullptr;
+		return Ref<AudioStream>();
 	}
 	return Ref<AudioStream>(impl);
 }

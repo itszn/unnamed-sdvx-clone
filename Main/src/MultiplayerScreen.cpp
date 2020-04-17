@@ -124,7 +124,7 @@ MultiplayerScreen::~MultiplayerScreen()
 	g_input.OnButtonReleased.RemoveAll(this);
 	g_gameWindow->OnMouseScroll.RemoveAll(this);
 	g_gameWindow->OnMousePressed.RemoveAll(this);
-	m_mapDatabase.OnMapsCleared.Clear();
+	m_mapDatabase->OnFoldersCleared.Clear();
 	if (m_lua)
 	{
 		g_application->DisposeLua(m_lua);
@@ -288,15 +288,16 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	if (packet["song"].is_null())
 		return true;
 
-	const String& hash = packet.value("hash", "");
+	const String& chart_hash = packet.value("chart_hash", "");
+	const String& audio_hash = packet.value("audio_hash", "");
 	const String& song = packet.value("song", "");
 
 	// Fallback case for no hash provided from the server
-	if (m_hasSelectedMap && hash.length() == 0 && song == m_selectedMapShortPath)
+	if (m_hasSelectedMap && chart_hash.length() == 0 && song == m_selectedMapShortPath)
 		return true;
 
 	// Case for same song as before
-	if (m_hasSelectedMap && packet["hash"] == m_selectedMapHash)
+	if (m_hasSelectedMap && chart_hash == m_selectedMapHash)
 		return true;
 
 	// Clear jacket variable to force image reload
@@ -305,9 +306,9 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
-	DifficultyIndex* new_diff = m_getMapByHash(hash, song, &diff_ind, packet["level"]);
+	ChartIndex* newChart = m_getChartByHash(chart_hash, song, &diff_ind, packet["level"]);
 
-	if (new_diff == nullptr)
+	if (newChart == nullptr)
 	{
 		// If we don't find it, then update lua state
 		m_hasSelectedMap = false;
@@ -323,10 +324,10 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	}
 
 	m_selfPicked = false;
-	m_updateSelectedMap(new_diff->mapId, diff_ind, false);
+	m_updateSelectedMap(newChart->folderId, diff_ind, false);
 
 	m_selectedMapShortPath = song;
-	m_selectedMapHash = hash;
+	m_selectedMapHash = chart_hash;
 
 	return true;
 }
@@ -349,13 +350,13 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_finalStats.clear();
 
 	// Grab the map from the database
-	MapIndex* map = m_mapDatabase.GetMap(m_selectedMapId);
-	DifficultyIndex* diff = map->difficulties[m_selectedDiffIndex];
+	FolderIndex* folder = m_mapDatabase->GetFolder(m_selectedMapId);
+	ChartIndex* chart = folder->charts[m_selectedDiffIndex];
 
 	// Reset score time before playing
 	m_lastScoreSent = 0;
 
-	Logf("[Multiplayer] Starting game: diff_id=%d mapId=%d path=%s", Logger::Info, diff->id, diff->mapId, diff->path.c_str());
+	Logf("[Multiplayer] Starting game: diff_id=%d mapId=%d path=%s", Logger::Info, chart->id, chart->folderId, chart->path.c_str());
 
 	// The server tells us if we are playing excessive or not
 	bool is_hard = packet["hard"];
@@ -370,7 +371,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 		flags = flags | GameFlags::Mirror;
 
 	// Create the game using the Create that takes the MultiplayerScreen class
-	Game* game = Game::Create(this, *(diff), flags);
+	Game* game = Game::Create(this, *(chart), flags);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Error);
@@ -393,87 +394,87 @@ bool MultiplayerScreen::m_handleSyncStartPacket(nlohmann::json& packet)
 
 // Get a song for given audio hash and level
 // If we find a match find a matching hash but not level, just go with any level
-DifficultyIndex* MultiplayerScreen::m_getMapByHash(const String& hash, const String& path, uint32* diffIndex, int32 level)
+ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String& path, uint32* diffIndex, int32 level)
 {
 	// Fallback on an empty hash
 	if (hash.length() == 0)
-		return m_getMapByShortPath(path, diffIndex, level, true);
+		return m_getChartByShortPath(path, diffIndex, level, true);
 	
 	Logf("[Multiplayer] looking up song hash '%s' level %u", Logger::Info, *hash, level);
-	for (auto map : m_mapDatabase.FindMapsByHash(hash))
+	for (auto folder : m_mapDatabase->FindFoldersByHash(hash))
 	{
-		DifficultyIndex* newDiff = NULL;
+		ChartIndex* newChart = NULL;
 
-		for (int ind = 0; ind < map.second->difficulties.size(); ind++)
+		for (int ind = 0; ind < folder.second->charts.size(); ind++)
 		{
-			DifficultyIndex* diff = map.second->difficulties[ind];
-			if (diff->settings.level == level)
+			ChartIndex* chart = folder.second->charts[ind];
+			if (chart->level == level)
 			{
 				// We found a matching level for this hash, good to go
-				newDiff = diff;
+				newChart = chart;
 				*diffIndex = ind;
 			}
 		}
 
 		// We didn't find the exact level, but we should still use this map anyway
-		if (newDiff == NULL)
+		if (newChart == NULL)
 		{
-			assert(map.second->difficulties.size() > 0);
+			assert(folder.second->charts.size() > 0);
 			*diffIndex = 0;
-			newDiff = map.second->difficulties[0];
+			newChart = folder.second->charts[0];
 		}
 
-		if (newDiff != NULL)
+		if (newChart != NULL)
 		{
-			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newDiff->id, newDiff->mapId, *diffIndex, newDiff->path.c_str());
-			return newDiff;
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
+			return newChart;
 		}
 	}
 	Log("[Multiplayer] Could not find song by hash, falling back to foldername", Logger::Warning);
-	return m_getMapByShortPath(path, diffIndex, level, true);
+	return m_getChartByShortPath(path, diffIndex, level, true);
 }
 
 // Get a map from a given "short" path, and level
 // The selected index will be written to diffIndex
 // diffIndex can be used as a hint to which song to pick
-DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint32* diffIndex, int32 level, bool useHint)
+ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32* diffIndex, int32 level, bool useHint)
 {
 	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Info, path.c_str(), level, *diffIndex);
 
-	for (auto map : m_mapDatabase.FindMaps(path))
+	for (auto folder : m_mapDatabase->FindFoldersByPath(path))
 	{
-		DifficultyIndex* newDiff = NULL;
+		ChartIndex* newChart = NULL;
 
-		for (int ind = 0; ind < map.second->difficulties.size(); ind++)
+		for (int ind = 0; ind < folder.second->charts.size(); ind++)
 		{
-			DifficultyIndex* diff = map.second->difficulties[ind];
+			ChartIndex* chart = folder.second->charts[ind];
 
-			if (diff->settings.level == level)
+			if (chart->level == level)
 			{
 				// First we try to get exact song (kinda) by matching index hint to level
 				if (useHint && *diffIndex != ind)
 					break;
 
 				// If we already searched the songs just take any level that matches
-				newDiff = diff;
+				newChart = chart;
 				*diffIndex = ind;
 				break;
 			}
 		}
 
 		// If we didn't find any matches and we are on our last try, just pick anything
-		if (newDiff == NULL && !useHint)
+		if (newChart == NULL && !useHint)
 		{
-			assert(map.second->difficulties.size() > 0);
+			assert(folder.second->charts.size() > 0);
 			*diffIndex = 0;
-			newDiff = map.second->difficulties[0];
+			newChart = folder.second->charts[0];
 		}
 
 
-		if (newDiff != NULL)
+		if (newChart != NULL)
 		{
-			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newDiff->id, newDiff->mapId, *diffIndex, newDiff->path.c_str());
-			return newDiff;
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
+			return newChart;
 		}
 	}
 
@@ -481,7 +482,7 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint
 	if (useHint)
 	{
 		*diffIndex = 0;
-		return m_getMapByShortPath(path, diffIndex, level, false);
+		return m_getChartByShortPath(path, diffIndex, level, false);
 	}
 
 	Log("[Multiplayer] Could not find song", Logger::Warning);
@@ -489,21 +490,21 @@ DifficultyIndex* MultiplayerScreen::m_getMapByShortPath(const String& path, uint
 }
 
 // Set the selected map to a given map and difficulty (used by SongSelect)
-void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
+void MultiplayerScreen::SetSelectedMap(FolderIndex* folder, ChartIndex* chart)
 {
-	const SongSelectIndex song(map, diff);
+	const SongSelectIndex song(folder, chart);
 
 	// Get the "short" path (basically the last part of the path)
-	const size_t last_slash_idx = song.GetMap()->path.find_last_of("\\/");
-	std::string short_path = song.GetMap()->path.substr(last_slash_idx + 1);
+	const size_t last_slash_idx = song.GetFolder()->path.find_last_of("\\/");
+	std::string short_path = song.GetFolder()->path.substr(last_slash_idx + 1);
 
 	// Get the difficulty index into the selected map
 	uint32 diff_index = (song.id % 10) - 1;
 
 	// Get the actual map id
-	const DifficultyIndex* new_diff = m_getMapByHash(diff->hash, short_path, &diff_index, diff->settings.level);
+	const ChartIndex* newChart = m_getChartByHash(chart->hash, short_path, &diff_index, chart->level);
 
-	if (new_diff == nullptr)
+	if (newChart == nullptr)
 	{
 		// Somehow we failed the round trip, so we can't use this map
 		m_hasSelectedMap = false;
@@ -511,10 +512,10 @@ void MultiplayerScreen::SetSelectedMap(MapIndex* map, DifficultyIndex* diff)
 	}
 
 	m_selfPicked = true;
-	m_updateSelectedMap(new_diff->mapId, diff_index, true);
+	m_updateSelectedMap(newChart->folderId, diff_index, true);
 
 	m_selectedMapShortPath = short_path;
-	m_selectedMapHash = diff->hash;
+	m_selectedMapHash = chart->hash;
 }
 
 void MultiplayerScreen::m_changeSelectedRoom(int offset)
@@ -536,10 +537,10 @@ void MultiplayerScreen::m_changeSelectedRoom(int offset)
 
 void MultiplayerScreen::m_changeDifficulty(int offset)
 {
-	MapIndex* map = m_mapDatabase.GetMap(this->m_selectedMapId);
+	FolderIndex* folder = m_mapDatabase->GetFolder(this->m_selectedMapId);
 	int oldDiff = this->m_selectedDiffIndex;
 	int newInd = this->m_selectedDiffIndex + offset;
-	if (newInd < 0 || newInd >= map->difficulties.size())
+	if (newInd < 0 || newInd >= folder->charts.size())
 	{
 		return;
 	}
@@ -670,19 +671,18 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	this->m_selectedDiffIndex = diff_ind;
 
 	// Get the current map from the database
-	MapIndex* map = m_mapDatabase.GetMap(mapid);
-	DifficultyIndex* diff = map->difficulties[diff_ind];
-	const BeatmapSettings& mapSettings = diff->settings;
+	FolderIndex* folder = m_mapDatabase->GetFolder(mapid);
+	ChartIndex* chart = folder->charts[diff_ind];
 
 	// Find "short" path for the selected map
-	const size_t lastSlashIdx = map->path.find_last_of("\\/");
-	String shortPath = map->path.substr(lastSlashIdx + 1);
+	const size_t lastSlashIdx = folder->path.find_last_of("\\/");
+	String shortPath = folder->path.substr(lastSlashIdx + 1);
 
 	m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 	m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 	m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 
-	GetMapBPMForSpeed(diff->path, m_bpm);
+	GetMapBPMForSpeed(chart->path, m_bpm);
 
 
 	m_speedBPM = m_bpm.start;
@@ -699,35 +699,34 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 
 	// Push a table of info to lua
 	lua_newtable(m_lua);
-	m_PushStringToTable("title", mapSettings.title.c_str());
-	m_PushStringToTable("artist", mapSettings.artist.c_str());
-	m_PushStringToTable("bpm", mapSettings.bpm.c_str());
-	m_PushIntToTable("id", map->id);
-	m_PushStringToTable("path", map->path.c_str());
+	m_PushStringToTable("title", chart->title.c_str());
+	m_PushStringToTable("artist", chart->artist.c_str());
+	m_PushStringToTable("bpm", chart->bpm.c_str());
+	m_PushIntToTable("id", folder->id);
+	m_PushStringToTable("path", folder->path.c_str());
 	m_PushStringToTable("short_path", *shortPath);
 
-	m_PushStringToTable("jacketPath", Path::Normalize(map->path + "/" + mapSettings.jacketPath).c_str());
-	m_PushIntToTable("level", mapSettings.level);
-	m_PushIntToTable("difficulty", mapSettings.difficulty);
+	m_PushStringToTable("jacketPath", Path::Normalize(folder->path + "/" + chart->jacket_path).c_str());
+	m_PushIntToTable("level", chart->level);
+	m_PushIntToTable("difficulty", chart->diff_index);
 	m_PushIntToTable("diff_index", diff_ind);
 	lua_pushstring(m_lua, "self_picked");
 	lua_pushboolean(m_lua, m_selfPicked);
 	lua_settable(m_lua, -3);
-	m_PushStringToTable("effector", mapSettings.effector.c_str());
-	m_PushStringToTable("illustrator", mapSettings.illustrator.c_str());
+	m_PushStringToTable("effector", chart->effector.c_str());
+	m_PushStringToTable("illustrator", chart->illustrator.c_str());
 
 	int diffIndex = 0;
 	lua_pushstring(m_lua, "all_difficulties");
 	lua_newtable(m_lua);
-	for (auto& diff : map->difficulties)
+	for (auto& chart : folder->charts)
 	{
 		lua_pushinteger(m_lua, ++diffIndex);
 		lua_newtable(m_lua);
-		const BeatmapSettings& diffSettings = diff->settings;
-		m_PushIntToTable("level", diffSettings.level);
-		m_PushIntToTable("id", diff->id);
+		m_PushIntToTable("level", chart->level);
+		m_PushIntToTable("id", chart->id);
 		m_PushIntToTable("diff_index", diffIndex-1);
-		m_PushIntToTable("difficulty", diffSettings.difficulty);
+		m_PushIntToTable("difficulty", chart->diff_index);
 		lua_settable(m_lua, -3);
 	}
 	lua_settable(m_lua, -3);
@@ -764,15 +763,15 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 		packet["topic"] = "room.setsong";
 		packet["song"] = shortPath;
 		packet["diff"] = diff_ind;
-		packet["level"] = mapSettings.level;
-		packet["hash"] = diff->hash;
+		packet["level"] = chart->level;
+		packet["chart_hash"] = chart->hash;
 		m_tcp.SendJSON(packet);
 	}
 	else
 	{
 		nlohmann::json packet;
 		packet["topic"] = "user.song.level";
-		packet["level"] = mapSettings.level;
+		packet["level"] = chart->level;
 		m_tcp.SendJSON(packet);
 	}
 
@@ -810,7 +809,7 @@ void MultiplayerScreen::Tick(float deltaTime)
 
 	if (m_dbUpdateTimer.Milliseconds() > 500)
 	{
-		m_mapDatabase.Update();
+		m_mapDatabase->Update();
 		m_dbUpdateTimer.Restart();
 	}
 
@@ -1149,7 +1148,7 @@ int MultiplayerScreen::lExit(lua_State * L)
 int MultiplayerScreen::lSongSelect(lua_State* L)
 {
 	m_suspended = true;
-	g_application->AddTickable(SongSelect::Create(this));
+	g_transition->TransitionTo(SongSelect::Create(this));
 	return 0;
 }
 
@@ -1172,7 +1171,7 @@ void MultiplayerScreen::OnRestore()
 		return;
 	}*/
 
-	m_mapDatabase.StartSearching();
+	m_mapDatabase->StartSearching();
 
 	// Retrive the lobby info now that we are out of the game
 	if (m_inGame)
@@ -1206,6 +1205,8 @@ bool MultiplayerScreen::AsyncLoad()
 		return false;
 
 	m_textInput = Ref<TextInputMultiplayer>(new TextInputMultiplayer());
+	m_mapDatabase = new MapDatabase();
+	m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
 	return true;
 }
 
@@ -1243,9 +1244,8 @@ bool MultiplayerScreen::AsyncFinalize()
 	lua_setglobal(m_lua, "screenState");
 
 	// Start the map database
-	m_mapDatabase.AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
-	m_mapDatabase.OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
-	m_mapDatabase.StartSearching();
+	m_mapDatabase->OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
+	m_mapDatabase->StartSearching();
 
 	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 	if (m_userName == "")
@@ -1267,7 +1267,7 @@ bool MultiplayerScreen::AsyncFinalize()
 void MultiplayerScreen::OnSuspend()
 {
 	m_suspended = true;
-	m_mapDatabase.StopSearching();
+	m_mapDatabase->StopSearching();
 
 	if (m_lockMouse)
 		m_lockMouse.Release();

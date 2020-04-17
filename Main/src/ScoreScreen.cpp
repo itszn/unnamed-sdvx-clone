@@ -57,7 +57,7 @@ private:
 	Texture m_graphTex;
 	GameFlags m_flags;
 	CollectionDialog m_collDiag;
-	DifficultyIndex m_diffId;
+	ChartIndex m_chartIndex;
 
 	void m_PushStringToTable(const char* name, String data)
 	{
@@ -93,7 +93,7 @@ private:
 		{
 			if (m_collDiag.IsInitialized())
 			{
-				m_collDiag.Open(m_diffId);
+				m_collDiag.Open(m_chartIndex);
 			}
 		}
 
@@ -220,9 +220,9 @@ public:
 
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
-		m_highScores = game->GetDifficultyIndex().scores;
+		m_highScores = game->GetChartIndex().scores;
 		m_autoButtons = scoring.autoplayButtons;
-		m_diffId = game->GetDifficultyIndex();
+		m_chartIndex = game->GetChartIndex();
 
 		// XXX add data for multi
 		m_gaugeSamples = game->GetGaugeSamples();
@@ -282,9 +282,9 @@ public:
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
-		if (!m_autoplay && !m_autoButtons && game->GetDifficultyIndex().mapId != -1 && !game->GetManualExit())
+		if (!m_autoplay && !m_autoButtons && game->GetChartIndex().folderId!= -1 && !game->GetManualExit())
 		{
-			m_mapDatabase.AddScore(game->GetDifficultyIndex(),
+			m_mapDatabase.AddScore(game->GetChartIndex(),
 				m_score,
 				m_categorizedHits[2],
 				m_categorizedHits[1],
@@ -300,7 +300,7 @@ public:
 
 		// Used for jacket images
 		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
-		m_jacketPath = Path::Normalize(game->GetMapRootPath() + Path::sep + m_beatmapSettings.jacketPath);
+		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
 		m_jacketImage = game->GetJacketImage();
 
 	}
@@ -419,6 +419,17 @@ public:
 		///TODO: maybe push complete hit stats
 
 		lua_setglobal(m_lua, "result");
+
+		lua_getglobal(m_lua, "result_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
 	virtual bool AsyncFinalize() override
 	{
@@ -458,6 +469,16 @@ public:
 		if (key == SDLK_F9)
 		{
 			g_application->ReloadScript("result", m_lua);
+			lua_getglobal(m_lua, "result_set");
+			if (lua_isfunction(m_lua, -1))
+			{
+				if (lua_pcall(m_lua, 0, 0, 0) != 0)
+				{
+					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+				}
+			}
+			lua_settop(m_lua, 0);
 		}
 	}
 	virtual void OnKeyReleased(int32 key) override
