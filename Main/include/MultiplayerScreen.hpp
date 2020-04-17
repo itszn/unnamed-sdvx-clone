@@ -64,7 +64,7 @@ public:
 	int lJoinWithoutPassword(struct lua_State* L);
 	int lSaveUsername(struct lua_State* L);
 
-	void SetSelectedMap(MapIndex*, DifficultyIndex*);
+	void SetSelectedMap(FolderIndex*, ChartIndex*);
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
 	void SendFinalScore(class Game* game, int clearState);
@@ -130,8 +130,8 @@ private:
 
 	void m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is_new);
 	void m_clearLuaMap();
-	DifficultyIndex* m_getMapByShortPath(const String& path, uint32*, int32, bool);
-	DifficultyIndex* m_getMapByHash(const String& hash, const String& path, uint32*, int32);
+	ChartIndex* m_getChartByShortPath(const String& path, uint32*, int32, bool);
+	ChartIndex* m_getChartByHash(const String& hash, const String& path, uint32*, int32);
 
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
@@ -193,7 +193,7 @@ private:
 	bool m_hasSelectedMap = false;
 
 	// Instance of the database, used to look up songs
-	MapDatabase m_mapDatabase;
+	MapDatabase* m_mapDatabase;
 
 	float m_advanceDiff = 0.0f;
 	float m_advanceRoom = 0.0f;

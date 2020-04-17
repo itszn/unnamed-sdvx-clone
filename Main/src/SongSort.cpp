@@ -30,8 +30,8 @@ void TitleSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 bool TitleSort::CompareSongs(const SongSelectIndex& song_a,
 		const SongSelectIndex& song_b)
 {
-	String a = song_a.GetDifficulties()[0]->settings.title;
-	String b = song_b.GetDifficulties()[0]->settings.title;
+	String a = song_a.GetCharts()[0]->title;
+	String b = song_b.GetCharts()[0]->title;
 	a.ToUpper();
 	b.ToUpper();
 	int strres = a.compare(b);
@@ -49,7 +49,7 @@ void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 	{
 		const SongSelectIndex& song = getSongFromCollection(mapIndex, collection);
 		uint32 maxScore = 0;
-		for (auto& diff : song.GetDifficulties())
+		for (auto& diff : song.GetCharts())
 		{
 			for (auto& score : diff->scores)
 			{
@@ -90,7 +90,7 @@ void DateSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 	{
 		const SongSelectIndex& song = getSongFromCollection(mapIndex, collection);
 		uint64 maxDate = 0;
-		for (auto& diff : song.GetDifficulties())
+		for (auto& diff : song.GetCharts())
 		{
 			if (diff->lwt < maxDate)
 				continue;

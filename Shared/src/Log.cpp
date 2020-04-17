@@ -71,7 +71,7 @@ public:
 	void Write(const String& msg)
 	{
 #ifdef _WIN32
-		OutputDebugStringA(*msg);
+		OutputDebugStringW(*Utility::ConvertToWString(msg));
 #endif
 		printf("%s", msg.c_str());
 		if(!m_failedToOpen)
