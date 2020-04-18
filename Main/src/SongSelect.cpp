@@ -1549,6 +1549,8 @@ public:
 		{
 			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
 		}
+
+		return true;
 	}
 
 	bool Init() override
