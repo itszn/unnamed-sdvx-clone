@@ -17,6 +17,7 @@
 #include <MultiplayerScreen.hpp>
 #include <unordered_set>
 #include "SongSort.hpp"
+#include "DBUpdateScreen.hpp"
 
 class TextInput
 {
@@ -1443,6 +1444,8 @@ private:
 	CollectionDialog m_collDiag;
 	bool m_hasCollDiag = false;
 
+	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+
 public:
 	bool AsyncLoad() override
 	{
@@ -1450,12 +1453,39 @@ public:
 		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
 		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel(this));
 		m_filterSelection = Ref<FilterSelection>(new FilterSelection(m_selectionWheel));
-		m_mapDatabase = new MapDatabase();
+		m_mapDatabase = new MapDatabase(true);
+
+		// Add database update hook before triggering potential update
+		m_mapDatabase->OnDatabaseUpdateStarted.Add(this, &SongSelect_Impl::m_onDatabaseUpdateStart);
+		m_mapDatabase->OnDatabaseUpdateDone.Add(this, &SongSelect_Impl::m_onDatabaseUpdateDone);
+		m_mapDatabase->OnDatabaseUpdateProgress.Add(this, &SongSelect_Impl::m_onDatabaseUpdateProgress);
+		m_mapDatabase->FinishInit();
 
 		// Setup the map database
 		m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
 
 		return true;
+	}
+
+	void m_onDatabaseUpdateStart(int max)
+	{
+		m_dbUpdateScreen = new DBUpdateScreen(max);
+		g_application->AddTickable(m_dbUpdateScreen);
+	}
+
+	void m_onDatabaseUpdateProgress(int current, int max)
+	{
+		if (!m_dbUpdateScreen)
+			return;
+		m_dbUpdateScreen->SetCurrent(current, max);
+	}
+
+	void m_onDatabaseUpdateDone()
+	{
+		if (!m_dbUpdateScreen)
+			return;
+		g_application->RemoveTickable(m_dbUpdateScreen);
+		m_dbUpdateScreen = NULL;
 	}
 
 	bool AsyncFinalize() override

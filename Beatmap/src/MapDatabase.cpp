@@ -112,6 +112,10 @@ public:
 		else if (update)
 		{
 			ProfilerScope $(Utility::Sprintf("Upgrading db (%d -> %d)", gotVersion, m_version));
+
+			m_outer.OnDatabaseUpdateStarted.Call(1);
+
+
 			///TODO: Make loop for doing iterative upgrades
 			if (gotVersion == 8)  //upgrade from 8 to 9
 			{
@@ -140,11 +144,30 @@ public:
 			{
 				//back up old db file
 				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
+
+				int diffCount = 1;
+				{
+					// Do in its own scope so that it will destruct before we modify anything else
+					DBStatement diffCountStmt = m_database.Query("SELECT COUNT(rowid) FROM Difficulties");
+					if (diffCountStmt.StepRow())
+					{
+						diffCount = diffCountStmt.IntColumn(0);
+					}
+				}
+				m_outer.OnDatabaseUpdateProgress.Call(0, diffCount);
+
+				int progress = 0;
+				int totalScoreCount = 0;
+
 				DBStatement diffScan = m_database.Query("SELECT rowid,path FROM Difficulties");
 
 				Vector<ScoreIndex> scoresToAdd;
 				while (diffScan.StepRow())
 				{
+					if (progress % 16 == 0)
+						m_outer.OnDatabaseUpdateProgress.Call(progress, diffCount);
+					progress++;
+
 					bool noScores = true;
 					int diffid = diffScan.IntColumn(0);
 					String diffpath = diffScan.StringColumn(1);
@@ -215,8 +238,12 @@ public:
 							Logf("Could not open replay file at \"%s\" replay data will be lost.", Logger::Warning, score.replayPath);
 						}
 						scoresToAdd.Add(score);
+						totalScoreCount++;
 					}
+
 				}
+
+				progress = 0;
 
 				m_database.Exec("DROP TABLE IF EXISTS Maps");
 				m_database.Exec("DROP TABLE IF EXISTS Difficulties");
@@ -239,11 +266,19 @@ public:
 
 					addScore.Step();
 					addScore.Rewind();
+
+					if (progress % 16 == 0)
+					{
+						m_outer.OnDatabaseUpdateProgress.Call(progress, totalScoreCount);
+					}
+					progress++;
 				}
 				m_database.Exec("END");
 				m_database.Exec("VACUUM");
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
+
+			m_outer.OnDatabaseUpdateDone.Call();
 		}
 		else
 		{
@@ -1170,6 +1205,19 @@ private:
 		m_searching = false;
 	}
 };
+
+void MapDatabase::FinishInit()
+{
+	assert(!m_impl);
+	m_impl = new MapDatabase_Impl(*this);
+}
+MapDatabase::MapDatabase(bool postponeInit)
+{
+	if (!postponeInit)
+		FinishInit();
+	else
+		m_impl = NULL;
+}
 MapDatabase::MapDatabase()
 {
 	m_impl = new MapDatabase_Impl(*this);
