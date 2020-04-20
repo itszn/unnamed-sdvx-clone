@@ -844,7 +844,7 @@ public:
 
 		if (!result) //Failed to add, try to remove
 		{
-			m_database.Exec(Utility::Sprintf("DELETE FROM collections WHERE mapid==%d AND collection==\"%s\"", mapid, name));
+			m_database.Exec(Utility::Sprintf("DELETE FROM collections WHERE folderid==%d AND collection==\"%s\"", mapid, name));
 		}
 	}
 
@@ -878,7 +878,7 @@ private:
 	void m_CreateTables()
 	{
 		m_database.Exec("DROP TABLE IF EXISTS Folders");
-		m_database.Exec("DROP TABLE IF EXISTS Difficulties");
+		m_database.Exec("DROP TABLE IF EXISTS Charts");
 		m_database.Exec("DROP TABLE IF EXISTS Scores");
 		m_database.Exec("DROP TABLE IF EXISTS Collections");
 
