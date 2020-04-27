@@ -10,6 +10,7 @@
 #include "GameConfig.hpp"
 #include "SongFilter.hpp"
 #include "CollectionDialog.hpp"
+#include "GameplaySettingsDialog.hpp"
 #include <Audio/Audio.hpp>
 #include "lua.hpp"
 #include <iterator>
@@ -235,7 +236,6 @@ class SelectionWheel
 public:
 	Delegate<> OnSongsChanged;
 
-
 	SelectionWheel(IApplicationTickable *owner) : m_owner(owner)
 	{
 	}
@@ -356,7 +356,6 @@ public:
 
 		if (m_maps.size() == 0)
 			return;
-
 
 		//set all songs
 		m_SetLuaMaps("allSongs", m_maps);
@@ -1131,7 +1130,7 @@ public:
 	~SortSolection()
 	{
 		g_gameConfig.Set(GameConfigKeys::LastSort, m_selection);
-		for (SongSort* s : m_sorts)
+		for (SongSort *s : m_sorts)
 		{
 			TitleSort *t = (TitleSort *)s;
 			ScoreSort *sc = (ScoreSort *)s;
@@ -1411,8 +1410,6 @@ private:
 	Ref<SelectionWheel> m_selectionWheel;
 	// Filter selection
 	Ref<FilterSelection> m_filterSelection;
-	// Game settings wheel
-	Ref<GameSettingsWheel> m_settingsWheel;
 	// Sort selection
 	Ref<SortSolection> m_sortSelection;
 	// Search text logic object
@@ -1442,14 +1439,15 @@ private:
 
 	MultiplayerScreen *m_multiplayer = nullptr;
 	CollectionDialog m_collDiag;
+	GameplaySettingsDialog m_settDiag;
+
 	bool m_hasCollDiag = false;
 
-	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+	DBUpdateScreen *m_dbUpdateScreen = nullptr;
 
 public:
 	bool AsyncLoad() override
 	{
-		m_settingsWheel = Ref<GameSettingsWheel>(new GameSettingsWheel());
 		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
 		m_selectionWheel = Ref<SelectionWheel>(new SelectionWheel(this));
 		m_filterSelection = Ref<FilterSelection>(new FilterSelection(m_selectionWheel));
@@ -1495,8 +1493,6 @@ public:
 		g_input.OnButtonReleased.Add(this, &SongSelect_Impl::m_OnButtonReleased);
 		g_gameWindow->OnMouseScroll.Add(this, &SongSelect_Impl::m_OnMouseScroll);
 
-		if (!m_settingsWheel->Init())
-			return false;
 		if (!m_selectionWheel->Init())
 			return false;
 		if (!m_filterSelection->Init())
@@ -1544,6 +1540,10 @@ public:
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 		m_previewParams = {"", 0, 0};
 		m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
+		if (!m_settDiag.Init())
+		{
+			return false;
+		}
 
 		if (m_hasCollDiag)
 		{
@@ -1649,7 +1649,7 @@ public:
 
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
-		if (m_suspended || m_collDiag.IsActive())
+		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1657,7 +1657,7 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !m_settingsWheel->Active && !IsSuspended())
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended())
 		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			FolderIndex *folder = m_selectionWheel->GetSelection();
@@ -1675,7 +1675,7 @@ public:
 
 				ChartIndex *chart = m_selectionWheel->GetSelectedChart();
 
-				Game *game = Game::Create(*chart, m_settingsWheel->GetGameFlags());
+				Game *game = Game::Create(*chart, GameFlags::None);
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1690,33 +1690,7 @@ public:
 		}
 		else
 		{
-			if (m_settingsWheel->Active)
-			{
-				switch (buttonCode)
-				{
-				case Input::Button::BT_0:
-				case Input::Button::BT_1:
-				case Input::Button::BT_2:
-				case Input::Button::BT_3:
-					m_settingsWheel->ChangeSetting();
-					break;
-				case Input::Button::FX_0:
-					if (g_input.GetButton(Input::Button::FX_1))
-						m_settingsWheel->Active = false;
-					break;
-				case Input::Button::FX_1:
-					if (g_input.GetButton(Input::Button::FX_0))
-						m_settingsWheel->Active = false;
-					break;
-				case Input::Button::BT_S:
-				case Input::Button::Back:
-					m_settingsWheel->Active = false;
-					break;
-				default:
-					break;
-				}
-			}
-			else if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
+			if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
 			{
 				m_sortSelection->Active = false;
 			}
@@ -1761,13 +1735,13 @@ public:
 				case Input::Button::FX_1:
 					if (g_input.GetButton(Input::Button::FX_0))
 					{
-						m_settingsWheel->Active = true;
+						m_settDiag.Open();
 					}
 					break;
 				case Input::Button::FX_0:
 					if (g_input.GetButton(Input::Button::FX_1))
 					{
-						m_settingsWheel->Active = true;
+						m_settDiag.Open();
 					}
 					break;
 				case Input::Button::BT_S:
@@ -1785,7 +1759,7 @@ public:
 
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
-		if (m_suspended || m_collDiag.IsActive())
+		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -1796,13 +1770,13 @@ public:
 		switch (buttonCode)
 		{
 		case Input::Button::FX_0:
-			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_settingsWheel->Active && !m_sortSelection->Active)
+			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_sortSelection->Active)
 			{
 				m_filterSelection->Active = !m_filterSelection->Active;
 			}
 			break;
 		case Input::Button::FX_1:
-			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_settingsWheel->Active && !m_filterSelection->Active)
+			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_filterSelection->Active)
 			{
 				m_sortSelection->Active = !m_sortSelection->Active;
 			}
@@ -1811,14 +1785,10 @@ public:
 	}
 	void m_OnMouseScroll(int32 steps)
 	{
-		if (m_suspended || m_collDiag.IsActive())
+		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
-		if (m_settingsWheel->Active)
-		{
-			m_settingsWheel->AdvanceSelection(steps);
-		}
-		else if (m_sortSelection->Active)
+		if (m_sortSelection->Active)
 		{
 			m_sortSelection->AdvanceSelection(steps);
 		}
@@ -1833,25 +1803,10 @@ public:
 	}
 	virtual void OnKeyPressed(int32 key)
 	{
-		if (m_collDiag.IsActive())
+		if (m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
-		if (m_settingsWheel->Active)
-		{
-			if (key == SDLK_DOWN)
-			{
-				m_settingsWheel->AdvanceSelection(1);
-			}
-			else if (key == SDLK_UP)
-			{
-				m_settingsWheel->AdvanceSelection(-1);
-			}
-			else if (key == SDLK_LEFT || key == SDLK_RIGHT)
-			{
-				m_settingsWheel->ChangeSetting();
-			}
-		}
-		else if (m_filterSelection->Active)
+		if (m_filterSelection->Active)
 		{
 			if (key == SDLK_DOWN)
 			{
@@ -1916,7 +1871,7 @@ public:
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
-				Game *game = Game::Create(*chart, m_settingsWheel->GetGameFlags());
+				Game *game = Game::Create(*chart, GameFlags::None);
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1933,7 +1888,6 @@ public:
 			else if (key == SDLK_F9)
 			{
 				m_selectionWheel->ReloadScript();
-				m_settingsWheel->ReloadScript();
 				m_filterSelection->ReloadScript();
 				g_application->ReloadScript("songselect/background", m_lua);
 			}
@@ -1981,6 +1935,7 @@ public:
 			{
 				m_collDiag.Tick(deltaTime);
 			}
+			m_settDiag.Tick(deltaTime);
 		}
 	}
 
@@ -2001,12 +1956,12 @@ public:
 		m_selectionWheel->Render(deltaTime);
 		m_filterSelection->Render(deltaTime);
 		m_sortSelection->Render(deltaTime);
-		m_settingsWheel->Render(deltaTime);
 
 		if (m_collDiag.IsActive())
 		{
 			m_collDiag.Render(deltaTime);
 		}
+		m_settDiag.Render(deltaTime);
 	}
 
 	void TickNavigation(float deltaTime)
@@ -2030,9 +1985,13 @@ public:
 			m_timeSinceButtonReleased[(Input::Button)i] += deltaTime;
 		}
 
+		if (m_settDiag.IsActive())
+		{
+			return;
+		}
+
 		// Song navigation using laser inputs
 		/// TODO: Investigate strange behaviour further and clean up.
-
 		float diff_input = g_input.GetInputLaserDir(0) * m_sensMult;
 		float song_input = g_input.GetInputLaserDir(1) * m_sensMult;
 
@@ -2040,18 +1999,10 @@ public:
 		m_advanceSong += song_input;
 
 		int advanceDiffActual = (int)Math::Floor(m_advanceDiff * Math::Sign(m_advanceDiff)) * Math::Sign(m_advanceDiff);
-		;
-		int advanceSongActual = (int)Math::Floor(m_advanceSong * Math::Sign(m_advanceSong)) * Math::Sign(m_advanceSong);
-		;
 
-		if (m_settingsWheel->Active)
-		{
-			if (advanceDiffActual != 0)
-				m_settingsWheel->ChangeSetting();
-			if (advanceSongActual != 0)
-				m_settingsWheel->AdvanceSelection(advanceSongActual);
-		}
-		else if (m_filterSelection->Active)
+		int advanceSongActual = (int)Math::Floor(m_advanceSong * Math::Sign(m_advanceSong)) * Math::Sign(m_advanceSong);
+
+		if (m_filterSelection->Active)
 		{
 			if (advanceDiffActual != 0)
 				m_filterSelection->AdvanceSelection(advanceDiffActual);
@@ -2095,7 +2046,6 @@ public:
 		OnSearchTermChanged(m_searchInput->input);
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
-			m_settingsWheel->ClearSettings();
 			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
