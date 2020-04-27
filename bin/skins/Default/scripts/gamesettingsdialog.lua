@@ -89,7 +89,16 @@ function render(deltaTime, visible)
         elseif setting.type == "float" then
             disp = string.format("%s: %.2f", setting.name, setting.value)
         else
-            disp = string.format("%s: %s", setting.name, setting.value and "On" or "Off")
+            disp = string.format("%s:", setting.name)
+            local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, disp)
+            gfx.BeginPath()
+            gfx.Rect(xmax + 5, 3, 25,25)
+            gfx.FillColor(255, 127, 0, setting.value and 255 or 0)
+            gfx.StrokeColor(0,127,255)
+            gfx.StrokeWidth(1)
+            gfx.Fill()
+            gfx.Stroke()
+            gfx.FillColor(255,255,255)
         end
         gfx.Text(disp, 0 ,0)
         if si == SettingsDiag.currentSetting then

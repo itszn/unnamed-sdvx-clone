@@ -80,6 +80,18 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateIntSetting(GameC
     return s;
 }
 
+GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateToggleSetting(GameConfigKeys key, String name)
+{
+    Setting s = std::make_unique<SettingData>(SettingData({
+        key,
+        name,
+        SettingType::Toggle,
+    }));
+
+    s->boolSetting.val = g_gameConfig.GetBool(key);
+    return s;
+}
+
 bool GameplaySettingsDialog::Init()
 {
     Tab offsetTab = std::make_unique<TabData>();
@@ -93,8 +105,13 @@ bool GameplaySettingsDialog::Init()
     speedTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", {0.1f, 16.f}));
     speedTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", {50, 1500}, 20.0f));
 
+    Tab gameTab = std::make_unique<TabData>();
+    gameTab->name = "Game";
+    gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
+
     m_tabs.push_back(std::move(offsetTab));
     m_tabs.push_back(std::move(speedTab));
+    m_tabs.push_back(std::move(gameTab));
 
     m_lua = g_application->LoadScript("gamesettingsdialog");
     if (!m_lua)
@@ -133,7 +150,16 @@ void GameplaySettingsDialog::Tick(float deltaTime)
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
     if (currentSetting->type == Floating)
     {
-        currentSetting->floatSetting.val += m_knobAdvance[1] * currentSetting->floatSetting.mult;
+        float advance = m_knobAdvance[1] * currentSetting->floatSetting.mult;
+        if (g_input.GetButton(Input::Button::BT_0))
+            advance /= 4.0f;
+        if (g_input.GetButton(Input::Button::BT_1))
+            advance /= 2.0f;
+        if (g_input.GetButton(Input::Button::BT_2))
+            advance *= 2.0f;
+        if (g_input.GetButton(Input::Button::BT_3))
+            advance *= 4.0f;
+        currentSetting->floatSetting.val += advance;
         currentSetting->floatSetting.val = Math::Clamp(currentSetting->floatSetting.val,
                                                        currentSetting->floatSetting.min,
                                                        currentSetting->floatSetting.max);
@@ -174,6 +200,11 @@ void GameplaySettingsDialog::m_SetTables()
     auto pushIntToTable = [&](const char *name, int data) {
         lua_pushstring(m_lua, name);
         lua_pushinteger(m_lua, data);
+        lua_settable(m_lua, -3);
+    };
+    auto pushBoolToTable = [&](const char *name, bool data) {
+        lua_pushstring(m_lua, name);
+        lua_pushboolean(m_lua, data);
         lua_settable(m_lua, -3);
     };
     auto pushFloatToTable = [&](const char *name, float data) {
@@ -219,7 +250,7 @@ void GameplaySettingsDialog::m_SetTables()
                             break;
                         case SettingType::Toggle:
                             pushStringToTable("type", "toggle");
-                            pushIntToTable("value", setting->boolSetting.val);
+                            pushBoolToTable("value", setting->boolSetting.val);
                             break;
                         case SettingType::Enum:
                             pushStringToTable("type", "enum");
