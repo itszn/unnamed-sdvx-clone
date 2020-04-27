@@ -3,25 +3,12 @@ json = require "json"
 local yScale = 0.0
 local diagWidth = 600
 local diagHeight = 400
-
-function smootherstep(edge0, edge1, x) 
-    -- Scale, and clamp x to 0..1 range
-    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0)
-    -- Evaluate polynomial
-    return x * x * x * (x * (x * 6 - 15) + 10)
-end
-  
-function clamp(x, min, max) 
-    if x < min then
-        x = min
-    end
-    if x > max then
-        x = max
-    end
-
-    return x
-end
-
+local tabStroke = {start=0, stop=1}
+local tabStrokeAnimation = {start=Animation:new(), stop=Animation:new()}
+local settingsStrokeAnimation = {x=Animation:new(), y=Animation:new()}
+local prevTab = -1
+local prevSettingStroke = {x=0, y=0}
+local settingStroke = {x=0, y=0}
 
 function render(deltaTime, visible)
     if visible then
@@ -42,10 +29,15 @@ function render(deltaTime, visible)
     gfx.Fill()
     gfx.FillColor(255,255,255)
 
+    tabStroke.start = tabStrokeAnimation.start:tick(deltaTime)
+    tabStroke.stop = tabStrokeAnimation.stop:tick(deltaTime)
+
+    settingStroke.x = settingsStrokeAnimation.x:tick(deltaTime)
+    settingStroke.y = settingsStrokeAnimation.y:tick(deltaTime)
+
     local tabBarHeight = 0
     local nextTabX = 5
-    local tabStrokeBegin = 0
-    local tabStrokeEnd = 0
+
     gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
     gfx.FontSize(35)
     gfx.Save() --draw tab bar
@@ -53,9 +45,9 @@ function render(deltaTime, visible)
     for ti, tab in ipairs(SettingsDiag.tabs) do
         local xmin,ymin, xmax,ymax = gfx.TextBounds(nextTabX, 5, tab.name)
 
-        if ti == SettingsDiag.currentTab then 
-            tabStrokeBegin = nextTabX
-            tabStrokeEnd = xmax
+        if ti == SettingsDiag.currentTab and SettingsDiag.currentTab ~= prevTab then 
+            tabStrokeAnimation.start:restart(tabStroke.start, nextTabX, 0.1)
+            tabStrokeAnimation.stop:restart(tabStroke.stop, xmax, 0.1)
         end
         tabBarHeight = math.max(tabBarHeight, ymax + 5)
         gfx.Text(tab.name, nextTabX, 5)
@@ -68,8 +60,8 @@ function render(deltaTime, visible)
     gfx.StrokeColor(0,127,255)
     gfx.Stroke()
     gfx.BeginPath()
-    gfx.MoveTo(tabStrokeBegin, tabBarHeight)
-    gfx.LineTo(tabStrokeEnd, tabBarHeight)
+    gfx.MoveTo(tabStroke.start, tabBarHeight)
+    gfx.LineTo(tabStroke.stop, tabBarHeight)
     gfx.StrokeColor(255, 127, 0)
     gfx.Stroke()
     gfx.Restore() --draw tab bar end
@@ -78,6 +70,14 @@ function render(deltaTime, visible)
     gfx.Save() --draw current tab
     gfx.Translate(-diagWidth / 2, -diagHeight / 2)
     gfx.Translate(5, tabBarHeight + 5)
+
+    gfx.BeginPath()
+    gfx.MoveTo(0, settingStroke.y)
+    gfx.LineTo(settingStroke.x, settingStroke.y)
+    gfx.StrokeWidth(2)
+    gfx.StrokeColor(255, 127, 0)
+    gfx.Stroke()
+
     local settingHeigt = 30
     local tab = SettingsDiag.tabs[SettingsDiag.currentTab]
     for si, setting in ipairs(tab.settings) do
@@ -103,19 +103,21 @@ function render(deltaTime, visible)
         gfx.Text(disp, 0 ,0)
         if si == SettingsDiag.currentSetting then
             local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, setting.name .. ":")
-            gfx.BeginPath()
-            gfx.MoveTo(xmin, ymax)
-            gfx.LineTo(xmax, ymax)
-            gfx.StrokeWidth(2)
-            gfx.StrokeColor(255, 127, 0)
-            gfx.Stroke()
-        end
+            ymax = ymax + settingHeigt * (si - 1)
+            if xmax ~= prevSettingStroke.x or ymax ~= prevSettingStroke.y then
+                settingsStrokeAnimation.x:restart(settingStroke.x, xmax, 0.1)
+                settingsStrokeAnimation.y:restart(settingStroke.y, ymax, 0.1)
+            end
 
+            prevSettingStroke.x = xmax
+            prevSettingStroke.y = ymax
+        end
         gfx.Translate(0, settingHeigt)
     end
 
-    gfx.Restore() --draw current tab end
 
+    gfx.Restore() --draw current tab end
+    prevTab = SettingsDiag.currentTab
 
 
 end
