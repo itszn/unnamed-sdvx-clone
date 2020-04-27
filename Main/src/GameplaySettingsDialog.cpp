@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "GameplaySettingsDialog.hpp"
 #include "lua.hpp"
+#include "Application.hpp"
 
 GameplaySettingsDialog::~GameplaySettingsDialog()
 {
@@ -18,6 +19,7 @@ GameplaySettingsDialog::~GameplaySettingsDialog()
 
     g_input.OnButtonReleased.RemoveAll(this);
     g_input.OnButtonPressed.RemoveAll(this);
+    g_gameWindow->OnKeyPressed.RemoveAll(this);
 }
 
 template <typename EnumClass>
@@ -122,6 +124,7 @@ bool GameplaySettingsDialog::Init()
     m_SetTables();
     g_input.OnButtonPressed.Add(this, &GameplaySettingsDialog::m_OnButtonPressed);
     g_input.OnButtonReleased.Add(this, &GameplaySettingsDialog::m_OnButtonReleased);
+    g_gameWindow->OnKeyPressed.Add(this, &GameplaySettingsDialog::m_OnKeyPressed);
 
     m_isInitialized = true;
 
@@ -234,25 +237,35 @@ void GameplaySettingsDialog::m_SetTables()
                         lua_newtable(m_lua);
                         pushStringToTable("name", setting->name);
 
+                        //also get settings values in case they've been changed elsewhere
+                        String newEnumVal;
                         switch (setting->type)
                         {
                         case SettingType::Integer:
+                            setting->intSetting.val = g_gameConfig.GetInt(setting->key);
                             pushStringToTable("type", "int");
                             pushIntToTable("value", setting->intSetting.val);
                             pushIntToTable("min", setting->intSetting.min);
                             pushIntToTable("max", setting->intSetting.max);
                             break;
                         case SettingType::Floating:
+                            setting->floatSetting.val = g_gameConfig.GetFloat(setting->key);
                             pushStringToTable("type", "float");
                             pushFloatToTable("value", setting->floatSetting.val);
                             pushIntToTable("min", setting->floatSetting.min);
                             pushIntToTable("max", setting->floatSetting.max);
                             break;
                         case SettingType::Toggle:
+                            setting->boolSetting.val = g_gameConfig.GetBool(setting->key);
                             pushStringToTable("type", "toggle");
                             pushBoolToTable("value", setting->boolSetting.val);
                             break;
                         case SettingType::Enum:
+                            setting->enumSetting.getter.Call(newEnumVal);
+                            setting->enumSetting.val = std::distance(setting->enumSetting.options.begin(),
+                                                                     std::find(setting->enumSetting.options.begin(),
+                                                                               setting->enumSetting.options.end(),
+                                                                               newEnumVal));
                             pushStringToTable("type", "enum");
                             pushIntToTable("value", setting->enumSetting.val + 1);
                             lua_pushstring(m_lua, "options");
@@ -370,6 +383,8 @@ inline void AdvanceLooping(int &value, int steps, int size)
 void GameplaySettingsDialog::m_AdvanceSelection(int steps)
 {
     AdvanceLooping(m_currentSetting, steps, m_tabs[m_currentTab]->settings.size());
+    if (steps != 0)
+        m_knobAdvance[1] = 0.0f;
 }
 void GameplaySettingsDialog::m_AdvanceTab(int steps)
 {
@@ -404,6 +419,31 @@ void GameplaySettingsDialog::m_ChangeStepSetting(int steps)
         AdvanceLooping(currentSetting->enumSetting.val, steps, size);
         String &newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
         currentSetting->enumSetting.setter.Call(newVal);
+        break;
+    }
+}
+
+void GameplaySettingsDialog::m_OnKeyPressed(int32 key)
+{
+    if (!m_active || m_closing)
+        return;
+
+    switch (key)
+    {
+    case SDLK_LEFT:
+        m_ChangeStepSetting(-1);
+        break;
+    case SDLK_RIGHT:
+        m_ChangeStepSetting(1);
+        break;
+    case SDLK_TAB:
+        m_AdvanceTab(1);
+        break;
+    case SDLK_UP:
+        m_AdvanceSelection(-1);
+        break;
+    case SDLK_DOWN:
+        m_AdvanceSelection(1);
         break;
     }
 }
