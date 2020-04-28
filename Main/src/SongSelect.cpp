@@ -230,7 +230,7 @@ class SelectionWheel
 
 	SongSort *m_currentSort = nullptr;
 
-	uint32 m_lastDiffIndex = 0;
+	int32 m_lastDiffIndex = -1;
 
 public:
 	Delegate<> OnSongsChanged;
@@ -287,6 +287,9 @@ public:
 		g_gameConfig.Set(GameConfigKeys::LastSelected, m_currentlySelectedMapId);
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
+	}
+	uint32 GetCurrentSongIndex() {
+		return m_sortVec[m_selectedSortIndex];
 	}
 	void OnFoldersAdded(Vector<FolderIndex *> maps)
 	{
@@ -432,6 +435,9 @@ public:
 
 	int32 SelectLastMapIndex(bool mapsFirst)
 	{
+		if (m_lastDiffIndex == -1)
+			return -1;
+
 		// Get mapid from diffid
 		int32 lastMapIndex = m_lastDiffIndex - (m_lastDiffIndex % 10);
 
@@ -1443,6 +1449,7 @@ private:
 	MultiplayerScreen *m_multiplayer = nullptr;
 	CollectionDialog m_collDiag;
 	bool m_hasCollDiag = false;
+	int32 m_lastMapIndex = -1;
 
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
 
@@ -2079,6 +2086,8 @@ public:
 
 	virtual void OnSuspend()
 	{
+		m_lastMapIndex = m_selectionWheel->GetCurrentSongIndex();
+
 		m_suspended = true;
 		m_previewPlayer.Pause();
 		m_mapDatabase->StopSearching();
@@ -2100,6 +2109,11 @@ public:
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
 			m_filterSelection->SetFiltersByIndex(0, 0);
 		}
+		if (m_lastMapIndex != -1)
+		{
+			m_selectionWheel->SelectMapByMapIndex(m_lastMapIndex);
+		}
+
 	}
 
 	void MakeMultiplayer(MultiplayerScreen *multiplayer)
