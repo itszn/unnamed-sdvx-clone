@@ -1205,9 +1205,37 @@ bool MultiplayerScreen::AsyncLoad()
 		return false;
 
 	m_textInput = Ref<TextInputMultiplayer>(new TextInputMultiplayer());
-	m_mapDatabase = new MapDatabase();
+	m_mapDatabase = new MapDatabase(true);
+
+	// Add database update hook before triggering potential update
+	m_mapDatabase->OnDatabaseUpdateStarted.Add(this, &MultiplayerScreen::m_onDatabaseUpdateStart);
+	m_mapDatabase->OnDatabaseUpdateDone.Add(this, &MultiplayerScreen::m_onDatabaseUpdateDone);
+	m_mapDatabase->OnDatabaseUpdateProgress.Add(this, &MultiplayerScreen::m_onDatabaseUpdateProgress);
+	m_mapDatabase->FinishInit();
+
 	m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
 	return true;
+}
+
+void MultiplayerScreen::m_onDatabaseUpdateStart(int max)
+{
+	m_dbUpdateScreen = new DBUpdateScreen(max);
+	g_application->AddTickable(m_dbUpdateScreen);
+}
+
+void MultiplayerScreen::m_onDatabaseUpdateProgress(int current, int max)
+{
+	if (!m_dbUpdateScreen)
+		return;
+	m_dbUpdateScreen->SetCurrent(current, max);
+}
+
+void MultiplayerScreen::m_onDatabaseUpdateDone()
+{
+	if (!m_dbUpdateScreen)
+		return;
+	g_application->RemoveTickable(m_dbUpdateScreen);
+	m_dbUpdateScreen = NULL;
 }
 
 bool MultiplayerScreen::AsyncFinalize()

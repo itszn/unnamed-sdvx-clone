@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include "TCPSocket.hpp"
 #include <Scoring.hpp>
+#include "DBUpdateScreen.hpp"
 
 enum SyncState {
 	LOADING,
@@ -118,6 +119,11 @@ private:
 	void m_handleSocketClose();
 	bool m_handleFinalStats(nlohmann::json& packet);
 
+	void m_onDatabaseUpdateStart(int max);
+	void m_onDatabaseUpdateProgress(int, int);
+	void m_onDatabaseUpdateDone();
+
+
 	void m_addFinalStat(nlohmann::json& data);
 
 	void m_render(float deltaTime);
@@ -218,4 +224,6 @@ private:
 	float m_speedBPM;
 
 	Vector<nlohmann::json> m_finalStats;
+
+	DBUpdateScreen* m_dbUpdateScreen = nullptr;
 };

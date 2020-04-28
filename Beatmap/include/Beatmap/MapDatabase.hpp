@@ -93,7 +93,12 @@ class MapDatabase : public Unique
 {
 public:
 	MapDatabase();
+	// Postpone initialization to allow for hooks
+	MapDatabase(bool postponeInit /* = false */);
 	~MapDatabase();
+
+	// Finish initialization if postponed
+	void FinishInit();
 
 	// Checks the background scanning and actualized the current map database
 	void Update();
@@ -135,6 +140,10 @@ public:
 	// Called when all maps are cleared
 	// (newMapList)
 	Delegate<Map<int32, FolderIndex*>> OnFoldersCleared;
+
+	Delegate<int> OnDatabaseUpdateStarted;
+	Delegate<int, int> OnDatabaseUpdateProgress;
+	Delegate<> OnDatabaseUpdateDone;
 
 private:
 	class MapDatabase_Impl* m_impl;
