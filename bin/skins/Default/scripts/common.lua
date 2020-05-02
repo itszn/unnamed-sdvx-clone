@@ -24,7 +24,7 @@ end
 
 Animation = {
     start = 0,
-    stop = 1,
+    stop = 0,
     progress = 0,
     duration = 1,
     smoothStart = false

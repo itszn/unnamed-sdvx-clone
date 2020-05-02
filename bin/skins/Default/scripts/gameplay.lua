@@ -695,6 +695,8 @@ function draw_best_diff(deltaTime, x, y)
     -- This includes the minus sign, so we do that separately
     gfx.Text(string.format("%s%08d", prefix, difference), x, y)
 end
+
+local score_animation = Animation:new()
 -- -------------------------------------------------------------------------- --
 -- draw_score:                                                                --
 function draw_score(deltaTime)
@@ -711,7 +713,7 @@ function draw_score(deltaTime)
     gfx.FillColor(255, 255, 255)
     gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_TOP)
     gfx.FontSize(60)
-    gfx.Text(string.format("%08d", score), desw, 0)
+    gfx.Text(string.format("%08d", math.floor(score_animation:tick(deltaTime))), desw, 0)
     draw_best_diff(deltaTime, desw, 66)
     gfx.Translate(5, -5) -- undo margin
 end
@@ -904,7 +906,10 @@ end
 -- -------------------------------------------------------------------------- --
 -- update_score:                                                              --
 function update_score(newScore)
-    score = newScore
+    if newScore ~= score then
+        score_animation:restart(score_animation:tick(0), newScore, 0.33)
+        score = newScore
+    end
 end
 -- -------------------------------------------------------------------------- --
 -- update_combo:                                                              --

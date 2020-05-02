@@ -109,6 +109,9 @@ bool GameplaySettingsDialog::Init()
 
     Tab gameTab = std::make_unique<TabData>();
     gameTab->name = "Game";
+    gameTab->settings.push_back(m_CreateEnumSetting<Enum_GaugeTypes>(GameConfigKeys::GaugeType, "Gauge"));
+    gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::RandomizeChart, "Random"));
+    gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
 
     m_tabs.push_back(std::move(offsetTab));
