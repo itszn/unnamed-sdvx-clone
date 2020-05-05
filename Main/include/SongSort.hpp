@@ -11,6 +11,10 @@ enum SortType
 	SCORE_ASC,
 	DATE_DESC,
 	DATE_ASC,
+	ARTIST_ASC,
+	ARTIST_DESC,
+	EFFECTOR_ASC,
+	EFFECTOR_DESC,
 	SORT_COUNT,
 };
 
@@ -65,6 +69,34 @@ class DateSort : public TitleSort
 		virtual SortType GetType() const
 		{ 
 			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
+		};
+	private:
+		Map<uint32, uint64> m_dateMap;
+};
+
+class ArtistSort : public TitleSort
+{
+	public:
+		ArtistSort(String name, bool dir) : TitleSort(name, dir) {};
+		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+				SongSelectIndex>& collection) override;
+		virtual SortType GetType() const
+		{ 
+			return m_dir? SortType::ARTIST_DESC : SortType::ARTIST_ASC;
+		};
+	private:
+		Map<uint32, uint64> m_dateMap;
+};
+
+class EffectorSort : public TitleSort
+{
+	public:
+		EffectorSort(String name, bool dir) : TitleSort(name, dir) {};
+		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+				SongSelectIndex>& collection) override;
+		virtual SortType GetType() const
+		{ 
+			return m_dir? SortType::EFFECTOR_DESC : SortType::EFFECTOR_ASC;
 		};
 	private:
 		Map<uint32, uint64> m_dateMap;
