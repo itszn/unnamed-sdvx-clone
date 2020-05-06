@@ -2195,3 +2195,17 @@ GameFlags operator~(const GameFlags & a)
 {
 	return (GameFlags)(~(uint32)a);
 }
+
+GameFlags Game::FlagsFromSettings()
+{
+	GameFlags flags = GameFlags::None;
+	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
+	if (gaugeType == GaugeTypes::Hard)
+		flags = flags | GameFlags::Hard;
+	if (g_gameConfig.GetBool(GameConfigKeys::MirrorChart))
+		flags = flags | GameFlags::Mirror;
+	if (g_gameConfig.GetBool(GameConfigKeys::RandomizeChart))
+		flags = flags | GameFlags::Random;
+
+	return flags;
+}

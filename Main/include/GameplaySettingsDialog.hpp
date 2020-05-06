@@ -29,7 +29,6 @@ private:
 
     typedef struct SettingData
     {
-        GameConfigKeys key;
         String name;
         SettingType type;
         struct
@@ -38,6 +37,8 @@ private:
             float min;
             float max;
             float mult; //multiply input by
+            Delegate<float&> getter;
+            Delegate<float> setter;
         } floatSetting;
 
         struct
@@ -45,6 +46,8 @@ private:
             int val;
             int min;
             int max;
+            Delegate<int&> getter;
+            Delegate<int> setter;
         } intSetting;
 
         struct
@@ -58,6 +61,8 @@ private:
         struct
         {
             bool val;
+            Delegate<bool&> getter;
+            Delegate<bool> setter;
         } boolSetting;
 
     } SettingData;

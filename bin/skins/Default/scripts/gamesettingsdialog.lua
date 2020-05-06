@@ -18,7 +18,7 @@ function render(deltaTime, visible)
     end
 
     resX, resY = game.GetResolution()
-    local scale = 720 / resY
+    local scale = resY / 1080
     gfx.ResetTransform()
     gfx.Translate(math.floor(resX / 2), math.floor(resY / 2))
     gfx.Scale(scale, scale)

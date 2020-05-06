@@ -26,7 +26,6 @@ template <typename EnumClass>
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateEnumSetting(GameConfigKeys key, String name)
 {
     Setting s = std::make_unique<SettingData>(SettingData({
-        key,
         name,
         SettingType::Enum,
     }));
@@ -56,41 +55,69 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateEnumSetting(Game
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult)
 {
     Setting s = std::make_unique<SettingData>(SettingData({
-        key,
         name,
         SettingType::Floating,
     }));
+
+    auto getter = [key](float& value) {
+        value = g_gameConfig.GetFloat(key);
+    };
+
+    auto setter = [key](float newValue) {
+        g_gameConfig.Set(key, newValue);
+    };
 
     s->floatSetting.val = g_gameConfig.GetFloat(key);
     s->floatSetting.min = range.x;
     s->floatSetting.max = range.y;
     s->floatSetting.mult = mult;
+    s->floatSetting.setter.AddLambda(std::move(setter));
+    s->floatSetting.getter.AddLambda(std::move(getter));
     return s;
 }
 
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateIntSetting(GameConfigKeys key, String name, Vector2i range)
 {
     Setting s = std::make_unique<SettingData>(SettingData({
-        key,
         name,
         SettingType::Integer,
     }));
 
+    auto getter = [key](int& value) {
+        value = g_gameConfig.GetInt(key);
+    };
+
+    auto setter = [key](int newValue) {
+        g_gameConfig.Set(key, newValue);
+    };
+
     s->intSetting.val = g_gameConfig.GetInt(key);
     s->intSetting.min = range.x;
     s->intSetting.max = range.y;
+    s->intSetting.setter.AddLambda(std::move(setter));
+    s->intSetting.getter.AddLambda(std::move(getter));
     return s;
 }
 
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateToggleSetting(GameConfigKeys key, String name)
 {
     Setting s = std::make_unique<SettingData>(SettingData({
-        key,
         name,
         SettingType::Toggle,
     }));
 
+
+    auto getter = [key](bool& value) {
+        value = g_gameConfig.GetBool(key);
+    };
+
+    auto setter = [key](bool newValue) {
+        g_gameConfig.Set(key, newValue);
+    };
+
     s->boolSetting.val = g_gameConfig.GetBool(key);
+    s->boolSetting.setter.AddLambda(std::move(setter));
+    s->boolSetting.getter.AddLambda(std::move(getter));
     return s;
 }
 
@@ -169,7 +196,7 @@ void GameplaySettingsDialog::Tick(float deltaTime)
         currentSetting->floatSetting.val = Math::Clamp(currentSetting->floatSetting.val,
                                                        currentSetting->floatSetting.min,
                                                        currentSetting->floatSetting.max);
-        g_gameConfig.Set(currentSetting->key, currentSetting->floatSetting.val);
+        currentSetting->floatSetting.setter.Call(currentSetting->floatSetting.val);
         m_knobAdvance[1] = 0.f;
     }
     else
@@ -245,21 +272,21 @@ void GameplaySettingsDialog::m_SetTables()
                         switch (setting->type)
                         {
                         case SettingType::Integer:
-                            setting->intSetting.val = g_gameConfig.GetInt(setting->key);
+                            setting->intSetting.getter.Call(setting->intSetting.val);
                             pushStringToTable("type", "int");
                             pushIntToTable("value", setting->intSetting.val);
                             pushIntToTable("min", setting->intSetting.min);
                             pushIntToTable("max", setting->intSetting.max);
                             break;
                         case SettingType::Floating:
-                            setting->floatSetting.val = g_gameConfig.GetFloat(setting->key);
+                            setting->floatSetting.getter.Call(setting->floatSetting.val);
                             pushStringToTable("type", "float");
                             pushFloatToTable("value", setting->floatSetting.val);
                             pushIntToTable("min", setting->floatSetting.min);
                             pushIntToTable("max", setting->floatSetting.max);
                             break;
                         case SettingType::Toggle:
-                            setting->boolSetting.val = g_gameConfig.GetBool(setting->key);
+                            setting->boolSetting.getter.Call(setting->boolSetting.val);
                             pushStringToTable("type", "toggle");
                             pushBoolToTable("value", setting->boolSetting.val);
                             break;
@@ -411,11 +438,11 @@ void GameplaySettingsDialog::m_ChangeStepSetting(int steps)
         currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps,
                                                      currentSetting->intSetting.min,
                                                      currentSetting->intSetting.max);
-        g_gameConfig.Set(currentSetting->key, currentSetting->intSetting.val);
+        currentSetting->intSetting.setter.Call(currentSetting->intSetting.val);
         break;
     case SettingType::Toggle:
         currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
-        g_gameConfig.Set(currentSetting->key, currentSetting->boolSetting.val);
+        currentSetting->boolSetting.setter.Call(currentSetting->boolSetting.val);
         break;
     case SettingType::Enum:
         int size = currentSetting->enumSetting.options.size();
