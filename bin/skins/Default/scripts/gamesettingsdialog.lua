@@ -1,6 +1,58 @@
-json = require "json"
+function clamp(x, min, max) 
+    if x < min then
+        x = min
+    end
+    if x > max then
+        x = max
+    end
 
-local yScale = 0.0
+    return x
+end
+
+function smootherstep(edge0, edge1, x) 
+    -- Scale, and clamp x to 0..1 range
+    x = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+    -- Evaluate polynomial
+    return x * x * x * (x * (x * 6 - 15) + 10)
+end
+  
+function to_range(val, start, stop)
+    return start + (stop - start) * val
+end
+
+Animation = {
+    start = 0,
+    stop = 0,
+    progress = 0,
+    duration = 1,
+    smoothStart = false
+}
+
+function Animation:new(o)
+    o = o or {}
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+
+function Animation:restart(start, stop, duration)
+    self.progress = 0
+    self.start = start
+    self.stop = stop
+    self.duration = duration
+end
+
+function Animation:tick(deltaTime)
+    self.progress = math.min(1, self.progress + deltaTime / self.duration)
+    if self.progress == 1 then return self.stop end
+    if self.smoothStart then
+        return to_range(smootherstep(0, 1, self.progress), self.start, self.stop)
+    else
+        return to_range(smootherstep(-1, 1, self.progress) * 2 - 1, self.start, self.stop)
+    end
+end
+
+local yScale = Animation:new()
 local diagWidth = 600
 local diagHeight = 400
 local tabStroke = {start=0, stop=1}
@@ -9,20 +61,23 @@ local settingsStrokeAnimation = {x=Animation:new(), y=Animation:new()}
 local prevTab = -1
 local prevSettingStroke = {x=0, y=0}
 local settingStroke = {x=0, y=0}
+local prevVis = false
 
 function render(deltaTime, visible)
-    if visible then
-        yScale = clamp(yScale + deltaTime * 3, 0, 1)
-    elseif yScale <= 0 then return
-    else yScale = clamp(yScale - deltaTime * 3, 0, 1)
+    if visible and not prevVis then
+        yScale:restart(0, 1, 0.25)
+    elseif not visible and prevVis then
+        yScale:restart(1, 0, 0.25)
     end
+
+    if not visible and yScale:tick(0) < 0.05 then return end
 
     resX, resY = game.GetResolution()
     local scale = resY / 1080
     gfx.ResetTransform()
     gfx.Translate(math.floor(resX / 2), math.floor(resY / 2))
     gfx.Scale(scale, scale)
-    gfx.Scale(1.0, smootherstep(0, 1, yScale))
+    gfx.Scale(1.0, smootherstep(0, 1, yScale:tick(deltaTime)))
     gfx.BeginPath()
     gfx.Rect(-diagWidth/2, -diagHeight/2, diagWidth, diagHeight)
     gfx.FillColor(50,50,50)
@@ -136,6 +191,6 @@ function render(deltaTime, visible)
 
     gfx.Restore() --draw current tab end
     prevTab = SettingsDiag.currentTab
-
+    prevVis = visible
 
 end
