@@ -88,6 +88,24 @@ function render(deltaTime, visible)
             disp = string.format("%s: %d", setting.name, setting.value)
         elseif setting.type == "float" then
             disp = string.format("%s: %.2f", setting.name, setting.value)
+            if setting.max == 1 and setting.min == 0 then --draw slider
+                disp = setting.name .. ": "
+                local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, disp)
+                local width = diagWidth - 20 - xmax
+                gfx.BeginPath()
+                gfx.MoveTo(xmax + 5, 20)
+                gfx.LineTo(xmax + 5 + width, 20)
+                gfx.StrokeColor(0,127,255)
+                gfx.StrokeWidth(2)
+                gfx.Stroke()
+                gfx.BeginPath()
+                gfx.MoveTo(xmax + 5, 20)
+                gfx.LineTo(xmax + 5 + width * setting.value, 20)
+                gfx.StrokeColor(255,127,0)
+                gfx.StrokeWidth(2)
+                gfx.Stroke()
+                
+            end
         else
             disp = string.format("%s:", setting.name)
             local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, disp)

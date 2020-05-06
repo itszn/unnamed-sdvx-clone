@@ -141,9 +141,19 @@ bool GameplaySettingsDialog::Init()
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
 
+    Tab hidsudTab = std::make_unique<TabData>();
+    hidsudTab->name = "Hid/Sud";
+    hidsudTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff", { 0.f, 1.f }));
+    hidsudTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade", { 0.f, 1.f }));
+    hidsudTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff", { 0.f, 1.f }));
+    hidsudTab->settings.push_back(m_CreateFloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade", { 0.f, 1.f }));
+    hidsudTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover"));
+
+
     m_tabs.push_back(std::move(offsetTab));
     m_tabs.push_back(std::move(speedTab));
     m_tabs.push_back(std::move(gameTab));
+    m_tabs.push_back(std::move(hidsudTab));
 
     m_lua = g_application->LoadScript("gamesettingsdialog");
     if (!m_lua)
