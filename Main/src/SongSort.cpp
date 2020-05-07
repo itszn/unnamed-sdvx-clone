@@ -118,3 +118,47 @@ void DateSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 
 	m_dateMap.clear();
 }
+
+void ArtistSort::SortInplace(Vector<uint32>& vec, const Map<int32,
+	SongSelectIndex>& collection)
+{
+	std::sort (vec.begin(), vec.end(),
+		[&](uint32 ia, uint32 ib) -> bool
+	{
+		const SongSelectIndex& song_a = getSongFromCollection(ia, collection);
+		const SongSelectIndex& song_b = getSongFromCollection(ib, collection);
+
+		String a = song_a.GetCharts()[0]->artist;
+		String b = song_b.GetCharts()[0]->artist;
+		a.ToUpper();
+		b.ToUpper();
+		int strres = a.compare(b);
+		if (strres == 0)
+			return CompareSongs(song_a, song_b);
+
+		bool res = strres < 0;
+		return m_dir ? !res : res;
+	});
+}
+
+void EffectorSort::SortInplace(Vector<uint32>& vec, const Map<int32,
+	SongSelectIndex>& collection)
+{
+	std::sort (vec.begin(), vec.end(),
+		[&](uint32 ia, uint32 ib) -> bool
+	{
+		const SongSelectIndex& song_a = getSongFromCollection(ia, collection);
+		const SongSelectIndex& song_b = getSongFromCollection(ib, collection);
+
+		String a = song_a.GetCharts()[0]->effector;
+		String b = song_b.GetCharts()[0]->effector;
+		a.ToUpper();
+		b.ToUpper();
+		int strres = a.compare(b);
+		if (strres == 0)
+			return CompareSongs(song_a, song_b);
+
+		bool res = strres < 0;
+		return m_dir ? !res : res;
+	});
+}

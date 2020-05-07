@@ -9,14 +9,14 @@
 
 class TransitionScreen_Impl : public TransitionScreen
 {
-	IAsyncLoadableApplicationTickable* m_tickableToLoad;
+	IAsyncLoadableApplicationTickable *m_tickableToLoad;
 	Job m_loadingJob;
 	Texture m_fromTexture;
 	Mesh m_bgMesh;
-	lua_State* m_lua = nullptr;
-	lua_State* m_songlua = nullptr;
+	lua_State *m_lua = nullptr;
+	lua_State *m_songlua = nullptr;
 	Vector<DelegateHandle> m_lamdasToRemove;
-	Vector<void*> m_handlesToRemove;
+	Vector<void *> m_handlesToRemove;
 
 	enum Transition
 	{
@@ -35,18 +35,17 @@ class TransitionScreen_Impl : public TransitionScreen
 	bool m_initialized = false;
 
 	//0 = normal, 1 = song
-	bool m_legacy[2] = { false, false };
+	bool m_legacy[2] = {false, false};
 	int m_jacketImg = 0;
 
-	void m_InitTransition(IAsyncLoadableApplicationTickable* next)
+	void m_InitTransition(IAsyncLoadableApplicationTickable *next)
 	{
 		if (m_loadingJob && !m_loadingJob->IsFinished())
 		{
 			m_loadingJob->Terminate();
 		}
 
-		m_loadingJob = JobBase::CreateLambda([&]()
-		{
+		m_loadingJob = JobBase::CreateLambda([&]() {
 			return DoLoad();
 		});
 		m_loadingJob->OnFinished.Add(this, &TransitionScreen_Impl::OnFinished);
@@ -64,7 +63,7 @@ public:
 	~TransitionScreen_Impl()
 	{
 		// In case of forced removal of this screen
-		if(!m_loadingJob->IsFinished())
+		if (!m_loadingJob->IsFinished())
 			m_loadingJob->Terminate();
 
 		if (m_lua)
@@ -77,18 +76,20 @@ public:
 			nvgDeleteImage(g_application->GetVGContext(), m_jacketImg);
 	}
 
-	virtual void RemoveAllOnComplete(void* handle) {
+	virtual void RemoveAllOnComplete(void *handle)
+	{
 		m_handlesToRemove.Add(handle);
 	}
-	virtual void RemoveOnComplete(DelegateHandle handle) {
+	virtual void RemoveOnComplete(DelegateHandle handle)
+	{
 		m_lamdasToRemove.Add(handle);
 	}
 
 	virtual void Tick(float deltaTime)
 	{
 		m_transitionTimer += deltaTime;
-		
-		if(m_transition == Wait && m_lastComplete)
+
+		if (m_transition == Wait && m_lastComplete)
 		{
 			m_transition = Out;
 		}
@@ -96,7 +97,7 @@ public:
 		{
 			m_tickableToLoad->Tick(deltaTime);
 		}
-		else if(m_transition == End)
+		else if (m_transition == End)
 		{
 			g_application->RemoveTickable(this, true);
 			if (m_tickableToLoad)
@@ -107,13 +108,17 @@ public:
 		}
 		m_lastComplete = m_loadComplete;
 	}
+	virtual void OnSuspend()
+	{
+		m_tickableToLoad = nullptr;
+	}
+
 	virtual bool Init()
 	{
 		if (m_initialized)
 			return true;
 
-
-		auto validateLua = [&](lua_State* L) {
+		auto validateLua = [&](lua_State *L) {
 			lua_getglobal(L, "reset");
 			bool valid = lua_isfunction(L, -1);
 			lua_settop(L, 0);
@@ -138,8 +143,7 @@ public:
 			Log("Transition lua has no reset function.", Logger::Warning);
 		}
 
-		m_loadingJob = JobBase::CreateLambda([&]()
-		{
+		m_loadingJob = JobBase::CreateLambda([&]() {
 			return DoLoad();
 		});
 		m_loadingJob->OnFinished.Add(this, &TransitionScreen_Impl::OnFinished);
@@ -147,7 +151,7 @@ public:
 		return true;
 	}
 
-	virtual void TransitionTo(IAsyncLoadableApplicationTickable* next, bool noCancel)
+	virtual void TransitionTo(IAsyncLoadableApplicationTickable *next, bool noCancel)
 	{
 		m_isGame = false;
 		m_InitTransition(next);
@@ -166,7 +170,6 @@ public:
 			lua_pcall(m_lua, 0, 0, 0);
 			lua_settop(m_lua, 0);
 		}
-		
 
 		if (m_lua == nullptr)
 		{
@@ -176,7 +179,7 @@ public:
 		g_application->AddTickable(this);
 	}
 
-	virtual void TransitionTo(Game* next)
+	virtual void TransitionTo(Game *next)
 	{
 		m_isGame = true;
 		m_canCancel = true;
@@ -193,22 +196,20 @@ public:
 
 		if (m_songlua)
 		{
-			const ChartIndex& chart = next->GetChartIndex();
+			const ChartIndex &chart = next->GetChartIndex();
 			String path = Path::RemoveLast(chart.path);
 
 			if (m_jacketImg)
 				nvgDeleteImage(g_application->GetVGContext(), m_jacketImg);
 			m_jacketImg = nvgCreateImage(g_application->GetVGContext(), (path + Path::sep + chart.jacket_path).c_str(), 0);
 
-			auto pushStringToTable = [this](const char* name, String data)
-			{
+			auto pushStringToTable = [this](const char *name, String data) {
 				lua_pushstring(m_songlua, name);
 				lua_pushstring(m_songlua, *data);
 				lua_settable(m_songlua, -3);
 			};
 
-			auto pushIntToTable = [this](const char* name, int data)
-			{
+			auto pushIntToTable = [this](const char *name, int data) {
 				lua_pushstring(m_songlua, name);
 				lua_pushnumber(m_songlua, data);
 				lua_settable(m_songlua, -3);
@@ -233,17 +234,18 @@ public:
 				lua_settop(m_songlua, 0);
 			}
 		}
-		else {
+		else
+		{
 			g_jobSheduler->Queue(m_loadingJob);
 		}
 		g_application->AddTickable(this);
 	}
 
-
 	void Render(float deltaTime)
 	{
-		lua_State* lua = m_lua;
-		if (m_isGame) {
+		lua_State *lua = m_lua;
+		if (m_isGame)
+		{
 			lua = m_songlua;
 		}
 
@@ -268,7 +270,7 @@ public:
 			}
 
 			g_application->ForceRender();
-			
+
 			//draw lua
 			lua_getglobal(lua, "render_out");
 			lua_pushnumber(lua, deltaTime);
@@ -327,10 +329,10 @@ public:
 	void OnFinished(Job job)
 	{
 		// Finalize?
-		IAsyncLoadable* loadable = dynamic_cast<IAsyncLoadable*>(m_tickableToLoad);
-		if(job->IsSuccessfull())
+		IAsyncLoadable *loadable = dynamic_cast<IAsyncLoadable *>(m_tickableToLoad);
+		if (job->IsSuccessfull())
 		{
-			if(loadable && !loadable->AsyncFinalize())
+			if (loadable && !loadable->AsyncFinalize())
 			{
 				Log("[Transition] Failed to finalize loading of tickable", Logger::Error);
 				delete m_tickableToLoad;
@@ -352,11 +354,11 @@ public:
 
 		OnLoadingComplete.Call(m_tickableToLoad);
 
-		for (void* v : m_handlesToRemove)
+		for (void *v : m_handlesToRemove)
 		{
 			OnLoadingComplete.RemoveAll(v);
 		}
-		for (DelegateHandle h : m_lamdasToRemove) 
+		for (DelegateHandle h : m_lamdasToRemove)
 		{
 			OnLoadingComplete.Remove(h);
 		}
@@ -370,12 +372,12 @@ public:
 	}
 	bool DoLoad()
 	{
-		if(!m_tickableToLoad)
+		if (!m_tickableToLoad)
 			return false;
-		IAsyncLoadable* loadable = dynamic_cast<IAsyncLoadable*>(m_tickableToLoad);
-		if(loadable)
+		IAsyncLoadable *loadable = dynamic_cast<IAsyncLoadable *>(m_tickableToLoad);
+		if (loadable)
 		{
-			if(!loadable->AsyncLoad())
+			if (!loadable->AsyncLoad())
 			{
 				Log("[Transition] Failed to load tickable", Logger::Error);
 				return false;
@@ -383,7 +385,7 @@ public:
 		}
 		else
 		{
-			if(!m_tickableToLoad->DoInit())
+			if (!m_tickableToLoad->DoInit())
 				return false;
 		}
 		return true;
@@ -394,7 +396,7 @@ public:
 		if (key == SDLK_ESCAPE && !m_stopped && m_canCancel)
 		{
 			m_stopped = true;
-			if(m_loadingJob->IsQueued())
+			if (m_loadingJob->IsQueued())
 				m_loadingJob->Terminate();
 			if (m_tickableToLoad)
 				delete m_tickableToLoad;
@@ -402,7 +404,7 @@ public:
 			g_application->RemoveTickable(this, true);
 			OnLoadingComplete.Call(m_tickableToLoad);
 
-			for (void* v : m_handlesToRemove)
+			for (void *v : m_handlesToRemove)
 			{
 				OnLoadingComplete.RemoveAll(v);
 			}
@@ -416,10 +418,10 @@ public:
 	}
 };
 
-TransitionScreen* TransitionScreen::Create()
+TransitionScreen *TransitionScreen::Create()
 {
 	auto transition = new TransitionScreen_Impl();
-	if (!transition->Init()) 
+	if (!transition->Init())
 	{
 		delete transition;
 		transition = nullptr;

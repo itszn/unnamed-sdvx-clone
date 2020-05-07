@@ -46,6 +46,7 @@ public:
 	static Game* Create(const ChartIndex& mapPath, GameFlags flags);
 	static Game* Create(MultiplayerScreen*, const ChartIndex& mapPath, GameFlags flags);
 	static Game* Create(const String& mapPath, GameFlags flags);
+	static GameFlags FlagsFromSettings();
 
 public:
 	// When the game is still going, false when the map is done, all ending sequences have played, etc.

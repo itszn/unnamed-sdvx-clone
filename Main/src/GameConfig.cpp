@@ -57,7 +57,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::BTOverFXScale, 0.8f);
 	Set(GameConfigKeys::DisableBackgrounds, false);
 
-
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 
 	// Input settings
@@ -127,7 +126,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::WASAPI_Exclusive, false);
 	Set(GameConfigKeys::MuteUnfocused, false);
 
-
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true);
 	Set(GameConfigKeys::LimitSettingsFont, false);
@@ -138,4 +136,9 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MultiplayerUsername, "");
 
 	Set(GameConfigKeys::EnableFancyHighwayRoll, true);
+
+	//Gameplay
+	Set(GameConfigKeys::RandomizeChart, false);
+	Set(GameConfigKeys::MirrorChart, false);
+	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
 }
