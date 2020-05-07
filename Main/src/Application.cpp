@@ -38,16 +38,16 @@
 #include "archive_entry.h"
 
 GameConfig g_gameConfig;
-SkinConfig* g_skinConfig;
-OpenGL* g_gl = nullptr;
-Graphics::Window* g_gameWindow = nullptr;
-Application* g_application = nullptr;
-JobSheduler* g_jobSheduler = nullptr;
-TransitionScreen* g_transition = nullptr;
+SkinConfig *g_skinConfig;
+OpenGL *g_gl = nullptr;
+Graphics::Window *g_gameWindow = nullptr;
+Application *g_application = nullptr;
+JobSheduler *g_jobSheduler = nullptr;
+TransitionScreen *g_transition = nullptr;
 Input g_input;
 
 // Tickable queue
-static Vector<IApplicationTickable*> g_tickables;
+static Vector<IApplicationTickable *> g_tickables;
 
 struct TickableChange
 {
@@ -58,8 +58,8 @@ struct TickableChange
 		RemovedNoDelete,
 	};
 	Mode mode;
-	IApplicationTickable* tickable;
-	IApplicationTickable* insertBefore;
+	IApplicationTickable *tickable;
+	IApplicationTickable *insertBefore;
 };
 // List of changes applied to the collection of tickables
 // Applied at the end of each main loop
@@ -86,20 +86,20 @@ Application::~Application()
 	assert(g_application == this);
 	g_application = nullptr;
 }
-void Application::SetCommandLine(int32 argc, char** argv)
+void Application::SetCommandLine(int32 argc, char **argv)
 {
 	m_commandLine.clear();
-	
+
 	// Split up command line parameters
-	for(int32 i = 0 ; i < argc; i++)
+	for (int32 i = 0; i < argc; i++)
 	{
 		m_commandLine.Add(argv[i]);
 	}
 }
-void Application::SetCommandLine(const char* cmdLine)
+void Application::SetCommandLine(const char *cmdLine)
 {
 	m_commandLine.clear();
-	
+
 	// Split up command line parameters
 	m_commandLine = Path::SplitCommandLine(cmdLine);
 }
@@ -115,14 +115,13 @@ void Application::ApplySettings()
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 	m_SaveConfig();
-
 }
 int32 Application::Run()
 {
-	if(!m_Init())
+	if (!m_Init())
 		return 1;
 
-	if(m_commandLine.Contains("-test")) 
+	if (m_commandLine.Contains("-test"))
 	{
 		// Create test scene
 		AddTickable(Test::Create());
@@ -131,17 +130,17 @@ int32 Application::Run()
 	{
 		bool mapLaunched = false;
 		// Play the map specified in the command line
-		if(m_commandLine.size() > 1 && m_commandLine[1].front() != '-')
+		if (m_commandLine.size() > 1 && m_commandLine[1].front() != '-')
 		{
-			Game* game = LaunchMap(m_commandLine[1]);
-			if(!game)
+			Game *game = LaunchMap(m_commandLine[1]);
+			if (!game)
 			{
 				Logf("LaunchMap(%s) failed", Logger::Error, m_commandLine[1]);
 			}
 			else
 			{
-				auto& cmdLine = g_application->GetAppCommandLine();
-				if(cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
+				auto &cmdLine = g_application->GetAppCommandLine();
+				if (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
 				{
 					game->GetScoring().autoplay = true;
 				}
@@ -149,10 +148,15 @@ int32 Application::Run()
 			}
 		}
 
-		if(!mapLaunched)
+		if (!mapLaunched)
 		{
-			if(m_commandLine.Contains("-notitle"))
-				AddTickable(SongSelect::Create());
+			if (m_commandLine.Contains("-notitle"))
+			{
+				SongSelect *ss = SongSelect::Create();
+				ss->AsyncLoad();
+				ss->AsyncFinalize();
+				AddTickable(ss);
+			}
 			else // Start regular game, goto title screen
 				AddTickable(TitleScreen::Create());
 		}
@@ -163,7 +167,7 @@ int32 Application::Run()
 	return 0;
 }
 
-void Application::SetUpdateAvailable(const String& version, const String& url, const String& download)
+void Application::SetUpdateAvailable(const String &version, const String &url, const String &download)
 {
 	m_updateVersion = version;
 	m_updateUrl = url;
@@ -199,21 +203,22 @@ void Application::ForceRender()
 	nvgBeginFrame(g_guiState.vg, g_resolution.x, g_resolution.y, 1);
 }
 
-NVGcontext * Application::GetVGContext()
+NVGcontext *Application::GetVGContext()
 {
 	return g_guiState.vg;
 }
 
 Vector<String> Application::GetUpdateAvailable()
 {
-	if (m_hasUpdate) {
-		return Vector<String> {m_updateUrl, m_updateVersion};
+	if (m_hasUpdate)
+	{
+		return Vector<String>{m_updateUrl, m_updateVersion};
 	}
 
-	return Vector<String>();	
+	return Vector<String>();
 }
 
-int copyArchiveData(archive* ar, archive* aw)
+int copyArchiveData(archive *ar, archive *aw)
 {
 	int r;
 	const void *buff;
@@ -232,8 +237,7 @@ int copyArchiveData(archive* ar, archive* aw)
 		{
 			return (r);
 		}
-  }
-
+	}
 }
 
 // Extract .usc-skin files in the skin directory
@@ -241,18 +245,18 @@ void Application::m_unpackSkins()
 {
 	bool interrupt = false;
 	Vector<FileInfo> files = Files::ScanFiles(
-			Path::Absolute("skins/"), "usc-skin", &interrupt);
+		Path::Absolute("skins/"), "usc-skin", &interrupt);
 	if (interrupt)
 		return;
 
-	for(FileInfo& fi : files)
+	for (FileInfo &fi : files)
 	{
 		Logf("[Archive] Extracting skin '%s'", Logger::Info, fi.fullPath);
 
 		// Init archive structs
-		archive* a = archive_read_new();
-		archive* ext = archive_write_disk_new();
-		archive_entry* entry;
+		archive *a = archive_read_new();
+		archive *ext = archive_write_disk_new();
+		archive_entry *entry;
 
 		archive_read_support_filter_all(a);
 		archive_read_support_format_all(a);
@@ -268,7 +272,7 @@ void Application::m_unpackSkins()
 		if (res != ARCHIVE_OK)
 		{
 			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
-					archive_error_string(a));
+				 archive_error_string(a));
 			archive_read_close(a);
 			archive_read_free(a);
 			archive_write_free(ext);
@@ -286,7 +290,7 @@ void Application::m_unpackSkins()
 
 			String currentFile = archive_entry_pathname(entry);
 			size_t slashIndex = currentFile.find("/"); // Seems to be / on both unix and windows
-			
+
 			if (slashIndex == String::npos)
 			{
 				// This is a non directory in the root
@@ -321,7 +325,7 @@ void Application::m_unpackSkins()
 		if (res != ARCHIVE_OK)
 		{
 			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
-					archive_error_string(a));
+				 archive_error_string(a));
 			archive_read_close(a);
 			archive_read_free(a);
 			archive_write_free(ext);
@@ -331,7 +335,7 @@ void Application::m_unpackSkins()
 		// Use the zip name as the directory if there is no single dir
 		String dest = Path::Absolute("skins/");
 		if (!singleDir)
-			dest = fi.fullPath.substr(0,fi.fullPath.length()-9) + Path::sep;
+			dest = fi.fullPath.substr(0, fi.fullPath.length() - 9) + Path::sep;
 
 		bool extractOk = true;
 
@@ -343,26 +347,29 @@ void Application::m_unpackSkins()
 				break;
 			if (res < ARCHIVE_OK)
 				Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
-						archive_error_string(a));
-			if (res < ARCHIVE_WARN) {
+					 archive_error_string(a));
+			if (res < ARCHIVE_WARN)
+			{
 				extractOk = false;
 				break;
 			}
 
 			// Update the path to our dest
-			const char* currentFile = archive_entry_pathname(entry);
+			const char *currentFile = archive_entry_pathname(entry);
 			const std::string fullOutputPath = dest + currentFile;
 
 			const String dot_dot_win = "..\\";
 			const String dot_dot_unix = "../";
 
 			// Check for zipslip
-			if (fullOutputPath.find(dot_dot_win) != String::npos) {
+			if (fullOutputPath.find(dot_dot_win) != String::npos)
+			{
 				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_win.c_str(), fullOutputPath.c_str());
 				extractOk = false;
 				break;
 			}
-			if (fullOutputPath.find(dot_dot_unix) != String::npos) {
+			if (fullOutputPath.find(dot_dot_unix) != String::npos)
+			{
 				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_unix.c_str(), fullOutputPath.c_str());
 				extractOk = false;
 				break;
@@ -374,14 +381,16 @@ void Application::m_unpackSkins()
 			res = archive_write_header(ext, entry);
 			if (res < ARCHIVE_OK)
 				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
-						archive_error_string(ext));
-			else if (archive_entry_size(entry) > 0) {
+					 archive_error_string(ext));
+			else if (archive_entry_size(entry) > 0)
+			{
 				// Copy the data so it will be extracted
 				res = copyArchiveData(a, ext);
 				if (res < ARCHIVE_OK)
 					Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
-							archive_error_string(ext));
-				if (res < ARCHIVE_WARN) {
+						 archive_error_string(ext));
+				if (res < ARCHIVE_WARN)
+				{
 					extractOk = false;
 					break;
 				}
@@ -389,8 +398,9 @@ void Application::m_unpackSkins()
 			res = archive_write_finish_entry(ext);
 			if (res < ARCHIVE_OK)
 				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
-						archive_error_string(ext));
-			if (res < ARCHIVE_WARN) {
+					 archive_error_string(ext));
+			if (res < ARCHIVE_WARN)
+			{
 				extractOk = false;
 				break;
 			}
@@ -403,7 +413,8 @@ void Application::m_unpackSkins()
 		archive_write_free(ext);
 
 		// If we extracted everything alright, we can remove the file
-		if (extractOk) {
+		if (extractOk)
+		{
 			Path::Delete(fi.fullPath);
 		}
 	}
@@ -412,51 +423,51 @@ void Application::m_unpackSkins()
 bool Application::m_LoadConfig()
 {
 	File configFile;
-	if(configFile.OpenRead(Path::Absolute("Main.cfg")))
+	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
 	{
 		FileReader reader(configFile);
-		if(g_gameConfig.Load(reader))
+		if (g_gameConfig.Load(reader))
 			return true;
 	}
 	return false;
 }
 void Application::m_SaveConfig()
 {
-	if(!g_gameConfig.IsDirty())
+	if (!g_gameConfig.IsDirty())
 		return;
 
 	File configFile;
-	if(configFile.OpenWrite(Path::Absolute("Main.cfg")))
+	if (configFile.OpenWrite(Path::Absolute("Main.cfg")))
 	{
 		FileWriter writer(configFile);
 		g_gameConfig.Save(writer);
 	}
 }
 
-void __discordError(int errorCode, const char* message)
+void __discordError(int errorCode, const char *message)
 {
 	g_application->DiscordError(errorCode, message);
 }
 
-void __discordReady(const DiscordUser* user)
+void __discordReady(const DiscordUser *user)
 {
 	Logf("[Discord] Logged in as \"%s\"", Logger::Info, user->username);
 }
 
-void __discordJoinGame(const char * joins)
+void __discordJoinGame(const char *joins)
 {
 	g_application->JoinMultiFromInvite(joins);
 }
 
-void __discordSpecGame(const char * specs)
+void __discordSpecGame(const char *specs)
 {
 }
 
-void __discordJoinReq(const DiscordUser * duser)
+void __discordJoinReq(const DiscordUser *duser)
 {
 }
 
-void __discordDisconnected(int errcode, const char * msg)
+void __discordDisconnected(int errcode, const char *msg)
 {
 	g_application->DiscordError(errcode, msg);
 }
@@ -467,7 +478,7 @@ void __updateChecker()
 	ProfilerScope $1("Check for updates");
 	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
 	{
-		auto r = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest" });
+		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
 
 		Logf("Update check status code: %d", Logger::Normal, r.status_code);
 		if (r.status_code != 200)
@@ -482,12 +493,11 @@ void __updateChecker()
 			{
 				latestInfo = nlohmann::json::parse(r.text);
 			}
-			catch (const std::exception& e)
+			catch (const std::exception &e)
 			{
 				Logf("Failed to parse version json: \"%s\"", Logger::Error, e.what());
 				return;
 			}
-
 
 			//tag_name should always be "vX.Y.Z" so we remove the 'v'
 			String tagname;
@@ -517,7 +527,7 @@ void __updateChecker()
 	else
 	{
 #ifdef GIT_COMMIT
-		auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/actions/runs" });
+		auto response = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/actions/runs"});
 		if (response.status_code != 200)
 		{
 			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
@@ -527,7 +537,7 @@ void __updateChecker()
 		auto commits = nlohmann::json::parse(response.text);
 		String current_hash;
 		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
-		
+
 		if (commits.contains("message"))
 		{
 			String errormsg;
@@ -537,7 +547,7 @@ void __updateChecker()
 		}
 
 		commits = commits.at("workflow_runs");
-		for(auto& commit_kvp : commits.items())
+		for (auto &commit_kvp : commits.items())
 		{
 			auto commit = commit_kvp.value();
 
@@ -558,7 +568,7 @@ void __updateChecker()
 				}
 				else //update available
 				{
-					auto response = cpr::Get(cpr::Url{ "https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash });
+					auto response = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/commits/" + new_hash});
 					String updateUrl = "https://github.com/drewol/unnamed-sdvx-clone";
 					if (response.status_code != 200)
 					{
@@ -601,21 +611,19 @@ bool Application::m_Init()
 #ifdef EMBEDDED
 	Log("Embeedded version.");
 #endif
-	
 
 #ifdef GIT_COMMIT
 	Logf("Git commit: %s", Logger::Info, GIT_COMMIT);
 #endif // GIT_COMMIT
 
-
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
 
 	// Flags read _before_ config load
-	for(auto& cl : m_commandLine)
+	for (auto &cl : m_commandLine)
 	{
 		String k, v;
-		if(cl.Split("=", &k, &v))
+		if (cl.Split("=", &k, &v))
 		{
 			if (k == "-gamedir")
 			{
@@ -625,7 +633,7 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if(!m_LoadConfig())
+	if (!m_LoadConfig())
 	{
 		Log("Failed to load config file", Logger::Warning);
 	}
@@ -639,32 +647,32 @@ bool Application::m_Init()
 	uint32 fullscreenMonitor = -1;
 
 	// Fullscreen settings from config
-	if(g_gameConfig.GetBool(GameConfigKeys::Fullscreen))
+	if (g_gameConfig.GetBool(GameConfigKeys::Fullscreen))
 		startFullscreen = true;
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
 	// Flags read _after_ config load
-	for(auto& cl : m_commandLine)
+	for (auto &cl : m_commandLine)
 	{
 		String k, v;
-		if(cl.Split("=", &k, &v))
+		if (cl.Split("=", &k, &v))
 		{
-			if(k == "-monitor")
+			if (k == "-monitor")
 			{
 				fullscreenMonitor = atol(*v);
 			}
 		}
 		else
 		{
-			if(cl == "-convertmaps")
+			if (cl == "-convertmaps")
 			{
 				m_allowMapConversion = true;
 			}
-			else if(cl == "-mute")
+			else if (cl == "-mute")
 			{
 				debugMute = true;
 			}
-			else if(cl == "-fullscreen")
+			else if (cl == "-fullscreen")
 			{
 				startFullscreen = true;
 			}
@@ -700,7 +708,8 @@ bool Application::m_Init()
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
 
 	// Fallback to default if not found
-	if (!Path::FileExists(Path::Absolute("skins/" + m_skin))) {
+	if (!Path::FileExists(Path::Absolute("skins/" + m_skin)))
+	{
 		m_skin = "Default";
 	}
 
@@ -709,12 +718,11 @@ bool Application::m_Init()
 	Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + m_skin + "/textures/cursor.png"));
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
 
-	if(startFullscreen)
+	if (startFullscreen)
 		g_gameWindow->SwitchFullscreen(
 			g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
 			g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-			fullscreenMonitor, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen)
-		);
+			fullscreenMonitor, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
 
 	// Set render state variables
 	m_renderStateBase.aspectRatio = g_aspectRatio;
@@ -727,7 +735,7 @@ bool Application::m_Init()
 		// Init audio
 		new Audio();
 		bool exclusive = g_gameConfig.GetBool(GameConfigKeys::WASAPI_Exclusive);
-		if(!g_audio->Init(exclusive))
+		if (!g_audio->Init(exclusive))
 		{
 			if (exclusive)
 			{
@@ -750,7 +758,7 @@ bool Application::m_Init()
 
 		// Debug Mute?
 		// Test tracks may get annoying when continously debugging ;)
-		if(debugMute)
+		if (debugMute)
 		{
 			g_audio->SetGlobalVolume(0.0f);
 		}
@@ -761,7 +769,7 @@ bool Application::m_Init()
 
 		// Create graphics context
 		g_gl = new OpenGL();
-		if(!g_gl->Init(*g_gameWindow, g_gameConfig.GetInt(GameConfigKeys::AntiAliasing)))
+		if (!g_gl->Init(*g_gameWindow, g_gameConfig.GetInt(GameConfigKeys::AntiAliasing)))
 		{
 			Log("Failed to create OpenGL context", Logger::Error);
 			return false;
@@ -782,7 +790,7 @@ bool Application::m_Init()
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
-	if(g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
 	{
 		m_updateThread = Thread(__updateChecker);
 	}
@@ -790,7 +798,7 @@ bool Application::m_Init()
 	m_InitDiscord();
 
 	CheckedLoad(m_fontMaterial = LoadMaterial("font"));
-	m_fontMaterial->opaque = false;	
+	m_fontMaterial->opaque = false;
 	CheckedLoad(m_fillMaterial = LoadMaterial("guiColor"));
 	m_fillMaterial->opaque = false;
 	CheckedLoad(m_guiTex = LoadMaterial("guiTex"));
@@ -821,60 +829,60 @@ void Application::m_MainLoop()
 {
 	Timer appTimer;
 	m_lastRenderTime = 0.0f;
-	while(true)
+	while (true)
 	{
 		//run discord callbacks
 		Discord_RunCallbacks();
 
 		// Process changes in the list of items
 		bool restoreTop = false;
-		for(auto& ch : g_tickableChanges)
+		for (auto &ch : g_tickableChanges)
 		{
-			if(ch.mode == TickableChange::Added)
+			if (ch.mode == TickableChange::Added)
 			{
 				assert(ch.tickable);
-				if(!ch.tickable->DoInit())
+				if (!ch.tickable->DoInit())
 				{
 					Log("Failed to add IApplicationTickable", Logger::Error);
 					delete ch.tickable;
 					continue;
 				}
 
-				if(!g_tickables.empty())
+				if (!g_tickables.empty())
 					g_tickables.back()->m_Suspend();
 
 				auto insertionPoint = g_tickables.end();
-				if(ch.insertBefore)
+				if (ch.insertBefore)
 				{
 					// Find insertion point
-					for(insertionPoint = g_tickables.begin(); insertionPoint != g_tickables.end(); insertionPoint++)
+					for (insertionPoint = g_tickables.begin(); insertionPoint != g_tickables.end(); insertionPoint++)
 					{
-						if(*insertionPoint == ch.insertBefore)
+						if (*insertionPoint == ch.insertBefore)
 							break;
 					}
 				}
 				g_tickables.insert(insertionPoint, ch.tickable);
-				
+
 				restoreTop = true;
 			}
-			else if(ch.mode == TickableChange::Removed || ch.mode == TickableChange::RemovedNoDelete)
+			else if (ch.mode == TickableChange::Removed || ch.mode == TickableChange::RemovedNoDelete)
 			{
 				// Remove focus
 				ch.tickable->m_Suspend();
 
 				assert(!g_tickables.empty());
-				if(g_tickables.back() == ch.tickable)
+				if (g_tickables.back() == ch.tickable)
 					restoreTop = true;
 				g_tickables.Remove(ch.tickable);
-				if(ch.mode == TickableChange::Removed)
+				if (ch.mode == TickableChange::Removed)
 					delete ch.tickable;
 			}
 		}
-		if(restoreTop && !g_tickables.empty())
+		if (restoreTop && !g_tickables.empty())
 			g_tickables.back()->m_Restore();
 
 		// Application should end, no more active screens
-		if(!g_tickableChanges.empty() && g_tickables.empty())
+		if (!g_tickableChanges.empty() && g_tickables.empty())
 		{
 			Log("No more IApplicationTickables, shutting down", Logger::Warning);
 			return;
@@ -884,22 +892,21 @@ void Application::m_MainLoop()
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
 		float targetRenderTime = 0.0f;
-		for(auto tickable : g_tickables)
+		for (auto tickable : g_tickables)
 		{
 			int32 tempTarget = 0;
-			if(tickable->GetTickRate(tempTarget))
+			if (tickable->GetTickRate(tempTarget))
 			{
 				targetFPS = tempTarget;
 			}
 		}
-		if(targetFPS > 0)
+		if (targetFPS > 0)
 			targetRenderTime = 1.0f / (float)targetFPS;
-			
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
 		float timeSinceRender = currentTime - m_lastRenderTime;
-		if(timeSinceRender > targetRenderTime)
+		if (timeSinceRender > targetRenderTime)
 		{
 			// Calculate actual deltatime for timing calculations
 			currentTime = appTimer.SecondsAsFloat();
@@ -913,7 +920,7 @@ void Application::m_MainLoop()
 			m_renderStateBase.time = currentTime;
 
 			// Also update window in render loop
-			if(!g_gameWindow->Update())
+			if (!g_gameWindow->Update())
 				return;
 
 			m_Tick();
@@ -927,10 +934,10 @@ void Application::m_MainLoop()
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
 
-		if(timeSinceRender < targetRenderTime)
+		if (timeSinceRender < targetRenderTime)
 		{
 			float timeLeft = (targetRenderTime - timeSinceRender);
-			uint32 sleepMicroSecs = (uint32)(timeLeft*1000000.0f * 0.75f);
+			uint32 sleepMicroSecs = (uint32)(timeLeft * 1000000.0f * 0.75f);
 			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
 		}
 	}
@@ -945,15 +952,13 @@ void Application::m_Tick()
 	m_skinHttp.ProcessCallbacks();
 
 	// Tick all items
-	for(auto& tickable : g_tickables)
+	for (auto &tickable : g_tickables)
 	{
 		tickable->Tick(m_deltaTime);
 	}
 
-
-
 	// Not minimized / Valid resolution
-	if(g_resolution.x > 0 && g_resolution.y > 0)
+	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -970,11 +975,11 @@ void Application::m_Tick()
 		else
 			g_guiState.scissorOffset = 0;
 
-		g_guiState.scissor = Rect(0,0,-1,-1);
+		g_guiState.scissor = Rect(0, 0, -1, -1);
 		g_guiState.imageTint = nvgRGB(255, 255, 255);
 		// Render all items
 		assert(!g_tickables.empty());
-		for(auto& tickable : g_tickables)
+		for (auto &tickable : g_tickables)
 		{
 			tickable->Render(m_deltaTime);
 		}
@@ -1008,19 +1013,19 @@ void Application::m_Cleanup()
 {
 	ProfilerScope $("Application Cleanup");
 
-	for(auto it : g_tickables)
+	for (auto it : g_tickables)
 	{
 		delete it;
 	}
 	g_tickables.clear();
 
-	if(g_audio)
+	if (g_audio)
 	{
 		delete g_audio;
 		g_audio = nullptr;
 	}
 
-	if(g_gl)
+	if (g_gl)
 	{
 		delete g_gl;
 		g_gl = nullptr;
@@ -1030,13 +1035,13 @@ void Application::m_Cleanup()
 	g_input.Cleanup();
 
 	// Cleanup window after this
-	if(g_gameWindow)
+	if (g_gameWindow)
 	{
 		delete g_gameWindow;
 		g_gameWindow = nullptr;
 	}
 
-	if(g_jobSheduler)
+	if (g_jobSheduler)
 	{
 		delete g_jobSheduler;
 		g_jobSheduler = nullptr;
@@ -1079,17 +1084,16 @@ void Application::m_Cleanup()
 	nvgDeleteGL3(g_guiState.vg);
 #endif
 
-	if(m_updateThread.joinable())
+	if (m_updateThread.joinable())
 		m_updateThread.join();
-
 
 	// Finally, save config
 	m_SaveConfig();
 }
 
-class Game* Application::LaunchMap(const String& mapPath)
+class Game *Application::LaunchMap(const String &mapPath)
 {
-	Game* game = Game::Create(mapPath, GameFlags::None);
+	Game *game = Game::Create(mapPath, GameFlags::None);
 	g_transition->TransitionTo(game);
 	return game;
 }
@@ -1098,21 +1102,21 @@ void Application::Shutdown()
 	g_gameWindow->Close();
 }
 
-void Application::AddTickable(class IApplicationTickable* tickable, class IApplicationTickable* insertBefore)
+void Application::AddTickable(class IApplicationTickable *tickable, class IApplicationTickable *insertBefore)
 {
-	TickableChange& change = g_tickableChanges.Add();
+	TickableChange &change = g_tickableChanges.Add();
 	change.mode = TickableChange::Added;
 	change.tickable = tickable;
 	change.insertBefore = insertBefore;
 }
-void Application::RemoveTickable(IApplicationTickable* tickable, bool noDelete)
+void Application::RemoveTickable(IApplicationTickable *tickable, bool noDelete)
 {
-	TickableChange& change = g_tickableChanges.Add();
+	TickableChange &change = g_tickableChanges.Add();
 	if (noDelete)
 	{
 		change.mode = TickableChange::RemovedNoDelete;
 	}
-	else 
+	else
 	{
 		change.mode = TickableChange::Removed;
 	}
@@ -1129,7 +1133,7 @@ String Application::GetCurrentSkin()
 	return m_skin;
 }
 
-const Vector<String>& Application::GetAppCommandLine() const
+const Vector<String> &Application::GetAppCommandLine() const
 {
 	return m_commandLine;
 }
@@ -1138,28 +1142,28 @@ RenderState Application::GetRenderStateBase() const
 	return m_renderStateBase;
 }
 
-RenderQueue* Application::GetRenderQueueBase()
+RenderQueue *Application::GetRenderQueueBase()
 {
 	return &m_renderQueueBase;
 }
 
-Graphics::Image Application::LoadImage(const String& name)
+Graphics::Image Application::LoadImage(const String &name)
 {
 	String path = String("skins/") + m_skin + String("/textures/") + name;
 	return ImageRes::Create(Path::Absolute(path));
 }
 
-Graphics::Image Application::LoadImageExternal(const String& name)
+Graphics::Image Application::LoadImageExternal(const String &name)
 {
 	return ImageRes::Create(name);
 }
-Texture Application::LoadTexture(const String& name)
+Texture Application::LoadTexture(const String &name)
 {
 	Texture ret = TextureRes::Create(g_gl, LoadImage(name));
 	return ret;
 }
 
-Texture Application::LoadTexture(const String& name, const bool& external)
+Texture Application::LoadTexture(const String &name, const bool &external)
 {
 	if (external)
 	{
@@ -1172,7 +1176,7 @@ Texture Application::LoadTexture(const String& name, const bool& external)
 		return ret;
 	}
 }
-Material Application::LoadMaterial(const String& name, const String& path)
+Material Application::LoadMaterial(const String &name, const String &path)
 {
 	String pathV = path + name + ".vs";
 	String pathF = path + name + ".fs";
@@ -1182,7 +1186,7 @@ Material Application::LoadMaterial(const String& name, const String& path)
 	pathG = Path::Absolute(pathG);
 	Material ret = MaterialRes::Create(g_gl, pathV, pathF);
 	// Additionally load geometry shader
-	if(Path::FileExists(pathG))
+	if (Path::FileExists(pathG))
 	{
 		Shader gshader = ShaderRes::Create(g_gl, ShaderType::Geometry, pathG);
 		assert(gshader);
@@ -1191,14 +1195,14 @@ Material Application::LoadMaterial(const String& name, const String& path)
 	assert(ret);
 	return ret;
 }
-Material Application::LoadMaterial(const String& name)
+Material Application::LoadMaterial(const String &name)
 {
 	return LoadMaterial(name, String("skins/") + m_skin + String("/shaders/"));
 }
-Sample Application::LoadSample(const String& name, const bool& external)
+Sample Application::LoadSample(const String &name, const bool &external)
 {
 	String path;
-	if(external)
+	if (external)
 		path = name;
 	else
 		path = Path::Absolute(String("skins/") + m_skin + String("/audio/") + name);
@@ -1213,9 +1217,9 @@ Sample Application::LoadSample(const String& name, const bool& external)
 	return ret;
 }
 
-Graphics::Font Application::LoadFont(const String & name, const bool & external)
+Graphics::Font Application::LoadFont(const String &name, const bool &external)
 {
-	Graphics::Font* cached = m_fonts.Find(name);
+	Graphics::Font *cached = m_fonts.Find(name);
 	if (cached)
 		return *cached;
 
@@ -1230,14 +1234,14 @@ Graphics::Font Application::LoadFont(const String & name, const bool & external)
 	return newFont;
 }
 
-int Application::LoadImageJob(const String & path, Vector2i size, int placeholder, const bool& web)
+int Application::LoadImageJob(const String &path, Vector2i size, int placeholder, const bool &web)
 {
 	int ret = placeholder;
 	auto it = m_jacketImages.find(path);
 	if (it == m_jacketImages.end() || !it->second)
 	{
-		CachedJacketImage* newImage = new CachedJacketImage();
-		JacketLoadingJob* job = new JacketLoadingJob();
+		CachedJacketImage *newImage = new CachedJacketImage();
+		JacketLoadingJob *job = new JacketLoadingJob();
 		job->imagePath = path;
 		job->target = newImage;
 		job->w = size.x;
@@ -1261,27 +1265,26 @@ int Application::LoadImageJob(const String & path, Vector2i size, int placeholde
 	return ret;
 }
 
-void Application::SetScriptPath(lua_State * s)
+void Application::SetScriptPath(lua_State *s)
 {
 	//Set path for 'require' (https://stackoverflow.com/questions/4125971/setting-the-global-lua-path-variable-from-c-c?lq=1)
 	String lua_path = Path::Normalize(
-		 Path::Absolute("./skins/" + m_skin + "/scripts/?.lua;")
-		+ Path::Absolute("./skins/" + m_skin + "/scripts/?"));
+		Path::Absolute("./skins/" + m_skin + "/scripts/?.lua;") + Path::Absolute("./skins/" + m_skin + "/scripts/?"));
 
 	lua_getglobal(s, "package");
-	lua_getfield(s, -1, "path"); // get field "path" from table at top of stack (-1)
+	lua_getfield(s, -1, "path");				// get field "path" from table at top of stack (-1)
 	std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
-	cur_path.append(";"); // do your path magic here
+	cur_path.append(";");						// do your path magic here
 	cur_path.append(lua_path.c_str());
-	lua_pop(s, 1); // get rid of the string on the stack we just pushed on line 5
+	lua_pop(s, 1);						 // get rid of the string on the stack we just pushed on line 5
 	lua_pushstring(s, cur_path.c_str()); // push the new one
-	lua_setfield(s, -2, "path"); // set the field "path" in table at -2 with value at top of stack
-	lua_pop(s, 1); // get rid of package table from top of stack
+	lua_setfield(s, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
+	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
-lua_State* Application::LoadScript(const String & name, bool noError)
+lua_State *Application::LoadScript(const String &name, bool noError)
 {
-	lua_State* s = luaL_newstate();
+	lua_State *s = luaL_newstate();
 	luaL_openlibs(s);
 	SetScriptPath(s);
 
@@ -1293,7 +1296,7 @@ lua_State* Application::LoadScript(const String & name, bool noError)
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
 		Logf("Lua error: %s", Logger::Error, lua_tostring(s, -1));
-		if(!noError)
+		if (!noError)
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(s, -1), 0);
 		lua_close(s);
 		return nullptr;
@@ -1301,7 +1304,7 @@ lua_State* Application::LoadScript(const String & name, bool noError)
 	return s;
 }
 
-void Application::ReloadScript(const String& name, lua_State* L)
+void Application::ReloadScript(const String &name, lua_State *L)
 {
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
@@ -1334,27 +1337,26 @@ void Application::ReloadSkin()
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
 
-	for (auto& sample : m_samples)
+	for (auto &sample : m_samples)
 	{
 		sample.second->Stop();
 	}
 	m_samples.clear();
 
-	
-
-	if (g_transition) {
+	if (g_transition)
+	{
 		delete g_transition;
 		g_transition = TransitionScreen::Create();
 	}
 
 	//remove all tickables
-	for (auto* t : g_tickables)
+	for (auto *t : g_tickables)
 	{
 		RemoveTickable(t);
 	}
 
 	//push new titlescreen
-	TitleScreen* t = TitleScreen::Create();
+	TitleScreen *t = TitleScreen::Create();
 	AddTickable(t);
 
 #ifdef EMBEDDED
@@ -1365,21 +1367,21 @@ void Application::ReloadSkin()
 
 #ifdef EMBEDDED
 #ifdef _DEBUG
-		g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
 #else
-		g_guiState.vg = nvgCreateGLES2(0);
+	g_guiState.vg = nvgCreateGLES2(0);
 #endif
 #else
 #ifdef _DEBUG
-		g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
 #else
-		g_guiState.vg = nvgCreateGL3(0);
+	g_guiState.vg = nvgCreateGL3(0);
 #endif
 #endif
 
 	nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 }
-void Application::DisposeLua(lua_State* state)
+void Application::DisposeLua(lua_State *state)
 {
 	DisposeGUI(state);
 	m_skinHttp.ClearState(state);
@@ -1399,7 +1401,7 @@ void Application::SetGaugeColor(int i, Color c)
 		m_gauge->upperColor = m_gaugeColors[1];
 	}
 }
-void Application::DiscordError(int errorCode, const char * message)
+void Application::DiscordError(int errorCode, const char *message)
 {
 	Logf("[Discord] %s", Logger::Warning, message);
 }
@@ -1423,7 +1425,7 @@ void Application::DiscordPresenceMulti(String secret, int partySize, int partyMa
 {
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	
+
 	m_multiRoomCount = partySize;
 	m_multiRoomSize = partyMax;
 	m_multiRoomSecret = secret;
@@ -1440,15 +1442,15 @@ void Application::DiscordPresenceMulti(String secret, int partySize, int partyMa
 	Discord_UpdatePresence(&discordPresence);
 }
 
-void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTime, int64 endTime)
+void Application::DiscordPresenceSong(const BeatmapSettings &song, int64 startTime, int64 endTime)
 {
-	Vector<String> diffNames = { "NOV", "ADV", "EXH", "INF" };
+	Vector<String> diffNames = {"NOV", "ADV", "EXH", "INF"};
 	DiscordRichPresence discordPresence;
 	memset(&discordPresence, 0, sizeof(discordPresence));
-	char bufferState[128] = { 0 };
+	char bufferState[128] = {0};
 	sprintf(bufferState, "Playing [%s %d]", diffNames[song.difficulty].c_str(), song.level);
 	discordPresence.state = bufferState;
-	char bufferDetails[128] = { 0 };
+	char bufferDetails[128] = {0};
 	int titleLength = snprintf(bufferDetails, 128, "%s - %s", *song.title, *song.artist);
 	if (titleLength >= 128 || titleLength < 0)
 	{
@@ -1474,12 +1476,11 @@ void Application::DiscordPresenceSong(const BeatmapSettings& song, int64 startTi
 
 void Application::JoinMultiFromInvite(String secret)
 {
-	MultiplayerScreen* mpScreen = new MultiplayerScreen();
-	IApplicationTickable* title = (IApplicationTickable*)TitleScreen::Create();
-	String* token = new String(*secret);
-	auto tokenInput = [=](void* screen)
-	{
-		MultiplayerScreen* mpScreen = (MultiplayerScreen*)screen;
+	MultiplayerScreen *mpScreen = new MultiplayerScreen();
+	IApplicationTickable *title = (IApplicationTickable *)TitleScreen::Create();
+	String *token = new String(*secret);
+	auto tokenInput = [=](void *screen) {
+		MultiplayerScreen *mpScreen = (MultiplayerScreen *)screen;
 		mpScreen->JoinRoomWithToken(*token);
 		delete token;
 	};
@@ -1490,7 +1491,7 @@ void Application::JoinMultiFromInvite(String secret)
 	//Remove all tickables and add back a titlescreen as a base
 	AddTickable(title);
 	g_transition->TransitionTo(mpScreen);
-	for(IApplicationTickable* tickable : g_tickables)
+	for (IApplicationTickable *tickable : g_tickables)
 	{
 		RemoveTickable(tickable);
 	}
@@ -1626,15 +1627,14 @@ int Application::IsNamedSamplePlaying(String name)
 void Application::m_OnKeyPressed(int32 key)
 {
 	// Fullscreen toggle
-	if(key == SDLK_RETURN)
+	if (key == SDLK_RETURN)
 	{
-		if((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
+		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
 			g_gameWindow->SwitchFullscreen(
 				g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
 				g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-				-1, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen)
-			);
+				-1, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
 			g_gameConfig.Set(GameConfigKeys::Fullscreen, g_gameWindow->IsFullscreen());
 			//m_OnWindowResized(g_gameWindow->GetWindowSize());
 			return;
@@ -1642,7 +1642,7 @@ void Application::m_OnKeyPressed(int32 key)
 	}
 
 	// Pass key to application
-	for(auto it = g_tickables.rbegin(); it != g_tickables.rend();)
+	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
 		(*it)->OnKeyPressed(key);
 		break;
@@ -1650,13 +1650,13 @@ void Application::m_OnKeyPressed(int32 key)
 }
 void Application::m_OnKeyReleased(int32 key)
 {
-	for(auto it = g_tickables.rbegin(); it != g_tickables.rend();)
+	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
 		(*it)->OnKeyReleased(key);
 		break;
 	}
 }
-void Application::m_OnWindowResized(const Vector2i& newSize)
+void Application::m_OnWindowResized(const Vector2i &newSize)
 {
 	if (g_gameConfig.GetBool(GameConfigKeys::ForcePortrait))
 	{
@@ -1675,10 +1675,12 @@ void Application::m_OnWindowResized(const Vector2i& newSize)
 		glScissor(0, 0, g_resolution.x, g_resolution.y);
 
 		// Set in config
-		if (g_gameWindow->IsFullscreen()) {
+		if (g_gameWindow->IsFullscreen())
+		{
 			g_gameConfig.Set(GameConfigKeys::FullscreenMonitorIndex, g_gameWindow->GetDisplayIndex());
 		}
-		else {
+		else
+		{
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, tempsize.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, tempsize.y);
 		}
@@ -1695,24 +1697,27 @@ void Application::m_OnWindowResized(const Vector2i& newSize)
 		glScissor(0, 0, newSize.x, newSize.y);
 
 		// Set in config
-		if (g_gameWindow->IsFullscreen()) {
+		if (g_gameWindow->IsFullscreen())
+		{
 			g_gameConfig.Set(GameConfigKeys::FullscreenMonitorIndex, g_gameWindow->GetDisplayIndex());
 		}
-		else {
+		else
+		{
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, newSize.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, newSize.y);
 		}
 	}
-
 }
 
 void Application::m_OnFocusChanged(bool focused)
 {
 	bool muteUnfocused = g_gameConfig.GetBool(GameConfigKeys::MuteUnfocused);
-	if (focused && muteUnfocused) {
+	if (focused && muteUnfocused)
+	{
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
 	}
-	else if (!focused && muteUnfocused) {
+	else if (!focused && muteUnfocused)
+	{
 		g_audio->SetGlobalVolume(0.0f);
 	}
 }
@@ -1751,7 +1756,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 	return 0;
 }
 
-static int lGetMousePos(lua_State* L)
+static int lGetMousePos(lua_State *L)
 {
 	Vector2i pos = g_gameWindow->GetMousePos();
 	float left = g_gameWindow->GetWindowSize().x / 2 - g_resolution.x / 2;
@@ -1760,17 +1765,17 @@ static int lGetMousePos(lua_State* L)
 	return 2;
 }
 
-static int lGetResolution(lua_State* L)
+static int lGetResolution(lua_State *L)
 {
 	lua_pushnumber(L, g_resolution.x);
 	lua_pushnumber(L, g_resolution.y);
 	return 2;
 }
 
-static int lGetLaserColor(lua_State* L /*int laser*/)
+static int lGetLaserColor(lua_State *L /*int laser*/)
 {
 	int laser = luaL_checkinteger(L, 1);
-	float laserHues[2] = { 0.f };
+	float laserHues[2] = {0.f};
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 	laserHues[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
 	Colori c = Color::FromHSV(laserHues[laser], 1.0, 1.0).ToRGBA8();
@@ -1780,7 +1785,7 @@ static int lGetLaserColor(lua_State* L /*int laser*/)
 	return 3;
 }
 
-static int lLog(lua_State* L)
+static int lLog(lua_State *L)
 {
 	String msg = luaL_checkstring(L, 1);
 	int severity = luaL_checkinteger(L, 2);
@@ -1788,7 +1793,7 @@ static int lLog(lua_State* L)
 	return 0;
 }
 
-static int lDrawGauge(lua_State* L)
+static int lDrawGauge(lua_State *L)
 {
 	float rate, x, y, w, h, deltaTime;
 	rate = luaL_checknumber(L, 1);
@@ -1801,22 +1806,22 @@ static int lDrawGauge(lua_State* L)
 	return 0;
 }
 
-static int lGetButton(lua_State* L /* int button */)
+static int lGetButton(lua_State *L /* int button */)
 {
 	int button = luaL_checkinteger(L, 1);
 	lua_pushboolean(L, g_input.GetButton((Input::Button)button));
 	return 1;
 }
-static int lGetKnob(lua_State* L /* int knob */)
+static int lGetKnob(lua_State *L /* int knob */)
 {
 	int knob = luaL_checkinteger(L, 1);
 	lua_pushnumber(L, g_input.GetAbsoluteLaser(knob));
 	return 1;
 }
-static int lGetUpdateAvailable(lua_State* L)
+static int lGetUpdateAvailable(lua_State *L)
 {
 	Vector<String> info = g_application->GetUpdateAvailable();
-	if(info.empty())
+	if (info.empty())
 	{
 		return 0;
 	}
@@ -1826,9 +1831,9 @@ static int lGetUpdateAvailable(lua_State* L)
 	return 2;
 }
 
-static int lCreateSkinImage(lua_State* L /*const char* filename, int imageflags */)
+static int lCreateSkinImage(lua_State *L /*const char* filename, int imageflags */)
 {
-	const char* filename = luaL_checkstring(L, 1);
+	const char *filename = luaL_checkstring(L, 1);
 	int imageflags = luaL_checkinteger(L, 2);
 	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + filename;
 	path = Path::Absolute(path);
@@ -1842,9 +1847,9 @@ static int lCreateSkinImage(lua_State* L /*const char* filename, int imageflags 
 	return 0;
 }
 
-static int lLoadSkinAnimation(lua_State* L)
+static int lLoadSkinAnimation(lua_State *L)
 {
-	const char* p;
+	const char *p;
 	float frametime;
 	int loopcount = 0;
 	bool compressed = false;
@@ -1871,17 +1876,17 @@ static int lLoadSkinAnimation(lua_State* L)
 	return 1;
 }
 
-static int lLoadSkinFont(lua_State* L /*const char* name */)
+static int lLoadSkinFont(lua_State *L /*const char* name */)
 {
-	const char* name = luaL_checkstring(L, 1);
+	const char *name = luaL_checkstring(L, 1);
 	String path = "skins/" + g_application->GetCurrentSkin() + "/fonts/" + name;
 	path = Path::Absolute(path);
 	return LoadFont(name, path.c_str(), L);
 }
 
-static int lLoadSkinSample(lua_State* L /*char* name */)
+static int lLoadSkinSample(lua_State *L /*char* name */)
 {
-	const char* name = luaL_checkstring(L, 1);
+	const char *name = luaL_checkstring(L, 1);
 	Sample newSample = g_application->LoadSample(name);
 	if (!newSample)
 	{
@@ -1897,22 +1902,22 @@ static int lLoadSkinSample(lua_State* L /*char* name */)
 	return 0;
 }
 
-static int lPlaySample(lua_State* L /*char* name, bool loop */)
+static int lPlaySample(lua_State *L /*char* name, bool loop */)
 {
-	const char* name = luaL_checkstring(L, 1);
+	const char *name = luaL_checkstring(L, 1);
 	bool loop = false;
-	if(lua_gettop(L) == 2)
+	if (lua_gettop(L) == 2)
 	{
-		loop = lua_toboolean(L,2) == 1;
+		loop = lua_toboolean(L, 2) == 1;
 	}
 
 	g_application->PlayNamedSample(name, loop);
 	return 0;
 }
 
-static int lIsSamplePlaying(lua_State* L /* char* name */)
+static int lIsSamplePlaying(lua_State *L /* char* name */)
 {
-	const char* name = luaL_checkstring(L, 1);
+	const char *name = luaL_checkstring(L, 1);
 	int res = g_application->IsNamedSamplePlaying(name);
 	if (res == -1)
 		return 0;
@@ -1921,29 +1926,29 @@ static int lIsSamplePlaying(lua_State* L /* char* name */)
 	return 1;
 }
 
-static int lStopSample(lua_State* L /* char* name */)
+static int lStopSample(lua_State *L /* char* name */)
 {
-	const char* name = luaL_checkstring(L, 1);
+	const char *name = luaL_checkstring(L, 1);
 	g_application->StopNamedSample(name);
 	return 0;
 }
 
-static int lPathAbsolute(lua_State* L /* string path */)
+static int lPathAbsolute(lua_State *L /* string path */)
 {
-	const char* path = luaL_checkstring(L, 1);
+	const char *path = luaL_checkstring(L, 1);
 	lua_pushstring(L, *Path::Absolute(path));
 	return 1;
 }
 
-static int lForceRender(lua_State* L)
+static int lForceRender(lua_State *L)
 {
 	g_application->ForceRender();
 	return 0;
 }
 
-static int lLoadImageJob(lua_State* L /* char* path, int placeholder, int w = 0, int h = 0 */)
+static int lLoadImageJob(lua_State *L /* char* path, int placeholder, int w = 0, int h = 0 */)
 {
-	const char* path = luaL_checkstring(L, 1);
+	const char *path = luaL_checkstring(L, 1);
 	int fallback = luaL_checkinteger(L, 2);
 	int w = 0, h = 0;
 	if (lua_gettop(L) == 4)
@@ -1951,13 +1956,13 @@ static int lLoadImageJob(lua_State* L /* char* path, int placeholder, int w = 0,
 		w = luaL_checkinteger(L, 3);
 		h = luaL_checkinteger(L, 4);
 	}
-	lua_pushinteger(L, g_application->LoadImageJob(path, { w,h }, fallback));
+	lua_pushinteger(L, g_application->LoadImageJob(path, {w, h}, fallback));
 	return 1;
 }
 
-static int lLoadWebImageJob(lua_State* L /* char* url, int placeholder, int w = 0, int h = 0 */)
+static int lLoadWebImageJob(lua_State *L /* char* url, int placeholder, int w = 0, int h = 0 */)
 {
-	const char* url = luaL_checkstring(L, 1);
+	const char *url = luaL_checkstring(L, 1);
 	int fallback = luaL_checkinteger(L, 2);
 	int w = 0, h = 0;
 	if (lua_gettop(L) == 4)
@@ -1965,11 +1970,11 @@ static int lLoadWebImageJob(lua_State* L /* char* url, int placeholder, int w = 
 		w = luaL_checkinteger(L, 3);
 		h = luaL_checkinteger(L, 4);
 	}
-	lua_pushinteger(L, g_application->LoadImageJob(url, { w,h }, fallback, true));
+	lua_pushinteger(L, g_application->LoadImageJob(url, {w, h}, fallback, true));
 	return 1;
 }
 
-static int lSetGaugeColor(lua_State* L /*int colorIndex, int r, int g, int b*/)
+static int lSetGaugeColor(lua_State *L /*int colorIndex, int r, int g, int b*/)
 {
 	int colorindex, r, g, b;
 	colorindex = luaL_checkinteger(L, 1);
@@ -1981,16 +1986,16 @@ static int lSetGaugeColor(lua_State* L /*int colorIndex, int r, int g, int b*/)
 	return 0;
 }
 
-static int lGetSkin(lua_State* L)
+static int lGetSkin(lua_State *L)
 {
 	lua_pushstring(L, *g_application->GetCurrentSkin());
 	return 1;
 }
 
-static int lSetSkinSetting(lua_State* L /*String key, Any value*/)
+static int lSetSkinSetting(lua_State *L /*String key, Any value*/)
 {
 	String key = luaL_checkstring(L, 1);
-	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	IConfigEntry *entry = g_skinConfig->GetEntry(key);
 	if (!entry) //just set depending on value type
 	{
 		if (lua_isboolean(L, 2))
@@ -2035,11 +2040,10 @@ static int lSetSkinSetting(lua_State* L /*String key, Any value*/)
 	return 0;
 }
 
-
-static int lGetSkinSetting(lua_State* L /*String key*/)
+static int lGetSkinSetting(lua_State *L /*String key*/)
 {
 	String key = luaL_checkstring(L, 1);
-	IConfigEntry* entry = g_skinConfig->GetEntry(key);
+	IConfigEntry *entry = g_skinConfig->GetEntry(key);
 	if (!entry)
 	{
 		return 0;
@@ -2080,17 +2084,15 @@ static int lGetSkinSetting(lua_State* L /*String key*/)
 	}
 }
 
-void Application::SetLuaBindings(lua_State * state)
+void Application::SetLuaBindings(lua_State *state)
 {
-	auto pushFuncToTable = [&](const char* name, int (*func)(lua_State*))
-	{
+	auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
 		lua_pushstring(state, name);
 		lua_pushcfunction(state, func);
 		lua_settable(state, -3);
 	};
 
-	auto pushIntToTable = [&](const char* name, int data)
-	{
+	auto pushIntToTable = [&](const char *name, int data) {
 		lua_pushstring(state, name);
 		lua_pushinteger(state, data);
 		lua_settable(state, -3);
@@ -2177,26 +2179,26 @@ void Application::SetLuaBindings(lua_State * state)
 		pushFuncToTable("CreateShadedMesh", ShadedMesh::lNew);
 		//constants
 		//Text align
-		pushIntToTable("TEXT_ALIGN_BASELINE",	NVGalign::NVG_ALIGN_BASELINE);
-		pushIntToTable("TEXT_ALIGN_BOTTOM",		NVGalign::NVG_ALIGN_BOTTOM);
-		pushIntToTable("TEXT_ALIGN_CENTER",		NVGalign::NVG_ALIGN_CENTER);
-		pushIntToTable("TEXT_ALIGN_LEFT",		NVGalign::NVG_ALIGN_LEFT);
-		pushIntToTable("TEXT_ALIGN_MIDDLE",		NVGalign::NVG_ALIGN_MIDDLE);
-		pushIntToTable("TEXT_ALIGN_RIGHT",		NVGalign::NVG_ALIGN_RIGHT);
-		pushIntToTable("TEXT_ALIGN_TOP",		NVGalign::NVG_ALIGN_TOP);
+		pushIntToTable("TEXT_ALIGN_BASELINE", NVGalign::NVG_ALIGN_BASELINE);
+		pushIntToTable("TEXT_ALIGN_BOTTOM", NVGalign::NVG_ALIGN_BOTTOM);
+		pushIntToTable("TEXT_ALIGN_CENTER", NVGalign::NVG_ALIGN_CENTER);
+		pushIntToTable("TEXT_ALIGN_LEFT", NVGalign::NVG_ALIGN_LEFT);
+		pushIntToTable("TEXT_ALIGN_MIDDLE", NVGalign::NVG_ALIGN_MIDDLE);
+		pushIntToTable("TEXT_ALIGN_RIGHT", NVGalign::NVG_ALIGN_RIGHT);
+		pushIntToTable("TEXT_ALIGN_TOP", NVGalign::NVG_ALIGN_TOP);
 		//Line caps and joins
-		pushIntToTable("LINE_BEVEL",	NVGlineCap::NVG_BEVEL);
-		pushIntToTable("LINE_BUTT",		NVGlineCap::NVG_BUTT);
-		pushIntToTable("LINE_MITER",	NVGlineCap::NVG_MITER);
-		pushIntToTable("LINE_ROUND",	NVGlineCap::NVG_ROUND);
-		pushIntToTable("LINE_SQUARE",	NVGlineCap::NVG_SQUARE);
+		pushIntToTable("LINE_BEVEL", NVGlineCap::NVG_BEVEL);
+		pushIntToTable("LINE_BUTT", NVGlineCap::NVG_BUTT);
+		pushIntToTable("LINE_MITER", NVGlineCap::NVG_MITER);
+		pushIntToTable("LINE_ROUND", NVGlineCap::NVG_ROUND);
+		pushIntToTable("LINE_SQUARE", NVGlineCap::NVG_SQUARE);
 		//Image flags
-		pushIntToTable("IMAGE_GENERATE_MIPMAPS",	NVGimageFlags::NVG_IMAGE_GENERATE_MIPMAPS);
-		pushIntToTable("IMAGE_REPEATX",				NVGimageFlags::NVG_IMAGE_REPEATX);
-		pushIntToTable("IMAGE_REPEATY",				NVGimageFlags::NVG_IMAGE_REPEATY);
-		pushIntToTable("IMAGE_FLIPY",				NVGimageFlags::NVG_IMAGE_FLIPY);
-		pushIntToTable("IMAGE_PREMULTIPLIED",		NVGimageFlags::NVG_IMAGE_PREMULTIPLIED);
-		pushIntToTable("IMAGE_NEAREST",				NVGimageFlags::NVG_IMAGE_NEAREST);
+		pushIntToTable("IMAGE_GENERATE_MIPMAPS", NVGimageFlags::NVG_IMAGE_GENERATE_MIPMAPS);
+		pushIntToTable("IMAGE_REPEATX", NVGimageFlags::NVG_IMAGE_REPEATX);
+		pushIntToTable("IMAGE_REPEATY", NVGimageFlags::NVG_IMAGE_REPEATY);
+		pushIntToTable("IMAGE_FLIPY", NVGimageFlags::NVG_IMAGE_FLIPY);
+		pushIntToTable("IMAGE_PREMULTIPLIED", NVGimageFlags::NVG_IMAGE_PREMULTIPLIED);
+		pushIntToTable("IMAGE_NEAREST", NVGimageFlags::NVG_IMAGE_NEAREST);
 		//Blend flags
 		pushIntToTable("BLEND_ZERO,", NVGblendFactor::NVG_ZERO);
 		pushIntToTable("BLEND_ONE,", NVGblendFactor::NVG_ONE);
@@ -2286,9 +2288,11 @@ bool JacketLoadingJob::Run()
 		b.resize(response.text.length());
 		memcpy(b.data(), response.text.c_str(), b.size());
 		loadedImage = ImageRes::Create(b);
-		if (loadedImage.IsValid()) {
-			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h) {
-				loadedImage->ReSize({ w,h });
+		if (loadedImage.IsValid())
+		{
+			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
+			{
+				loadedImage->ReSize({w, h});
 			}
 		}
 		return loadedImage.IsValid();
@@ -2296,9 +2300,11 @@ bool JacketLoadingJob::Run()
 	else
 	{
 		loadedImage = ImageRes::Create(imagePath);
-		if (loadedImage.IsValid()) {
-			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h) {
-				loadedImage->ReSize({ w,h });
+		if (loadedImage.IsValid())
+		{
+			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
+			{
+				loadedImage->ReSize({w, h});
 			}
 		}
 		return loadedImage.IsValid();
@@ -2309,7 +2315,7 @@ void JacketLoadingJob::Finalize()
 	if (IsSuccessfull())
 	{
 		///TODO: Maybe do the nvgCreateImage in Run() instead
-		target->texture = nvgCreateImageRGBA(g_guiState.vg, loadedImage->GetSize().x, loadedImage->GetSize().y, 0, (unsigned char*)loadedImage->GetBits());
+		target->texture = nvgCreateImageRGBA(g_guiState.vg, loadedImage->GetSize().x, loadedImage->GetSize().y, 0, (unsigned char *)loadedImage->GetBits());
 		target->loaded = true;
 	}
 }
