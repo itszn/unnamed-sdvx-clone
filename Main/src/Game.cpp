@@ -60,7 +60,7 @@ public:
 	// Startup parameters
 	String m_chartRootPath;
 	String m_chartPath;
-	ChartIndex m_chartIndex;
+	ChartIndex* m_chartIndex = nullptr;
 
 private:
 	bool m_playing = true;
@@ -169,18 +169,16 @@ public:
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 		m_flags = flags;
-		m_chartIndex.id = -1;
-		m_chartIndex.folderId = -1;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
-	Game_Impl(const ChartIndex& chart, GameFlags flags)
+	Game_Impl(ChartIndex* chart, GameFlags flags)
 	{
 		// Store path to map
-		m_chartPath = Path::Normalize(chart.path);
+		m_chartPath = Path::Normalize(chart->path);
 		m_chartIndex = chart;
 		m_flags = flags;
 		// Get Parent path
@@ -316,16 +314,17 @@ public:
 
 
 		// Load replays
-		for (ScoreIndex* score : m_chartIndex.scores)
-		{
-			File replayFile;
-			if (replayFile.OpenRead(score->replayPath)) {
-				ScoreReplay& replay = m_scoreReplays.Add(ScoreReplay());
-				replay.maxScore = score->score;
-				FileReader replayReader(replayFile);
-				replayReader.SerializeObject(replay.replay);
+		if (m_chartIndex)
+			for (ScoreIndex* score : m_chartIndex->scores)
+			{
+				File replayFile;
+				if (replayFile.OpenRead(score->replayPath)) {
+					ScoreReplay& replay = m_scoreReplays.Add(ScoreReplay());
+					replay.maxScore = score->score;
+					FileReader replayReader(replayFile);
+					replayReader.SerializeObject(replay.replay);
+				}
 			}
-		}
 
 		// Initialize input/scoring
 		if(!InitGameplay())
@@ -1158,7 +1157,7 @@ public:
 				while (!game) // ensure a working game
 				{
 					ChartIndex* chart = m_db->GetRandomChart();
-					game = Game::Create(*chart, m_flags);
+					game = Game::Create(chart, m_flags);
 				}
 				game->GetScoring().autoplay = true;
 				game->SetDemoMode(true);
@@ -1207,7 +1206,7 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(*diff, m_flags);
+				game = Game::Create(diff, m_flags);
 			}
 			game->GetScoring().autoplay = true;
 			game->SetDemoMode(true);
@@ -1899,7 +1898,7 @@ public:
 	{
 		return m_multiplayer != nullptr;
 	}
-	virtual const ChartIndex& GetChartIndex() const
+	virtual ChartIndex* GetChartIndex()
 	{
 		return m_chartIndex;
 	}
@@ -2161,13 +2160,13 @@ public:
 	}
 };
 
-Game* Game::Create(const ChartIndex& difficulty, GameFlags flags)
+Game* Game::Create(ChartIndex* difficulty, GameFlags flags)
 {
 	Game_Impl* impl = new Game_Impl(difficulty, flags);
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, const ChartIndex& difficulty, GameFlags flags)
+Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* difficulty, GameFlags flags)
 {
 	Game_Impl* impl = new Game_Impl(difficulty, flags);
 	impl->MakeMultiplayer(multiplayer);

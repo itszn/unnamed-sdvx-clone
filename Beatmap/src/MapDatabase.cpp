@@ -9,6 +9,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <atomic>
 using std::thread;
 using std::mutex;
 using namespace std;
@@ -20,6 +21,9 @@ public:
 	MapDatabase& m_outer;
 
 	thread m_thread;
+	condition_variable m_cvPause;
+	mutex m_pauseMutex;
+	std::atomic<bool> m_paused = false;
 	bool m_searching = false;
 	bool m_interruptSearch = false;
 	Set<String> m_searchPaths;
@@ -311,12 +315,14 @@ public:
 		Update();
 		// Create initial data set to compare to when evaluating if a file is added/removed/updated
 		m_LoadInitialData();
+		ResumeSearching();
 		m_interruptSearch = false;
 		m_searching = true;
 		m_thread = thread(&MapDatabase_Impl::m_SearchThread, this);
 	}
 	void StopSearching()
 	{
+		ResumeSearching();
 		m_interruptSearch = true;
 		m_searching = false;
 		if(m_thread.joinable())
@@ -795,32 +801,21 @@ public:
 		}
 	}
 
-	void AddScore(const ChartIndex& chart, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+	void AddScore(ScoreIndex* score)
 	{
 		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash) VALUES(?,?,?,?,?,?,?,?,?)");
-		Path::CreateDir(Path::Absolute("replays/" + chart.hash));
-		String replayPath = Path::Normalize(Path::Absolute( "replays/" + chart.hash + "/" + Shared::Time::Now().ToString() + ".urf"));
-		File replayFile;
-		
-		if (replayFile.OpenWrite(replayPath))
-		{
-			FileWriter fw(replayFile);
-			fw.SerializeObject(simpleHitStats);
-		}
+
 
 		m_database.Exec("BEGIN");
-
-		
-
-		addScore.BindInt(1, score);
-		addScore.BindInt(2, crit);
-		addScore.BindInt(3, almost);
-		addScore.BindInt(4, miss);
-		addScore.BindDouble(5, gauge);
-		addScore.BindInt(6, gameflags);
-		addScore.BindString(7, replayPath);
-		addScore.BindInt64(8, timestamp);
-		addScore.BindString(9, chart.hash);
+		addScore.BindInt(1, score->score);
+		addScore.BindInt(2, score->crit);
+		addScore.BindInt(3, score->almost);
+		addScore.BindInt(4, score->miss);
+		addScore.BindDouble(5, score->gauge);
+		addScore.BindInt(6, score->gameflags);
+		addScore.BindString(7, score->replayPath);
+		addScore.BindInt64(8, score->timestamp);
+		addScore.BindString(9, score->chartHash);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -854,6 +849,23 @@ public:
 		uint32 selection = Random::IntRange(0, (int32)m_charts.size() - 1);
 		std::advance(it, selection);
 		return it->second;
+	}
+
+	// TODO: Research thread pausing more
+	// ugly but should work
+	void PauseSearching() {
+		if (m_paused)
+			return;
+
+		m_paused = true;
+	}
+
+	void ResumeSearching() {
+		if (!m_paused)
+			return;
+
+		m_paused = false;
+		m_cvPause.notify_all();
 	}
 
 private:
@@ -1113,6 +1125,12 @@ private:
 			// Process scanned files
 			for(auto f : fileList)
 			{
+				if (m_paused)
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
 				if(!m_searching)
 					break;
 
@@ -1204,6 +1222,8 @@ private:
 		m_outer.OnSearchStatusUpdated.Call("");
 		m_searching = false;
 	}
+
+
 };
 
 void MapDatabase::FinishInit()
@@ -1237,6 +1257,14 @@ bool MapDatabase::IsSearching() const
 void MapDatabase::StartSearching()
 {
 	m_impl->StartSearching();
+}
+void MapDatabase::PauseSearching()
+{
+	m_impl->PauseSearching();
+}
+void MapDatabase::ResumeSearching()
+{
+	m_impl->ResumeSearching();
 }
 void MapDatabase::StopSearching()
 {
@@ -1287,9 +1315,9 @@ void MapDatabase::RemoveSearchPath(const String& path)
 {
 	m_impl->RemoveSearchPath(path);
 }
-void MapDatabase::AddScore(const ChartIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+void MapDatabase::AddScore(ScoreIndex* score)
 {
-	m_impl->AddScore(diff, score, crit, almost, miss, gauge, gameflags, simpleHitStats, timestamp);
+	m_impl->AddScore(score);
 }
 ChartIndex* MapDatabase::GetRandomChart()
 {
