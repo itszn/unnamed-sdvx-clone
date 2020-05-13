@@ -1427,7 +1427,7 @@ public:
 				"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
 			if (!copyDefault)
 				return false;
-			String defaultPath = Path::Absolute("skins/default/scripts/songselect/sortwheel.lua");
+			String defaultPath = Path::Absolute("skins/Default/scripts/songselect/sortwheel.lua");
 			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
 			Path::Copy(defaultPath, skinPath);
 			if (!m_sortSelection->Init())
@@ -1457,7 +1457,7 @@ public:
 				"Would you like to copy \"scripts/gamesettingsdialog.lua\" from the default skin to your current skin?");
 			if (!copyDefault)
 				return false;
-			String defaultPath = Path::Normalize(Path::Absolute("skins/default/scripts/gamesettingsdialog.lua"));
+			String defaultPath = Path::Normalize(Path::Absolute("skins/Default/scripts/gamesettingsdialog.lua"));
 			String skinPath = Path::Normalize(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/gamesettingsdialog.lua"));
 			Path::Copy(defaultPath, skinPath);
 			if (!m_settDiag.Init())
