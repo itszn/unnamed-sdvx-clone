@@ -10,6 +10,7 @@
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <condition_variable>
 using std::thread;
 using std::mutex;
 using namespace std;
@@ -23,7 +24,7 @@ public:
 	thread m_thread;
 	condition_variable m_cvPause;
 	mutex m_pauseMutex;
-	std::atomic<bool> m_paused = false;
+	std::atomic<bool> m_paused;
 	bool m_searching = false;
 	bool m_interruptSearch = false;
 	Set<String> m_searchPaths;
@@ -83,7 +84,7 @@ public:
 			Logf("Failed to open database [%s]", Logger::Warning, databasePath);
 			assert(false);
 		}
-
+		m_paused.store(false);
 		bool rebuild = false;
 		bool update = false;
 		DBStatement versionQuery = m_database.Query("SELECT version FROM `Database`");
@@ -854,17 +855,17 @@ public:
 	// TODO: Research thread pausing more
 	// ugly but should work
 	void PauseSearching() {
-		if (m_paused)
+		if (m_paused.load())
 			return;
 
-		m_paused = true;
+		m_paused.store(true);
 	}
 
 	void ResumeSearching() {
-		if (!m_paused)
+		if (!m_paused.load())
 			return;
 
-		m_paused = false;
+		m_paused.store(false);
 		m_cvPause.notify_all();
 	}
 
@@ -1125,7 +1126,7 @@ private:
 			// Process scanned files
 			for(auto f : fileList)
 			{
-				if (m_paused)
+				if (m_paused.load())
 				{
 					unique_lock<mutex> lock(m_pauseMutex);
 					m_cvPause.wait(lock);
