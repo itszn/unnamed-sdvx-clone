@@ -688,13 +688,11 @@ void Scoring::m_UpdateTicks()
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-						float posDelta = (laserObject->points[1] - laserPositions[buttonCode - 6]) * dirSign;
 						if (autoplay)
 						{
 							inputSign = dirSign;
-							posDelta = 1;
 						}
-						if (dirSign == inputSign && delta > -10 && posDelta >= -laserDistanceLeniency)
+						if (dirSign == inputSign && delta > -10)
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -735,8 +733,7 @@ void Scoring::m_UpdateTicks()
 				// Check if slam hit
 				float dirSign = Math::Sign(laserObject->GetDirection());
 				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-				float posDelta = (laserObject->points[1] - laserPositions[buttonCode - 6]) * dirSign;
-				if (dirSign == inputSign && posDelta >= -laserDistanceLeniency)
+				if (dirSign == inputSign)
 				{
 					m_TickHit(tick, buttonCode);
 					HitStat* stat = new HitStat(tick->object);
