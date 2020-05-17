@@ -12,6 +12,7 @@
 #include "Shared/Time.hpp"
 #include "json.hpp"
 #include "CollectionDialog.hpp"
+#include <Beatmap/TinySHA1.hpp>
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -285,8 +286,34 @@ public:
 		{
 			ScoreIndex* newScore = new ScoreIndex();
 			auto chart = game->GetChartIndex();
+			String hash = chart->hash; //If chart file can't be opened, use existing hash.
 
-			Path::CreateDir(Path::Absolute("replays/" + chart->hash));
+
+			File chartFile;
+			if (chartFile.OpenRead(chart->path))
+			{
+				char data_buffer[0x80];
+				uint32_t digest[5];
+				sha1::SHA1 s;
+
+				size_t amount_read = 0;
+				size_t read_size;
+				do
+				{
+					read_size = chartFile.Read(data_buffer, sizeof(data_buffer));
+					amount_read += read_size;
+					s.processBytes(data_buffer, read_size);
+				} while (read_size != 0);
+
+				s.getDigest(digest);
+				hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+			}
+			else 
+			{
+				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Warning);
+			}
+
+			Path::CreateDir(Path::Absolute("replays/" + hash));
 			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
 			File replayFile;
 
@@ -304,7 +331,7 @@ public:
 			newScore->gameflags = (uint32)m_flags;
 			newScore->timestamp = Shared::Time::Now().Data();
 			newScore->replayPath = replayPath;
-			newScore->chartHash = chart->hash;
+			newScore->chartHash = hash;
 
 			m_mapDatabase.AddScore(newScore);
 
