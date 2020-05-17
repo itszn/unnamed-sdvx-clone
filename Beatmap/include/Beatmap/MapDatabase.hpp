@@ -27,6 +27,9 @@ struct ScoreIndex
 	String replayPath;
 	String chartHash;
 	uint64 timestamp;
+	String userName;
+	String userId;
+	bool localScore;
 };
 
 
@@ -72,6 +75,7 @@ struct ChartIndex
 	int32 preview_offset;
 	int32 preview_length;
 	uint64 lwt;
+	int32 custom_offset = 0;
 	Vector<ScoreIndex*> scores;
 };
 
@@ -130,6 +134,7 @@ public:
 	void AddSearchPath(const String& path);
 	void AddScore(ScoreIndex* score);
 	void RemoveSearchPath(const String& path);
+	void UpdateChartOffset(const ChartIndex* chart);
 
 
 	Delegate<String> OnSearchStatusUpdated;

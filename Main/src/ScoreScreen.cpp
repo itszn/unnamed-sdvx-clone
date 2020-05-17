@@ -332,6 +332,7 @@ public:
 			newScore->timestamp = Shared::Time::Now().Data();
 			newScore->replayPath = replayPath;
 			newScore->chartHash = hash;
+			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 
 			m_mapDatabase.AddScore(newScore);
 

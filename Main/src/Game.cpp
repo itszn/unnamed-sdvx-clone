@@ -340,7 +340,13 @@ public:
 		ApplyAudioLeadin();
 
 		// Load audio offset
-		m_audioOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+		int songOffset = 0;
+		if (m_chartIndex)
+		{
+			songOffset = m_chartIndex->custom_offset;
+		}
+
+		m_audioOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset) + songOffset;
 		m_playback.audioOffset = m_audioOffset;
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);

@@ -1395,6 +1395,30 @@ public:
 		m_dbUpdateScreen = NULL;
 	}
 
+	String m_getCurrentChartName()
+	{
+
+	}
+
+	void m_SetCurrentChartOffset(int newValue)
+	{
+		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+		if (chart)
+		{
+			chart->custom_offset = newValue;
+			m_mapDatabase->UpdateChartOffset(chart);
+		}
+	}
+
+	void m_GetCurrentChartOffset(int &value)
+	{
+		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+		if (chart)
+		{
+			value = m_selectionWheel->GetSelectedChart()->custom_offset;
+		}
+	}
+
 	bool AsyncFinalize() override
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
@@ -1466,6 +1490,20 @@ public:
 				return false;
 			}
 		}
+
+		GameplaySettingsDialog::Tab songTab = std::make_unique<GameplaySettingsDialog::TabData>();
+		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>();
+		songTab->name = "Song";
+		songOffsetSetting->name = "Song Offset";
+		songOffsetSetting->type = SettingType::Integer;
+		songOffsetSetting->intSetting.val = 0;
+		songOffsetSetting->intSetting.min = -200;
+		songOffsetSetting->intSetting.max = 200;
+		songOffsetSetting->intSetting.setter.Add(this, &SongSelect_Impl::m_SetCurrentChartOffset);
+		songOffsetSetting->intSetting.getter.Add(this, &SongSelect_Impl::m_GetCurrentChartOffset);
+		songTab->settings.push_back(std::move(songOffsetSetting));
+		m_settDiag.AddTab(std::move(songTab));
+		
 
 		if (m_hasCollDiag)
 		{

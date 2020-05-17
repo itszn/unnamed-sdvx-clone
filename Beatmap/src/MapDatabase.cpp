@@ -73,7 +73,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 13;
+	static const int32 m_version = 14;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
@@ -118,6 +118,9 @@ public:
 		{
 			ProfilerScope $(Utility::Sprintf("Upgrading db (%d -> %d)", gotVersion, m_version));
 
+			//back up old db file
+			Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
+
 			m_outer.OnDatabaseUpdateStarted.Call(1);
 
 
@@ -147,8 +150,6 @@ public:
 			}
 			if (gotVersion == 12) //upgrade from 12 to 13
 			{
-				//back up old db file
-				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
 
 				int diffCount = 1;
 				{
@@ -280,6 +281,19 @@ public:
 				}
 				m_database.Exec("END");
 				m_database.Exec("VACUUM");
+				gotVersion = 13;
+			}
+			if (gotVersion == 13) //from 13 to 14
+			{
+				m_database.Exec("ALTER TABLE Charts ADD COLUMN custom_offset INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN user_name TEXT");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN user_id TEXT");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN local_score INTEGER");
+				m_database.Exec("UPDATE Charts SET custom_offset=0");
+				m_database.Exec("UPDATE Scores SET local_score=1");
+				m_database.Exec("UPDATE Scores SET local_score=1");
+				m_database.Exec("UPDATE Scores SET user_name=\"\"");
+				m_database.Exec("UPDATE Scores SET user_id=\"\"");
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
@@ -535,7 +549,7 @@ public:
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp FROM Scores WHERE chart_hash=?");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score FROM Scores WHERE chart_hash=?");
 
 		Set<FolderIndex*> addedEvents;
 		Set<FolderIndex*> removeEvents;
@@ -615,6 +629,10 @@ public:
 					score->replayPath = scoreScan.StringColumn(7);
 
 					score->timestamp = scoreScan.Int64Column(8);
+					score->userName = scoreScan.StringColumn(9);
+					score->userId = scoreScan.StringColumn(10);
+					score->localScore = scoreScan.IntColumn(11);
+
 					score->chartHash = chart->hash;
 					chart->scores.Add(score);
 				}
@@ -804,7 +822,7 @@ public:
 
 	void AddScore(ScoreIndex* score)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash) VALUES(?,?,?,?,?,?,?,?,?)");
+		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)");
 
 
 		m_database.Exec("BEGIN");
@@ -817,12 +835,20 @@ public:
 		addScore.BindString(7, score->replayPath);
 		addScore.BindInt64(8, score->timestamp);
 		addScore.BindString(9, score->chartHash);
+		addScore.BindString(10, score->userName);
+		addScore.BindString(11, score->userId);
+		addScore.BindInt(12, score->localScore);
 
 		addScore.Step();
 		addScore.Rewind();
 
 		m_database.Exec("END");
 
+	}
+
+	void UpdateChartOffset(const ChartIndex* chart)
+	{
+		m_database.Exec(Utility::Sprintf("UPDATE Charts SET custom_offset=%d WHERE hash LIKE '%s'", chart->custom_offset, *chart->hash));
 	}
 
 	void AddOrRemoveToCollection(const String& name, int32 mapid)
@@ -918,6 +944,7 @@ private:
 			"lwt INTEGER,"
 			"hash TEXT,"
 			"preview_file TEXT,"
+			"custom_offset INTEGER, "
 			"FOREIGN KEY(folderid) REFERENCES folders(rowid))");
 
 		m_database.Exec("CREATE TABLE Scores"
@@ -929,6 +956,9 @@ private:
 			"gameflags INTEGER,"
 			"timestamp INTEGER,"
 			"replay TEXT,"
+			"user_name TEXT,"
+			"user_id TEXT,"
+			"local_score INTEGER,"
 			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"
@@ -979,7 +1009,8 @@ private:
 			",preview_file"
 			",preview_offset"
 			",preview_length"
-			",lwt "
+			",lwt"
+			",custom_offset "
 			"FROM Charts");
 		while(chartScan.StepRow())
 		{
@@ -1004,6 +1035,7 @@ private:
 			chart->preview_offset = chartScan.IntColumn(17);
 			chart->preview_length = chartScan.IntColumn(18);
 			chart->lwt = chartScan.Int64Column(19);
+			chart->custom_offset = chartScan.IntColumn(20);
 
 			// Add existing diff
 			m_charts.Add(chart->id, chart);
@@ -1030,7 +1062,7 @@ private:
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -1046,6 +1078,9 @@ private:
 
 			score->timestamp = scoreScan.Int64Column(8);
 			score->chartHash = scoreScan.StringColumn(9);
+			score->userName = scoreScan.StringColumn(10);
+			score->userId = scoreScan.StringColumn(11);
+			score->localScore = scoreScan.IntColumn(12);
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);
@@ -1315,6 +1350,10 @@ void MapDatabase::AddSearchPath(const String& path)
 void MapDatabase::RemoveSearchPath(const String& path)
 {
 	m_impl->RemoveSearchPath(path);
+}
+void MapDatabase::UpdateChartOffset(const ChartIndex* chart)
+{
+	m_impl->UpdateChartOffset(chart);
 }
 void MapDatabase::AddScore(ScoreIndex* score)
 {
