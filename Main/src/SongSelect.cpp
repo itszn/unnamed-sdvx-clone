@@ -289,6 +289,8 @@ public:
 			g_application->DisposeLua(m_lua);
 	}
 	uint32 GetCurrentSongIndex() {
+		if (m_sortVec.empty())
+			return -1;
 		return m_sortVec[m_selectedSortIndex];
 	}
 	void OnFoldersAdded(Vector<FolderIndex *> maps)

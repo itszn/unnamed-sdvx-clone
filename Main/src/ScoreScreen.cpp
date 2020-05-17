@@ -333,6 +333,7 @@ public:
 			newScore->replayPath = replayPath;
 			newScore->chartHash = hash;
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
+			newScore->localScore = true;
 
 			m_mapDatabase.AddScore(newScore);
 
