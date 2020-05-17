@@ -110,7 +110,10 @@ public:
 	}
 	virtual void OnSuspend()
 	{
-		m_tickableToLoad = nullptr;
+		if (m_tickableToLoad && m_transition == End)
+		{
+			m_tickableToLoad = nullptr;
+		}
 	}
 
 	virtual bool Init()

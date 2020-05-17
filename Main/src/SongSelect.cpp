@@ -1408,7 +1408,6 @@ public:
 		if (chart)
 		{
 			chart->custom_offset = newValue;
-			m_mapDatabase->UpdateChartOffset(chart);
 		}
 	}
 
@@ -1636,7 +1635,7 @@ public:
 				}
 
 				ChartIndex *chart = m_selectionWheel->GetSelectedChart();
-
+				m_mapDatabase->UpdateChartOffset(chart);
 				Game *game = Game::Create(chart, Game::FlagsFromSettings());
 				if (!game)
 				{
