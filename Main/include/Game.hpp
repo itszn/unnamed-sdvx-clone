@@ -43,8 +43,8 @@ protected:
 	Game() = default;
 public:
 	virtual ~Game() = default;
-	static Game* Create(const ChartIndex& mapPath, GameFlags flags);
-	static Game* Create(MultiplayerScreen*, const ChartIndex& mapPath, GameFlags flags);
+	static Game* Create(ChartIndex* mapPath, GameFlags flags);
+	static Game* Create(MultiplayerScreen*, ChartIndex* mapPath, GameFlags flags);
 	static Game* Create(const String& mapPath, GameFlags flags);
 	static GameFlags FlagsFromSettings();
 
@@ -63,7 +63,7 @@ public:
 	// Map jacket image
 	virtual Texture GetJacketImage() = 0;
 	// Difficulty data
-	virtual const ChartIndex& GetChartIndex() const = 0;
+	virtual ChartIndex* GetChartIndex() = 0;
 	// The beatmap
 	virtual Ref<class Beatmap> GetBeatmap() = 0;
 	// Song was manually ended

@@ -12,6 +12,7 @@
 #include "Shared/Time.hpp"
 #include "json.hpp"
 #include "CollectionDialog.hpp"
+#include <Beatmap/TinySHA1.hpp>
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -57,7 +58,7 @@ private:
 	Texture m_graphTex;
 	GameFlags m_flags;
 	CollectionDialog m_collDiag;
-	ChartIndex m_chartIndex;
+	ChartIndex* m_chartIndex;
 
 	void m_PushStringToTable(const char* name, String data)
 	{
@@ -93,7 +94,7 @@ private:
 		{
 			if (m_collDiag.IsInitialized())
 			{
-				m_collDiag.Open(m_chartIndex);
+				m_collDiag.Open(*m_chartIndex);
 			}
 		}
 
@@ -217,10 +218,9 @@ public:
 		String uid, Vector<nlohmann::json> const* multistats)
 	{
 		m_displayIndex = 0;
-
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
-		m_highScores = game->GetChartIndex().scores;
+		m_highScores = game->GetChartIndex()->scores;
 		m_autoButtons = scoring.autoplayButtons;
 		m_chartIndex = game->GetChartIndex();
 
@@ -282,17 +282,66 @@ public:
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
-		if (!m_autoplay && !m_autoButtons && game->GetChartIndex().folderId!= -1 && !game->GetManualExit())
+		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && !game->GetManualExit())
 		{
-			m_mapDatabase.AddScore(game->GetChartIndex(),
-				m_score,
-				m_categorizedHits[2],
-				m_categorizedHits[1],
-				m_categorizedHits[0],
-				m_finalGaugeValue,
-				(uint32)m_flags,
-				m_simpleHitStats,
-				Shared::Time::Now().Data());
+			ScoreIndex* newScore = new ScoreIndex();
+			auto chart = game->GetChartIndex();
+			String hash = chart->hash; //If chart file can't be opened, use existing hash.
+
+
+			File chartFile;
+			if (chartFile.OpenRead(chart->path))
+			{
+				char data_buffer[0x80];
+				uint32_t digest[5];
+				sha1::SHA1 s;
+
+				size_t amount_read = 0;
+				size_t read_size;
+				do
+				{
+					read_size = chartFile.Read(data_buffer, sizeof(data_buffer));
+					amount_read += read_size;
+					s.processBytes(data_buffer, read_size);
+				} while (read_size != 0);
+
+				s.getDigest(digest);
+				hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+			}
+			else 
+			{
+				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Warning);
+			}
+
+			Path::CreateDir(Path::Absolute("replays/" + hash));
+			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+			File replayFile;
+
+			if (replayFile.OpenWrite(replayPath))
+			{
+				FileWriter fw(replayFile);
+				fw.SerializeObject(m_simpleHitStats);
+			}
+
+			newScore->score = m_score;
+			newScore->crit = m_categorizedHits[2];
+			newScore->almost = m_categorizedHits[1];
+			newScore->miss = m_categorizedHits[0];
+			newScore->gauge = m_finalGaugeValue;
+			newScore->gameflags = (uint32)m_flags;
+			newScore->timestamp = Shared::Time::Now().Data();
+			newScore->replayPath = replayPath;
+			newScore->chartHash = hash;
+			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
+			newScore->localScore = true;
+
+			m_mapDatabase.AddScore(newScore);
+
+		 	chart->scores.Add(newScore);
+			chart->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
+			{
+				return a->score > b->score;
+			});
 		}
 
 

@@ -192,7 +192,7 @@ void GameplaySettingsDialog::Tick(float deltaTime)
     m_knobAdvance[0] -= truncf(m_knobAdvance[0]);
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
-    if (currentSetting->type == Floating)
+    if (currentSetting->type == SettingType::Floating)
     {
         float advance = m_knobAdvance[1] * currentSetting->floatSetting.mult;
         if (g_input.GetButton(Input::Button::BT_0))
@@ -356,6 +356,11 @@ bool GameplaySettingsDialog::IsActive()
 bool GameplaySettingsDialog::IsInitialized()
 {
     return m_isInitialized;
+}
+
+void GameplaySettingsDialog::AddTab(Tab tab)
+{
+    m_tabs.push_back(std::move(tab));
 }
 
 void GameplaySettingsDialog::m_OnButtonPressed(Input::Button button)

@@ -4,29 +4,17 @@
 #include "ApplicationTickable.hpp"
 #include "GameConfig.hpp"
 
+enum SettingType
+{
+    Integer,
+    Floating,
+    Toggle,
+    Enum
+};
+
 class GameplaySettingsDialog
 {
 public:
-    ~GameplaySettingsDialog();
-    bool Init();
-    void Tick(float deltaTime);
-    void Render(float deltaTime);
-    void Open();
-
-    //Call to start closing the dialog
-    void Close();
-    bool IsActive();
-    bool IsInitialized();
-
-private:
-    enum SettingType
-    {
-        Integer,
-        Floating,
-        Toggle,
-        Enum
-    };
-
     typedef struct SettingData
     {
         String name;
@@ -75,7 +63,21 @@ private:
     } TabData;
     typedef std::unique_ptr<TabData> Tab;
 
-    void m_ChangeState();
+
+    ~GameplaySettingsDialog();
+    bool Init();
+    void Tick(float deltaTime);
+    void Render(float deltaTime);
+    void Open();
+
+    //Call to start closing the dialog
+    void Close();
+    bool IsActive();
+    bool IsInitialized();
+    void AddTab(Tab tab);
+
+
+private:
     void m_SetTables();
     void m_AdvanceSelection(int steps);
     void m_AdvanceTab(int steps);
@@ -89,9 +91,6 @@ private:
 
     template <typename EnumClass>
     Setting m_CreateEnumSetting(GameConfigKeys key, String name);
-
-    //Call when closing has been completed
-    void m_Finish();
 
     struct lua_State *m_lua = nullptr;
     int m_currentId;

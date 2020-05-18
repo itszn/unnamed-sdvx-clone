@@ -110,7 +110,10 @@ public:
 	}
 	virtual void OnSuspend()
 	{
-		m_tickableToLoad = nullptr;
+		if (m_tickableToLoad && m_transition == End)
+		{
+			m_tickableToLoad = nullptr;
+		}
 	}
 
 	virtual bool Init()
@@ -196,12 +199,12 @@ public:
 
 		if (m_songlua)
 		{
-			const ChartIndex &chart = next->GetChartIndex();
-			String path = Path::RemoveLast(chart.path);
+			ChartIndex* chart = next->GetChartIndex();
+			String path = Path::RemoveLast(chart->path);
 
 			if (m_jacketImg)
 				nvgDeleteImage(g_application->GetVGContext(), m_jacketImg);
-			m_jacketImg = nvgCreateImage(g_application->GetVGContext(), (path + Path::sep + chart.jacket_path).c_str(), 0);
+			m_jacketImg = nvgCreateImage(g_application->GetVGContext(), (path + Path::sep + chart->jacket_path).c_str(), 0);
 
 			auto pushStringToTable = [this](const char *name, String data) {
 				lua_pushstring(m_songlua, name);
@@ -217,13 +220,13 @@ public:
 
 			lua_newtable(m_songlua);
 			{
-				pushStringToTable("title", chart.title);
-				pushStringToTable("artist", chart.artist);
-				pushStringToTable("effector", chart.effector);
-				pushStringToTable("illustrator", chart.illustrator);
-				pushStringToTable("bpm", chart.bpm);
-				pushIntToTable("level", chart.level);
-				pushIntToTable("difficulty", chart.diff_index);
+				pushStringToTable("title", chart->title);
+				pushStringToTable("artist", chart->artist);
+				pushStringToTable("effector", chart->effector);
+				pushStringToTable("illustrator", chart->illustrator);
+				pushStringToTable("bpm", chart->bpm);
+				pushIntToTable("level", chart->level);
+				pushIntToTable("difficulty", chart->diff_index);
 				pushIntToTable("jacket", m_jacketImg);
 			}
 			lua_setglobal(m_songlua, "song");

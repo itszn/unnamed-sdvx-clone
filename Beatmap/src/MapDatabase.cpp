@@ -9,6 +9,8 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <atomic>
+#include <condition_variable>
 using std::thread;
 using std::mutex;
 using namespace std;
@@ -20,6 +22,9 @@ public:
 	MapDatabase& m_outer;
 
 	thread m_thread;
+	condition_variable m_cvPause;
+	mutex m_pauseMutex;
+	std::atomic<bool> m_paused;
 	bool m_searching = false;
 	bool m_interruptSearch = false;
 	Set<String> m_searchPaths;
@@ -68,7 +73,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 13;
+	static const int32 m_version = 14;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
@@ -79,7 +84,7 @@ public:
 			Logf("Failed to open database [%s]", Logger::Warning, databasePath);
 			assert(false);
 		}
-
+		m_paused.store(false);
 		bool rebuild = false;
 		bool update = false;
 		DBStatement versionQuery = m_database.Query("SELECT version FROM `Database`");
@@ -113,6 +118,9 @@ public:
 		{
 			ProfilerScope $(Utility::Sprintf("Upgrading db (%d -> %d)", gotVersion, m_version));
 
+			//back up old db file
+			Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
+
 			m_outer.OnDatabaseUpdateStarted.Call(1);
 
 
@@ -142,8 +150,6 @@ public:
 			}
 			if (gotVersion == 12) //upgrade from 12 to 13
 			{
-				//back up old db file
-				Path::Copy(Path::Absolute("maps.db"), Path::Absolute("maps.db_" + Shared::Time::Now().ToString() + ".bak"));
 
 				int diffCount = 1;
 				{
@@ -275,6 +281,19 @@ public:
 				}
 				m_database.Exec("END");
 				m_database.Exec("VACUUM");
+				gotVersion = 13;
+			}
+			if (gotVersion == 13) //from 13 to 14
+			{
+				m_database.Exec("ALTER TABLE Charts ADD COLUMN custom_offset INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN user_name TEXT");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN user_id TEXT");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN local_score INTEGER");
+				m_database.Exec("UPDATE Charts SET custom_offset=0");
+				m_database.Exec("UPDATE Scores SET local_score=1");
+				m_database.Exec("UPDATE Scores SET local_score=1");
+				m_database.Exec("UPDATE Scores SET user_name=\"\"");
+				m_database.Exec("UPDATE Scores SET user_id=\"\"");
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
@@ -311,12 +330,14 @@ public:
 		Update();
 		// Create initial data set to compare to when evaluating if a file is added/removed/updated
 		m_LoadInitialData();
+		ResumeSearching();
 		m_interruptSearch = false;
 		m_searching = true;
 		m_thread = thread(&MapDatabase_Impl::m_SearchThread, this);
 	}
 	void StopSearching()
 	{
+		ResumeSearching();
 		m_interruptSearch = true;
 		m_searching = false;
 		if(m_thread.joinable())
@@ -528,7 +549,7 @@ public:
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp FROM Scores WHERE chart_hash=?");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score FROM Scores WHERE chart_hash=?");
 
 		Set<FolderIndex*> addedEvents;
 		Set<FolderIndex*> removeEvents;
@@ -608,6 +629,10 @@ public:
 					score->replayPath = scoreScan.StringColumn(7);
 
 					score->timestamp = scoreScan.Int64Column(8);
+					score->userName = scoreScan.StringColumn(9);
+					score->userId = scoreScan.StringColumn(10);
+					score->localScore = scoreScan.IntColumn(11);
+
 					score->chartHash = chart->hash;
 					chart->scores.Add(score);
 				}
@@ -795,38 +820,35 @@ public:
 		}
 	}
 
-	void AddScore(const ChartIndex& chart, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+	void AddScore(ScoreIndex* score)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash) VALUES(?,?,?,?,?,?,?,?,?)");
-		Path::CreateDir(Path::Absolute("replays/" + chart.hash));
-		String replayPath = Path::Normalize(Path::Absolute( "replays/" + chart.hash + "/" + Shared::Time::Now().ToString() + ".urf"));
-		File replayFile;
-		
-		if (replayFile.OpenWrite(replayPath))
-		{
-			FileWriter fw(replayFile);
-			fw.SerializeObject(simpleHitStats);
-		}
+		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)");
+
 
 		m_database.Exec("BEGIN");
-
-		
-
-		addScore.BindInt(1, score);
-		addScore.BindInt(2, crit);
-		addScore.BindInt(3, almost);
-		addScore.BindInt(4, miss);
-		addScore.BindDouble(5, gauge);
-		addScore.BindInt(6, gameflags);
-		addScore.BindString(7, replayPath);
-		addScore.BindInt64(8, timestamp);
-		addScore.BindString(9, chart.hash);
+		addScore.BindInt(1, score->score);
+		addScore.BindInt(2, score->crit);
+		addScore.BindInt(3, score->almost);
+		addScore.BindInt(4, score->miss);
+		addScore.BindDouble(5, score->gauge);
+		addScore.BindInt(6, score->gameflags);
+		addScore.BindString(7, score->replayPath);
+		addScore.BindInt64(8, score->timestamp);
+		addScore.BindString(9, score->chartHash);
+		addScore.BindString(10, score->userName);
+		addScore.BindString(11, score->userId);
+		addScore.BindInt(12, score->localScore);
 
 		addScore.Step();
 		addScore.Rewind();
 
 		m_database.Exec("END");
 
+	}
+
+	void UpdateChartOffset(const ChartIndex* chart)
+	{
+		m_database.Exec(Utility::Sprintf("UPDATE Charts SET custom_offset=%d WHERE hash LIKE '%s'", chart->custom_offset, *chart->hash));
 	}
 
 	void AddOrRemoveToCollection(const String& name, int32 mapid)
@@ -854,6 +876,23 @@ public:
 		uint32 selection = Random::IntRange(0, (int32)m_charts.size() - 1);
 		std::advance(it, selection);
 		return it->second;
+	}
+
+	// TODO: Research thread pausing more
+	// ugly but should work
+	void PauseSearching() {
+		if (m_paused.load())
+			return;
+
+		m_paused.store(true);
+	}
+
+	void ResumeSearching() {
+		if (!m_paused.load())
+			return;
+
+		m_paused.store(false);
+		m_cvPause.notify_all();
 	}
 
 private:
@@ -905,6 +944,7 @@ private:
 			"lwt INTEGER,"
 			"hash TEXT,"
 			"preview_file TEXT,"
+			"custom_offset INTEGER, "
 			"FOREIGN KEY(folderid) REFERENCES folders(rowid))");
 
 		m_database.Exec("CREATE TABLE Scores"
@@ -916,6 +956,9 @@ private:
 			"gameflags INTEGER,"
 			"timestamp INTEGER,"
 			"replay TEXT,"
+			"user_name TEXT,"
+			"user_id TEXT,"
+			"local_score INTEGER,"
 			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"
@@ -966,7 +1009,8 @@ private:
 			",preview_file"
 			",preview_offset"
 			",preview_length"
-			",lwt "
+			",lwt"
+			",custom_offset "
 			"FROM Charts");
 		while(chartScan.StepRow())
 		{
@@ -991,6 +1035,7 @@ private:
 			chart->preview_offset = chartScan.IntColumn(17);
 			chart->preview_length = chartScan.IntColumn(18);
 			chart->lwt = chartScan.Int64Column(19);
+			chart->custom_offset = chartScan.IntColumn(20);
 
 			// Add existing diff
 			m_charts.Add(chart->id, chart);
@@ -1017,7 +1062,7 @@ private:
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -1033,6 +1078,9 @@ private:
 
 			score->timestamp = scoreScan.Int64Column(8);
 			score->chartHash = scoreScan.StringColumn(9);
+			score->userName = scoreScan.StringColumn(10);
+			score->userId = scoreScan.StringColumn(11);
+			score->localScore = scoreScan.IntColumn(12);
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);
@@ -1113,6 +1161,12 @@ private:
 			// Process scanned files
 			for(auto f : fileList)
 			{
+				if (m_paused.load())
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
 				if(!m_searching)
 					break;
 
@@ -1204,6 +1258,8 @@ private:
 		m_outer.OnSearchStatusUpdated.Call("");
 		m_searching = false;
 	}
+
+
 };
 
 void MapDatabase::FinishInit()
@@ -1237,6 +1293,14 @@ bool MapDatabase::IsSearching() const
 void MapDatabase::StartSearching()
 {
 	m_impl->StartSearching();
+}
+void MapDatabase::PauseSearching()
+{
+	m_impl->PauseSearching();
+}
+void MapDatabase::ResumeSearching()
+{
+	m_impl->ResumeSearching();
 }
 void MapDatabase::StopSearching()
 {
@@ -1287,9 +1351,13 @@ void MapDatabase::RemoveSearchPath(const String& path)
 {
 	m_impl->RemoveSearchPath(path);
 }
-void MapDatabase::AddScore(const ChartIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp)
+void MapDatabase::UpdateChartOffset(const ChartIndex* chart)
 {
-	m_impl->AddScore(diff, score, crit, almost, miss, gauge, gameflags, simpleHitStats, timestamp);
+	m_impl->UpdateChartOffset(chart);
+}
+void MapDatabase::AddScore(ScoreIndex* score)
+{
+	m_impl->AddScore(score);
 }
 ChartIndex* MapDatabase::GetRandomChart()
 {

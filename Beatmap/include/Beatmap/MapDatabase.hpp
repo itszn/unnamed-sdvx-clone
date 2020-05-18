@@ -27,6 +27,9 @@ struct ScoreIndex
 	String replayPath;
 	String chartHash;
 	uint64 timestamp;
+	String userName;
+	String userId;
+	bool localScore;
 };
 
 
@@ -72,6 +75,7 @@ struct ChartIndex
 	int32 preview_offset;
 	int32 preview_length;
 	uint64 lwt;
+	int32 custom_offset = 0;
 	Vector<ScoreIndex*> scores;
 };
 
@@ -105,6 +109,8 @@ public:
 
 	bool IsSearching() const;
 	void StartSearching();
+	void PauseSearching();
+	void ResumeSearching();
 	void StopSearching();
 
 	// Grab all the maps, with their id's
@@ -126,8 +132,9 @@ public:
 	//Attempts to add to collection, if that fails attempt to remove from collection
 	void AddOrRemoveToCollection(const String& name, int32 mapid);
 	void AddSearchPath(const String& path);
-	void AddScore(const ChartIndex& diff, int score, int crit, int almost, int miss, float gauge, uint32 gameflags, Vector<SimpleHitStat> simpleHitStats, uint64 timestamp);
+	void AddScore(ScoreIndex* score);
 	void RemoveSearchPath(const String& path);
+	void UpdateChartOffset(const ChartIndex* chart);
 
 
 	Delegate<String> OnSearchStatusUpdated;

@@ -371,7 +371,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 		flags = flags | GameFlags::Mirror;
 
 	// Create the game using the Create that takes the MultiplayerScreen class
-	Game* game = Game::Create(this, *(chart), flags);
+	Game* game = Game::Create(this, chart, flags);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Error);

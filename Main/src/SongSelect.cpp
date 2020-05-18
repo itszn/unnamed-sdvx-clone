@@ -289,6 +289,8 @@ public:
 			g_application->DisposeLua(m_lua);
 	}
 	uint32 GetCurrentSongIndex() {
+		if (m_sortVec.empty())
+			return -1;
 		return m_sortVec[m_selectedSortIndex];
 	}
 	void OnFoldersAdded(Vector<FolderIndex *> maps)
@@ -361,22 +363,19 @@ public:
 			return;
 
 		//set all songs
-		m_SetLuaMaps("allSongs", m_maps);
-		lua_getglobal(m_lua, "songs_changed");
-		if (!lua_isfunction(m_lua, -1))
-		{
-			lua_pop(m_lua, 1);
-			return;
-		}
-		lua_pushboolean(m_lua, true);
-		if (lua_pcall(m_lua, 1, 0, 0) != 0)
-		{
-			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
-			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
-		}
+		m_SetAllSongs();
 
 		// Filter will take care of sorting and setting lua
 		OnSongsChanged.Call();
+	}
+	void ResetLuaTables()
+	{
+		const SortType sort = GetSortType();
+		if (sort == SortType::SCORE_ASC || sort == SortType::SCORE_DESC)
+			m_doSort();
+
+		m_SetAllSongs(); //for force calculation
+		m_SetCurrentSongs(); //for displaying the correct songs
 	}
 	void OnSearchStatusUpdated(String status)
 	{
@@ -535,7 +534,9 @@ public:
 
 	SortType GetSortType() const
 	{
-		return m_currentSort->GetType();
+		if (m_currentSort)
+			return m_currentSort->GetType();
+		return SortType::TITLE_ASC;
 	}
 
 	void SetSort(SongSort *sort)
@@ -550,7 +551,7 @@ public:
 
 		// When resorting, jump back to the top
 		SelectMapBySortIndex(0);
-		m_SetLuaMaps();
+		m_SetCurrentSongs();
 	}
 
 	// Set display filter
@@ -575,7 +576,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(true);
 
-		m_SetLuaMaps();
+		m_SetCurrentSongs();
 	}
 	void SetFilter(SongFilter *filter[2])
 	{
@@ -602,7 +603,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(isFiltered);
 
-		m_SetLuaMaps();
+		m_SetCurrentSongs();
 	}
 	void ClearFilter()
 	{
@@ -622,7 +623,7 @@ public:
 		// Try to go back to selected song in new sort
 		SelectLastMapIndex(true);
 
-		m_SetLuaMaps();
+		m_SetCurrentSongs();
 	}
 
 	FolderIndex *GetSelection() const
@@ -735,9 +736,26 @@ private:
 			assert(false);
 		}
 	}
-	void m_SetLuaMaps()
+	void m_SetAllSongs()
 	{
-		m_SetLuaMaps("songs", m_SourceCollection());
+		//set all songs
+		m_SetLuaMaps("allSongs", m_maps, false);
+		lua_getglobal(m_lua, "songs_changed");
+		if (!lua_isfunction(m_lua, -1))
+		{
+			lua_pop(m_lua, 1);
+			return;
+		}
+		lua_pushboolean(m_lua, true);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
+		}
+	}
+	void m_SetCurrentSongs()
+	{
+		m_SetLuaMaps("songs", m_SourceCollection(), true);
 
 		lua_getglobal(m_lua, "songs_changed");
 		if (!lua_isfunction(m_lua, -1))
@@ -753,66 +771,83 @@ private:
 		}
 	}
 
-	void m_SetLuaMaps(const char *key, const Map<int32, SongSelectIndex> &collection)
+	void m_SetLuaMaps(const char *key, const Map<int32, SongSelectIndex> &collection, bool sorted)
 	{
 		lua_getglobal(m_lua, "songwheel");
 		lua_pushstring(m_lua, key);
 		lua_newtable(m_lua);
 		int songIndex = 0;
 
-		// sortVec should only have the current maps in the collection
-		for (auto &mapIndex : m_sortVec)
+		
+		if (sorted)
 		{
-			// Grab the song for this sort index
-			SongSelectIndex song = collection.find(mapIndex)->second;
-
-			lua_pushinteger(m_lua, ++songIndex);
-			lua_newtable(m_lua);
-			m_PushStringToTable("title", song.GetCharts()[0]->title.c_str());
-			m_PushStringToTable("artist", song.GetCharts()[0]->artist.c_str());
-			m_PushStringToTable("bpm", song.GetCharts()[0]->bpm.c_str());
-			m_PushIntToTable("id", song.GetFolder()->id);
-			m_PushStringToTable("path", song.GetFolder()->path.c_str());
-			int diffIndex = 0;
-			lua_pushstring(m_lua, "difficulties");
-			lua_newtable(m_lua);
-			for (auto diff : song.GetCharts())
+			// sortVec should only have the current maps in the collection
+			for (auto& mapIndex : m_sortVec)
 			{
-				lua_pushinteger(m_lua, ++diffIndex);
+				// Grab the song for this sort index
+				SongSelectIndex song = collection.find(mapIndex)->second;
+				m_PushSongToLua(song, ++songIndex);
+			}
+		}
+		else {
+			
+			for (auto& song : collection)
+			{
+				m_PushSongToLua(song.second, ++songIndex);
+			}
+		}
+		lua_settable(m_lua, -3);
+		lua_setglobal(m_lua, "songwheel");
+	}
+
+	void m_PushSongToLua(SongSelectIndex song, int index)
+	{
+		lua_pushinteger(m_lua, index);
+		lua_newtable(m_lua);
+		m_PushStringToTable("title", song.GetCharts()[0]->title.c_str());
+		m_PushStringToTable("artist", song.GetCharts()[0]->artist.c_str());
+		m_PushStringToTable("bpm", song.GetCharts()[0]->bpm.c_str());
+		m_PushIntToTable("id", song.GetFolder()->id);
+		m_PushStringToTable("path", song.GetFolder()->path.c_str());
+		int diffIndex = 0;
+		lua_pushstring(m_lua, "difficulties");
+		lua_newtable(m_lua);
+		for (auto diff : song.GetCharts())
+		{
+			lua_pushinteger(m_lua, ++diffIndex);
+			lua_newtable(m_lua);
+			m_PushStringToTable("jacketPath", Path::Normalize(song.GetFolder()->path + "/" + diff->jacket_path).c_str());
+			m_PushIntToTable("level", diff->level);
+			m_PushIntToTable("difficulty", diff->diff_index);
+			m_PushIntToTable("id", diff->id);
+			m_PushStringToTable("effector", diff->effector.c_str());
+			m_PushStringToTable("illustrator", diff->illustrator.c_str());
+			m_PushIntToTable("topBadge", Scoring::CalculateBestBadge(diff->scores));
+			lua_pushstring(m_lua, "scores");
+			lua_newtable(m_lua);
+			int scoreIndex = 0;
+			for (auto& score : diff->scores)
+			{
+				lua_pushinteger(m_lua, ++scoreIndex);
 				lua_newtable(m_lua);
-				m_PushStringToTable("jacketPath", Path::Normalize(song.GetFolder()->path + "/" + diff->jacket_path).c_str());
-				m_PushIntToTable("level", diff->level);
-				m_PushIntToTable("difficulty", diff->diff_index);
-				m_PushIntToTable("id", diff->id);
-				m_PushStringToTable("effector", diff->effector.c_str());
-				m_PushStringToTable("illustrator", diff->illustrator.c_str());
-				m_PushIntToTable("topBadge", Scoring::CalculateBestBadge(diff->scores));
-				lua_pushstring(m_lua, "scores");
-				lua_newtable(m_lua);
-				int scoreIndex = 0;
-				for (auto &score : diff->scores)
-				{
-					lua_pushinteger(m_lua, ++scoreIndex);
-					lua_newtable(m_lua);
-					m_PushFloatToTable("gauge", score->gauge);
-					m_PushIntToTable("flags", score->gameflags);
-					m_PushIntToTable("score", score->score);
-					m_PushIntToTable("perfects", score->crit);
-					m_PushIntToTable("goods", score->almost);
-					m_PushIntToTable("misses", score->miss);
-					m_PushIntToTable("timestamp", score->timestamp);
-					m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
-					lua_settable(m_lua, -3);
-				}
-				lua_settable(m_lua, -3);
+				m_PushFloatToTable("gauge", score->gauge);
+				m_PushIntToTable("flags", score->gameflags);
+				m_PushIntToTable("score", score->score);
+				m_PushIntToTable("perfects", score->crit);
+				m_PushIntToTable("goods", score->almost);
+				m_PushIntToTable("misses", score->miss);
+				m_PushIntToTable("timestamp", score->timestamp);
+				m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
 			lua_settable(m_lua, -3);
 		}
 		lua_settable(m_lua, -3);
-		lua_setglobal(m_lua, "songwheel");
+		lua_settable(m_lua, -3);
 	}
+
+
 	// TODO(local): pretty sure this should be m_OnIndexSelected, and we should filter a call to OnMapSelected
 	void m_OnMapSelected(SongSelectIndex index)
 	{
@@ -1362,6 +1397,29 @@ public:
 		m_dbUpdateScreen = NULL;
 	}
 
+	String m_getCurrentChartName()
+	{
+
+	}
+
+	void m_SetCurrentChartOffset(int newValue)
+	{
+		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+		if (chart)
+		{
+			chart->custom_offset = newValue;
+		}
+	}
+
+	void m_GetCurrentChartOffset(int &value)
+	{
+		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+		if (chart)
+		{
+			value = m_selectionWheel->GetSelectedChart()->custom_offset;
+		}
+	}
+
 	bool AsyncFinalize() override
 	{
 		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
@@ -1375,23 +1433,6 @@ public:
 			return false;
 		m_filterSelection->SetMapDB(m_mapDatabase);
 
-		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
-		if (!m_sortSelection->Init())
-		{
-			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
-																						"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
-			if (!copyDefault)
-				return false;
-			String defaultPath = Path::Absolute("skins/default/scripts/songselect/sortwheel.lua");
-			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
-			Path::Copy(defaultPath, skinPath);
-			if (!m_sortSelection->Init())
-			{
-				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default", 2);
-				return false;
-			}
-		}
-		m_sortSelection->AdvanceSelection(0);
 
 		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
 		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
@@ -1402,6 +1443,25 @@ public:
 		m_mapDatabase->StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
+
+		//sort selection
+		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
+		if (!m_sortSelection->Init())
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
+			if (!copyDefault)
+				return false;
+			String defaultPath = Path::Absolute("skins/Default/scripts/songselect/sortwheel.lua");
+			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
+			Path::Copy(defaultPath, skinPath);
+			if (!m_sortSelection->Init())
+			{
+				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default", 2);
+				return false;
+			}
+		}
+
 		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
 		m_selectionWheel->OnFolderSelected.Add(this, &SongSelect_Impl::OnFolderSelected);
@@ -1422,7 +1482,7 @@ public:
 				"Would you like to copy \"scripts/gamesettingsdialog.lua\" from the default skin to your current skin?");
 			if (!copyDefault)
 				return false;
-			String defaultPath = Path::Normalize(Path::Absolute("skins/default/scripts/gamesettingsdialog.lua"));
+			String defaultPath = Path::Normalize(Path::Absolute("skins/Default/scripts/gamesettingsdialog.lua"));
 			String skinPath = Path::Normalize(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/gamesettingsdialog.lua"));
 			Path::Copy(defaultPath, skinPath);
 			if (!m_settDiag.Init())
@@ -1431,6 +1491,20 @@ public:
 				return false;
 			}
 		}
+
+		GameplaySettingsDialog::Tab songTab = std::make_unique<GameplaySettingsDialog::TabData>();
+		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>();
+		songTab->name = "Song";
+		songOffsetSetting->name = "Song Offset";
+		songOffsetSetting->type = SettingType::Integer;
+		songOffsetSetting->intSetting.val = 0;
+		songOffsetSetting->intSetting.min = -200;
+		songOffsetSetting->intSetting.max = 200;
+		songOffsetSetting->intSetting.setter.Add(this, &SongSelect_Impl::m_SetCurrentChartOffset);
+		songOffsetSetting->intSetting.getter.Add(this, &SongSelect_Impl::m_GetCurrentChartOffset);
+		songTab->settings.push_back(std::move(songOffsetSetting));
+		m_settDiag.AddTab(std::move(songTab));
+		
 
 		if (m_hasCollDiag)
 		{
@@ -1561,8 +1635,8 @@ public:
 				}
 
 				ChartIndex *chart = m_selectionWheel->GetSelectedChart();
-
-				Game *game = Game::Create(*chart, Game::FlagsFromSettings());
+				m_mapDatabase->UpdateChartOffset(chart);
+				Game *game = Game::Create(chart, Game::FlagsFromSettings());
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1758,7 +1832,7 @@ public:
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
-				Game *game = Game::Create(*chart, GameFlags::None);
+				Game *game = Game::Create(chart, GameFlags::None);
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Error);
@@ -1921,7 +1995,7 @@ public:
 
 		m_suspended = true;
 		m_previewPlayer.Pause();
-		m_mapDatabase->StopSearching();
+		m_mapDatabase->PauseSearching();
 		if (m_lockMouse)
 			m_lockMouse.Release();
 	}
@@ -1930,9 +2004,8 @@ public:
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;
 		m_previewPlayer.Restore();
-		m_mapDatabase->StartSearching();
-		m_filterSelection->UpdateFilters();
-		OnSearchTermChanged(m_searchInput->input);
+		m_selectionWheel->ResetLuaTables();
+		m_mapDatabase->ResumeSearching();
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
 			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
