@@ -4,6 +4,8 @@
 #include "Shared/Utility.hpp"
 #include "Shared/Vector.hpp"
 
+class BinaryStream;
+
 /*
 	String class, extends std::string
 */
@@ -109,8 +111,9 @@ namespace Utility
 		CP949,
 	};
 
-	StringEncoding DetectEncoding(const char* buffer, const uint32 size);
-	StringEncoding DetectEncoding(class BinaryStream& stream);
+	StringEncoding DetectEncoding(const char* str);
+	inline StringEncoding DetectEncoding(String& str) { return DetectEncoding(str.c_str()); }
+	StringEncoding DetectEncoding(class ::BinaryStream& stream);
 }
 
 /* Template string function implementations */
