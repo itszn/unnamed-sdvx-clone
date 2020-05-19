@@ -96,6 +96,21 @@ namespace Utility
 	String ConvertToUTF8(const WString& unicodeString);
 	// UTF8 to Unicode(wchar's on windows)
 	WString ConvertToWString(const String& ansiString);
+
+	// Encoding detection for commonly-used encodings
+	enum class StringEncoding
+	{
+		Unknown = 0,
+		// Unicode
+		UTF8,
+		// Japanese
+		ShiftJIS,
+		// Korean
+		CP949,
+	};
+
+	StringEncoding DetectEncoding(const char* buffer, const uint32 size);
+	StringEncoding DetectEncoding(class BinaryStream& stream);
 }
 
 /* Template string function implementations */
