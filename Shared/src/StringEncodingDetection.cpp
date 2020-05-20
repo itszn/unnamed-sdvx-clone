@@ -28,10 +28,10 @@ enum class CharClass
 	PUNCTUATION = 15, // ASCII symbols
 	KANA = 20, // Full-width or half-width kana
 	COMMON_HANGUL = 20, // Hangul in KS X 1001
-	COMMON_KANJI = 30, // Kanji in JIS X 0208
+	COMMON_KANJI = 30, // Level 1 Kanji in JIS X 0208
 	OTHER_CHARS = 50,
 	RARE_HANGUL = 80, // Hangul not in KS X 1001
-	RARE_KANJI = 80, // Kanji not in JIS X 0208
+	RARE_KANJI = 80, // Level 2+ Kanji in JIS X 0208
 };
 
 static inline bool IsPrintableAscii(uint8_t ch)
@@ -124,6 +124,9 @@ inline bool EncodingHeuristic::Finalize()
 	return IsValid();
 }
 
+// See also:
+// - https://www.sljfaq.org/afaq/encodings.html
+// - https://charset.fandom.com/ko/wiki/EUC-JP
 class ShiftJISHeuristic : public EncodingHeuristic
 {
 protected:
@@ -142,16 +145,25 @@ protected:
 		if (0xA1 <= ch && ch <= 0xDF)
 			return CharClass::OTHER_CHARS;
 
-		const uint8_t hi = static_cast<uint8_t>(ch >> 8);
-		const uint8_t lo = static_cast<uint8_t>(ch & 0xFF);
-
-		if (lo < 0x40 || lo == 0x7F || lo > 0xFC)
+		// JIS X 0208
+		if (0x84BF <= ch && ch <= 0x889E || 0x9873 <= ch && ch <= 0x989E || 0xEAA5 <= ch)
 			return CharClass::INVALID;
+
+		if (0x824F <= ch && ch <= 0x8258 || 0x8260 <= ch && ch <= 0x8279 || 0x8281 <= ch && ch <= 0x829A)
+			return CharClass::ALNUM;
+		if (0x829F <= ch && ch <= 0x82F1 || 0x8340 <= ch && ch <= 8396)
+			return CharClass::KANA;
+		if (0x889F <= ch && ch <= 0x9872)
+			return CharClass::COMMON_KANJI;
+		if (0x989F <= ch && ch <= 0xEAA4)
+			return CharClass::RARE_KANJI;
 
 		return CharClass::OTHER_CHARS;
 	}
 };
 
+// See also:
+// - https://charset.fandom.com/ko/wiki/CP949
 class CP949Heuristic : public EncodingHeuristic
 {
 private:
@@ -169,9 +181,9 @@ private:
 		if (0xA3B0 <= ch && ch <= 0xA3B9 || 0xA3C1 <= ch && ch <= 0xA3DA || 0xA3E1 <= ch && ch <= 0xA3FA)
 			return CharClass::ALNUM;
 
-		// Kanji
+		// Kanji (Every kanji is regarded as rare even though some are not...)
 		if (0xCAA1 <= ch && ch <= 0xFDFE)
-			return CharClass::COMMON_KANJI;
+			return CharClass::RARE_KANJI;
 		
 		// Kana
 		if (0xAAA1 <= ch && ch <= 0xAAF3 || 0xABA1 <= ch && ch <= 0xABF6)
