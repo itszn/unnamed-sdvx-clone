@@ -1,5 +1,5 @@
 #include <Shared/Shared.hpp>
-#include <Shared/String.hpp>
+#include <Shared/StringEncodingDetection.hpp>
 #include <Tests/Tests.hpp>
 
 /* Common Japanese Text */
@@ -26,10 +26,10 @@ constexpr char* KSM_NERIJO_UTF8 = "\xe7\x85\x89\xe6\x83\x85\xe3\x83\x9f\xe3\x82\
 constexpr char* KSM_NERIJO_SHIFTJIS = "\x97\xf9\x8f\xee\x83\x7e\x83\x58\x83\x65\x83\x42\x83\x74\x83\x42\x83\x8a\x83\x41";
 constexpr char* KSM_NERIJO_CP949 = "\xd6\xa1\xef\xd7\xab\xdf\xab\xb9\xab\xc6\xab\xa3\xab\xd5\xab\xa3\xab\xea\xab\xa2";
 
-static inline bool IsUTF8Like(Utility::StringEncoding encoding)
+static inline bool IsUTF8Like(StringEncodingDetector::Encoding encoding)
 {
-	return encoding == Utility::StringEncoding::Unknown ||
-		encoding == Utility::StringEncoding::UTF8;
+	return encoding == StringEncodingDetector::Encoding::Unknown ||
+		encoding == StringEncodingDetector::Encoding::UTF8;
 }
 
 Test("DetectEncoding.UTF8")
@@ -47,7 +47,7 @@ Test("DetectEncoding.UTF8")
 
 	for (char* testCase : testCases)
 	{
-		TestEnsure(IsUTF8Like(Utility::DetectEncoding(testCase)));
+		TestEnsure(IsUTF8Like(StringEncodingDetector::Detect(testCase)));
 	}
 }
 
@@ -60,7 +60,7 @@ Test("DetectEncoding.ShiftJIS")
 
 	for (char* testCase : testCases)
 	{
-		TestEnsure(Utility::DetectEncoding(testCase) == Utility::StringEncoding::ShiftJIS);
+		TestEnsure(StringEncodingDetector::Detect(testCase) == StringEncodingDetector::Encoding::ShiftJIS);
 	}
 }
 
@@ -75,6 +75,6 @@ Test("DetectEncoding.CP949")
 
 	for (char* testCase : testCases)
 	{
-		TestEnsure(Utility::DetectEncoding(testCase) == Utility::StringEncoding::CP949);
+		TestEnsure(StringEncodingDetector::Detect(testCase) == StringEncodingDetector::Encoding::CP949);
 	}
 }
