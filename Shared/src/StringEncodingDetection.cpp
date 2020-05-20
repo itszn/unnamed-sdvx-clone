@@ -24,15 +24,14 @@
 enum class CharClass
 {
 	INVALID = -1,
-	ALNUM = 10, // 0-9, A-Z, a-z
-	PUNCTUATION = 15, // ASCII symbols, 
-	KANA = 20, // Full-width and half-width kana
-	BASIC_HANGUL = 20, // Hangul in KS X 1001
+	ALNUM = 10, // Full-width or half-width 0-9, A-Z, a-z
+	PUNCTUATION = 15, // ASCII symbols
+	KANA = 20, // Full-width or half-width kana
+	COMMON_HANGUL = 20, // Hangul in KS X 1001
 	COMMON_KANJI = 30, // Kanji in JIS X 0208
-	SYMBOLS = 40,
-	COMPLEX_HANGUL = 60, // Hangul not in KS X 1001
+	OTHER_CHARS = 50,
+	RARE_HANGUL = 80, // Hangul not in KS X 1001
 	RARE_KANJI = 80, // Kanji not in JIS X 0208
-	OTHER_CHARS = 100,
 };
 
 static inline bool IsPrintableAscii(uint8_t ch)
@@ -59,27 +58,27 @@ class EncodingHeuristic
 public:
 	EncodingHeuristic() = default;
 
-	inline int GetScore();
-	inline bool IsValid() { return GetScore() >= 0; }
-	inline bool Consume(uint8_t ch);
+	inline int GetScore() const;
+	inline bool IsValid() const { return GetScore() >= 0; }
+	inline bool Consume(const uint8_t ch);
 	inline bool Finalize();
 
 protected:
-	virtual bool RequiresSecondByte(uint8_t ch) = 0;
-	virtual CharClass GetCharClass(uint16_t ch) = 0;
+	virtual bool RequiresSecondByte(const uint8_t ch) const = 0;
+	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
 
-	inline bool Process(uint16_t ch);
+	inline bool Process(const uint16_t ch);
 
 	uint8_t m_hi = 0;
 	int m_score = 0;
 };
 
-inline int EncodingHeuristic::GetScore()
+inline int EncodingHeuristic::GetScore() const
 {
 	return m_score;
 }
 
-inline bool EncodingHeuristic::Consume(uint8_t ch)
+inline bool EncodingHeuristic::Consume(const uint8_t ch)
 {
 	if (!IsValid())
 	{
@@ -103,7 +102,7 @@ inline bool EncodingHeuristic::Consume(uint8_t ch)
 	return Process(curr);
 }
 
-inline bool EncodingHeuristic::Process(uint16_t ch)
+inline bool EncodingHeuristic::Process(const uint16_t ch)
 {
 	CharClass charClass = GetCharClass(ch);
 	if (charClass == CharClass::INVALID)
@@ -128,32 +127,94 @@ inline bool EncodingHeuristic::Finalize()
 class ShiftJISHeuristic : public EncodingHeuristic
 {
 protected:
-	bool RequiresSecondByte(uint8_t ch) override
+	bool RequiresSecondByte(const uint8_t ch) const override
 	{
 		return 0x81 <= ch && ch <= 0x9F || 0xE0 <= ch && ch <= 0xFC;
 	}
 
-	CharClass GetCharClass(uint16_t ch) override
+	CharClass GetCharClass(const uint16_t ch) const override
 	{
+		// JIS X 0201
 		if (ch <= 0x80) return GetAsciiCharClass(ch);
+
+		if (0xA6 <= ch && ch <= 0xDD)
+			return CharClass::KANA;
+		if (0xA1 <= ch && ch <= 0xDF)
+			return CharClass::OTHER_CHARS;
+
+		const uint8_t hi = static_cast<uint8_t>(ch >> 8);
+		const uint8_t lo = static_cast<uint8_t>(ch & 0xFF);
+
+		if (lo < 0x40 || lo == 0x7F || lo > 0xFC)
+			return CharClass::INVALID;
+
 		return CharClass::OTHER_CHARS;
 	}
 };
 
 class CP949Heuristic : public EncodingHeuristic
 {
+private:
+	CharClass GetEUCKRCharClass(const uint16_t ch) const
+	{
+		// Complete Hangul
+		if (0xB0A1 <= ch && ch <= 0xC8FE)
+			return CharClass::COMMON_HANGUL;
+
+		// Incomplete Hangul
+		if (0xA4A1 <= ch && ch <= 0xA4FE)
+			return CharClass::COMMON_HANGUL;
+
+		// Full-width alnum
+		if (0xA3B0 <= ch && ch <= 0xA3B9 || 0xA3C1 <= ch && ch <= 0xA3DA || 0xA3E1 <= ch && ch <= 0xA3FA)
+			return CharClass::ALNUM;
+
+		// Kanji
+		if (0xCAA1 <= ch && ch <= 0xFDFE)
+			return CharClass::COMMON_KANJI;
+		
+		// Kana
+		if (0xAAA1 <= ch && ch <= 0xAAF3 || 0xABA1 <= ch && ch <= 0xABF6)
+
+		// Invalid region
+		if (0xA2E9 <= ch && ch <= 0xA2FE || 0xA6E5 <= ch && ch <= 0xA6FE || 0xACF2 <= ch)
+			return CharClass::INVALID;
+
+		return CharClass::OTHER_CHARS;
+	}
+
 protected:
-	bool RequiresSecondByte(uint8_t ch) override
+	bool RequiresSecondByte(const uint8_t ch) const override
 	{
 		return 0x81 <= ch && ch <= 0xC6 || 0xA1 <= ch && ch <= 0xFE;
 	}
 
-	CharClass GetCharClass(uint16_t ch) override
+	CharClass GetCharClass(const uint16_t ch) const override
 	{
 		// KS X 1003
 		if (ch < 0x80) return GetAsciiCharClass(ch);
+		if (ch <= 0xFF) return CharClass::INVALID;
+		
+		const uint8_t hi = static_cast<uint8_t>(ch >> 8);
+		const uint8_t lo = static_cast<uint8_t>(ch & 0xFF);
+		
 		// KS X 1001
-		return CharClass::OTHER_CHARS;
+		if (0xA1 <= hi && hi <= 0xFE && 0xA1 <= lo && lo <= 0xFE)
+		{
+			return GetEUCKRCharClass(ch);
+		}
+
+		// CP949 extension
+		if (lo < 0x41 || 0x5A < lo && lo < 0x61 || 0x7A < lo && lo < 0x81 || lo == 0xFF)
+		{
+			return CharClass::INVALID;
+		}
+		else if (0x8141 <= ch && ch <= 0xC652)
+		{
+			return CharClass::RARE_HANGUL;
+		}
+
+		return CharClass::INVALID;
 	}
 };
 
@@ -197,8 +258,19 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect()
 
 	GetScores(OUT shift_jis, OUT cp949);
 
-	return shift_jis >= 0 ? cp949 > shift_jis ? Encoding::CP949 : Encoding::ShiftJIS :
-		cp949 >= 0 ? Encoding::CP949 : Encoding::Unknown;
+	if (shift_jis >= 0)
+	{
+		if (cp949 >= 0 && cp949 < shift_jis)
+			return Encoding::CP949;
+		else
+			return Encoding::ShiftJIS;
+	}
+	else if (cp949 >= 0)
+	{
+		return Encoding::CP949;
+	}
+	
+	return Encoding::Unknown;
 }
 
 bool StringEncodingDetector::IsValidUTF8()
@@ -218,15 +290,16 @@ bool StringEncodingDetector::IsValidUTF8()
 
 			if (remaining == 0)
 			{
-				if (ch < 0x80) return IsPrintableAscii(ch);
-				if ((ch >> 6) == 0b10) return false;
-				while ((ch & 0x0b01000000))
+				if (ch < 0x80)
+				{
+					if (!IsPrintableAscii(ch)) return false;
+				}
+				else if ((ch >> 6) == 0b10) return false;
+				else while (ch & 0b01000000)
 				{
 					++remaining;
 					ch <<= 1;
 				}
-
-				return true;
 			}
 			else
 			{
