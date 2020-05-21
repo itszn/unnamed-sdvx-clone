@@ -27,11 +27,12 @@ enum class CharClass
 	ALNUM = 10, // Full-width or half-width 0-9, A-Z, a-z
 	PUNCTUATION = 15, // ASCII symbols
 	KANA = 20, // Full-width or half-width kana
-	COMMON_HANGUL = 20, // Hangul in KS X 1001
-	COMMON_KANJI = 30, // Level 1 Kanji in JIS X 0208
+	HANGUL_KSX1001 = 20, // Hangul in KS X 1001
+	KANJI_LEVEL_1 = 30, // Level 1 Kanji in JIS X 0208
 	OTHER_CHARS = 50,
-	RARE_HANGUL = 80, // Hangul not in KS X 1001
-	RARE_KANJI = 80, // Level 2+ Kanji in JIS X 0208
+	KANJI_KSX1001 = 70, // Kanji in KS X 1001
+	HANGUL_CP949 = 80, // Hangul not in KS X 1001
+	KANJI_LEVEL_2 = 80, // Level 2+ Kanji in JIS X 0208
 };
 
 static inline bool IsPrintableAscii(uint8_t ch)
@@ -154,9 +155,9 @@ protected:
 		if (0x829F <= ch && ch <= 0x82F1 || 0x8340 <= ch && ch <= 8396)
 			return CharClass::KANA;
 		if (0x889F <= ch && ch <= 0x9872)
-			return CharClass::COMMON_KANJI;
+			return CharClass::KANJI_LEVEL_1;
 		if (0x989F <= ch && ch <= 0xEAA4)
-			return CharClass::RARE_KANJI;
+			return CharClass::KANJI_LEVEL_2;
 
 		return CharClass::OTHER_CHARS;
 	}
@@ -171,11 +172,11 @@ private:
 	{
 		// Complete Hangul
 		if (0xB0A1 <= ch && ch <= 0xC8FE)
-			return CharClass::COMMON_HANGUL;
+			return CharClass::HANGUL_KSX1001;
 
 		// Incomplete Hangul
 		if (0xA4A1 <= ch && ch <= 0xA4FE)
-			return CharClass::COMMON_HANGUL;
+			return CharClass::HANGUL_KSX1001;
 
 		// Full-width alnum
 		if (0xA3B0 <= ch && ch <= 0xA3B9 || 0xA3C1 <= ch && ch <= 0xA3DA || 0xA3E1 <= ch && ch <= 0xA3FA)
@@ -183,10 +184,11 @@ private:
 
 		// Kanji (Every kanji is regarded as rare even though some are not...)
 		if (0xCAA1 <= ch && ch <= 0xFDFE)
-			return CharClass::RARE_KANJI;
+			return CharClass::KANJI_KSX1001;
 		
 		// Kana
 		if (0xAAA1 <= ch && ch <= 0xAAF3 || 0xABA1 <= ch && ch <= 0xABF6)
+			return CharClass::KANA;
 
 		// Invalid region
 		if (0xA2E9 <= ch && ch <= 0xA2FE || 0xA6E5 <= ch && ch <= 0xA6FE || 0xACF2 <= ch)
@@ -223,7 +225,7 @@ protected:
 		}
 		else if (0x8141 <= ch && ch <= 0xC652)
 		{
-			return CharClass::RARE_HANGUL;
+			return CharClass::HANGUL_CP949;
 		}
 
 		return CharClass::INVALID;
@@ -246,10 +248,11 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect(const char* str)
 StringEncodingDetector::Encoding StringEncodingDetector::Detect(BinaryStream& stream)
 {
 	assert(stream.IsReading());
-	size_t init_pos = stream.Tell();
+	
+	if (stream.GetSize() == 0)
+		return Encoding::Unknown;
 
-	// If the size is too small, the encoding can't be detected realiably.
-	if (stream.GetSize() < 2) return Encoding::Unknown;
+	size_t init_pos = stream.Tell();
 
 	StringEncodingDetector detector(stream);
 	Encoding result = detector.Detect();
@@ -264,6 +267,9 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect()
 	{
 		return Encoding::UTF8;
 	}
+
+	// If the size is too small, the encoding can't be detected realiably anymore.
+	if (m_stream.GetSize() < 2) return Encoding::Unknown;
 
 	int shift_jis = 0;
 	int cp949 = 0;
