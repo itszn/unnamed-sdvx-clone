@@ -5,6 +5,8 @@
 #include "Shared/Buffer.hpp"
 #include "Shared/MemoryStream.hpp"
 #include "Shared/BinaryStream.hpp"
+#include "Shared/Log.hpp"
+
 #include "iconv.h"
 
 /*
@@ -52,7 +54,26 @@ static inline CharClass GetAsciiCharClass(uint8_t ch)
 	return CharClass::INVALID;
 }
 
-#pragma region Util functions for Shift_JIS and CP949
+#pragma region Heuristics for Shift_JIS and CP949
+
+static inline StringEncodingDetector::Encoding DecideEncodingFromHeuristicScores(const int shift_jis, const int cp949)
+{
+	using Encoding = StringEncodingDetector::Encoding;
+
+	if (shift_jis >= 0)
+	{
+		if (cp949 >= 0 && cp949 < shift_jis)
+			return Encoding::CP949;
+		else
+			return Encoding::ShiftJIS;
+	}
+	else if (cp949 >= 0)
+	{
+		return Encoding::CP949;
+	}
+
+	return Encoding::Unknown;
+}
 
 class EncodingHeuristic
 {
@@ -239,8 +260,8 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect(const char* str)
 {
 	// This is inefficient, because stringBuffer copies contents of str. Copying is unnecessary.
 	// A version of MemoryStream which does not use a Buffer is preferable.
-	::Buffer stringBuffer(str);
-	::MemoryReader memoryReader(stringBuffer);
+	Buffer stringBuffer(str);
+	MemoryReader memoryReader(stringBuffer);
 
 	return Detect(memoryReader);
 }
@@ -261,6 +282,63 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect(BinaryStream& st
 	return result;
 }
 
+String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str)
+{
+	switch (encoding)
+	{
+	case Encoding::ShiftJIS:
+		return ToUTF8("SHIFT_JIS", str);
+	case Encoding::CP949:
+		return ToUTF8("CP949", str);
+	case Encoding::Unknown:
+	case Encoding::UTF8:
+	default:
+		return String(str);
+	}
+}
+
+String StringEncodingDetector::ToUTF8(const char* encoding, const char* str)
+{
+	iconv_t conv_d = iconv_open("UTF-8", encoding);
+	if (conv_d == (iconv_t)-1)
+	{
+		Logf("Error in ToUTF8: iconv_open returned -1 for encoding %s", Logger::Error, encoding);
+		return String(str);
+	}
+
+	String result;
+	char out_buf_arr[ICONV_BUFFER_SIZE];
+	out_buf_arr[ICONV_BUFFER_SIZE - 1] = '\0';
+
+	const char* in_buf = str;
+	size_t in_buf_left = strlen(str);
+	
+	char* out_buf = out_buf_arr;
+	size_t out_buf_left = ICONV_BUFFER_SIZE-1;
+
+	while (iconv(conv_d, const_cast<char**>(&in_buf), &in_buf_left, &out_buf, &out_buf_left) == -1)
+	{
+		switch (errno)
+		{
+		case E2BIG:
+			*out_buf = '\0';
+			result += out_buf_arr;
+			out_buf = out_buf_arr;
+			out_buf_left = ICONV_BUFFER_SIZE - 1;
+			break;
+		case EINVAL:
+		case EILSEQ:
+		default:
+			Logf("Error in ToUTF8: iconv failed with %d for encoding %s", Logger::Error, errno, encoding);
+			return String(str);
+			break;
+		}
+	}
+
+	iconv_close(conv_d);
+	return result;
+}
+
 StringEncodingDetector::Encoding StringEncodingDetector::Detect()
 {
 	if (IsValidUTF8())
@@ -274,21 +352,8 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect()
 	int shift_jis = 0;
 	int cp949 = 0;
 
-	GetScores(OUT shift_jis, OUT cp949);
-
-	if (shift_jis >= 0)
-	{
-		if (cp949 >= 0 && cp949 < shift_jis)
-			return Encoding::CP949;
-		else
-			return Encoding::ShiftJIS;
-	}
-	else if (cp949 >= 0)
-	{
-		return Encoding::CP949;
-	}
-	
-	return Encoding::Unknown;
+	GetScores(shift_jis, cp949);
+	return DecideEncodingFromHeuristicScores(shift_jis, cp949);
 }
 
 bool StringEncodingDetector::IsValidUTF8()
