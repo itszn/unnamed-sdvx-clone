@@ -146,6 +146,7 @@ void DownloadScreen::m_ArchiveLoop()
 				else
 				{
 					res = archive_read_free(a);
+					Log("Error opening downloaded chart archive for directory traversal", Logger::Error);
 				}
 			}
 			m_archiveLock.lock();
@@ -234,12 +235,16 @@ void DownloadScreen::m_ProcessArchiveResponses()
 			lua_settable(m_lua, -3);
 			archive_read_data_skip(ar.a);
 		}
-		archive_read_free(ar.a);
+		
+		if (archive_read_free(ar.a) != ARCHIVE_OK)
+		{
+			Log("Error closing handle for downloaded chart archive", Logger::Error);
+		}
 		lua_pushstring(m_lua, ar.id.c_str());
 		
 		if (readError)
 		{
-			Log("Error reading archive response", Logger::Error);
+			Log("Error reading downloaded chart archive", Logger::Error);
 		}
 		else if (lua_pcall(m_lua, 2, 1, 0) != 0)
 		{
@@ -266,8 +271,12 @@ void DownloadScreen::m_ProcessArchiveResponses()
 			ar.a = archive_read_new();
 			archive_read_support_filter_all(ar.a);
 			archive_read_support_format_all(ar.a);
-			archive_read_open_memory(ar.a, ar.data.data(), ar.data.size());
-			while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
+			
+			if (archive_read_open_memory(ar.a, ar.data.data(), ar.data.size()) != ARCHIVE_OK)
+			{
+				Log("Error opening downloaded chart archive for extraction", Logger::Error);
+			}
+			else while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
 				const wchar_t* entryName_w = archive_entry_pathname_w(entry);
 				String entryName = Utility::ConvertToUTF8(entryName_w);
 				if (entryPathMap.Contains(entryName))
@@ -280,7 +289,10 @@ void DownloadScreen::m_ProcessArchiveResponses()
 				}
 			}
 
-			archive_read_free(ar.a);
+			if (archive_read_free(ar.a) != ARCHIVE_OK)
+			{
+				Log("Error closing archive handle after extracting", Logger::Error);
+			}
 		}
 		
 		lua_settop(m_lua, 0);
