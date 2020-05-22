@@ -53,28 +53,32 @@ bool Path::Copy(const String& srcFile, const String& dstFile, bool overwrite)
 }
 String Path::GetCurrentPath()
 {
-	char currDir[MAX_PATH];
-	GetCurrentDirectoryA(sizeof(currDir), currDir);
-	return currDir;
+	wchar_t currDir[MAX_PATH];
+	GetCurrentDirectoryW(sizeof(currDir), currDir);
+	return Utility::ConvertToUTF8(currDir);
 }
 String Path::GetExecutablePath()
 {
-	char filename[MAX_PATH];
-	GetModuleFileNameA(GetModuleHandle(0), filename, sizeof(filename));
-	return filename;
+	wchar_t filename[MAX_PATH];
+	GetModuleFileNameW(GetModuleHandle(0), filename, sizeof(filename));
+	return Utility::ConvertToUTF8(filename);
 }
 String Path::GetTemporaryPath()
 {
-	char path[MAX_PATH];
-	::GetTempPathA(sizeof(path), path);
-	return path;
+	wchar_t path[MAX_PATH];
+	::GetTempPathW(sizeof(path), path);
+	return Utility::ConvertToUTF8(path);
 }
 String Path::GetTemporaryFileName(const String& path, const String& prefix)
 {
-	char out[MAX_PATH];
-	BOOL r = ::GetTempFileNameA(*path, *prefix, 0, out);
+	wchar_t out[MAX_PATH];
+	WString wpath = Utility::ConvertToWString(path);
+	WString wprefix = Utility::ConvertToWString(prefix);
+
+	BOOL r = ::GetTempFileNameW(*wpath, *wprefix, 0, out);
 	assert(r == TRUE);
-	return out;
+
+	return Utility::ConvertToUTF8(out);
 }
 bool Path::IsDirectory(const String& path)
 {
@@ -89,14 +93,16 @@ bool Path::FileExists(const String& path)
 }
 String Path::Normalize(const String& path)
 {
-	char out[MAX_PATH];
-	PathCanonicalizeA(out, *path);
+	wchar_t out[MAX_PATH];
+	WString wpath = Utility::ConvertToWString(path);
+
+	PathCanonicalizeW(out, *wpath);
 	for(uint32 i = 0; i < MAX_PATH; i++)
 	{
-		if(out[i] == '/')
+		if(out[i] == L'/')
 			out[i] = sep;
 	}
-	return out;
+	return Utility::ConvertToUTF8(out);
 }
 bool Path::IsAbsolute(const String& path)
 {
@@ -131,8 +137,12 @@ Vector<String> Path::GetSubDirs(const String& path)
 
 bool Path::ShowInFileBrowser(const String& path)
 {
-	//Opens the directory, if a file path is sent then the file will be opened with the default program for that file type.
-	long res = (long)ShellExecuteA(NULL, "open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
+	WString wpath = Utility::ConvertToWString(path);
+
+	// Opens the directory, if a file path is sent then the file will be opened with the default program for that file type.
+	// See also: https://stackoverflow.com/a/49694181
+	int res = static_cast<int>(reinterpret_cast<uintptr_t>(ShellExecuteW(NULL, L"open", *wpath, NULL, NULL, SW_SHOWDEFAULT)));
+
 	if (res > 32)
 	{
 		return true;
@@ -148,7 +158,7 @@ bool Path::ShowInFileBrowser(const String& path)
 			Logf("Failed to show file \"%s\" in the system default explorer: Path not found.", Logger::Error, path);
 			break;
 		default:
-			Logf("Failed to show file \"%s\" in the system default explorer: error %p", Logger::Error, path, res);
+			Logf("Failed to show file \"%s\" in the system default explorer: error %", Logger::Error, path, res);
 			break;
 		}
 		return false;
@@ -157,9 +167,10 @@ bool Path::ShowInFileBrowser(const String& path)
 
 bool Path::Run(const String& programPath, const String& parameters)
 {
-	STARTUPINFOA info = { sizeof(info) };
+	STARTUPINFOW info = { sizeof(info) };
 	PROCESS_INFORMATION processInfo;
-	String command = Utility::Sprintf("%s %s", programPath.GetData(), parameters.GetData());
+
+	WString command = Utility::WSprintf(L"%S %S", *programPath, *parameters);
 
 	if (!Path::FileExists(programPath))
 	{
@@ -167,7 +178,7 @@ bool Path::Run(const String& programPath, const String& parameters)
 		return false;
 	}
 
-	if (CreateProcessA(NULL, command.GetData(), NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, &info, &processInfo))
+	if (CreateProcessW(NULL, command.GetData(), NULL, NULL, false, CREATE_NEW_CONSOLE, NULL, NULL, &info, &processInfo))
 	{
 		CloseHandle(processInfo.hProcess);
 		CloseHandle(processInfo.hThread);

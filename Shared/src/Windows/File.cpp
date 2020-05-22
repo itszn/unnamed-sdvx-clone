@@ -155,7 +155,7 @@ uint64 File::GetLastWriteTime(const String& path)
 	return (uint64&)ftWrite;
 }
 
-bool LoadResourceInternal(const char* name, const char* type, Buffer& out)
+static bool LoadResourceInternal(const char* name, const char* type, Buffer& out)
 {
 	HMODULE module = GetModuleHandle(nullptr);
 	HRSRC res = FindResourceA(module, name, type);
