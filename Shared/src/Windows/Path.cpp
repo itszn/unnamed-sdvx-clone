@@ -14,35 +14,42 @@ char Path::sep = '\\';
 
 bool Path::CreateDir(const String& path)
 {
-	return CreateDirectoryA(*path, nullptr) == TRUE;
+	WString wpath = Utility::ConvertToWString(path);
+	return CreateDirectoryW(*wpath, nullptr) == TRUE;
 }
 bool Path::Delete(const String& path)
 {
-	return DeleteFileA(*path) == TRUE;
+	WString wpath = Utility::ConvertToWString(path);
+	return DeleteFileW(*wpath) == TRUE;
 }
 bool Path::DeleteDir(const String& path)
 {
 	if(!ClearDir(path))
 		return false;
-	return RemoveDirectoryA(*path) == TRUE;
+	WString wpath = Utility::ConvertToWString(path);
+	return RemoveDirectoryW(*wpath) == TRUE;
 }
 bool Path::Rename(const String& srcFile, const String& dstFile, bool overwrite)
 {
-	if(PathFileExistsA(*dstFile) == TRUE)
+	WString wsrc = Utility::ConvertToWString(srcFile);
+	WString wdst = Utility::ConvertToWString(dstFile);
+	if(PathFileExistsW(*wdst) == TRUE)
 	{
 		if(!overwrite)
 			return false;
-		if(DeleteFileA(*dstFile) == FALSE)
+		if(DeleteFileW(*wdst) == FALSE)
 		{
 			Logf("Failed to rename file, overwrite was true but the destination could not be removed", Logger::Warning);
 			return false;
 		}
 	}
-	return MoveFileA(*srcFile, *dstFile) == TRUE;
+	return MoveFileW(*wsrc, *wdst) == TRUE;
 }
 bool Path::Copy(const String& srcFile, const String& dstFile, bool overwrite)
 {
-	return CopyFileA(*srcFile, *dstFile, overwrite) == TRUE;
+	WString wsrc = Utility::ConvertToWString(srcFile);
+	WString wdst = Utility::ConvertToWString(dstFile);
+	return CopyFileW(*wsrc, *wdst, overwrite) == TRUE;
 }
 String Path::GetCurrentPath()
 {
@@ -71,12 +78,14 @@ String Path::GetTemporaryFileName(const String& path, const String& prefix)
 }
 bool Path::IsDirectory(const String& path)
 {
-	DWORD attribs = GetFileAttributesA(*path);
+	WString wpath = Utility::ConvertToWString(path);
+	DWORD attribs = GetFileAttributesW(*wpath);
 	return (attribs != INVALID_FILE_ATTRIBUTES) && (attribs & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
 }
 bool Path::FileExists(const String& path)
 {
-	return PathFileExistsA(*path) == TRUE;
+	WString wpath = Utility::ConvertToWString(path);
+	return PathFileExistsW(*wpath) == TRUE;
 }
 String Path::Normalize(const String& path)
 {
@@ -99,22 +108,22 @@ bool Path::IsAbsolute(const String& path)
 Vector<String> Path::GetSubDirs(const String& path)
 {
 	Vector<String> res;
-	String searchPath = path + "\\*";
-	WIN32_FIND_DATAA findData;
-	HANDLE searchHandle = FindFirstFileA(*searchPath, &findData);
+	WString searchPathW = Utility::ConvertToWString(path + "\\*");
+	WIN32_FIND_DATA findDataW;
+	HANDLE searchHandle = FindFirstFile(*searchPathW, &findDataW);
 	if (searchHandle == INVALID_HANDLE_VALUE)
 		return res;
 
 	do
 	{
-		String filename = findData.cFileName;
+		String filename = Utility::ConvertToUTF8(findDataW.cFileName);
 		if (filename == ".")
 			continue;
 		if (filename == "..")
 			continue;
-		if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		if (findDataW.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			res.Add(filename);
-	} while (FindNextFileA(searchHandle, &findData));
+	} while (FindNextFile(searchHandle, &findDataW));
 	FindClose(searchHandle);
 
 	return res;

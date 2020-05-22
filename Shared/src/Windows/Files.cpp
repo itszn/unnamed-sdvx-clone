@@ -26,16 +26,16 @@ static Vector<FileInfo> _ScanFiles(const String& rootFolder, String extFilter, b
 		String searchPath = folderQueue.front();
 		folderQueue.pop_front();
 
-		String searchPathWildcard = searchPath + "\\*";
-		WIN32_FIND_DATAA findData;
-		HANDLE searchHandle = FindFirstFileA(*searchPathWildcard, &findData);
+		WString searchPathW = Utility::ConvertToWString(searchPath + "\\*");
+		WIN32_FIND_DATA findDataW;
+		HANDLE searchHandle = FindFirstFile(*searchPathW, &findDataW);
 		if(searchHandle == INVALID_HANDLE_VALUE)
 			continue;
 
 		String currentfolder;
 		do
 		{
-			String filename = findData.cFileName;
+			String filename = Utility::ConvertToUTF8(findDataW.cFileName);
 			/// TODO: Ask windows why
 			if(filename == ".")
 				continue;
@@ -44,10 +44,10 @@ static Vector<FileInfo> _ScanFiles(const String& rootFolder, String extFilter, b
 
 			FileInfo info;
 			info.fullPath = Path::Normalize(searchPath + Path::sep + filename);
-			info.lastWriteTime = ((uint64)findData.ftLastWriteTime.dwHighDateTime << 32) | (uint64)findData.ftLastWriteTime.dwLowDateTime;
+			info.lastWriteTime = ((uint64)findDataW.ftLastWriteTime.dwHighDateTime << 32) | (uint64)findDataW.ftLastWriteTime.dwLowDateTime;
 			info.type = FileType::Regular;
 
-			if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			if(findDataW.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
 				if(recurse)
 				{
@@ -76,7 +76,7 @@ static Vector<FileInfo> _ScanFiles(const String& rootFolder, String extFilter, b
 					ret.Add(info);
 				}
 			}
-		} while(FindNextFileA(searchHandle, &findData) && (!interrupt || !*interrupt));
+		} while(FindNextFile(searchHandle, &findDataW) && (!interrupt || !*interrupt));
 
 		FindClose(searchHandle);
 	}

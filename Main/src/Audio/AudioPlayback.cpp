@@ -34,6 +34,7 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 	const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 	String audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + mapSettings.audioNoFX);
 	audioPath.TrimBack(' ');
+	WString audioPathUnicode = Utility::ConvertToWString(audioPath);
 	if(!Path::FileExists(audioPath))
 	{
 		Logf("Audio file for beatmap does not exists at: \"%s\"", Logger::Error, audioPath);
@@ -52,6 +53,7 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 	// Load FX track
 	audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + mapSettings.audioFX);
 	audioPath.TrimBack(' ');
+	audioPathUnicode = Utility::ConvertToWString(audioPath);
 	if(!audioPath.empty())
 	{
 		if(!Path::FileExists(audioPath) || Path::IsDirectory(audioPath))
@@ -80,6 +82,7 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 	for (auto it = switchablePaths.begin(); it != switchablePaths.end(); ++it) {
 		audioPath = Path::Normalize(m_beatmapRootPath + Path::sep + *it);
 		audioPath.TrimBack(' ');
+		audioPathUnicode = Utility::ConvertToWString(audioPath);
 
 		SwitchableAudio switchable;
 		switchable.m_enabled = false;
