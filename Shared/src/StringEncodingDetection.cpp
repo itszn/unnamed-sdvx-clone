@@ -545,9 +545,6 @@ Encoding StringEncodingDetector::Detect(const Option& option)
 
 	EncodingHeuristics heuristics;
 
-	std::bitset<static_cast<size_t>(Encoding::MAX_VALUE)> candidates;
-	candidates.set();
-
 	// First, check assumptions
 	for (Encoding encoding : option.assumptions)
 	{
@@ -559,13 +556,6 @@ Encoding StringEncodingDetector::Detect(const Option& option)
 
 		if (heuristic.IsValid())
 			return encoding;
-
-		candidates.reset(static_cast<size_t>(encoding));
-	}
-
-	if (candidates.none())
-	{
-		return Encoding::Unknown;
 	}
 
 	// Feed input for the rest.
