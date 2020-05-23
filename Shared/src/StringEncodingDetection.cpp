@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "StringEncodingDetection.hpp"
 
+#include <bitset>
+
 #include "Shared/String.hpp"
 #include "Shared/Buffer.hpp"
 #include "Shared/MemoryStream.hpp"
@@ -12,25 +14,27 @@
 /*
 	Encoding detection for commonly-used encodings
 	----------------------------------------------
-	The heuristic works in the following way:
-	* If the given bytes are valid in UTF-8, then it's considered as UTF-8.
-	* If exactly one of Shift-JIS and CP949 are valid, then the valid encoding is picked.
-		- PUA characters are not considered as valid.
-	* If both are valid, then one with lower heuristic value is considered.
-		- Heuristic value of each character is defined by the CharClass they belong.
-		- Currently there is no global panelty values. It can be added though.
-		- Tie is broken towards Shift-JIS.
+	Currently, the heuristic is very simple:
+		1. For each character class, a hand-chosen value is assigned.
+		2. An encoding with lowest average value is chosen.
 */
+
+using Encoding = StringEncodingDetector::Encoding;
+
+#pragma region Definitions for Heuristics
 
 // Feel free to tweak these values
 enum class CharClass
 {
 	INVALID = -1,
+	IGNORABLE = 0,
 	ALNUM = 10, // Full-width or half-width 0-9, A-Z, a-z
 	PUNCTUATION = 15, // ASCII symbols
 	KANA = 20, // Full-width or half-width kana
 	HANGUL_KSX1001 = 20, // Hangul in KS X 1001
 	KANJI_LEVEL_1 = 30, // Level 1 Kanji in JIS X 0208
+	HANGUL_UNICODE = 40, // Hangul in Unicode
+	KANJI_UNICODE = 45, // Kanji in CJK Unified Ideographs block
 	OTHER_CHARS = 50,
 	KANJI_KSX1001 = 70, // Kanji in KS X 1001
 	HANGUL_CP949 = 80, // Hangul not in KS X 1001
@@ -54,11 +58,8 @@ static inline CharClass GetAsciiCharClass(uint8_t ch)
 	return CharClass::INVALID;
 }
 
-#pragma region Heuristics for Shift_JIS and CP949
-
-static inline StringEncodingDetector::Encoding DecideEncodingFromHeuristicScores(const int shift_jis, const int cp949)
+static inline Encoding DecideEncodingFromHeuristicScores(const int shift_jis, const int cp949)
 {
-	using Encoding = StringEncodingDetector::Encoding;
 
 	if (shift_jis >= 0)
 	{
@@ -79,28 +80,60 @@ class EncodingHeuristic
 {
 public:
 	EncodingHeuristic() = default;
+	virtual Encoding GetEncoding() const { return Encoding::Unknown; }
 
-	inline int GetScore() const;
+	EncodingHeuristic(const EncodingHeuristic&) = delete;
+
+	inline int GetScore() const { return m_score; }
+	inline size_t GetCount() const { return m_count; }
+
 	inline bool IsValid() const { return GetScore() >= 0; }
-	inline bool Consume(const uint8_t ch);
-	inline bool Finalize();
+
+	virtual bool Consume(const uint8_t ch) = 0;
+	virtual bool Finalize() = 0;
 
 protected:
-	virtual bool RequiresSecondByte(const uint8_t ch) const = 0;
 	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
+	inline bool Process(const uint16_t ch)
+	{
+		return Process(GetCharClass(ch));
+	}
 
-	inline bool Process(const uint16_t ch);
+	inline bool Process(CharClass charClass)
+	{
+		if (charClass == CharClass::INVALID)
+		{
+			MarkInvalid();
+			return false;
+		}
+		else
+		{
+			m_score += static_cast<int>(charClass);
+			++m_count;
 
-	uint8_t m_hi = 0;
+			return true;
+		}
+	}
+
+	inline void MarkInvalid() { m_score = -1; }
+
+	size_t m_count = 0;
 	int m_score = 0;
 };
 
-inline int EncodingHeuristic::GetScore() const
+class TwoByteEncodingHeuristic : public EncodingHeuristic
 {
-	return m_score;
-}
+public:
+	bool Consume(const uint8_t ch) override;
+	bool Finalize() override;
 
-inline bool EncodingHeuristic::Consume(const uint8_t ch)
+protected:
+	virtual bool RequiresSecondByte(const uint8_t ch) const = 0;
+
+	uint8_t m_hi = 0;
+};
+
+bool TwoByteEncodingHeuristic::Consume(const uint8_t ch)
 {
 	if (!IsValid())
 	{
@@ -124,33 +157,161 @@ inline bool EncodingHeuristic::Consume(const uint8_t ch)
 	return Process(curr);
 }
 
-inline bool EncodingHeuristic::Process(const uint16_t ch)
+inline bool TwoByteEncodingHeuristic::Finalize()
 {
-	CharClass charClass = GetCharClass(ch);
-	if (charClass == CharClass::INVALID)
-	{
-		m_score = -1;
-		return false;
-	}
-	else
-	{
-		m_score += static_cast<int>(charClass);
-		return true;
-	}
-}
-
-inline bool EncodingHeuristic::Finalize()
-{
-	if (m_hi) m_score = -1;
+	if (m_hi) MarkInvalid();
 
 	return IsValid();
 }
 
+#pragma endregion
+
+#pragma region Heuristics
+
+class UTF8Heuristic : public EncodingHeuristic
+{
+public:
+	Encoding GetEncoding() const override { return Encoding::UTF8; }
+
+	bool Consume(const uint8_t ch) override
+	{
+		if (m_remaining == 0)
+		{
+			if (ch < 0x80) return Process(ch);
+			if ((ch >> 6) == 0b10)
+			{
+				MarkInvalid();
+				return false;
+			}
+			if (ch < 0xE0)
+			{
+				m_remaining = 1;
+				m_currChar = ch & 0x1F;
+			}
+			else if (ch < 0xF0)
+			{
+				m_remaining = 2;
+				m_currChar = ch & 0x0F;
+			}
+			else if (ch < 0xF8)
+			{
+				m_remaining = 3;
+				m_currChar = ch & 0x07;
+			}
+			else
+			{
+				MarkInvalid();
+				return false;
+			}
+		}
+		else
+		{
+			if ((ch >> 6) != 0b10)
+			{
+				MarkInvalid();
+				return false;
+			}
+
+			m_currChar = ((m_currChar << 6) | (ch & 0x3F));
+			if (--m_remaining == 0)
+			{
+				if(m_currChar < 0x10000) return Process(static_cast<uint16_t>(m_currChar));
+				else if (m_currChar >= 0x110000)
+				{
+					MarkInvalid();
+					return false;
+				}
+				else
+				{
+					Process(CharClass::OTHER_CHARS);
+					return true;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	bool Finalize() override
+	{
+		if (m_remaining) MarkInvalid();
+
+		return IsValid();
+	}
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const override
+	{
+		if (ch < 0x80)
+			return GetAsciiCharClass(static_cast<uint8_t>(ch));
+
+		if (0x3040 <= ch && ch <= 0x30FF)
+			return CharClass::KANA;
+
+		if (0x1100 <= ch && ch <= 0x11FF || 0xAC00 <= ch && ch <= 0xD7AF)
+			return CharClass::HANGUL_UNICODE;
+
+		if (0x4E00 <= ch && ch <= 0x9FFF)
+			return CharClass::KANJI_UNICODE;
+
+		// PUA
+		if (0xE000 <= ch && ch <= 0xF8FF)
+			return CharClass::INVALID;
+
+		// BOM
+		if (ch == 0xFEFF)
+			return CharClass::IGNORABLE;
+
+		if (0xFF10 <= ch && ch <= 0xFF19 || 0xFF21 <= ch && ch <= 0xFF3A || 0xFF41 <= ch && ch <= 0xFF5A)
+			return CharClass::ALNUM;
+		
+		// Half-width characters
+		if (0xFF66 <= ch && ch <= 0xFF9D)
+			return CharClass::KANA;
+		
+		if (0xFFA1 <= ch && ch <= 0xFFDC)
+			return CharClass::HANGUL_UNICODE;
+
+		return CharClass::OTHER_CHARS;
+
+	}
+
+	uint32_t m_currChar = 0;
+	unsigned int m_remaining = 0;
+};
+
+class ISO8859Heuristic : public EncodingHeuristic
+{
+public:
+	Encoding GetEncoding() const override { return Encoding::ISO8859; }
+
+	bool Consume(const uint8_t ch) override
+	{
+		return Process(ch);
+	}
+	bool Finalize() override
+	{
+		return IsValid();
+	}
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const override
+	{
+		if (ch < 0x80) return GetAsciiCharClass(static_cast<uint8_t>(ch));
+
+		if (ch < 0xA0) return CharClass::INVALID;
+		return CharClass::OTHER_CHARS;
+	}
+};
+
 // See also:
 // - https://www.sljfaq.org/afaq/encodings.html
 // - https://charset.fandom.com/ko/wiki/EUC-JP
-class ShiftJISHeuristic : public EncodingHeuristic
+class ShiftJISHeuristic : public TwoByteEncodingHeuristic
 {
+public:
+	Encoding GetEncoding() const override { return Encoding::ShiftJIS; }
+
 protected:
 	bool RequiresSecondByte(const uint8_t ch) const override
 	{
@@ -160,7 +321,7 @@ protected:
 	CharClass GetCharClass(const uint16_t ch) const override
 	{
 		// JIS X 0201
-		if (ch <= 0x80) return GetAsciiCharClass(ch);
+		if (ch <= 0x80) return GetAsciiCharClass(static_cast<uint8_t>(ch));
 
 		if (0xA6 <= ch && ch <= 0xDD)
 			return CharClass::KANA;
@@ -186,8 +347,11 @@ protected:
 
 // See also:
 // - https://charset.fandom.com/ko/wiki/CP949
-class CP949Heuristic : public EncodingHeuristic
+class CP949Heuristic : public TwoByteEncodingHeuristic
 {
+public:
+	Encoding GetEncoding() const override { return Encoding::CP949; }
+
 private:
 	CharClass GetEUCKRCharClass(const uint16_t ch) const
 	{
@@ -227,7 +391,7 @@ protected:
 	CharClass GetCharClass(const uint16_t ch) const override
 	{
 		// KS X 1003
-		if (ch < 0x80) return GetAsciiCharClass(ch);
+		if (ch < 0x80) return GetAsciiCharClass(static_cast<uint8_t>(ch));
 		if (ch <= 0xFF) return CharClass::INVALID;
 		
 		const uint8_t hi = static_cast<uint8_t>(ch >> 8);
@@ -255,18 +419,48 @@ protected:
 
 #pragma endregion
 
+class EncodingHeuristics
+{
+public:
+	EncodingHeuristics() = default;
+	inline EncodingHeuristic& GetHeuristic(Encoding encoding)
+	{
+		assert(encoding != Encoding::Unknown);
+
+		switch (encoding)
+		{
+		case Encoding::UTF8:
+			return utf8;
+		case Encoding::ISO8859:
+			return iso8859;
+		case Encoding::ShiftJIS:
+			return shift_jis;
+		case Encoding::CP949:
+			return cp949;
+		default:
+			assert(false);
+		}
+	}
+
+protected:
+	UTF8Heuristic utf8;
+	ISO8859Heuristic iso8859;
+	ShiftJISHeuristic shift_jis;
+	CP949Heuristic cp949;
+};
+
 // Detect contents of the string
-StringEncodingDetector::Encoding StringEncodingDetector::Detect(const char* str)
+Encoding StringEncodingDetector::Detect(const char* str, const Option& option)
 {
 	// This is inefficient, because stringBuffer copies contents of str. Copying is unnecessary.
 	// A version of MemoryStream which does not use a Buffer is preferable.
 	Buffer stringBuffer(str);
 	MemoryReader memoryReader(stringBuffer);
 
-	return Detect(memoryReader);
+	return Detect(memoryReader, option);
 }
 
-StringEncodingDetector::Encoding StringEncodingDetector::Detect(BinaryStream& stream)
+Encoding StringEncodingDetector::Detect(BinaryStream& stream, const Option& option)
 {
 	assert(stream.IsReading());
 	
@@ -276,7 +470,7 @@ StringEncodingDetector::Encoding StringEncodingDetector::Detect(BinaryStream& st
 	size_t init_pos = stream.Tell();
 
 	StringEncodingDetector detector(stream);
-	Encoding result = detector.Detect();
+	Encoding result = detector.Detect(option);
 
 	stream.Seek(init_pos);
 	return result;
@@ -339,108 +533,62 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str)
 	return result;
 }
 
-StringEncodingDetector::Encoding StringEncodingDetector::Detect()
+Encoding StringEncodingDetector::Detect(const Option& option)
 {
-	if (IsValidUTF8())
+	if (m_stream.GetSize() == 0)
 	{
-		return Encoding::UTF8;
+		if (option.assumptions.empty())
+			return Encoding::Unknown;
+		else
+			return option.assumptions.front();
 	}
 
-	// If the size is too small, the encoding can't be detected realiably anymore.
-	if (m_stream.GetSize() < 2) return Encoding::Unknown;
+	EncodingHeuristics heuristics;
 
-	int shift_jis = 0;
-	int cp949 = 0;
+	std::bitset<static_cast<size_t>(Encoding::MAX_VALUE)> candidates;
+	candidates.set();
 
-	GetScores(shift_jis, cp949);
-	return DecideEncodingFromHeuristicScores(shift_jis, cp949);
-}
-
-bool StringEncodingDetector::IsValidUTF8()
-{
-	m_stream.Seek(0);
-
-	uint8_t remaining = 0;
-
-	for (size_t i = 0; i < MAX_READ_FOR_ENCODING_DETECTION; i += sizeof(uint64_t))
+	// First, check assumptions
+	for (Encoding encoding : option.assumptions)
 	{
-		uint64_t data = 0;
-		uint64_t data_len = m_stream.Serialize(&data, sizeof(uint64_t));
+		if (encoding == Encoding::Unknown)
+			return encoding;
 
-		for (uint8_t j = 0; j < data_len; ++j)
-		{
-			uint8_t ch = static_cast<uint8_t>(data & 0xFF);
+		EncodingHeuristic& heuristic = heuristics.GetHeuristic(encoding);
+		FeedInput(heuristic, option.maxLookahead);
 
-			if (remaining == 0)
-			{
-				if (ch < 0x80)
-				{
-					if (!IsPrintableAscii(ch)) return false;
-				}
-				else if ((ch >> 6) == 0b10) return false;
-				else while (ch & 0b01000000)
-				{
-					++remaining;
-					ch <<= 1;
-				}
-			}
-			else
-			{
-				if ((ch >> 6) != 0b10) return false;
-				--remaining;
-			}
+		if (heuristic.IsValid())
+			return encoding;
 
-			data >>= 8;
-		}
-
-		if (data_len < sizeof(uint64_t))
-		{
-			return remaining == 0;
-		}
+		candidates.reset(static_cast<size_t>(encoding));
 	}
-}
 
-void StringEncodingDetector::GetScores(int& score_shift_jis, int& score_cp949)
-{
-	score_shift_jis = score_cp949 = 0;
-
-	m_stream.Seek(0);
-
-	ShiftJISHeuristic heuristic_shift_jis;
-	CP949Heuristic heuristic_cp949;
-
-	for (size_t i = 0; i < MAX_READ_FOR_ENCODING_DETECTION; i += sizeof(uint64_t))
+	if (candidates.none())
 	{
-		if (!(heuristic_shift_jis.IsValid() || heuristic_cp949.IsValid())) break;
+		return Encoding::Unknown;
+	}
 
-		uint64_t data = 0;
-		uint64_t data_len = m_stream.Serialize(&data, sizeof(uint64_t));
+	// Feed input for the rest.
+	Encoding result = Encoding::Unknown;
+	int minScore = -1;
+	size_t minCount = 0;
 
-		for (uint8_t j = 0; j < data_len; ++j)
+	for (Encoding encoding = static_cast<Encoding>(0); encoding != Encoding::MAX_VALUE;
+		encoding = static_cast<Encoding>(static_cast<int>(encoding)+1))
+	{
+		EncodingHeuristic& heuristic = heuristics.GetHeuristic(encoding);
+		FeedInput(heuristic, option.maxLookahead);
+
+		if (!heuristic.IsValid())
+			continue;
+		
+		if (minScore == -1 || heuristic.GetScore() * minCount < minScore * heuristic.GetCount())
 		{
-			uint8_t ch = static_cast<uint8_t>(data & 0xFF);
-			// 0x00 is not valid for both encoding.
-			if (ch == 0x00)
-			{
-				score_shift_jis = score_cp949 = -1;
-				return;
-			}
-
-			heuristic_shift_jis.Consume(ch);
-			heuristic_cp949.Consume(ch);
-
-			data >>= 8;
-		}
-
-		if (data_len < sizeof(uint64_t))
-		{
-			heuristic_shift_jis.Finalize();
-			heuristic_cp949.Finalize();
-
-			break;
+			result = encoding;
+			minScore = heuristic.GetScore();
+			minCount = heuristic.GetCount();
 		}
 	}
 
-	score_shift_jis = heuristic_shift_jis.GetScore();
-	score_cp949 = heuristic_cp949.GetScore();
+	return result;
 }
