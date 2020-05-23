@@ -2,6 +2,7 @@
 #include "StringEncodingDetection.hpp"
 
 #include <bitset>
+#include <errno.h>
 
 #include "Shared/String.hpp"
 #include "Shared/Buffer.hpp"
