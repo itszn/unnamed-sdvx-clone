@@ -28,7 +28,7 @@ public:
 
 	struct Option
 	{
-		Option() noexcept = default;
+		Option() = default;
 
 		// 0: process the whole input
 		size_t maxLookahead = 64;
@@ -75,9 +75,6 @@ protected:
 
 	template<class Heuristic>
 	void FeedInput(Heuristic& heuristic, const size_t maxLookahead);
-
-	// Score: negative for invalid, lower is better
-	void GetScores(int& score_shift_jis, int& score_cp949);
 
 	BinaryStream& m_stream;
 
