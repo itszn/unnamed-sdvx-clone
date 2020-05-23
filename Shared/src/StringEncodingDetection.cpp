@@ -591,3 +591,13 @@ Encoding StringEncodingDetector::Detect(const Option& option)
 
 	return result;
 }
+
+void StringEncodingDetector::ResetStream()
+{
+	m_stream.Seek(0);
+}
+
+uint64_t StringEncodingDetector::Read(uint64_t& data)
+{
+	return m_stream.Serialize(&data, sizeof(data));
+}

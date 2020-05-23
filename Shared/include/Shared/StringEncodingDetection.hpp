@@ -76,6 +76,10 @@ protected:
 	template<class Heuristic>
 	void FeedInput(Heuristic& heuristic, const size_t maxLookahead);
 
+	void ResetStream();
+	uint64_t Read(uint64_t& data);
+
+protected:
 	BinaryStream& m_stream;
 
 	// Max. bytes to be examined.
@@ -107,14 +111,14 @@ inline constexpr const char* StringEncodingDetector::ToString(Encoding encoding)
 template<class Heuristic>
 inline void StringEncodingDetector::FeedInput(Heuristic& heuristic, const size_t maxLookahead)
 {
-	m_stream.Seek(0);
 	if (!heuristic.IsValid())
 		return;
 
+	ResetStream();
 	for (size_t i = 0; maxLookahead == 0 || i < maxLookahead; i += sizeof(uint64_t))
 	{
 		uint64_t data = 0;
-		const uint64_t data_len = m_stream.Serialize(&data, sizeof(uint64_t));
+		const uint64_t data_len = Read(data);
 
 		for (uint8_t j = 0; j < data_len; ++j)
 		{
