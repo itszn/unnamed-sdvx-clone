@@ -28,6 +28,8 @@ public:
 
 	struct Option
 	{
+		Option() noexcept = default;
+
 		// 0: process the whole input
 		size_t maxLookahead = 64;
 
@@ -36,9 +38,14 @@ public:
 		std::vector<Encoding> assumptions = { Encoding::UTF8 };
 	};
 
-	static Encoding Detect(const char* str, const Option& option = Option());
-	inline static Encoding Detect(String& str, const Option& option = Option()) { return Detect(str.c_str(), option); }
-	static Encoding Detect(BinaryStream& stream, const Option& option = Option());
+	static Encoding Detect(const char* str, const Option& option);
+	inline static Encoding Detect(const char* str) { return Detect(str, Option()); }
+
+	inline static Encoding Detect(String& str, const Option& option) { return Detect(str.c_str(), option); }
+	inline static Encoding Detect(String& str) { return Detect(str, Option()); }
+
+	static Encoding Detect(BinaryStream& stream, const Option& option);
+	inline static Encoding Detect(BinaryStream& stream) { return Detect(stream, Option()); }
 
 	static String ToUTF8(Encoding encoding, const char* str, size_t str_len);
 	static String ToUTF8(const char* encoding, const char* str, size_t str_len);
@@ -60,7 +67,7 @@ public:
 		return ToUTF8(encoding, str.c_str(), str.size());
 	}
 
-	inline static constexpr char* ToString(Encoding encoding);
+	inline static constexpr const char* ToString(Encoding encoding);
 
 protected:
 	StringEncodingDetector(BinaryStream& stream) : m_stream(stream) {}
@@ -81,7 +88,7 @@ protected:
 	constexpr static size_t ICONV_BUFFER_SIZE = 64;
 };
 
-inline constexpr char* StringEncodingDetector::ToString(Encoding encoding)
+inline constexpr const char* StringEncodingDetector::ToString(Encoding encoding)
 {
 	switch (encoding)
 	{

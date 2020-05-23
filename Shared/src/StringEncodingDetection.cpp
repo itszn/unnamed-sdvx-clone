@@ -438,7 +438,9 @@ public:
 		case Encoding::CP949:
 			return cp949;
 		default:
+			Logf("EncodingHeuristics::GetHeuristic called for invalid argument %d", Logger::Error, encoding);
 			assert(false);
+			return utf8;
 		}
 	}
 
