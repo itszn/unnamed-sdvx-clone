@@ -476,14 +476,16 @@ Encoding StringEncodingDetector::Detect(BinaryStream& stream, const Option& opti
 	return result;
 }
 
-String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str)
+String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str, const size_t str_len)
 {
 	switch (encoding)
 	{
+	case Encoding::ISO8859:
+		return ToUTF8("ISO-8859-25", str, str_len);
 	case Encoding::ShiftJIS:
-		return ToUTF8("SHIFT_JIS", str);
+		return ToUTF8("SHIFT_JIS", str, str_len);
 	case Encoding::CP949:
-		return ToUTF8("CP949", str);
+		return ToUTF8("CP949", str, str_len);
 	case Encoding::Unknown:
 	case Encoding::UTF8:
 	default:
@@ -491,7 +493,7 @@ String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str)
 	}
 }
 
-String StringEncodingDetector::ToUTF8(const char* encoding, const char* str)
+String StringEncodingDetector::ToUTF8(const char* encoding, const char* str, const size_t str_len)
 {
 	iconv_t conv_d = iconv_open("UTF-8", encoding);
 	if (conv_d == (iconv_t)-1)
@@ -505,7 +507,7 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str)
 	out_buf_arr[ICONV_BUFFER_SIZE - 1] = '\0';
 
 	const char* in_buf = str;
-	size_t in_buf_left = strlen(str);
+	size_t in_buf_left = str_len;
 	
 	char* out_buf = out_buf_arr;
 	size_t out_buf_left = ICONV_BUFFER_SIZE-1;
@@ -524,12 +526,17 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str)
 		case EILSEQ:
 		default:
 			Logf("Error in ToUTF8: iconv failed with %d for encoding %s", Logger::Error, errno, encoding);
+			iconv_close(conv_d);
 			return String(str);
 			break;
 		}
 	}
 
 	iconv_close(conv_d);
+
+	*out_buf = '\0';
+	result.append(out_buf_arr);
+
 	return result;
 }
 

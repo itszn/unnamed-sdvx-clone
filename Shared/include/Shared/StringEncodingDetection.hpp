@@ -40,8 +40,27 @@ public:
 	inline static Encoding Detect(String& str, const Option& option = Option()) { return Detect(str.c_str(), option); }
 	static Encoding Detect(BinaryStream& stream, const Option& option = Option());
 
-	static String ToUTF8(Encoding encoding, const char* str);
-	static String ToUTF8(const char* encoding, const char* str);
+	static String ToUTF8(Encoding encoding, const char* str, size_t str_len);
+	static String ToUTF8(const char* encoding, const char* str, size_t str_len);
+
+	inline static String ToUTF8(Encoding encoding, const char* str)
+	{
+		return ToUTF8(encoding, str, strlen(str));
+	}
+	inline static String ToUTF8(Encoding encoding, const String& str)
+	{
+		return ToUTF8(encoding, str.c_str(), str.size());
+	}
+	inline static String ToUTF8(const char* encoding, const char* str)
+	{
+		return ToUTF8(encoding, str, strlen(str));
+	}
+	inline static String ToUTF8(const char* encoding, const String& str)
+	{
+		return ToUTF8(encoding, str.c_str(), str.size());
+	}
+
+	inline static constexpr char* ToString(Encoding encoding);
 
 protected:
 	StringEncodingDetector(BinaryStream& stream) : m_stream(stream) {}
@@ -61,6 +80,25 @@ protected:
 	// Size of the buffer for iconv
 	constexpr static size_t ICONV_BUFFER_SIZE = 64;
 };
+
+inline constexpr char* StringEncodingDetector::ToString(Encoding encoding)
+{
+	switch (encoding)
+	{
+	case Encoding::UTF8:
+		return "utf-8";
+	case Encoding::ISO8859:
+		return "iso-8859-15";
+	case Encoding::ShiftJIS:
+		return "shift_jis";
+	case Encoding::CP949:
+		return "cp949";
+	case Encoding::Unknown:
+		return "unknown";
+	default:
+		return "an unknown encoding";
+	}
+}
 
 template<class Heuristic>
 inline void StringEncodingDetector::FeedInput(Heuristic& heuristic, const size_t maxLookahead)
