@@ -48,6 +48,7 @@ enum class CharClass
 };
 
 class UTF8Heuristic;
+class CP850Heuristic;
 class CP923Heuristic;
 class CP932Heuristic;
 class CP949Heuristic;
@@ -116,6 +117,14 @@ protected:
 	CharClass GetCharClass(const uint16_t ch) const { return CharClass::INVALID; }
 };
 
+// A heuristic for single-byte character encodings
+class SingleByteEncodingHeuristic : public StringEncodingHeuristic
+{
+public:
+	bool Consume(const uint8_t ch) override { return Process(ch); }
+	bool Finalize() override { return IsValid(); }
+};
+
 // A heuristic for encodings with one or two bytes per character
 class TwoByteEncodingHeuristic : public StringEncodingHeuristic
 {
@@ -137,7 +146,7 @@ class StringEncodingHeuristicCollection<Heuristic>
 {
 public:
 	StringEncodingHeuristicCollection() = default;
-	inline const StringEncodingHeuristic& GetBestHeuristic() { return m_head; }
+	inline const StringEncodingHeuristic& GetBestHeuristic() const { return m_head; }
 	inline void Consume(const char c) { if(m_head.IsValid()) m_head.Consume(c); }
 	inline void Finalize() { m_head.Finalize(); }
 
@@ -150,7 +159,7 @@ class StringEncodingHeuristicCollection
 {
 public:
 	StringEncodingHeuristicCollection() = default;
-	inline const StringEncodingHeuristic& GetBestHeuristic()
+	inline const StringEncodingHeuristic& GetBestHeuristic() const
 	{
 		const StringEncodingHeuristic& head = m_head;
 		const StringEncodingHeuristic& restBest = m_rest.GetBestHeuristic();
@@ -184,13 +193,19 @@ protected:
 	uint8_t m_remaining = 0;
 };
 
-class CP923Heuristic : public StringEncodingHeuristic
+class CP850Heuristic : public SingleByteEncodingHeuristic
+{
+public:
+	StringEncoding GetEncoding() const override { return StringEncoding::CP850; }
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const override;
+};
+
+class CP923Heuristic : public SingleByteEncodingHeuristic
 {
 public:
 	StringEncoding GetEncoding() const override { return StringEncoding::CP923; }
-
-	bool Consume(const uint8_t ch) override { return Process(ch); }
-	bool Finalize() override { return IsValid(); }
 
 protected:
 	CharClass GetCharClass(const uint16_t ch) const override;

@@ -11,11 +11,26 @@
 #include "archive.h"
 #include "archive_entry.h"
 
-// Other encodings, such as ISO 8859-15 and CP850, are disabled because there are a lot of false positives.
-// (Maybe we can implement tier-system in future.)
+// Other encodings, such as ISO 8859-15 and CP850, are disabled because they are not as frequent as others.
 class StringEncodingDetectorInternal
-	: public StringEncodingHeuristicCollection<UTF8Heuristic, CP932Heuristic, CP949Heuristic>
-{};
+{
+public:
+	StringEncodingDetectorInternal() = default;
+
+	inline void Consume(const char ch) { m_tier0.Consume(ch); m_tier1.Consume(ch); }
+	inline void Finalize() { m_tier0.Finalize(); m_tier1.Finalize(); }
+	inline const StringEncodingHeuristic& GetBestHeuristic() const
+	{
+		const StringEncodingHeuristic& tier0 = m_tier0.GetBestHeuristic();
+		if (tier0.IsValid()) return tier0;
+
+		return m_tier1.GetBestHeuristic();
+	}
+
+protected:
+	StringEncodingHeuristicCollection<UTF8Heuristic> m_tier0;
+	StringEncodingHeuristicCollection<CP932Heuristic, CP949Heuristic> m_tier1;
+};
 
 StringEncodingDetector::StringEncodingDetector()
 {

@@ -131,6 +131,15 @@ CharClass UTF8Heuristic::GetCharClass(const uint16_t ch) const
 	return CharClass::OTHER_CHARS;
 }
 
+// CP850
+
+CharClass CP850Heuristic::GetCharClass(const uint16_t ch) const
+{
+	if (ch < 0x80) return GetAsciiCharClass(static_cast<uint8_t>(ch));
+	return CharClass::OTHER_CHARS;
+}
+
+
 // CP923
 // Reference: https://charset.fandom.com/ko/wiki/ISO/IEC_8859-15
 

@@ -41,6 +41,7 @@ inline constexpr const char* StringEncodingConverter::GetIConvArg(const StringEn
 	switch (encoding)
 	{
 	case StringEncoding::UTF8: return "utf8";
+	case StringEncoding::CP850: return "cp850";
 	case StringEncoding::CP923: return "cp923";
 	case StringEncoding::CP932: return "cp932";
 	case StringEncoding::CP949: return "cp949";
