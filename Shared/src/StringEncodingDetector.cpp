@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "StringEncodingDetector.hpp"
-
-// Look at here for actual logic
 #include "StringEncodingHeuristic.hpp"
 
 #include "Buffer.hpp"
@@ -119,7 +117,7 @@ StringEncoding StringEncodingDetector::DetectArchive(const Buffer& buffer)
 		return StringEncoding::Unknown;
 	}
 
-	StringEncodingDetector charDet;
+	StringEncodingDetector detector;
 
 	struct archive_entry* entry = nullptr;
 
@@ -127,17 +125,17 @@ StringEncoding StringEncodingDetector::DetectArchive(const Buffer& buffer)
 	{
 		if (const char* entryName = archive_entry_pathname(entry))
 		{
-			charDet.Feed(entryName);
+			detector.Feed(entryName);
 		}
 		else
 		{
 			archive_read_free(a);
-			return charDet.GetEncoding();
+			return detector.GetEncoding();
 		}
 
 		archive_read_data_skip(a);
 	}
 
 	archive_read_free(a);
-	return charDet.GetEncoding();
+	return detector.GetEncoding();
 }

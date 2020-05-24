@@ -14,7 +14,7 @@
 	The heuristic is very simple.
 	1. For each character, the character class is defined. (See `CharClass` enum below.)
 	2. There is a score associated with each character class.
-	3. An encoding which successfully decodes input with lowest average score is chosen.
+	3. An encoding which successfully decodes input with lowest total score is chosen.
 
 	Sometimes the encoding is incorrectly chosen for strings encoded in other encoding (ex: CP850).
 */
@@ -76,7 +76,7 @@ public:
 	virtual bool Finalize() = 0;
 
 	// Operators can be confusing (lower score: better)
-	inline bool Beats(const StringEncodingHeuristic& that) const { return !that.IsValid() || IsValid() && m_score * that.m_count < that.m_score* m_count; }
+	inline bool Beats(const StringEncodingHeuristic& that) const { return !that.IsValid() || IsValid() && m_score < that.m_score; }
 
 protected:
 	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
