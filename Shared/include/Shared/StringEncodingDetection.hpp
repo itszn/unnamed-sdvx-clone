@@ -47,6 +47,9 @@ public:
 	static Encoding Detect(BinaryStream& stream, const Option& option);
 	inline static Encoding Detect(BinaryStream& stream) { return Detect(stream, Option()); }
 
+	static Encoding DetectArchive(const Buffer& buffer, const Option& option);
+	inline static Encoding DetectArchive(const Buffer& buffer) { return DetectArchive(buffer, Option()); }
+
 	static String ToUTF8(Encoding encoding, const char* str, size_t str_len);
 	static String ToUTF8(const char* encoding, const char* str, size_t str_len);
 
@@ -66,6 +69,7 @@ public:
 	{
 		return ToUTF8(encoding, str.c_str(), str.size());
 	}
+	static String PathnameToUTF8(Encoding encoding, struct archive_entry* entry);
 
 	inline static constexpr const char* ToString(Encoding encoding);
 

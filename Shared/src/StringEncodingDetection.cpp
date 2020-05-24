@@ -10,6 +10,8 @@
 #include "Shared/BinaryStream.hpp"
 #include "Shared/Log.hpp"
 
+#include "archive.h"
+#include "archive_entry.h"
 #include "iconv.h"
 
 /*
@@ -18,6 +20,8 @@
 	Currently, the heuristic is very simple:
 		1. For each character class, a hand-chosen value is assigned.
 		2. An encoding with lowest average value is chosen.
+
+	ISO-8859-15 encoding is disabled for now, because it's practically never used, while having some false positives.
 */
 
 using Encoding = StringEncodingDetector::Encoding;
@@ -120,6 +124,18 @@ protected:
 
 	size_t m_count = 0;
 	int m_score = 0;
+};
+
+class NullHeuristic : public EncodingHeuristic
+{
+public:
+	NullHeuristic() : EncodingHeuristic() { MarkInvalid(); }
+
+	bool Consume(const uint8_t ch) override { return false; }
+	bool Finalize() override { return false; }
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const { return CharClass::INVALID; }
 };
 
 class TwoByteEncodingHeuristic : public EncodingHeuristic
@@ -424,6 +440,7 @@ class EncodingHeuristics
 {
 public:
 	EncodingHeuristics() = default;
+
 	inline EncodingHeuristic& GetHeuristic(Encoding encoding)
 	{
 		assert(encoding != Encoding::Unknown);
@@ -445,9 +462,52 @@ public:
 		}
 	}
 
+	inline Encoding GetBest() const
+	{
+		Encoding result = Encoding::Unknown;
+		int minScore = -1;
+		size_t minCount = 0;
+
+		CheckBest(result, minScore, minCount, utf8);
+		CheckBest(result, minScore, minCount, iso8859);
+		CheckBest(result, minScore, minCount, shift_jis);
+		CheckBest(result, minScore, minCount, cp949);
+
+		return result;
+	}
+
+	inline void FeedInputs(const char* c)
+	{
+		while (*c)
+		{
+			utf8.IsValid() && utf8.Consume(*c);
+			iso8859.IsValid() && iso8859.Consume(*c);
+			shift_jis.IsValid() && shift_jis.Consume(*c);
+			cp949.IsValid() && cp949.Consume(*c);
+			++c;
+		}
+
+		utf8.Finalize();
+		iso8859.Finalize();
+		shift_jis.Finalize();
+		cp949.Finalize();
+	}
+
+	inline static void CheckBest(Encoding& result, int& minScore, size_t& minCount, const EncodingHeuristic& heuristic)
+	{
+		if (!heuristic.IsValid()) return;
+
+		if (minScore == -1 || heuristic.GetScore() * minCount < minScore * heuristic.GetCount())
+		{
+			result = heuristic.GetEncoding();
+			minScore = heuristic.GetScore();
+			minCount = heuristic.GetCount();
+		}
+	}
+
 protected:
 	UTF8Heuristic utf8;
-	ISO8859Heuristic iso8859;
+	NullHeuristic iso8859; // ISO-8859 is disabled for now
 	ShiftJISHeuristic shift_jis;
 	CP949Heuristic cp949;
 };
@@ -477,6 +537,55 @@ Encoding StringEncodingDetector::Detect(BinaryStream& stream, const Option& opti
 
 	stream.Seek(init_pos);
 	return result;
+}
+
+Encoding StringEncodingDetector::DetectArchive(const Buffer& buffer, const Option& option)
+{
+	struct archive* a = archive_read_new();
+	if (a == nullptr)
+	{
+		return Encoding::Unknown;
+	}
+
+	archive_read_support_filter_all(a);
+	archive_read_support_format_all(a);
+
+	if (archive_read_open_memory(a, buffer.data(), buffer.size()) != ARCHIVE_OK)
+	{
+		archive_read_free(a);
+		return Encoding::Unknown;
+	}
+
+	EncodingHeuristics heuristics;
+
+	struct archive_entry* entry = nullptr;
+
+	while (archive_read_next_header(a, &entry) == ARCHIVE_OK)
+	{
+		if (const char* entryName = archive_entry_pathname(entry))
+		{
+			heuristics.FeedInputs(entryName);
+		}
+		else
+		{
+			archive_read_free(a);
+			return Encoding::Unknown;
+		}
+
+		archive_read_data_skip(a);
+	}
+
+	archive_read_free(a);
+
+	for (const Encoding encoding : option.assumptions)
+	{
+		if (heuristics.GetHeuristic(encoding).IsValid())
+		{
+			return encoding;
+		}
+	}
+
+	return heuristics.GetBest();
 }
 
 String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str, const size_t str_len)
@@ -510,6 +619,7 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str, con
 	out_buf_arr[ICONV_BUFFER_SIZE - 1] = '\0';
 
 	const char* in_buf = str;
+	const char* in_buf_prev = in_buf;
 	size_t in_buf_left = str_len;
 	
 	char* out_buf = out_buf_arr;
@@ -517,22 +627,24 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str, con
 
 	while (iconv(conv_d, const_cast<char**>(&in_buf), &in_buf_left, &out_buf, &out_buf_left) == -1)
 	{
-		switch (errno)
+		// errno doesn't seem to be realible on Windows (set to 0 or 9 instead of E2BIG)
+		const int err = errno;
+
+		if (in_buf != in_buf_prev)
 		{
-		case E2BIG:
+			in_buf_prev = in_buf;
+
 			*out_buf = '\0';
 			result += out_buf_arr;
 			out_buf = out_buf_arr;
 			out_buf_left = ICONV_BUFFER_SIZE - 1;
-			break;
-		case EINVAL:
-		case EILSEQ:
-		default:
-			Logf("Error in ToUTF8: iconv failed with %d for encoding %s", Logger::Error, errno, encoding);
-			iconv_close(conv_d);
-			return String(str);
-			break;
+
+			continue;
 		}
+
+		Logf("Error in ToUTF8: iconv failed with %d for encoding %s", Logger::Error, err, encoding);
+		iconv_close(conv_d);
+		return String(str);
 	}
 
 	iconv_close(conv_d);
@@ -541,6 +653,21 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str, con
 	result.append(out_buf_arr);
 
 	return result;
+}
+
+String StringEncodingDetector::PathnameToUTF8(Encoding encoding, struct archive_entry* entry)
+{
+	if (const char* pathname = archive_entry_pathname(entry))
+	{
+		return StringEncodingDetector::ToUTF8(encoding, pathname);
+	}
+	
+	if (const wchar_t* pathname_w = archive_entry_pathname_w(entry))
+	{
+		return Utility::ConvertToUTF8(pathname_w);
+	}
+
+	return String();
 }
 
 Encoding StringEncodingDetector::Detect(const Option& option)
@@ -556,7 +683,7 @@ Encoding StringEncodingDetector::Detect(const Option& option)
 	EncodingHeuristics heuristics;
 
 	// First, check assumptions
-	for (Encoding encoding : option.assumptions)
+	for (const Encoding encoding : option.assumptions)
 	{
 		if (encoding == Encoding::Unknown)
 			return encoding;
@@ -579,15 +706,7 @@ Encoding StringEncodingDetector::Detect(const Option& option)
 		EncodingHeuristic& heuristic = heuristics.GetHeuristic(encoding);
 		FeedInput(heuristic, option.maxLookahead);
 
-		if (!heuristic.IsValid())
-			continue;
-		
-		if (minScore == -1 || heuristic.GetScore() * minCount < minScore * heuristic.GetCount())
-		{
-			result = encoding;
-			minScore = heuristic.GetScore();
-			minCount = heuristic.GetCount();
-		}
+		EncodingHeuristics::CheckBest(result, minScore, minCount, heuristic);
 	}
 
 	return result;
