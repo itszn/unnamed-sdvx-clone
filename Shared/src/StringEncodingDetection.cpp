@@ -44,6 +44,8 @@ enum class CharClass
 	KANJI_KSX1001 = 70, // Kanji in KS X 1001
 	HANGUL_CP949 = 80, // Hangul not in KS X 1001
 	KANJI_LEVEL_2 = 80, // Level 2+ Kanji in JIS X 0208
+	KANJI_CP932 = 120, // Kanji in CP932
+	PRIVATE_USE = 500, // Private-use characters
 };
 
 static inline bool IsPrintableAscii(uint8_t ch)
@@ -273,7 +275,7 @@ protected:
 
 		// PUA
 		if (0xE000 <= ch && ch <= 0xF8FF)
-			return CharClass::INVALID;
+			return CharClass::PRIVATE_USE;
 
 		// BOM
 		if (ch == 0xFEFF)
@@ -323,7 +325,7 @@ protected:
 
 // See also:
 // - https://www.sljfaq.org/afaq/encodings.html
-// - https://charset.fandom.com/ko/wiki/EUC-JP
+// - https://charset.fandom.com/ko/wiki/CP932
 class ShiftJISHeuristic : public TwoByteEncodingHeuristic
 {
 public:
@@ -344,6 +346,14 @@ protected:
 			return CharClass::KANA;
 		if (0xA1 <= ch && ch <= 0xDF)
 			return CharClass::OTHER_CHARS;
+
+		// CP932 extension
+		if (0x8740 <= ch && ch <= 0x879C)
+			return CharClass::OTHER_CHARS;
+		if (0xED40 <= ch && ch <= 0xEEFC || 0xFA40 <= ch && ch <= 0xFC4B)
+			return CharClass::KANJI_CP932;
+		if (0xF040 <= ch && ch <= 0xF9FC)
+			return CharClass::PRIVATE_USE;
 
 		// JIS X 0208
 		if (0x84BF <= ch && ch <= 0x889E || 0x9873 <= ch && ch <= 0x989E || 0xEAA5 <= ch)
@@ -391,6 +401,10 @@ private:
 		// Kana
 		if (0xAAA1 <= ch && ch <= 0xAAF3 || 0xABA1 <= ch && ch <= 0xABF6)
 			return CharClass::KANA;
+
+		// PUA
+		if (0xC9A1 <= ch && ch <= 0xC9FE || 0xFEA1 <= ch && ch <= 0xFEFE)
+			return CharClass::PRIVATE_USE;
 
 		// Invalid region
 		if (0xA2E9 <= ch && ch <= 0xA2FE || 0xA6E5 <= ch && ch <= 0xA6FE || 0xACF2 <= ch)
@@ -595,7 +609,7 @@ String StringEncodingDetector::ToUTF8(Encoding encoding, const char* str, const 
 	case Encoding::ISO8859:
 		return ToUTF8("ISO-8859-25", str, str_len);
 	case Encoding::ShiftJIS:
-		return ToUTF8("SHIFT_JIS", str, str_len);
+		return ToUTF8("CP932", str, str_len);
 	case Encoding::CP949:
 		return ToUTF8("CP949", str, str_len);
 	case Encoding::Unknown:
@@ -657,9 +671,12 @@ String StringEncodingDetector::ToUTF8(const char* encoding, const char* str, con
 
 String StringEncodingDetector::PathnameToUTF8(Encoding encoding, struct archive_entry* entry)
 {
-	if (const char* pathname = archive_entry_pathname(entry))
+	if (encoding != Encoding::Unknown)
 	{
-		return StringEncodingDetector::ToUTF8(encoding, pathname);
+		if (const char* pathname = archive_entry_pathname(entry))
+		{
+			return StringEncodingDetector::ToUTF8(encoding, pathname);
+		}
 	}
 	
 	if (const wchar_t* pathname_w = archive_entry_pathname_w(entry))

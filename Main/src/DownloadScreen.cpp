@@ -224,6 +224,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		StringEncodingDetector::Option encodingDetectorOption;
 
 		archiveEncoding = StringEncodingDetector::DetectArchive(ar.data);
+		Logf("Archive encoding is assumed to be %s", Logger::Info, StringEncodingDetector::ToString(archiveEncoding));
 
 		// Process response
 		lua_rawgeti(m_lua, LUA_REGISTRYINDEX, ar.callback);

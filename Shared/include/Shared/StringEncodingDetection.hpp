@@ -20,7 +20,8 @@ public:
 		// ISO 8859-15
 		ISO8859,
 		// Japanese
-		ShiftJIS,
+		CP932,
+		ShiftJIS = CP932,
 		// Korean
 		CP949,
 		MAX_VALUE
@@ -98,8 +99,8 @@ inline constexpr const char* StringEncodingDetector::ToString(Encoding encoding)
 		return "utf-8";
 	case Encoding::ISO8859:
 		return "iso-8859-15";
-	case Encoding::ShiftJIS:
-		return "shift_jis";
+	case Encoding::CP932:
+		return "cp932";
 	case Encoding::CP949:
 		return "cp949";
 	case Encoding::Unknown:
