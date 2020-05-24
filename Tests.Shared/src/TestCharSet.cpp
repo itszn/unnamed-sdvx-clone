@@ -191,7 +191,6 @@ Test("StringEncodingConverter.CP932")
 	{
 		if (testCase.utf8 && testCase.cp932)
 		{
-			const WString wstr = Utility::ConvertToWString(testCase.utf8);
 			TestEnsure(StringEncodingConverter::ToUTF8(StringEncoding::CP932, testCase.cp932) == testCase.utf8);
 		}
 	}

@@ -9,6 +9,7 @@ class BinaryStream;
 class StringEncodingDetectorInternal;
 
 // Detects string encoding using heuristic
+// (Refer to StringEncodingHeuristic.hpp for more detail)
 class StringEncodingDetector
 {
 public:

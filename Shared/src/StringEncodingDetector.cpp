@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "StringEncodingDetector.hpp"
 
+// Look at here for actual logic
 #include "StringEncodingHeuristic.hpp"
 
 #include "Buffer.hpp"
@@ -10,8 +11,10 @@
 #include "archive.h"
 #include "archive_entry.h"
 
+// Other encodings, such as ISO 8859-15 and CP850, are disabled because there are a lot of false positives.
+// (Maybe we can implement tier-system in future.)
 class StringEncodingDetectorInternal
-	: public StringEncodingHeuristicCollection<NullHeuristic, NullHeuristic>
+	: public StringEncodingHeuristicCollection<UTF8Heuristic, CP932Heuristic, CP949Heuristic>
 {};
 
 StringEncodingDetector::StringEncodingDetector()
@@ -30,7 +33,7 @@ void StringEncodingDetector::Feed(const char* data, const size_t len)
 
 	for (size_t i = 0; i < len; ++i)
 	{
-		m_internal->Consume(i);
+		m_internal->Consume(data[i]);
 	}
 }
 

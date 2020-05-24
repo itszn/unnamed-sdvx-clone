@@ -3,6 +3,22 @@
 #include <cstdint>
 #include "Shared/StringEncoding.hpp"
 
+/*
+	Heuristics for Encoding Detection
+	---------------------------------
+	This file and StringEncodingHeuristics.cpp contains logic for simple encoding detection.
+	Because of the specific domain of interest, other encoding detection libraries such as `uchardet` couldn't be used.
+	* Almost all non UTF-8 strings are Shift_JIS encoded.
+	* Often, chart titles and artist/effector names consist of various special characters.
+
+	The heuristic is very simple.
+	1. For each character, the character class is defined. (See `CharClass` enum below.)
+	2. There is a score associated with each character class.
+	3. An encoding which successfully decodes input with lowest average score is chosen.
+
+	Sometimes the encoding is incorrectly chosen for strings encoded in other encoding (ex: CP850).
+*/
+
 // Heuristic values for various character classes
 // Feel free to tweak these values
 enum class CharClass
@@ -31,6 +47,13 @@ enum class CharClass
 	KANJI_CP932 = 200, // Kanji in CP932
 };
 
+class UTF8Heuristic;
+class CP923Heuristic;
+class CP932Heuristic;
+class CP949Heuristic;
+
+#pragma region Definitions
+
 // Base heuristic
 class StringEncodingHeuristic
 {
@@ -39,7 +62,7 @@ protected:
 	StringEncodingHeuristic(const StringEncodingHeuristic&) = delete;
 
 public:
-	using Score = uint64_t;
+	using Score = int32_t;
 
 	virtual StringEncoding GetEncoding() const { return StringEncoding::Unknown; }
 
@@ -50,6 +73,9 @@ public:
 
 	virtual bool Consume(const uint8_t ch) = 0;
 	virtual bool Finalize() = 0;
+
+	// Operators can be confusing (lower score: better)
+	inline bool Beats(const StringEncodingHeuristic& that) const { return !that.IsValid() || IsValid() && m_score * that.m_count < that.m_score* m_count; }
 
 protected:
 	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
@@ -112,7 +138,7 @@ class StringEncodingHeuristicCollection<Heuristic>
 public:
 	StringEncodingHeuristicCollection() = default;
 	inline const StringEncodingHeuristic& GetBestHeuristic() { return m_head; }
-	inline void Consume(const char c) { m_head.Consume(c); }
+	inline void Consume(const char c) { if(m_head.IsValid()) m_head.Consume(c); }
 	inline void Finalize() { m_head.Finalize(); }
 
 protected:
@@ -128,18 +154,69 @@ public:
 	{
 		const StringEncodingHeuristic& head = m_head;
 		const StringEncodingHeuristic& restBest = m_rest.GetBestHeuristic();
-		if (!head.IsValid()) return restBest;
-		if (!restBest.IsValid()) return head;
 
-		if (head.GetScore() * restBest.GetCount() <= head.GetCount() < restBest.GetScore())
-			return head;
-		else
-			return restBest;
+		return restBest.Beats(head) ? restBest : head;
 	}
-	inline void Consume(const char c) { m_head.Consume(c); m_rest.Consume(c); }
+	inline void Consume(const char c) { if(m_head.IsValid()) m_head.Consume(c); m_rest.Consume(c); }
 	inline void Finalize() { m_head.Finalize(); m_rest.Finalize(); }
 
 protected:
 	Heuristic m_head;
 	StringEncodingHeuristicCollection<RestHeuristics...> m_rest;
 };
+
+#pragma endregion
+
+#pragma region Heuristics
+
+class UTF8Heuristic : public StringEncodingHeuristic
+{
+public:
+	StringEncoding GetEncoding() const override { return StringEncoding::UTF8; }
+
+	bool Consume(const uint8_t ch) override;
+	bool Finalize() override { if (m_remaining) MarkInvalid(); return IsValid();}
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const override;
+
+	uint32_t m_currChar = 0;
+	uint8_t m_remaining = 0;
+};
+
+class CP923Heuristic : public StringEncodingHeuristic
+{
+public:
+	StringEncoding GetEncoding() const override { return StringEncoding::CP923; }
+
+	bool Consume(const uint8_t ch) override { return Process(ch); }
+	bool Finalize() override { return IsValid(); }
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const override;
+};
+
+class CP932Heuristic : public TwoByteEncodingHeuristic
+{
+public:
+	StringEncoding GetEncoding() const override { return StringEncoding::CP932; }
+
+protected:
+	bool RequiresSecondByte(const uint8_t ch) const override;
+	CharClass GetCharClass(const uint16_t ch) const override;
+};
+
+class CP949Heuristic : public TwoByteEncodingHeuristic
+{
+public:
+	StringEncoding GetEncoding() const override { return StringEncoding::CP949; }
+
+private:
+	CharClass GetEUCKRCharClass(const uint16_t ch) const;
+
+protected:
+	bool RequiresSecondByte(const uint8_t ch) const override;
+	CharClass GetCharClass(const uint16_t ch) const override;
+};
+
+#pragma endregion
