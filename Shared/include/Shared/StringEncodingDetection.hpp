@@ -86,9 +86,6 @@ protected:
 protected:
 	BinaryStream& m_stream;
 
-	// Max. bytes to be examined.
-	constexpr static size_t MAX_READ_FOR_ENCODING_DETECTION = 64;
-
 	// Size of the buffer for iconv
 	constexpr static size_t ICONV_BUFFER_SIZE = 64;
 };
