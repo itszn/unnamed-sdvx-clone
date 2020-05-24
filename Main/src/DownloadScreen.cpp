@@ -9,7 +9,8 @@
 #include "GameConfig.hpp"
 #include "cpr/util.h"
 
-#include "Shared/StringEncodingDetection.hpp"
+#include "Shared/StringEncodingDetector.hpp"
+#include "Shared/StringEncodingConverter.hpp"
 
 DownloadScreen::DownloadScreen()
 {
@@ -211,8 +212,6 @@ void DownloadScreen::m_OnMouseScroll(int32 steps)
 
 void DownloadScreen::m_ProcessArchiveResponses()
 {
-	using ArchiveEncoding = StringEncodingDetector::Encoding;
-
 	m_archiveLock.lock();
 	if (m_archiveResps.size() > 0)
 	{
@@ -220,11 +219,11 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		ArchiveResponse& ar = m_archiveResps.front();
 		m_archiveLock.unlock();
 
-		ArchiveEncoding archiveEncoding = ArchiveEncoding::Unknown;
-		StringEncodingDetector::Option encodingDetectorOption;
-
-		archiveEncoding = StringEncodingDetector::DetectArchive(ar.data);
-		Logf("Archive encoding is assumed to be %s", Logger::Info, StringEncodingDetector::ToString(archiveEncoding));
+		StringEncoding archiveEncoding = StringEncodingDetector::DetectArchive(ar.data);
+		if (archiveEncoding != StringEncoding::Unknown)
+			Logf("Archive encoding is assumed to be %s", Logger::Info, GetDisplayString(archiveEncoding));
+		else
+			Log("Archive encoding couldn't be assumed. (Assuming UTF-8)", Logger::Warning);
 
 		// Process response
 		lua_rawgeti(m_lua, LUA_REGISTRYINDEX, ar.callback);
@@ -233,7 +232,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		bool readError = false;
 		lua_newtable(m_lua);
 		while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-			const String pathname = StringEncodingDetector::PathnameToUTF8(archiveEncoding, entry);
+			const String pathname = StringEncodingConverter::PathnameToUTF8(archiveEncoding, entry);
 			if (pathname.empty())
 			{
 				readError = true;
@@ -287,7 +286,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 				Log("Error opening downloaded chart archive for extraction", Logger::Error);
 			}
 			else while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-				const String entryName = StringEncodingDetector::PathnameToUTF8(archiveEncoding, entry);
+				const String entryName = StringEncodingConverter::PathnameToUTF8(archiveEncoding, entry);
 				if (entryPathMap.Contains(entryName))
 				{
 					if (!m_extractFile(ar.a, entryPathMap.at(entryName)))

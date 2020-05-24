@@ -1,5 +1,6 @@
 #include <Shared/Shared.hpp>
-#include <Shared/StringEncodingDetection.hpp>
+#include <Shared/StringEncodingDetector.hpp>
+#include <Shared/StringEncodingConverter.hpp>
 #include <Tests/Tests.hpp>
 
 #pragma region Test cases
@@ -7,7 +8,7 @@
 struct EncodingTestCase
 {
 	const char* utf8;
-	const char* shift_jis;
+	const char* cp932;
 	const char* cp949;
 };
 
@@ -158,59 +159,51 @@ const std::vector<EncodingTestCase> TEST_CASES = {
 
 #pragma endregion
 
-static inline bool IsUTF8Like(StringEncodingDetector::Encoding encoding)
-{
-	return encoding == StringEncodingDetector::Encoding::Unknown ||
-		encoding == StringEncodingDetector::Encoding::UTF8;
-}
-
-Test("DetectEncoding.UTF8")
+Test("StringEncodingDetector.UTF8")
 {
 	for (auto& testCase : TEST_CASES)
 	{
-		TestEnsure(IsUTF8Like(StringEncodingDetector::Detect(testCase.utf8)));
+		TestEnsure(!StringEncodingConverter::NeedsConversion(StringEncodingDetector::Detect(testCase.utf8)));
 	}
 }
 
-Test("DetectEncoding.ShiftJIS")
+Test("StringEncodingDetector.CP932")
 {
 	for (auto& testCase : TEST_CASES)
 	{
-		if(testCase.shift_jis)
-			TestEnsure(StringEncodingDetector::Detect(testCase.shift_jis) == StringEncodingDetector::Encoding::ShiftJIS);
+		if(testCase.cp932)
+			TestEnsure(StringEncodingDetector::Detect(testCase.cp932) == StringEncoding::CP932);
 	}
 }
 
-Test("DetectEncoding.CP949")
+Test("StringEncodingDetector.CP949")
 {
 	for (auto& testCase : TEST_CASES)
 	{
 		if (testCase.cp949)
-			TestEnsure(StringEncodingDetector::Detect(testCase.cp949) == StringEncodingDetector::Encoding::CP949);
+			TestEnsure(StringEncodingDetector::Detect(testCase.cp949) == StringEncoding::CP949);
 	}
 }
 
-Test("DetectEncoding.ShiftJIS_UTF8")
+Test("StringEncodingConverter.CP932")
 {
-	size_t i = 0;
 	for (auto& testCase : TEST_CASES)
 	{
-		if (testCase.utf8 && testCase.shift_jis)
+		if (testCase.utf8 && testCase.cp932)
 		{
 			const WString wstr = Utility::ConvertToWString(testCase.utf8);
-			TestEnsure(StringEncodingDetector::ToUTF8(StringEncodingDetector::Encoding::ShiftJIS, testCase.shift_jis) == testCase.utf8);
+			TestEnsure(StringEncodingConverter::ToUTF8(StringEncoding::CP932, testCase.cp932) == testCase.utf8);
 		}
-		++i;
 	}
 }
 
-Test("DetectEncoding.CP949_UTF8")
+Test("StringEncodingConverter.CP949")
 {
 	for (auto& testCase : TEST_CASES)
 	{
 		if (testCase.utf8 && testCase.cp949)
 		{
-			TestEnsure(StringEncodingDetector::ToUTF8(StringEncodingDetector::Encoding::CP949, testCase.cp949) == testCase.utf8);
+			TestEnsure(StringEncodingConverter::ToUTF8(StringEncoding::CP949, testCase.cp949) == testCase.utf8);
 		}
 	}
 }

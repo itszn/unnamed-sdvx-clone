@@ -1,0 +1,145 @@
+#pragma once
+
+#include <cstdint>
+#include "Shared/StringEncoding.hpp"
+
+// Heuristic values for various character classes
+// Feel free to tweak these values
+enum class CharClass
+{
+	/* Common */
+	INVALID = -1,
+	IGNORABLE = 0,	// Ignorable characters, such as BOM
+	ALNUM = 10,	// Full-width or half-width 0-9, A-Z, a-z
+	ASCII_OTHER_CHARS = 15,	// ASCII symbols
+	OTHER_CHARS = 100,	// Characters which do not fall in any other classes
+	PRIVATE_USE = 1000,	// Private-use characters
+
+	/* Kana */
+	KANA = 20,
+
+	/* Hangul */
+	HANGUL_UNICODE = 50, // Any Hangul
+	HANGUL_KSX1001 = 25, // Hangul in KS X 1001
+	HANGUL_CP949 = 100, // Hangul not in KS X 1001
+
+	/* Kanji */
+	KANJI_LEVEL_1 = 30, // Level 1 Kanji in JIS X 0208
+	KANJI_UNICODE = 75, // Kanji in CJK Unified Ideographs block
+	KANJI_KSX1001 = 90, // Kanji in KS X 1001
+	KANJI_LEVEL_2 = 100, // Level 2+ Kanji in JIS X 0208
+	KANJI_CP932 = 200, // Kanji in CP932
+};
+
+// Base heuristic
+class StringEncodingHeuristic
+{
+protected:
+	StringEncodingHeuristic() = default;
+	StringEncodingHeuristic(const StringEncodingHeuristic&) = delete;
+
+public:
+	using Score = uint64_t;
+
+	virtual StringEncoding GetEncoding() const { return StringEncoding::Unknown; }
+
+	inline Score GetScore() const { return m_score; }
+	inline size_t GetCount() const { return m_count; }
+
+	inline bool IsValid() const { return GetScore() >= 0; }
+
+	virtual bool Consume(const uint8_t ch) = 0;
+	virtual bool Finalize() = 0;
+
+protected:
+	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
+	inline bool Process(const uint16_t ch) { return Process(GetCharClass(ch)); }
+
+	inline bool Process(CharClass charClass)
+	{
+		if (charClass == CharClass::INVALID)
+		{
+			MarkInvalid();
+			return false;
+		}
+		else
+		{
+			m_score += static_cast<Score>(charClass);
+			++m_count;
+
+			return true;
+		}
+	}
+
+	inline void MarkInvalid() { m_score = -1; }
+
+	size_t m_count = 0;
+	Score m_score = 0;
+};
+
+// A heuristic which denies every input
+class NullHeuristic : public StringEncodingHeuristic
+{
+public:
+	NullHeuristic() : StringEncodingHeuristic() { MarkInvalid(); }
+
+	bool Consume(const uint8_t ch) override { return false; }
+	bool Finalize() override { return false; }
+
+protected:
+	CharClass GetCharClass(const uint16_t ch) const { return CharClass::INVALID; }
+};
+
+// A heuristic for encodings with one or two bytes per character
+class TwoByteEncodingHeuristic : public StringEncodingHeuristic
+{
+public:
+	bool Consume(const uint8_t ch) override;
+	bool Finalize() override { if (m_hi) MarkInvalid(); return IsValid(); }
+
+protected:
+	virtual bool RequiresSecondByte(const uint8_t ch) const = 0;
+
+	uint8_t m_hi = 0;
+};
+
+template<typename Heuristics, typename... RestHeuristics>
+class StringEncodingHeuristicCollection;
+
+template<typename Heuristic>
+class StringEncodingHeuristicCollection<Heuristic>
+{
+public:
+	StringEncodingHeuristicCollection() = default;
+	inline const StringEncodingHeuristic& GetBestHeuristic() { return m_head; }
+	inline void Consume(const char c) { m_head.Consume(c); }
+	inline void Finalize() { m_head.Finalize(); }
+
+protected:
+	Heuristic m_head;
+};
+
+template<typename Heuristic, typename... RestHeuristics>
+class StringEncodingHeuristicCollection
+{
+public:
+	StringEncodingHeuristicCollection() = default;
+	inline const StringEncodingHeuristic& GetBestHeuristic()
+	{
+		const StringEncodingHeuristic& head = m_head;
+		const StringEncodingHeuristic& restBest = m_rest.GetBestHeuristic();
+		if (!head.IsValid()) return restBest;
+		if (!restBest.IsValid()) return head;
+
+		if (head.GetScore() * restBest.GetCount() <= head.GetCount() < restBest.GetScore())
+			return head;
+		else
+			return restBest;
+	}
+	inline void Consume(const char c) { m_head.Consume(c); m_rest.Consume(c); }
+	inline void Finalize() { m_head.Finalize(); m_rest.Finalize(); }
+
+protected:
+	Heuristic m_head;
+	StringEncodingHeuristicCollection<RestHeuristics...> m_rest;
+};

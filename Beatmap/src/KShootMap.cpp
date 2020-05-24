@@ -2,7 +2,8 @@
 #include "KShootMap.hpp"
 
 #include "Shared/Profiling.hpp"
-#include "Shared/StringEncodingDetection.hpp"
+#include "Shared/StringEncodingDetector.hpp"
+#include "Shared/StringEncodingConverter.hpp"
 
 String KShootTick::ToString() const
 {
@@ -76,8 +77,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 {
 	ProfilerScope $("Load KShootMap");
 
-	using ChartEncoding = StringEncodingDetector::Encoding;
-	ChartEncoding chartEncoding = ChartEncoding::Unknown;
+	StringEncoding chartEncoding = StringEncoding::Unknown;
 
 	// Read Byte Order Mark
 	uint32_t bom = 0;
@@ -87,7 +87,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 	// This is forbidden by the spec, but there are old charts which did not use UTF-8. (#314)
 	if (bom == 0x00bfbbef)
 	{
-		chartEncoding = ChartEncoding::UTF8;
+		chartEncoding = StringEncoding::UTF8;
 	}
 	else
 	{
@@ -119,23 +119,23 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 		settings.FindOrAdd(k) = v;
 	}
 
-	if (chartEncoding == ChartEncoding::Unknown)
+	if (chartEncoding == StringEncoding::Unknown)
 	{
-		StringEncodingDetector::Option detectorOption;
-		detectorOption.maxLookahead = input.Tell();
+		chartEncoding = StringEncodingDetector::Detect(input, 0, input.Tell());
 
-		chartEncoding = StringEncodingDetector::Detect(input, detectorOption);
+		if (chartEncoding != StringEncoding::Unknown)
+			Logf("Chart encoding is assumed to be %s", Logger::Info, GetDisplayString(chartEncoding));
+		else
+			Log("Chart encoding couldn't be assumed. (Assuming UTF-8)", Logger::Warning);
 
-		Logf("Chart encoding is assumed to be %s", Logger::Info, StringEncodingDetector::ToString(chartEncoding));
-
-		if (chartEncoding != ChartEncoding::Unknown)
+		if (chartEncoding != StringEncoding::Unknown)
 		{
 			for (auto& it : settings)
 			{
 				const String& value = it.second;
 				if (value.empty()) continue;
 
-				it.second = StringEncodingDetector::ToUTF8(chartEncoding, value);
+				it.second = StringEncodingConverter::ToUTF8(chartEncoding, value);
 			}
 		}
 	}
