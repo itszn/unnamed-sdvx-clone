@@ -38,6 +38,7 @@ bool ChatOverlay::Init()
 	m_multi->GetTCP().SetTopicHandler("server.chat.received", this, &ChatOverlay::m_handleChatReceived);
 
 	AddMessage("Note: This chat is currently not encrypted", 179, 73, 73); 
+	return true;
 }
 
 void ChatOverlay::InitNuklearIfNeeded()
@@ -389,6 +390,7 @@ bool ChatOverlay::m_handleChatReceived(nlohmann::json& packet)
 	String out = Utility::Sprintf("%02u:%02u %s", ttm.tm_hour, ttm.tm_min, message);
 	m_newMessages++;
 	AddMessage(out);
+	return true;
 }
 
 void ChatOverlay::AddMessage(const String& message, int r, int g, int b)
