@@ -1774,7 +1774,7 @@ public:
 			{
 				m_filterSelection->AdvanceSelection(1);
 			}
-			else if (code == SDL_SCANCODE_DOWN)
+			else if (code == SDL_SCANCODE_UP)
 			{
 				m_filterSelection->AdvanceSelection(-1);
 			}

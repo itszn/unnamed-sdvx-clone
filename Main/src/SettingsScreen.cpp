@@ -103,6 +103,11 @@ float nk_propertyf_sdl_text(struct nk_context *ctx, const char *name, float min,
 	return value;
 }
 
+static inline const char* GetKeyNameFromScancodeConfig(int scancode)
+{
+	return SDL_GetKeyName(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode)));
+}
+
 class SettingsScreen_Impl : public SettingsScreen
 {
 private:
@@ -505,7 +510,7 @@ public:
 			}
 			else
 			{
-				m_controllerButtonNames[i] = SDL_GetKeyName(g_gameConfig.GetInt((*m_activeBTKeys)[i]));
+				m_controllerButtonNames[i] = GetKeyNameFromScancodeConfig(g_gameConfig.GetInt((*m_activeBTKeys)[i]));
 			}
 		}
 		for (size_t i = 0; i < 2; i++)
@@ -516,10 +521,10 @@ public:
 			}
 			else
 			{
-				m_controllerLaserNames[i] = Utility::ConvertToUTF8(Utility::WSprintf( //wstring->string because regular Sprintf messes up(?????)
+				m_controllerLaserNames[i] = Utility::ConvertToUTF8(Utility::WSprintf( // wstring->string because regular Sprintf messes up(?????)
 					L"%ls / %ls",
-					Utility::ConvertToWString(SDL_GetKeyName(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2]))),
-					Utility::ConvertToWString(SDL_GetKeyName(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2 + 1])))
+					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2]))),
+					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2 + 1])))
 				));
 			}
 		}

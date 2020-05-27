@@ -251,11 +251,7 @@ namespace Graphics
 			{
 				if(evt.type == SDL_EventType::SDL_KEYDOWN)
 				{
-					if(m_textComposition.composition.empty())
-					{
-						// Ignore key input when composition is being typed
-						HandleKeyEvent(evt.key.keysym, 1, evt.key.repeat);
-					}
+					HandleKeyEvent(evt.key.keysym, 1, evt.key.repeat);
 				}
 				else if(evt.type == SDL_EventType::SDL_KEYUP)
 				{
