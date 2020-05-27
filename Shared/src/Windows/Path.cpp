@@ -141,7 +141,7 @@ bool Path::ShowInFileBrowser(const String& path)
 
 	// Opens the directory, if a file path is sent then the file will be opened with the default program for that file type.
 	// See also: https://stackoverflow.com/a/49694181
-	int res = static_cast<int>(reinterpret_cast<uintptr_t>(ShellExecuteW(NULL, L"open", *wpath, NULL, NULL, SW_SHOWDEFAULT)));
+	const int res = static_cast<int>(reinterpret_cast<uintptr_t>(ShellExecuteW(NULL, L"open", *wpath, NULL, NULL, SW_SHOWDEFAULT)));
 
 	if (res > 32)
 	{
@@ -158,7 +158,7 @@ bool Path::ShowInFileBrowser(const String& path)
 			Logf("Failed to show file \"%s\" in the system default explorer: Path not found.", Logger::Error, path);
 			break;
 		default:
-			Logf("Failed to show file \"%s\" in the system default explorer: error %", Logger::Error, path, res);
+			Logf("Failed to show file \"%s\" in the system default explorer: error %d", Logger::Error, path, res);
 			break;
 		}
 		return false;
