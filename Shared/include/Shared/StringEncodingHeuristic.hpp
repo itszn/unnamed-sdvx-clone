@@ -78,6 +78,8 @@ public:
 	// Operators can be confusing (lower score: better)
 	inline bool Beats(const StringEncodingHeuristic& that) const { return !that.IsValid() || IsValid() && m_score < that.m_score; }
 
+	void DebugPrint() const;
+
 protected:
 	virtual CharClass GetCharClass(const uint16_t ch) const = 0;
 	inline bool Process(const uint16_t ch) { return Process(GetCharClass(ch)); }
@@ -150,6 +152,8 @@ public:
 	inline void Consume(const char c) { if(m_head.IsValid()) m_head.Consume(c); }
 	inline void Finalize() { m_head.Finalize(); }
 
+	inline void DebugPrint() const { m_head.DebugPrint(); }
+
 protected:
 	Heuristic m_head;
 };
@@ -169,9 +173,56 @@ public:
 	inline void Consume(const char c) { if(m_head.IsValid()) m_head.Consume(c); m_rest.Consume(c); }
 	inline void Finalize() { m_head.Finalize(); m_rest.Finalize(); }
 
+	inline void DebugPrint() const { m_head.DebugPrint(); m_rest.DebugPrint(); }
+
 protected:
 	Heuristic m_head;
 	StringEncodingHeuristicCollection<RestHeuristics...> m_rest;
+};
+
+template<typename HeuristicCollection, typename... RestHeuristicCollections>
+class TieredStringEncodingHeuristic;
+
+template<typename HeuristicCollection>
+class TieredStringEncodingHeuristic<HeuristicCollection>
+{
+public:
+	TieredStringEncodingHeuristic() = default;
+	inline const StringEncodingHeuristic& GetBestHeuristic() const
+	{
+		return m_collection.GetBestHeuristic();
+	}
+
+	inline void Consume(const char ch) { m_collection.Consume(ch); }
+	inline void Finalize() { m_collection.Finalize(); }
+
+	inline void DebugPrint() const { m_collection.DebugPrint(); }
+
+protected:
+	HeuristicCollection m_collection;
+};
+
+template<typename HeuristicCollection, typename... RestHeuristicCollections>
+class TieredStringEncodingHeuristic
+{
+public:
+	TieredStringEncodingHeuristic() = default;
+	inline const StringEncodingHeuristic& GetBestHeuristic() const
+	{
+		const StringEncodingHeuristic& heuristic = m_collection.GetBestHeuristic();
+		if (heuristic.IsValid()) return heuristic;
+
+		return m_rest.GetBestHeuristic();
+	}
+
+	inline void Consume(const char ch) { m_collection.Consume(ch); m_rest.Consume(ch); }
+	inline void Finalize() { m_collection.Finalize(); m_rest.Finalize(); }
+	
+	inline void DebugPrint() const { m_collection.DebugPrint(); m_rest.DebugPrint(); }
+
+protected:
+	HeuristicCollection m_collection;
+	TieredStringEncodingHeuristic<RestHeuristicCollections...> m_rest;
 };
 
 #pragma endregion

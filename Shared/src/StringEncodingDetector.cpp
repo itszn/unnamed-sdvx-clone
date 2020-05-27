@@ -10,25 +10,15 @@
 #include "archive_entry.h"
 
 // Other encodings, such as ISO 8859-15 and CP850, are disabled because they are not as frequent as others.
-class StringEncodingDetectorInternal
-{
-public:
-	StringEncodingDetectorInternal() = default;
-
-	inline void Consume(const char ch) { m_tier0.Consume(ch); m_tier1.Consume(ch); }
-	inline void Finalize() { m_tier0.Finalize(); m_tier1.Finalize(); }
-	inline const StringEncodingHeuristic& GetBestHeuristic() const
-	{
-		const StringEncodingHeuristic& tier0 = m_tier0.GetBestHeuristic();
-		if (tier0.IsValid()) return tier0;
-
-		return m_tier1.GetBestHeuristic();
-	}
-
-protected:
-	StringEncodingHeuristicCollection<UTF8Heuristic> m_tier0;
-	StringEncodingHeuristicCollection<CP932Heuristic, CP949Heuristic> m_tier1;
-};
+class StringEncodingDetectorInternal final : public TieredStringEncodingHeuristic
+<
+	// UTF-8 always take top priority
+	StringEncodingHeuristicCollection<UTF8Heuristic>,
+	StringEncodingHeuristicCollection<CP932Heuristic>
+	// If heuristics become robust enough, re-enable these
+	// StringEncodingHeuristicCollection<CP949Heuristic, CP850Heuristic, CP923Heuristic>
+>
+{};
 
 StringEncodingDetector::StringEncodingDetector()
 {
@@ -59,6 +49,8 @@ void StringEncodingDetector::End()
 	const StringEncodingHeuristic& best = m_internal->GetBestHeuristic();
 	if (best.IsValid()) m_encoding = best.GetEncoding();
 	else m_encoding = StringEncoding::Unknown;
+
+	// m_internal->DebugPrint();
 
 	m_done = true;
 }

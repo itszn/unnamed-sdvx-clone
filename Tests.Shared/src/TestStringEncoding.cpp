@@ -182,6 +182,7 @@ Test("StringEncodingDetector.CP932")
 	}
 }
 
+/* Not enabled by default
 Test("StringEncodingDetector.CP949")
 {
 	for (auto& testCase : TEST_CASES)
@@ -190,6 +191,7 @@ Test("StringEncodingDetector.CP949")
 			TestEnsure(StringEncodingDetector::Detect(testCase.cp949) == StringEncoding::CP949);
 	}
 }
+*/
 
 Test("StringEncodingConverter.CP932")
 {

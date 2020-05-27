@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "StringEncodingHeuristic.hpp"
 
+#include "Shared/Log.hpp"
+
 static inline CharClass GetAsciiCharClass(uint8_t ch)
 {
 	if (0x30 <= ch && ch <= 0x39 || 0x41 <= ch && ch <= 0x5A || 0x61 <= ch && ch <= 0x7A)
@@ -261,4 +263,10 @@ CharClass CP949Heuristic::GetCharClass(const uint16_t ch) const
 	}
 
 	return CharClass::INVALID;
+}
+
+// For debugging
+void StringEncodingHeuristic::DebugPrint() const
+{
+	Logf("Score: [%d] / Length: [%d] / Encoding: [%s]", Logger::Info, static_cast<int>(m_score), static_cast<int>(m_count), GetDisplayString(GetEncoding()));
 }
