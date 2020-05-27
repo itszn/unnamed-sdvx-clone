@@ -75,7 +75,7 @@ namespace Graphics
 		int GetDisplayIndex() const;
 		
 		// Checks if a key is pressed
-		bool IsKeyPressed(int32 key) const;
+		bool IsKeyPressed(SDL_Scancode key) const;
 
 		ModifierKeys GetModifierKeys() const;
 
@@ -103,8 +103,8 @@ namespace Graphics
 		// Open a gamepad within the range of the number of gamepads
 		Ref<Gamepad> OpenGamepad(int32 deviceIndex);
 
-		Delegate<int32> OnKeyPressed;
-		Delegate<int32> OnKeyReleased;
+		Delegate<SDL_Scancode> OnKeyPressed;
+		Delegate<SDL_Scancode> OnKeyReleased;
 		Delegate<MouseButton> OnMousePressed;
 		Delegate<MouseButton> OnMouseReleased;
 		Delegate<int32, int32> OnMouseMotion;
@@ -114,7 +114,7 @@ namespace Graphics
 		//	Negative for scroll up
 		Delegate<int32> OnMouseScroll;
 		// Called for the initial an repeating presses of a key
-		Delegate<int32> OnKeyRepeat;
+		Delegate<SDL_Scancode> OnKeyRepeat;
 		Delegate<const WString&> OnTextInput;
 		Delegate<const TextComposition&> OnTextComposition;
 		Delegate<const Vector2i&> OnResized;

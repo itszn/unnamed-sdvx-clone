@@ -2,7 +2,6 @@
 #include "Application.hpp"
 #include "CalibrationScreen.hpp"
 #include "Audio/Audio.hpp"
-#include "SDL2/SDL_keycode.h"
 #include "SettingsScreen.hpp"
 #include "../third_party/nuklear/nuklear.h"
 #include <unordered_set>

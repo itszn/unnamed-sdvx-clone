@@ -112,8 +112,8 @@ private:
 	void m_MainLoop();
 	void m_Tick();
 	void m_Cleanup();
-	void m_OnKeyPressed(int32 key);
-	void m_OnKeyReleased(int32 key);
+	void m_OnKeyPressed(SDL_Scancode code);
+	void m_OnKeyReleased(SDL_Scancode code);
 	void m_OnWindowResized(const Vector2i& newSize);
 	void m_OnFocusChanged(bool focused);
 	void m_unpackSkins();

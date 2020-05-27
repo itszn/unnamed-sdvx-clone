@@ -22,7 +22,6 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
-#include "SDL2/SDL_keycode.h"
 #include "ShadedMesh.hpp"
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -1624,10 +1623,10 @@ int Application::IsNamedSamplePlaying(String name)
 		return -1;
 	}
 }
-void Application::m_OnKeyPressed(int32 key)
+void Application::m_OnKeyPressed(SDL_Scancode code)
 {
 	// Fullscreen toggle
-	if (key == SDLK_RETURN)
+	if (code == SDL_SCANCODE_ESCAPE)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
@@ -1644,15 +1643,15 @@ void Application::m_OnKeyPressed(int32 key)
 	// Pass key to application
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyPressed(key);
+		(*it)->OnKeyPressed(code);
 		break;
 	}
 }
-void Application::m_OnKeyReleased(int32 key)
+void Application::m_OnKeyReleased(SDL_Scancode code)
 {
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyReleased(key);
+		(*it)->OnKeyReleased(code);
 		break;
 	}
 }

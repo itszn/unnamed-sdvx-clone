@@ -46,9 +46,9 @@ public:
 	{
 		composition = comp.composition;
 	}
-	void OnKeyRepeat(int32 key)
+	void OnKeyRepeat(SDL_Scancode key)
 	{
-		if (key == SDLK_BACKSPACE)
+		if (key == SDL_SCANCODE_BACKSPACE)
 		{
 			if (input.empty())
 				backspaceCount++; // Send backspace
@@ -61,8 +61,9 @@ public:
 			}
 		}
 	}
-	void OnKeyPressed(int32 key)
+	void OnKeyPressed(SDL_Scancode code)
 	{
+		SDL_Keycode key = SDL_GetKeyFromScancode(code);
 		if (key == SDLK_v)
 		{
 			if (g_gameWindow->GetModifierKeys() == ModifierKeys::Ctrl)
@@ -1762,73 +1763,73 @@ public:
 			m_selectionWheel->AdvanceSelection(steps);
 		}
 	}
-	virtual void OnKeyPressed(int32 key)
+	virtual void OnKeyPressed(SDL_Scancode code)
 	{
 		if (m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
 		if (m_filterSelection->Active)
 		{
-			if (key == SDLK_DOWN)
+			if (code == SDL_SCANCODE_DOWN)
 			{
 				m_filterSelection->AdvanceSelection(1);
 			}
-			else if (key == SDLK_UP)
+			else if (code == SDL_SCANCODE_DOWN)
 			{
 				m_filterSelection->AdvanceSelection(-1);
 			}
 		}
 		else if (m_sortSelection->Active)
 		{
-			if (key == SDLK_DOWN)
+			if (code == SDL_SCANCODE_DOWN)
 			{
 				m_sortSelection->AdvanceSelection(1);
 			}
-			else if (key == SDLK_UP)
+			else if (code == SDL_SCANCODE_UP)
 			{
 				m_sortSelection->AdvanceSelection(-1);
 			}
 		}
 		else
 		{
-			if (key == SDLK_DOWN)
+			if (code == SDL_SCANCODE_DOWN)
 			{
 				m_selectionWheel->AdvanceSelection(1);
 			}
-			else if (key == SDLK_UP)
+			else if (code == SDL_SCANCODE_UP)
 			{
 				m_selectionWheel->AdvanceSelection(-1);
 			}
-			else if (key == SDLK_PAGEDOWN)
+			else if (code == SDL_SCANCODE_PAGEDOWN)
 			{
 				m_selectionWheel->AdvancePage(1);
 			}
-			else if (key == SDLK_PAGEUP)
+			else if (code == SDL_SCANCODE_PAGEUP)
 			{
 				m_selectionWheel->AdvancePage(-1);
 			}
-			else if (key == SDLK_LEFT)
+			else if (code == SDL_SCANCODE_LEFT)
 			{
 				m_selectionWheel->AdvanceDifficultySelection(-1);
 			}
-			else if (key == SDLK_RIGHT)
+			else if (code == SDL_SCANCODE_RIGHT)
 			{
 				m_selectionWheel->AdvanceDifficultySelection(1);
 			}
-			else if (key == SDLK_F5)
+			else if (code == SDL_SCANCODE_F5)
 			{
 				m_mapDatabase->StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
 			}
-			else if (key == SDLK_F1 && m_hasCollDiag)
+			else if (code == SDL_SCANCODE_F1 && m_hasCollDiag)
 			{
 				m_collDiag.Open(*m_selectionWheel->GetSelectedChart());
 			}
-			else if (key == SDLK_F2)
+			else if (code == SDL_SCANCODE_F2)
 			{
 				m_selectionWheel->SelectRandom();
 			}
-			else if (key == SDLK_F8) // start demo mode
+			else if (code == SDL_SCANCODE_F8) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
@@ -1846,13 +1847,13 @@ public:
 				// Transition to game
 				g_transition->TransitionTo(game);
 			}
-			else if (key == SDLK_F9)
+			else if (code == SDL_SCANCODE_F9)
 			{
 				m_selectionWheel->ReloadScript();
 				m_filterSelection->ReloadScript();
 				g_application->ReloadScript("songselect/background", m_lua);
 			}
-			else if (key == SDLK_F11)
+			else if (code == SDL_SCANCODE_F11)
 			{
 				String paramFormat = g_gameConfig.GetString(GameConfigKeys::EditorParamsFormat);
 				String path = Path::Normalize(g_gameConfig.GetString(GameConfigKeys::EditorPath));
@@ -1860,21 +1861,21 @@ public:
 												Utility::Sprintf("\"%s\"", Path::Absolute(m_selectionWheel->GetSelectedChart()->path)));
 				Path::Run(path, param.GetData());
 			}
-			else if (key == SDLK_F12)
+			else if (code == SDL_SCANCODE_F12)
 			{
 				Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);
 			}
-			else if (key == SDLK_TAB)
+			else if (code == SDL_SCANCODE_TAB)
 			{
 				m_searchInput->SetActive(!m_searchInput->active);
 			}
-			else if (key == SDLK_RETURN && m_searchInput->active)
+			else if (code == SDL_SCANCODE_RETURN && m_searchInput->active)
 			{
 				m_searchInput->SetActive(false);
 			}
 		}
 	}
-	virtual void OnKeyReleased(int32 key)
+	virtual void OnKeyReleased(SDL_Scancode code)
 	{
 	}
 	virtual void Tick(float deltaTime) override

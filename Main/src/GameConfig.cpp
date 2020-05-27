@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "GameConfig.hpp"
-#include "SDL2/SDL_keycode.h"
 
 GameConfig::GameConfig()
 {
@@ -65,24 +64,24 @@ void GameConfig::InitDefaults()
 	SetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, ButtonComboModeSettings::Hold);
 
 	// Default keyboard bindings
-	Set(GameConfigKeys::Key_BTS, SDLK_1); // Start button on Dao controllers
-	Set(GameConfigKeys::Key_BT0, SDLK_d);
-	Set(GameConfigKeys::Key_BT1, SDLK_f);
-	Set(GameConfigKeys::Key_BT2, SDLK_j);
-	Set(GameConfigKeys::Key_BT3, SDLK_k);
+	Set(GameConfigKeys::Key_BTS, SDL_SCANCODE_1); // Start button on Dao controllers
+	Set(GameConfigKeys::Key_BT0, SDL_SCANCODE_D);
+	Set(GameConfigKeys::Key_BT1, SDL_SCANCODE_F);
+	Set(GameConfigKeys::Key_BT2, SDL_SCANCODE_J);
+	Set(GameConfigKeys::Key_BT3, SDL_SCANCODE_K);
 	Set(GameConfigKeys::Key_BT0Alt, -1);
 	Set(GameConfigKeys::Key_BT1Alt, -1);
 	Set(GameConfigKeys::Key_BT2Alt, -1);
 	Set(GameConfigKeys::Key_BT3Alt, -1);
-	Set(GameConfigKeys::Key_FX0, SDLK_c);
-	Set(GameConfigKeys::Key_FX1, SDLK_m);
+	Set(GameConfigKeys::Key_FX0, SDL_SCANCODE_C);
+	Set(GameConfigKeys::Key_FX1, SDL_SCANCODE_M);
 	Set(GameConfigKeys::Key_FX0Alt, -1);
 	Set(GameConfigKeys::Key_FX1Alt, -1);
-	Set(GameConfigKeys::Key_Laser0Neg, SDLK_w);
-	Set(GameConfigKeys::Key_Laser0Pos, SDLK_e);
-	Set(GameConfigKeys::Key_Laser1Neg, SDLK_o);
-	Set(GameConfigKeys::Key_Laser1Pos, SDLK_p);
-	Set(GameConfigKeys::Key_Back, SDLK_ESCAPE);
+	Set(GameConfigKeys::Key_Laser0Neg, SDL_SCANCODE_W);
+	Set(GameConfigKeys::Key_Laser0Pos, SDL_SCANCODE_E);
+	Set(GameConfigKeys::Key_Laser1Neg, SDL_SCANCODE_O);
+	Set(GameConfigKeys::Key_Laser1Pos, SDL_SCANCODE_P);
+	Set(GameConfigKeys::Key_Back, SDL_SCANCODE_ESCAPE);
 	Set(GameConfigKeys::Key_Sensitivity, 3.0f);
 	Set(GameConfigKeys::Key_LaserReleaseTime, 0.0f);
 

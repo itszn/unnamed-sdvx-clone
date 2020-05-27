@@ -363,17 +363,17 @@ void Input::m_OnGamepadButtonReleased(uint8 button)
 		m_OnButtonInput(it1->second, false);
 }
 
-void Input::OnKeyPressed(int32 key)
+void Input::OnKeyPressed(SDL_Scancode code)
 {
 	// Handle button mappings
-	auto it = m_buttonMap.equal_range(key);
+	auto it = m_buttonMap.equal_range(static_cast<int32>(code));
 	for(auto it1 = it.first; it1 != it.second; it1++)
 		m_OnButtonInput(it1->second, true);
 }
-void Input::OnKeyReleased(int32 key)
+void Input::OnKeyReleased(SDL_Scancode code)
 {
 	// Handle button mappings
-	auto it = m_buttonMap.equal_range(key);
+	auto it = m_buttonMap.equal_range(static_cast<int32>(code));
 	for(auto it1 = it.first; it1 != it.second; it1++)
 		m_OnButtonInput(it1->second, false);
 }

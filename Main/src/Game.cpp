@@ -21,7 +21,6 @@
 #include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
-#include "SDL2/SDL_keycode.h"
 
 extern "C"
 {
@@ -1702,38 +1701,38 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(int32 key) override
+	virtual void OnKeyPressed(SDL_Scancode code) override
 	{
-		if(key == SDLK_PAUSE && m_multiplayer == nullptr)
+		if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
 		}
-		else if(key == SDLK_RETURN) // Skip intro
+		else if(code == SDL_SCANCODE_RETURN) // Skip intro
 		{
 			if(!SkipIntro())
 				SkipOutro();
 		}
-		else if(key == SDLK_PAGEUP && m_multiplayer == nullptr)
+		else if(code == SDL_SCANCODE_PAGEUP && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(key == SDLK_F5 && m_multiplayer == nullptr) // Restart map
+		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr) // Restart map
 		{
 			// Restart
 			Restart();
 		}
-		else if(key == SDLK_F8)
+		else if(code == SDL_SCANCODE_F8)
 		{
 			m_renderDebugHUD = !m_renderDebugHUD;
 			//m_psi->visibility = m_renderDebugHUD ? Visibility::Collapsed : Visibility::Visible;
 		}
-		else if(key == SDLK_TAB)
+		else if(code == SDL_SCANCODE_TAB)
 		{
 			//g_gameWindow->SetCursorVisible(!m_settingsBar->IsShown());
 			//m_settingsBar->SetShow(!m_settingsBar->IsShown());
 		}
-		else if(key == SDLK_F9)
+		else if(code == SDL_SCANCODE_F9)
 		{
 			g_application->ReloadScript("gameplay", m_lua);
 		}

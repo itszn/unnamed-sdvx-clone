@@ -890,11 +890,11 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(int32 key)
+	virtual void OnKeyPressed(SDL_Scancode code)
 	{
 		if (!m_isGamepad && !m_knobs)
 		{
-			g_gameConfig.Set(m_key, key);
+			g_gameConfig.Set(m_key, code);
 			m_completed = true; // Needs to be set because pressing right alt triggers two keypresses on the same frame.
 		}
 		else if (!m_isGamepad && m_knobs)
@@ -904,10 +904,10 @@ public:
 				switch (m_key)
 				{
 				case GameConfigKeys::Controller_Laser0Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser0Neg, key);
+					g_gameConfig.Set(GameConfigKeys::Key_Laser0Neg, code);
 					break;
 				case GameConfigKeys::Controller_Laser1Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser1Neg, key);
+					g_gameConfig.Set(GameConfigKeys::Key_Laser1Neg, code);
 					break;
 				default:
 					break;
@@ -919,10 +919,10 @@ public:
 				switch (m_key)
 				{
 				case GameConfigKeys::Controller_Laser0Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser0Pos, key);
+					g_gameConfig.Set(GameConfigKeys::Key_Laser0Pos, code);
 					break;
 				case GameConfigKeys::Controller_Laser1Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser1Pos, key);
+					g_gameConfig.Set(GameConfigKeys::Key_Laser1Pos, code);
 					break;
 				default:
 					break;
@@ -1031,9 +1031,9 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(int32 key)
+	virtual void OnKeyPressed(SDL_Scancode code)
 	{
-		if (key == SDLK_ESCAPE)
+		if (code == SDL_SCANCODE_ESCAPE)
 			g_application->RemoveTickable(this);
 	}
 
