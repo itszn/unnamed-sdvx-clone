@@ -3,8 +3,11 @@
 
 #include "Shared/Log.hpp"
 
-inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
+static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {
+	// To use SDL_GetScancodeFromKey, SDL must be initialized before.
+	assert(SDL_WasInit(SDL_INIT_EVENTS) != 0);
+
 	for (const GameConfigKeys key : keys)
 	{
 		const int32 keycodeInt = config.GetInt(key);
@@ -12,7 +15,18 @@ inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<Game
 
 		const SDL_Keycode keycode = static_cast<SDL_Keycode>(keycodeInt);
 		const SDL_Scancode scancode = SDL_GetScancodeFromKey(keycode);
-		config.Set(key, static_cast<int32>(scancode));
+
+		if (scancode != SDL_SCANCODE_UNKNOWN)
+		{
+			config.Set(key, static_cast<int32>(scancode));
+		}
+		else
+		{
+			const char* keyName = SDL_GetKeyName(keycode);
+			if (keyName == nullptr) keyName = "unknown";
+
+			Logf("Unable to convert key \"%s\" (%d) into scancode", Logger::Error, keyName, keycode);
+		}
 	}
 }
 

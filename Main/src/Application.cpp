@@ -640,14 +640,7 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (m_LoadConfig())
-	{
-		m_UpdateConfigVersion();
-	}
-	else
-	{
-		Log("Failed to load config file", Logger::Warning);
-	}
+	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Warning);
 
 	// Job sheduler
 	g_jobSheduler = new JobSheduler();
@@ -699,10 +692,17 @@ bool Application::m_Init()
 		g_gameConfig.GetInt(GameConfigKeys::ScreenWidth),
 		g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
 	g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
+
 	int samplecount = g_gameConfig.GetInt(GameConfigKeys::AntiAliasing);
-	if (samplecount > 0)
-		samplecount = 1 << samplecount;
+	if (samplecount > 0) samplecount = 1 << samplecount;
+
 	g_gameWindow = new Graphics::Window(g_resolution, samplecount);
+
+	// Versioning up config uses some SDL util functions, so it must be called after SDL is initialized.
+	// SDL is initialized in the constructor of Graphics::Window.
+	// The awkward placement of this call may be avoided by initializing SDL earlier, but to avoid unwanted side-effects I'll put this here for now.
+	this->m_UpdateConfigVersion();
+
 	g_gameWindow->Show();
 
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
