@@ -106,6 +106,7 @@ public:
 
 private:
 	bool m_LoadConfig();
+	void m_UpdateConfigVersion();
 	void m_SaveConfig();
 	void m_InitDiscord();
 	bool m_Init();

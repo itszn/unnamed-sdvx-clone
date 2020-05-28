@@ -428,8 +428,16 @@ bool Application::m_LoadConfig()
 		if (g_gameConfig.Load(reader))
 			return true;
 	}
+
+	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
 }
+
+void Application::m_UpdateConfigVersion()
+{
+	g_gameConfig.UpdateVersion();
+}
+
 void Application::m_SaveConfig()
 {
 	if (!g_gameConfig.IsDirty())
@@ -632,7 +640,11 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (!m_LoadConfig())
+	if (m_LoadConfig())
+	{
+		m_UpdateConfigVersion();
+	}
+	else
 	{
 		Log("Failed to load config file", Logger::Warning);
 	}

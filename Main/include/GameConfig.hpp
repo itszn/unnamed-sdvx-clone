@@ -3,6 +3,9 @@
 #include "Input.hpp"
 
 DefineEnum(GameConfigKeys,
+		   // Version of the config
+	       ConfigVersion,
+
 		   // Screen settings
 		   ScreenWidth,
 		   ScreenHeight,
@@ -160,6 +163,14 @@ DefineEnum(ButtonComboModeSettings,
 public:
 	GameConfig();
 	void SetKeyBinding(GameConfigKeys key, Key value);
+
+
+	// When this should change, the UpdateVersion MUST be updated to update the old config files.
+	// If there's no need to update the UpdateVersion, there's no need to touch this too.
+	constexpr static int32 VERSION = 1;
+
+	// Update the version of the config file to VERSION.
+	void UpdateVersion();
 
 protected:
 	virtual void InitDefaults() override;

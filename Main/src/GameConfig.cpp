@@ -1,6 +1,21 @@
 #include "stdafx.h"
 #include "GameConfig.hpp"
 
+#include "Shared/Log.hpp"
+
+inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
+{
+	for (const GameConfigKeys key : keys)
+	{
+		const int32 keycodeInt = config.GetInt(key);
+		if (keycodeInt < 0) continue;
+
+		const SDL_Keycode keycode = static_cast<SDL_Keycode>(keycodeInt);
+		const SDL_Scancode scancode = SDL_GetScancodeFromKey(keycode);
+		config.Set(key, static_cast<int32>(scancode));
+	}
+}
+
 GameConfig::GameConfig()
 {
 	// Default state
@@ -14,6 +29,10 @@ void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
 
 void GameConfig::InitDefaults()
 {
+	// This will be set to appropriate value in Application::m_LoadConfig.
+	// Do not set this to GameConfig::VERSION here. It will cause problems for config files with no ConfigVersion field.
+	Set(GameConfigKeys::ConfigVersion, 0);
+
 	Set(GameConfigKeys::ScreenWidth, 1280);
 	Set(GameConfigKeys::ScreenHeight, 720);
 	Set(GameConfigKeys::FullScreenWidth, -1);
@@ -141,4 +160,57 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
+}
+
+void GameConfig::UpdateVersion()
+{
+	int32 configVersion = GetInt(GameConfigKeys::ConfigVersion);
+	if (configVersion == GameConfig::VERSION) return;
+
+	// Abnormal cases
+	if (configVersion < 0)
+	{
+		Logf("The version of the config(%d) is invalid.", Logger::Error, configVersion);
+		return;
+	}
+	if (configVersion > GameConfig::VERSION)
+	{
+		Logf("The version of the config(%d) is higher than the maximum compatible version(%d). Try updating USC.",
+			Logger::Error, configVersion, GameConfig::VERSION);
+		return;
+	}
+
+	Logf("Updating the version of GameConfig from %d to %d...", Logger::Normal, configVersion, GameConfig::VERSION);
+
+	/* Config Conversion Code Collection */
+
+	// 0 -> 1: button keys should be converted from keycodes to scancodes.
+	if (configVersion == 0)
+	{
+		ConvertKeyCodeToScanCode(*this, {
+			GameConfigKeys::Key_BTS,
+			GameConfigKeys::Key_BT0,
+			GameConfigKeys::Key_BT1,
+			GameConfigKeys::Key_BT2,
+			GameConfigKeys::Key_BT3,
+			GameConfigKeys::Key_BT0Alt,
+			GameConfigKeys::Key_BT1Alt,
+			GameConfigKeys::Key_BT2Alt,
+			GameConfigKeys::Key_BT3Alt,
+			GameConfigKeys::Key_FX0,
+			GameConfigKeys::Key_FX1,
+			GameConfigKeys::Key_FX0Alt,
+			GameConfigKeys::Key_FX1Alt,
+			GameConfigKeys::Key_Laser0Neg,
+			GameConfigKeys::Key_Laser0Pos,
+			GameConfigKeys::Key_Laser1Neg,
+			GameConfigKeys::Key_Laser1Pos,
+			GameConfigKeys::Key_Back,
+		});
+
+		++configVersion;
+	}
+
+	assert(configVersion == GameConfig::VERSION);
+	Set(GameConfigKeys::ConfigVersion, configVersion);
 }
