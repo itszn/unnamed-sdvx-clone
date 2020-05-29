@@ -117,11 +117,11 @@ private:
 	const char* m_speedMods[3] = { "XMod", "MMod", "CMod" };
 	const char* m_laserModes[3] = { "Keyboard", "Mouse", "Controller" };
 	const char* m_buttonModes[2] = { "Keyboard", "Controller" };
-	Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
+	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
 
-	Vector<GameConfigKeys> m_keyboardKeys = {
+	const Vector<GameConfigKeys> m_keyboardKeys = {
 		GameConfigKeys::Key_BTS,
 		GameConfigKeys::Key_BT0,
 		GameConfigKeys::Key_BT1,
@@ -132,25 +132,7 @@ private:
 		GameConfigKeys::Key_Back
 	};
 
-	Vector<GameConfigKeys> m_keyboardLaserKeys = {
-		GameConfigKeys::Key_Laser0Neg,
-		GameConfigKeys::Key_Laser0Pos,
-		GameConfigKeys::Key_Laser1Neg,
-		GameConfigKeys::Key_Laser1Pos,
-	};
-
-	Vector<GameConfigKeys> m_controllerKeys = {
-		GameConfigKeys::Controller_BTS,
-		GameConfigKeys::Controller_BT0,
-		GameConfigKeys::Controller_BT1,
-		GameConfigKeys::Controller_BT2,
-		GameConfigKeys::Controller_BT3,
-		GameConfigKeys::Controller_FX0,
-		GameConfigKeys::Controller_FX1,
-		GameConfigKeys::Controller_Back
-	};
-
-	Vector<GameConfigKeys> m_altKeyboardKeys = {
+	const Vector<GameConfigKeys> m_altKeyboardKeys = {
 		GameConfigKeys::Key_BTS,
 		GameConfigKeys::Key_BT0Alt,
 		GameConfigKeys::Key_BT1Alt,
@@ -161,10 +143,34 @@ private:
 		GameConfigKeys::Key_Back
 	};
 
-	Vector<GameConfigKeys> m_controllerLaserKeys = {
+	const Vector<GameConfigKeys> m_keyboardLaserKeys = {
+		GameConfigKeys::Key_Laser0Neg,
+		GameConfigKeys::Key_Laser0Pos,
+		GameConfigKeys::Key_Laser1Neg,
+		GameConfigKeys::Key_Laser1Pos,
+	};
+
+	const Vector<GameConfigKeys> m_altKeyboardLaserKeys = {
+		GameConfigKeys::Key_Laser0NegAlt,
+		GameConfigKeys::Key_Laser0PosAlt,
+		GameConfigKeys::Key_Laser1NegAlt,
+		GameConfigKeys::Key_Laser1PosAlt,
+	};
+
+	const Vector<GameConfigKeys> m_controllerKeys = {
+		GameConfigKeys::Controller_BTS,
+		GameConfigKeys::Controller_BT0,
+		GameConfigKeys::Controller_BT1,
+		GameConfigKeys::Controller_BT2,
+		GameConfigKeys::Controller_BT3,
+		GameConfigKeys::Controller_FX0,
+		GameConfigKeys::Controller_FX1,
+		GameConfigKeys::Controller_Back
+	};
+
+	const Vector<GameConfigKeys> m_controllerLaserKeys = {
 		GameConfigKeys::Controller_Laser0Axis,
 		GameConfigKeys::Controller_Laser1Axis,
-
 	};
 
 	Texture m_whiteTex;
@@ -182,7 +188,8 @@ private:
 	int m_multiplayerPasswordLen = 0;
 	char m_multiplayerUsername[1024];
 	int m_multiplayerUsernameLen = 0;
-	Vector<GameConfigKeys>* m_activeBTKeys = &m_keyboardKeys;
+	const Vector<GameConfigKeys>* m_activeBTKeys = &m_keyboardKeys;
+	const Vector<GameConfigKeys>* m_activeLaserKeys = &m_keyboardLaserKeys;
 	bool m_useBTGamepad = false;
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
@@ -199,18 +206,18 @@ private:
 	//TODO: Use argument instead of many functions if possible.
 	void SetBTBind(GameConfigKeys key)
 	{
-		g_application->AddTickable(ButtonBindingScreen::Create(key, m_useBTGamepad, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
+		g_application->AddTickable(ButtonBindingScreen::Create(key, m_useBTGamepad, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID), m_altBinds));
 	}
 
 	void SetLL()
 	{
 		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser0Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID), m_altBinds));
 	}
 	void SetRL()
 	{
 		int lasermode = (int)g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
-		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID)));
+		g_application->AddTickable(ButtonBindingScreen::Create(GameConfigKeys::Controller_Laser1Axis, lasermode == 2, g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID), m_altBinds));
 	}
 
 	void CalibrateSens()
@@ -493,7 +500,6 @@ public:
 
 	void Tick(float deltatime)
 	{
-
 		nk_input_begin(m_nctx);
 		while (!eventQueue.empty())
 		{
@@ -502,6 +508,21 @@ public:
 		}
 		nk_input_end(m_nctx);
 
+		m_useBTGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller;
+		m_useLaserGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller;
+		
+		if (m_useBTGamepad) m_activeBTKeys = &m_controllerKeys;
+		else if (m_altBinds) m_activeBTKeys = &m_altKeyboardKeys;
+		else m_activeBTKeys = &m_keyboardKeys;
+
+		if (m_altBinds) m_activeLaserKeys = &m_altKeyboardLaserKeys;
+		else m_activeLaserKeys = &m_keyboardLaserKeys;
+
+		UpdateControllerInputNames();
+	}
+
+	void UpdateControllerInputNames()
+	{
 		for (size_t i = 0; i < 8; i++)
 		{
 			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller)
@@ -523,25 +544,10 @@ public:
 			{
 				m_controllerLaserNames[i] = Utility::ConvertToUTF8(Utility::WSprintf( // wstring->string because regular Sprintf messes up(?????)
 					L"%ls / %ls",
-					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2]))),
-					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt(m_keyboardLaserKeys[i * 2 + 1])))
+					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt((*m_activeLaserKeys)[i * 2]))),
+					Utility::ConvertToWString(GetKeyNameFromScancodeConfig(g_gameConfig.GetInt((*m_activeLaserKeys)[i * 2 + 1])))
 				));
 			}
-		}
-
-		m_useBTGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller;
-		m_useLaserGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller;
-		if (m_useBTGamepad)
-		{
-			m_activeBTKeys = &m_controllerKeys;
-		}
-		else if (m_altBinds)
-		{
-			m_activeBTKeys = &m_altKeyboardKeys;
-		}
-		else
-		{
-			m_activeBTKeys = &m_keyboardKeys;
 		}
 	}
 
@@ -788,16 +794,17 @@ private:
 	int m_gamepadIndex;
 	bool m_completed = false;
 	bool m_knobs = false;
+	bool m_isAlt = false;
 	Vector<float> m_gamepadAxes;
 
 public:
-	ButtonBindingScreen_Impl(GameConfigKeys key, bool gamepad, int controllerindex)
+	ButtonBindingScreen_Impl(GameConfigKeys key, bool gamepad, int controllerIndex, bool isAlt)
 	{
 		m_key = key;
-		m_gamepadIndex = controllerindex;
+		m_gamepadIndex = controllerIndex;
 		m_isGamepad = gamepad;
 		m_knobs = (key == GameConfigKeys::Controller_Laser0Axis || key == GameConfigKeys::Controller_Laser1Axis);
-			
+		m_isAlt = isAlt;
 	}
 
 	bool Init()
@@ -904,34 +911,30 @@ public:
 		}
 		else if (!m_isGamepad && m_knobs)
 		{
+			switch (m_key)
+			{
+			case GameConfigKeys::Controller_Laser0Axis:
+				g_gameConfig.Set(m_completed ?
+					m_isAlt ? GameConfigKeys::Key_Laser0PosAlt : GameConfigKeys::Key_Laser0Pos :
+					m_isAlt ? GameConfigKeys::Key_Laser0NegAlt : GameConfigKeys::Key_Laser0Neg,
+					code);
+				break;
+			case GameConfigKeys::Controller_Laser1Axis:
+				g_gameConfig.Set(m_completed ?
+					m_isAlt ? GameConfigKeys::Key_Laser1PosAlt : GameConfigKeys::Key_Laser1Pos :
+					m_isAlt ? GameConfigKeys::Key_Laser1NegAlt : GameConfigKeys::Key_Laser1Neg,
+					code);
+				break;
+			default:
+				break;
+			}
+
 			if (!m_completed)
 			{
-				switch (m_key)
-				{
-				case GameConfigKeys::Controller_Laser0Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser0Neg, code);
-					break;
-				case GameConfigKeys::Controller_Laser1Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser1Neg, code);
-					break;
-				default:
-					break;
-				}
 				m_completed = true;
 			}
 			else
 			{
-				switch (m_key)
-				{
-				case GameConfigKeys::Controller_Laser0Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser0Pos, code);
-					break;
-				case GameConfigKeys::Controller_Laser1Axis:
-					g_gameConfig.Set(GameConfigKeys::Key_Laser1Pos, code);
-					break;
-				default:
-					break;
-				}
 				g_application->RemoveTickable(this);
 			}
 		}
@@ -948,9 +951,9 @@ public:
 	}
 };
 
-ButtonBindingScreen* ButtonBindingScreen::Create(GameConfigKeys key, bool gamepad, int controllerIndex)
+ButtonBindingScreen* ButtonBindingScreen::Create(GameConfigKeys key, bool gamepad, int controllerIndex, bool isAlternative)
 {
-	ButtonBindingScreen_Impl* impl = new ButtonBindingScreen_Impl(key, gamepad, controllerIndex);
+	ButtonBindingScreen_Impl* impl = new ButtonBindingScreen_Impl(key, gamepad, controllerIndex, isAlternative);
 	return impl;
 }
 
