@@ -594,8 +594,8 @@ public:
 
 				if (!m_useBTGamepad)
 				{
-					if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
-					if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
+					if (nk_option_label(m_nctx, "Primary", m_altBinds ? 0 : 1)) m_altBinds = false;
+					if (nk_option_label(m_nctx, "Alternate", m_altBinds ? 1 : 0)) m_altBinds = true;
 				}
 				nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
 				nk_label(m_nctx, "Back:", nk_text_alignment::NK_TEXT_LEFT);
