@@ -19,6 +19,12 @@
 #include "CalibrationScreen.hpp"
 #include "TransitionScreen.hpp"
 
+// nuklear's nk_dtoa is inaccurate, even for exact values like 0.25f.
+static void sprintf_dtoa(char (&buffer)[64 /* NK_MAX_NUMBER_BUFFER */], double d)
+{
+	Utility::BufferSprintf(buffer, "%g", d);
+}
+
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_VARARGS
@@ -27,6 +33,9 @@
 #define NK_INCLUDE_FONT_BAKING
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
+
+#define NK_DTOA sprintf_dtoa
+
 #ifdef EMBEDDED
 #define NK_SDL_GLES2_IMPLEMENTATION
 #include "../third_party/nuklear/nuklear.h"
@@ -288,10 +297,22 @@ private:
 	bool FloatSetting(GameConfigKeys key, String label, float min, float max, float step = 0.01f)
 	{
 		float value = g_gameConfig.GetFloat(key);
-		auto prevValue = value;
+		const auto prevValue = value;
 
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
-		nk_slider_float(m_nctx, min, &value, max, step);
+		// nuklear supports precision only up to 2 decimal places (wtf)
+		if (step >= 0.01f)
+		{
+			float incPerPixel = step;
+			if (incPerPixel >= step / 2) incPerPixel = step * Math::Round(incPerPixel / step);
+
+			value = nk_propertyf_sdl_text(m_nctx, *label, min, value, max, step, incPerPixel);
+		}
+		else
+		{
+			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
+			nk_slider_float(m_nctx, min, &value, max, step);
+		}
+
 		if (value != prevValue) {
 			g_gameConfig.Set(key, value);
 			return true;
@@ -300,12 +321,13 @@ private:
 		return false;
 	}
 
+
 	bool PercentSetting(GameConfigKeys key, String label)
 	{
 		float value = g_gameConfig.GetFloat(key);
 		auto prevValue = value;
 		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
-		nk_slider_float(m_nctx, 0, &value, 1, 0.005);
+		nk_slider_float(m_nctx, 0, &value, 1, 0.005f);
 		if (value != prevValue) {
 			g_gameConfig.Set(key, value);
 			return true;
@@ -646,7 +668,7 @@ public:
 				break;
 			}
 
-			FloatSetting(laserSensKey, "Laser sensitivity (%f):", 0, 20, 0.001);
+			FloatSetting(laserSensKey, "Laser Sensitivity (%g):", 0, 20, 0.001f);
 			EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start = Back:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
@@ -656,20 +678,20 @@ public:
 				SelectionSetting(GameConfigKeys::Controller_DeviceID, pads, "Selected Controller:");
 			}
 
-			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset:", -1000, 1000);
-			IntSetting(GameConfigKeys::InputOffset, "Input Offset:", -1000, 1000);
+			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset", -1000, 1000);
+			IntSetting(GameConfigKeys::InputOffset, "Input Offset", -1000, 1000);
 			if (nk_button_label(m_nctx, "Calibrate offsets")) {
 				CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
 				g_transition->TransitionTo(cscreen);
 			}
-			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier (%.1f):", 0.0f, 20.0f);
+			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier", 0.0f, 20.0f, 0.1f);
 			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Laser Assist", NK_MINIMIZED))
 			{
-				FloatSetting(GameConfigKeys::LaserAssistLevel, "Base Laser Assist: (%.1f)", 0.0f, 10.0f);
-				FloatSetting(GameConfigKeys::LaserPunish, "Base Laser Punish: (%.1f)", 0.0f, 10.0f);
-				FloatSetting(GameConfigKeys::LaserChangeTime, "Direction Change Duration: (%.0fms)", 0.0f, 1000.0f, 1.0f);
-				FloatSetting(GameConfigKeys::LaserChangeExponent, "Direction Change Curve Exponent: (%.1f)", 0.0f, 10.0f);
+				FloatSetting(GameConfigKeys::LaserAssistLevel, "Base Laser Assist", 0.0f, 10.0f, 0.1f);
+				FloatSetting(GameConfigKeys::LaserPunish, "Base Laser Punish", 0.0f, 10.0f, 0.1f);
+				FloatSetting(GameConfigKeys::LaserChangeTime, "Direction Change Duration (ms)", 0.0f, 1000.0f, 1.0f);
+				FloatSetting(GameConfigKeys::LaserChangeExponent, "Direction Change Curve Exponent", 0.0f, 10.0f, 0.1f);
 
 				nk_tree_pop(m_nctx);
 			}
@@ -684,27 +706,27 @@ public:
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", NK_MINIMIZED))
 		{
 			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
-			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed (%f):", 0.25, 20, 0.05);
-			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed (%f):", 50, 1500, 0.5);
+			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", 0.25f, 20, 0.05f);
+			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
 			ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
 			nk_layout_row_dynamic(m_nctx, 150, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
 				nk_layout_row_dynamic(m_nctx, 30, 1);
-				FloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff:", 0.0f, 1.0f);
-				FloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade:", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade", 0.0f, 1.0f);
 				nk_group_end(m_nctx);
 			}
 			if (nk_group_begin(m_nctx, "Sudden", NK_WINDOW_NO_SCROLLBAR))
 			{
 				nk_layout_row_dynamic(m_nctx, 30, 1);
-				FloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff:", 0.0f, 1.0f);
-				FloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade:", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff", 0.0f, 1.0f);
+				FloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade", 0.0f, 1.0f);
 				nk_group_end(m_nctx);
 			}
 			nk_layout_row_dynamic(m_nctx, 30, 1);
 			ToggleSetting(GameConfigKeys::DisableBackgrounds, "Disable Song Backgrounds");
-			FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale: %.2f", 1.0f, 5.0f);
+			FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale", 1.0f, 5.0f);
 			ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
 			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
@@ -723,8 +745,8 @@ public:
 
 			RenderSettingsLaserColor();
 
-			FloatSetting(GameConfigKeys::RollIgnoreDuration, "Roll Ignore Duration (%g ms)", 0, 100, 1);
-			FloatSetting(GameConfigKeys::LaserSlamLength, "Laser Slam Duration (%g ms)", 0, 100, 1);
+			FloatSetting(GameConfigKeys::RollIgnoreDuration, "Roll Ignore Duration (ms)", 0, 100, 1);
+			FloatSetting(GameConfigKeys::LaserSlamLength, "Laser Slam Duration (ms)", 0, 100, 1);
 
 			nk_tree_pop(m_nctx);
 		}

@@ -64,21 +64,28 @@ namespace Utility
 	}
 	const wchar_t* WSprintfArgFilter(const WString& in);
 
-	// Helper function that perorms the c standard sprintf but returns a managed object instead
+	template<int N, typename... Args>
+	void BufferSprintf(char (&buffer)[N], const char* fmt, Args... args)
+	{
+#ifdef _WIN32
+		sprintf_s(buffer, N, fmt, SprintfArgFilter(args)...);
+#else
+		snprintf(buffer, N-1, fmt, SprintfArgFilter(args)...);
+#endif
+	}
+
+	// Helper function that performs the c standard sprintf but returns a managed object instead
 	// Max Output length = 8000
 	template<typename... Args>
 	String Sprintf(const char* fmt, Args... args)
 	{
 		static char buffer[8000];
-#ifdef _WIN32
-		sprintf_s(buffer, fmt, SprintfArgFilter(args)...);
-#else
-		snprintf(buffer, 8000-1, fmt, SprintfArgFilter(args)...);
-#endif
+		BufferSprintf(buffer, fmt, args...);
+
 		return String(buffer);
 	}
 
-	// Helper function that perorms the c standard sprintf but returns a managed object instead
+	// Helper function that performs the c standard sprintf but returns a managed object instead
 	// Max Output length = 8000
 	template<typename... Args>
 	WString WSprintf(const wchar_t* fmt, Args... args)
