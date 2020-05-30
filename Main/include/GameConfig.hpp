@@ -63,6 +63,7 @@ DefineEnum(GameConfigKeys,
 
 		   // Key bindings
 		   Key_BTS,
+	       Key_BTSAlt,
 		   Key_BT0,
 		   Key_BT1,
 		   Key_BT2,
@@ -84,6 +85,7 @@ DefineEnum(GameConfigKeys,
 		   Key_Laser1PosAlt,
 		   Key_Laser1NegAlt,
 		   Key_Back,
+		   Key_BackAlt,
 		   Key_Sensitivity,
 		   Key_LaserReleaseTime,
 

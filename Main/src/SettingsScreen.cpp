@@ -142,14 +142,14 @@ private:
 	};
 
 	const Vector<GameConfigKeys> m_altKeyboardKeys = {
-		GameConfigKeys::Key_BTS,
+		GameConfigKeys::Key_BTSAlt,
 		GameConfigKeys::Key_BT0Alt,
 		GameConfigKeys::Key_BT1Alt,
 		GameConfigKeys::Key_BT2Alt,
 		GameConfigKeys::Key_BT3Alt,
 		GameConfigKeys::Key_FX0Alt,
 		GameConfigKeys::Key_FX1Alt,
-		GameConfigKeys::Key_Back
+		GameConfigKeys::Key_BackAlt
 	};
 
 	const Vector<GameConfigKeys> m_keyboardLaserKeys = {

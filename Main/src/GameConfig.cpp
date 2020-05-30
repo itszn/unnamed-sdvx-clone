@@ -101,6 +101,7 @@ void GameConfig::InitDefaults()
 
 	// Default keyboard bindings
 	Set(GameConfigKeys::Key_BTS, SDL_SCANCODE_1); // Start button on Dao controllers
+	Set(GameConfigKeys::Key_BTSAlt, -1); // How about setting this to the return key, after dealing with hard-coded SDL_SCANCODE_RETURNs?
 	Set(GameConfigKeys::Key_BT0, SDL_SCANCODE_D);
 	Set(GameConfigKeys::Key_BT1, SDL_SCANCODE_F);
 	Set(GameConfigKeys::Key_BT2, SDL_SCANCODE_J);
@@ -122,6 +123,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Key_Laser1NegAlt, -1);
 	Set(GameConfigKeys::Key_Laser1PosAlt, -1);
 	Set(GameConfigKeys::Key_Back, SDL_SCANCODE_ESCAPE);
+	Set(GameConfigKeys::Key_BackAlt, -1);
 	Set(GameConfigKeys::Key_Sensitivity, 3.0f);
 	Set(GameConfigKeys::Key_LaserReleaseTime, 0.0f);
 
@@ -227,6 +229,7 @@ void GameConfig::UpdateVersion()
 			GameConfigKeys::Key_Laser1Neg,
 			GameConfigKeys::Key_Laser1Pos,
 			GameConfigKeys::Key_Back,
+			GameConfigKeys::Key_BackAlt,
 		});
 
 		++configVersion;
