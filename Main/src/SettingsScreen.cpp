@@ -680,12 +680,33 @@ public:
 
 			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset", -1000, 1000);
 			IntSetting(GameConfigKeys::InputOffset, "Input Offset", -1000, 1000);
+			
 			if (nk_button_label(m_nctx, "Calibrate offsets")) {
 				CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
 				g_transition->TransitionTo(cscreen);
 			}
+			
 			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier", 0.0f, 20.0f, 0.1f);
 			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
+
+			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
+
+			EnumSetting<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod, "Restart with F5:");
+			if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod) == AbortMethod::Hold)
+			{
+				IntSetting(GameConfigKeys::RestartPlayHoldDuration, "Restart Hold Duration (ms):", 250, 10000, 250);
+			}
+
+			EnumSetting<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, "Exit gameplay with:");
+			if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod) == AbortMethod::Hold)
+			{
+				IntSetting(GameConfigKeys::ExitPlayHoldDuration, "Exit Hold Duration (ms):", 250, 10000, 250);
+			}
+
+			ToggleSetting(GameConfigKeys::DisableNonButtonInputsDuringPlay, "Disable non-buttons during gameplay");
+
+			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
+
 			if (nk_tree_push(m_nctx, NK_TREE_NODE, "Laser Assist", NK_MINIMIZED))
 			{
 				FloatSetting(GameConfigKeys::LaserAssistLevel, "Base Laser Assist", 0.0f, 10.0f, 0.1f);
@@ -709,7 +730,8 @@ public:
 			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", 0.25f, 20, 0.05f);
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
 			ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
-			nk_layout_row_dynamic(m_nctx, 150, 2);
+
+			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
 				nk_layout_row_dynamic(m_nctx, 30, 1);

@@ -151,6 +151,14 @@ void GameConfig::InitDefaults()
 	// Default to 10ms input bounce guard
 	Set(GameConfigKeys::InputBounceGuard, 10);
 
+	SetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod, AbortMethod::Press);
+	Set(GameConfigKeys::RestartPlayHoldDuration, 2000);
+
+	SetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, AbortMethod::Press);
+	Set(GameConfigKeys::ExitPlayHoldDuration, 2000);
+
+	Set(GameConfigKeys::DisableNonButtonInputsDuringPlay, false);
+
 	Set(GameConfigKeys::LastSelected, 0);
 	Set(GameConfigKeys::LastSort, 0);
 	Set(GameConfigKeys::LevelFilter, 0);

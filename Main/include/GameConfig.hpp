@@ -4,7 +4,7 @@
 
 DefineEnum(GameConfigKeys,
 		   // Version of the config
-	       ConfigVersion,
+		   ConfigVersion,
 
 		   // Screen settings
 		   ScreenWidth,
@@ -63,7 +63,7 @@ DefineEnum(GameConfigKeys,
 
 		   // Key bindings
 		   Key_BTS,
-	       Key_BTSAlt,
+		   Key_BTSAlt,
 		   Key_BT0,
 		   Key_BT1,
 		   Key_BT2,
@@ -107,6 +107,13 @@ DefineEnum(GameConfigKeys,
 		   InputBounceGuard,
 		   SongSelSensMult,
 
+		   // In-Game Abort
+		   RestartPlayMethod,
+		   RestartPlayHoldDuration,
+		   ExitPlayMethod,
+		   ExitPlayHoldDuration,
+		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
+
 		   LastSelected,
 		   LastSort,
 		   LevelFilter,
@@ -149,6 +156,11 @@ DefineEnum(SpeedMods,
 		   XMod,
 		   MMod,
 		   CMod);
+
+DefineEnum(AbortMethod,
+		   None,
+		   Press,
+		   Hold)
 
 #ifdef Always
 #undef Always

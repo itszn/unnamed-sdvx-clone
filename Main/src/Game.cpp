@@ -160,6 +160,12 @@ private:
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
 
+	// Hold detection for restart and exit
+	MapTime m_restartTriggerTime = 0;
+	bool m_restartTriggerTimeSet = false;
+	MapTime m_exitTriggerTime = 0;
+	bool m_exitTriggerTimeSet = false;
+
 public:
 	Game_Impl(const String& mapPath, GameFlags flags)
 	{
@@ -598,6 +604,33 @@ public:
 		if(!m_paused)
 			TickGameplay(deltaTime);
 
+		// Handles held restart / exit button
+		if (m_restartTriggerTimeSet)
+		{
+			if (m_restartTriggerTime <= m_lastMapTime)
+			{
+				m_restartTriggerTimeSet = false;
+				Restart();
+				return;
+			}
+		}
+
+		if (m_exitTriggerTimeSet)
+		{
+			if (g_input.GetButton(Input::Button::Back))
+			{
+				if (m_exitTriggerTime <= m_lastMapTime)
+				{
+					m_exitTriggerTimeSet = false;
+					TriggerManualExit();
+					return;
+				}
+			}
+			else
+			{
+				m_restartTriggerTimeSet = false;
+			}
+		}
 
 		// Update hispeed or hidden range
 		if (g_input.GetButton(Input::Button::BT_S))
@@ -1701,8 +1734,11 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(SDL_Scancode code) override
+	void OnKeyPressed(SDL_Scancode code) override
 	{
+		if (g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
+			return;
+
 		if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
@@ -1717,10 +1753,18 @@ public:
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr) // Restart map
+		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr)
 		{
-			// Restart
-			Restart();
+			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod);
+			if (abortMethod == AbortMethod::Press)
+			{
+				Restart();
+			}
+			else if(abortMethod == AbortMethod::Hold && !m_restartTriggerTimeSet)
+			{
+				m_restartTriggerTime = m_lastMapTime + g_gameConfig.GetInt(GameConfigKeys::RestartPlayHoldDuration);
+				m_restartTriggerTimeSet = true;
+			}
 		}
 		else if(code == SDL_SCANCODE_F8)
 		{
@@ -1737,9 +1781,18 @@ public:
 			g_application->ReloadScript("gameplay", m_lua);
 		}
 	}
-	void m_OnButtonPressed(Input::Button buttonCode)
+
+	void OnKeyReleased(SDL_Scancode code) override
 	{
-		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
+		if (code == SDL_SCANCODE_F5)
+		{
+			m_restartTriggerTimeSet = false;
+		}
+	}
+
+	void TriggerManualExit()
+	{
+		if (IsSuccessfullyInitialized())
 		{
 			ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
 			MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
@@ -1747,6 +1800,22 @@ public:
 				m_manualExit = true;
 
 			FinishGame();
+		}
+	}
+	void m_OnButtonPressed(Input::Button buttonCode)
+	{
+		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
+		{
+			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod);
+			if (abortMethod == AbortMethod::Press)
+			{
+				TriggerManualExit();
+			}
+			else if(abortMethod == AbortMethod::Hold && !m_exitTriggerTimeSet)
+			{
+				m_exitTriggerTime = m_lastMapTime + g_gameConfig.GetInt(GameConfigKeys::RestartPlayHoldDuration);
+				m_exitTriggerTimeSet = true;
+			}
 		}
 	}
 	int m_getClearState()
