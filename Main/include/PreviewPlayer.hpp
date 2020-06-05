@@ -7,7 +7,7 @@ class AudioStream;
 class PreviewPlayer
 {
 public:
-	void FadeTo(Ref<AudioStream> stream);
+	void FadeTo(Ref<AudioStream> stream, int32 restart_pos=-1);
 	void Update(float deltaTime);
 	void Pause();
 	void Restore();
@@ -18,7 +18,9 @@ private:
 	float m_fadeOutTimer = 0.0f;
 	float m_fadeDelayTimer = 0.0f;
 	Ref<AudioStream> m_nextStream;
+	int32 m_nextRestartPos = -1;
 	Ref<AudioStream> m_currentStream;
+	int32 m_currentRestartPos = -1;
 };
 
 typedef struct PreviewParams

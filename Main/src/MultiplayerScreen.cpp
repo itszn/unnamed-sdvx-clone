@@ -757,8 +757,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	lua_setglobal(m_lua, "selected_song");
 
 	m_hasSelectedMap = true;
-	m_updatePreview(chart, false);
-	m_previewPlayer.Restore();
+	m_updatePreview(chart, true);
 
 	// If we selected this song ourselves, we have to tell the server about it
 	if (isNew)
@@ -1028,7 +1027,6 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 				nlohmann::json packet;
 				packet["topic"] = "room.leave";
 				m_tcp.SendJSON(packet);
-				m_previewPlayer.Pause();
 			}
 			else
 			{
@@ -1041,6 +1039,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 				m_textInput->SetActive(false);
 
 			m_screenState = MultiplayerScreenState::ROOM_LIST;
+			m_stopPreview();
 			lua_pushstring(m_lua, "roomList");
 			lua_setglobal(m_lua, "screenState");
 			g_application->DiscordPresenceMulti("", 0, 0, "");
@@ -1447,7 +1446,7 @@ void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
 		{
 			previewAudio->SetPosition(diff->preview_offset);
 
-			m_previewPlayer.FadeTo(previewAudio);
+			m_previewPlayer.FadeTo(previewAudio, diff->preview_offset);
 
 			m_previewParams = params;
 		}
@@ -1462,4 +1461,12 @@ void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
 
 		m_previewParams = params;
 	}
+}
+
+void MultiplayerScreen::m_stopPreview()
+{
+	PreviewParams params = {"", 0, 0};
+	if (m_previewParams != params)
+		m_previewPlayer.FadeTo(Ref<AudioStream>());
+
 }

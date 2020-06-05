@@ -146,6 +146,7 @@ private:
 	void m_changeSelectedRoom(int offset);
 
 	void m_updatePreview(ChartIndex* diff, bool mapChanged);
+	void m_stopPreview();
 
 	// Some lua util functions
 	void m_PushStringToTable(const char* name, const char* data)

@@ -109,7 +109,7 @@ public:
 /*
 	Song preview player with fade-in/out
 */
-void PreviewPlayer::FadeTo(Ref<AudioStream> stream)
+void PreviewPlayer::FadeTo(Ref<AudioStream> stream, int32 restartPos /* = -1 */)
 {
 	// Has the preview not begun fading out yet?
 	if (m_fadeOutTimer >= m_fadeDuration)
@@ -117,6 +117,7 @@ void PreviewPlayer::FadeTo(Ref<AudioStream> stream)
 
 	m_fadeDelayTimer = 0.0f;
 	m_nextStream = stream;
+	m_nextRestartPos = restartPos;
 	stream.Release();
 }
 void PreviewPlayer::Update(float deltaTime)
@@ -159,6 +160,7 @@ void PreviewPlayer::Update(float deltaTime)
 			if (m_currentStream)
 				m_currentStream->SetVolume(1.0f);
 			m_nextStream.Release();
+			m_currentRestartPos = m_nextRestartPos;
 		}
 		else
 		{
@@ -166,6 +168,15 @@ void PreviewPlayer::Update(float deltaTime)
 
 			if (m_nextStream)
 				m_nextStream->SetVolume(fade);
+		}
+	}
+
+	if (m_currentStream)
+	{
+		if (m_currentRestartPos != -1 && m_currentStream->HasEnded())
+		{
+			m_currentStream->SetPosition(m_currentRestartPos);
+			m_currentStream->Play();
 		}
 	}
 }
