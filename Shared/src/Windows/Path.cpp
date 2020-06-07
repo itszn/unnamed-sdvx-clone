@@ -3,6 +3,8 @@
 #include "Log.hpp"
 #include "Shellapi.h"
 
+#include <algorithm>
+
 /*
 	Windows version
 */
@@ -93,16 +95,13 @@ bool Path::FileExists(const String& path)
 }
 String Path::Normalize(const String& path)
 {
-	wchar_t out[MAX_PATH];
-	WString wpath = Utility::ConvertToWString(path);
-
+  wchar_t out[MAX_PATH] = {0};
+  WString wpath = Utility::ConvertToWString(path);
+	// Convert a unix style path so we can correctly handle it
+  std::replace(wpath.begin(), wpath.end(), L'/', static_cast<wchar_t>(sep));
+  // Remove any relative path . or ..
 	PathCanonicalizeW(out, *wpath);
-	for(uint32 i = 0; i < MAX_PATH; i++)
-	{
-		if(out[i] == L'/')
-			out[i] = sep;
-	}
-	return Utility::ConvertToUTF8(out);
+  return out;
 }
 bool Path::IsAbsolute(const String& path)
 {

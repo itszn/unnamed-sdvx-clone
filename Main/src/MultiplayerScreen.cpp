@@ -10,6 +10,7 @@
 #include "SongSelect.hpp"
 #include "SettingsScreen.hpp"
 #include "SkinConfig.hpp"
+#include <Audio/Audio.hpp>
 
 #include <ctime>
 #include <string>
@@ -304,6 +305,7 @@ bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
 	lua_pushinteger(m_lua, 0);
 	lua_setglobal(m_lua, "jacket");
 
+
 	// Grab new song
 	uint32 diff_ind = packet["diff"];
 	ChartIndex* newChart = m_getChartByHash(chart_hash, song, &diff_ind, packet["level"]);
@@ -510,6 +512,7 @@ void MultiplayerScreen::SetSelectedMap(FolderIndex* folder, ChartIndex* chart)
 		m_hasSelectedMap = false;
 		return;
 	}
+	
 
 	m_selfPicked = true;
 	m_updateSelectedMap(newChart->folderId, diff_index, true);
@@ -754,6 +757,7 @@ void MultiplayerScreen::m_updateSelectedMap(int32 mapid, int32 diff_ind, bool is
 	lua_setglobal(m_lua, "selected_song");
 
 	m_hasSelectedMap = true;
+	m_updatePreview(chart, true);
 
 	// If we selected this song ourselves, we have to tell the server about it
 	if (isNew)
@@ -822,6 +826,8 @@ void MultiplayerScreen::Tick(float deltaTime)
 
 	if (IsSuspended())
 		return;
+
+	m_previewPlayer.Update(deltaTime);
 
 	// Lock mouse to screen when active
 	if (m_screenState == MultiplayerScreenState::ROOM_LIST && 
@@ -1033,6 +1039,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 				m_textInput->SetActive(false);
 
 			m_screenState = MultiplayerScreenState::ROOM_LIST;
+			m_stopPreview();
 			lua_pushstring(m_lua, "roomList");
 			lua_setglobal(m_lua, "screenState");
 			g_application->DiscordPresenceMulti("", 0, 0, "");
@@ -1162,6 +1169,7 @@ int MultiplayerScreen::lSettings(lua_State* L)
 void MultiplayerScreen::OnRestore()
 {
 	m_suspended = false;
+	m_previewPlayer.Restore();
 
 	// If we disconnected while playing or selecting wait until we get back before exiting
 	/*if (!m_tcp.IsOpen())
@@ -1244,6 +1252,8 @@ bool MultiplayerScreen::AsyncFinalize()
 	if (m_lua == nullptr)
 		return false;
 
+	m_previewParams = {"", 0, 0};
+
 	// Install the socket functions and call the lua init
 	m_tcp.PushFunctions(m_lua);
 
@@ -1295,6 +1305,7 @@ bool MultiplayerScreen::AsyncFinalize()
 void MultiplayerScreen::OnSuspend()
 {
 	m_suspended = true;
+	m_previewPlayer.Pause();
 	m_mapDatabase->StopSearching();
 
 	if (m_lockMouse)
@@ -1406,4 +1417,56 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 		m_textInput->Reset();
 	}
 	return 0;
+}
+
+// This is basically copied from song-select
+void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
+{
+	String mapRootPath = diff->path.substr(0, diff->path.find_last_of(Path::sep));
+
+	// Set current preview audio
+	String audioPath = mapRootPath + Path::sep + diff->preview_file;
+
+	PreviewParams params = {audioPath, static_cast<uint32>(diff->preview_offset), static_cast<uint32>(diff->preview_length)};
+
+	/* A lot of pre-effected charts use different audio files for each difficulty; these
+	 * files differ only in their effects, so the preview offset and duration remain the
+	 * same. So, if the audio file is different but offset and duration equal the previously
+	 * playing preview, we know that it was just a change to a different difficulty of the
+	 * same chart. To avoid restarting the preview when changing difficulty, we say that
+	 * charts with this setup all have the same preview.
+	 *
+	 * Note that if the chart is using the `previewfile` field, then all this is ignored. */
+	bool newPreview = mapChanged ? m_previewParams != params : (m_previewParams.duration != params.duration || m_previewParams.offset != params.offset);
+
+	if (newPreview)
+	{
+		Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
+		if (previewAudio && previewAudio.GetData())
+		{
+			previewAudio->SetPosition(diff->preview_offset);
+
+			m_previewPlayer.FadeTo(previewAudio, diff->preview_offset);
+
+			m_previewParams = params;
+		}
+		else
+		{
+			params = {"", 0, 0};
+
+			Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+			if (m_previewParams != params)
+				m_previewPlayer.FadeTo(Ref<AudioStream>());
+		}
+
+		m_previewParams = params;
+	}
+}
+
+void MultiplayerScreen::m_stopPreview()
+{
+	PreviewParams params = {"", 0, 0};
+	if (m_previewParams != params)
+		m_previewPlayer.FadeTo(Ref<AudioStream>());
+
 }

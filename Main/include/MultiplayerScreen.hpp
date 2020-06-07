@@ -11,6 +11,9 @@
 #include "TCPSocket.hpp"
 #include <Scoring.hpp>
 #include "DBUpdateScreen.hpp"
+#include "PreviewPlayer.hpp"
+
+class PreviewPlayer;
 
 enum SyncState {
 	LOADING,
@@ -142,6 +145,9 @@ private:
 	void m_changeDifficulty(int offset);
 	void m_changeSelectedRoom(int offset);
 
+	void m_updatePreview(ChartIndex* diff, bool mapChanged);
+	void m_stopPreview();
+
 	// Some lua util functions
 	void m_PushStringToTable(const char* name, const char* data)
 	{
@@ -226,4 +232,17 @@ private:
 	Vector<nlohmann::json> m_finalStats;
 
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+
+	PreviewPlayer m_previewPlayer;
+	struct PreviewParams
+	{
+		String filepath;
+		uint32 offset;
+		uint32 duration;
+
+		bool operator!=(const PreviewParams &rhs)
+		{
+			return filepath != rhs.filepath || offset != rhs.offset || duration != rhs.duration;
+		}
+	} m_previewParams;
 };
