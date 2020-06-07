@@ -7,6 +7,7 @@
 #include "SkinHttp.hpp"
 #include "GameConfig.hpp"
 #include "cpr/util.h"
+#include <Audio/Audio.hpp>
 
 DownloadScreen::DownloadScreen()
 {
@@ -35,6 +36,7 @@ bool DownloadScreen::Init()
 	m_bindable = new LuaBindable(m_lua, "dlScreen");
 	m_bindable->AddFunction("Exit", this, &DownloadScreen::m_Exit);
 	m_bindable->AddFunction("DownloadArchive", this, &DownloadScreen::m_DownloadArchive);
+	m_bindable->AddFunction("PlayPreview", this, &DownloadScreen::m_PlayPreview);
 	m_bindable->AddFunction("GetSongsPath", this, &DownloadScreen::m_GetSongsPath);
 	m_bindable->Push();
 	lua_settop(m_lua, 0);
@@ -46,6 +48,7 @@ bool DownloadScreen::Init()
 
 void DownloadScreen::Tick(float deltaTime)
 {
+	m_previewPlayer.Update(deltaTime);
 	m_advanceSong += g_input.GetInputLaserDir(1);
 	int advanceSongActual = (int)Math::Floor(m_advanceSong * Math::Sign(m_advanceSong)) * Math::Sign(m_advanceSong);
 	if (advanceSongActual != 0)
@@ -94,6 +97,22 @@ void DownloadScreen::OnKeyPressed(int32 key)
 		}
 	}
 	lua_settop(m_lua, 0);
+
+	if (key == SDLK_UP || key == SDLK_DOWN)
+	{
+		int dir = (key == SDLK_UP) ? -1 : 1;
+		lua_getglobal(m_lua, "advance_selection");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushnumber(m_lua, dir);
+			if (lua_pcall(m_lua, 1, 0, 0) != 0)
+			{
+				Logf("Lua error on advance_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on advance_selection", lua_tostring(m_lua, -1), 0);
+			}
+		}
+		lua_settop(m_lua, 0);
+	}
 }
 
 void DownloadScreen::OnKeyReleased(int32 key)
@@ -364,5 +383,62 @@ Map<String, String> DownloadScreen::m_mapFromLuaTable(int index)
 int DownloadScreen::m_Exit(lua_State * L)
 {
 	g_application->RemoveTickable(this);
+	return 0;
+}
+
+int DownloadScreen::m_PlayPreview(lua_State* L)
+{
+	String url = luaL_checkstring(L, 2);
+	auto header = SkinHttp::HeaderFromLuaTable(L, 3);
+	String song_id = luaL_checkstring(L, 4);
+
+	Logf("Requesting Preview for song %s", Logger::Info, song_id);
+
+	String ext = Path::GetExtension(url);
+
+	String preview_path = Path::Normalize(Path::Absolute("preview/" + song_id + "." + ext ));
+	// Create dir if it doesn't exist
+	Path::CreateDir(Path::Absolute("preview"));
+
+	bool hasFile = Path::FileExists(preview_path);
+
+	// Download file if we have not before
+	if (!hasFile)
+	{
+		Logf("Requesting Preview URL %s", Logger::Info, url);
+		// TODO Move out of main thread?
+		cpr::Response preview_data = cpr::Get(cpr::Url{ url }, header);
+		auto response = preview_data;
+		if (response.error.code == cpr::ErrorCode::OK && response.status_code < 300)
+		{
+			File replayFile;
+			if (replayFile.OpenWrite(preview_path))
+			{
+				replayFile.Write(response.text.c_str(), response.text.length());
+				hasFile = true;
+			}
+		}
+	}
+
+	if (!hasFile)
+	{
+		Logf("Could not save preview file at \"%s\"", Logger::Warning, preview_path);
+		return 0;
+	}
+
+	Logf("Playing preview %s", Logger::Info, preview_path);
+
+	// Try to play the preview
+	Ref<AudioStream> previewAudio = g_audio->CreateStream(preview_path);
+	if (previewAudio && previewAudio.GetData())
+	{
+		m_previewPlayer.FadeTo(previewAudio, 0);
+	}
+	else
+	{
+		Logf("Failed to load preview audio from [%s]", Logger::Warning, preview_path);
+		m_previewPlayer.FadeTo(Ref<AudioStream>());
+	}
+
 	return 0;
 }

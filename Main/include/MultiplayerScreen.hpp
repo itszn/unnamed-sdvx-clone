@@ -234,15 +234,5 @@ private:
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
 
 	PreviewPlayer m_previewPlayer;
-	struct PreviewParams
-	{
-		String filepath;
-		uint32 offset;
-		uint32 duration;
-
-		bool operator!=(const PreviewParams &rhs)
-		{
-			return filepath != rhs.filepath || offset != rhs.offset || duration != rhs.duration;
-		}
-	} m_previewParams;
+	PreviewParams m_previewParams;
 };
