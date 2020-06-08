@@ -171,7 +171,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
 		// Apply slam roll for 100ms
-		if (m_rollIgnoreTimer[index] <= ROLL_IGNORE_DURATION)
+		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
 			m_slamRoll[index] = 0;
 	}
 
@@ -284,18 +284,14 @@ void Camera::SetSlowTilt(bool tilt)
 void Camera::SetSlamAmount(uint32 index, float amount)
 {
 	assert(index >= 0 && index <= 1);
-	if (m_fancyHighwayTilt)
-	{
-		m_slamRoll[index] = amount;
-		SetRollIgnore(index, true);
-	}
+	m_slamRoll[index] = amount;
+	SetRollIgnore(index, true);
 }
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
 	assert(index >= 0 && index <= 1);
-	if (m_fancyHighwayTilt)
-		m_rollIgnoreTimer[index] = ROLL_IGNORE_DURATION + (slam ? SLAM_DURATION : 0);
+	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamDuration : 0);
 }
 
 float Camera::GetRollIgnoreTimer(uint32 index)
@@ -323,9 +319,13 @@ void Camera::SetManualTiltInstant(bool instant)
 	m_manualTiltInstant = instant;
 }
 
-void Camera::SetFancyHighwayTilt(bool setting)
+void Camera::SetFancyHighwayTilt(bool fancyHighWaySetting)
 {
-	m_fancyHighwayTilt = setting;
+	if (!fancyHighWaySetting)
+	{
+		m_rollIgnoreDuration = 0;
+		m_slamDuration = 0;
+	}
 }
 
 Vector2 Camera::Project(const Vector3& pos)

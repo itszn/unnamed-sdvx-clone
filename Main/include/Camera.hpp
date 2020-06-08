@@ -19,10 +19,6 @@ static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
 static const float ROLL_SPEED = 4;
-// How long roll is ignored in seconds
-static const float ROLL_IGNORE_DURATION = 0.1f;
-// Duration of slams in seconds
-static const float SLAM_DURATION = 0.1f;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
@@ -75,7 +71,8 @@ public:
 	bool GetRollKeep();
 	void SetManualTilt(bool manualTilt);
 	void SetManualTiltInstant(bool instant);
-	void SetFancyHighwayTilt(bool setting);
+	// Enables/disables laser slams and roll ignore
+	void SetFancyHighwayTilt(bool fancyHighwaySetting);
 	
 	/*
 	Gets roll ignore timer for a laser
@@ -155,13 +152,16 @@ private:
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
 	bool m_slowTilt = false;
 
+	// How long roll is ignored in seconds
+	float m_rollIgnoreDuration = 0.1f;
+	// Duration of slams in seconds
+	float m_slamDuration = 0.1f;
+
 	// Laser slam rolls
 	// Does not track slams that have a next segment
 	float m_slamRoll[2] = { 0.0f };
 	// Keeps track of how long roll is ignored
 	float m_rollIgnoreTimer[2] = { 0.0f };
-	// Enables/disables laser slams and roll ignore
-	bool m_fancyHighwayTilt = true;
 
 	// Spin variables
 	int32 m_spinDuration = 1;
