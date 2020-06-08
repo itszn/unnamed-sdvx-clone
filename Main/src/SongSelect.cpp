@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include "SongSort.hpp"
 #include "DBUpdateScreen.hpp"
+#include "PreviewPlayer.hpp"
 
 class TextInput
 {
@@ -108,93 +109,93 @@ public:
 /*
 	Song preview player with fade-in/out
 */
-class PreviewPlayer
+void PreviewPlayer::FadeTo(Ref<AudioStream> stream, int32 restartPos /* = -1 */)
 {
-public:
-	void FadeTo(Ref<AudioStream> stream)
+	// Has the preview not begun fading out yet?
+	if (m_fadeOutTimer >= m_fadeDuration)
+		m_fadeOutTimer = 0.0f;
+
+	m_fadeDelayTimer = 0.0f;
+	m_nextStream = stream;
+	m_nextRestartPos = restartPos;
+	stream.Release();
+}
+void PreviewPlayer::Update(float deltaTime)
+{
+	if (m_fadeDelayTimer < m_fadeDelayDuration)
 	{
-		// Has the preview not begun fading out yet?
+		m_fadeDelayTimer += deltaTime;
+
+		// Is the delay time over?
+		if (m_fadeDelayTimer >= m_fadeDelayDuration)
+		{
+			// Start playing the next stream.
+			m_fadeInTimer = 0.0f;
+			if (m_nextStream)
+			{
+				m_nextStream->SetVolume(0.0f);
+				m_nextStream->Play();
+			}
+		}
+	}
+
+	if (m_fadeOutTimer < m_fadeDuration)
+	{
+		m_fadeOutTimer += deltaTime;
+		float fade = m_fadeOutTimer / m_fadeDuration;
+		if (m_currentStream)
+			m_currentStream->SetVolume(1.0f - fade);
+
 		if (m_fadeOutTimer >= m_fadeDuration)
-			m_fadeOutTimer = 0.0f;
-
-		m_fadeDelayTimer = 0.0f;
-		m_nextStream = stream;
-		stream.Release();
-	}
-	void Update(float deltaTime)
-	{
-		if (m_fadeDelayTimer < m_fadeDelayDuration)
-		{
-			m_fadeDelayTimer += deltaTime;
-
-			// Is the delay time over?
-			if (m_fadeDelayTimer >= m_fadeDelayDuration)
-			{
-				// Start playing the next stream.
-				m_fadeInTimer = 0.0f;
-				if (m_nextStream)
-				{
-					m_nextStream->SetVolume(0.0f);
-					m_nextStream->Play();
-				}
-			}
-		}
-
-		if (m_fadeOutTimer < m_fadeDuration)
-		{
-			m_fadeOutTimer += deltaTime;
-			float fade = m_fadeOutTimer / m_fadeDuration;
 			if (m_currentStream)
-				m_currentStream->SetVolume(1.0f - fade);
+				m_currentStream.Release();
+	}
 
-			if (m_fadeOutTimer >= m_fadeDuration)
-				if (m_currentStream)
-					m_currentStream.Release();
-		}
-
-		if (m_fadeDelayTimer >= m_fadeDelayDuration && m_fadeInTimer < m_fadeDuration)
+	if (m_fadeDelayTimer >= m_fadeDelayDuration && m_fadeInTimer < m_fadeDuration)
+	{
+		m_fadeInTimer += deltaTime;
+		if (m_fadeInTimer >= m_fadeDuration)
 		{
-			m_fadeInTimer += deltaTime;
-			if (m_fadeInTimer >= m_fadeDuration)
-			{
-				m_currentStream = m_nextStream;
-				if (m_currentStream)
-					m_currentStream->SetVolume(1.0f);
-				m_nextStream.Release();
-			}
-			else
-			{
-				float fade = m_fadeInTimer / m_fadeDuration;
+			m_currentStream = m_nextStream;
+			if (m_currentStream)
+				m_currentStream->SetVolume(1.0f);
+			m_nextStream.Release();
+			m_currentRestartPos = m_nextRestartPos;
+		}
+		else
+		{
+			float fade = m_fadeInTimer / m_fadeDuration;
 
-				if (m_nextStream)
-					m_nextStream->SetVolume(fade);
-			}
+			if (m_nextStream)
+				m_nextStream->SetVolume(fade);
 		}
 	}
-	void Pause()
+
+	if (m_currentStream)
 	{
-		if (m_nextStream)
-			m_nextStream->Pause();
-		if (m_currentStream)
-			m_currentStream->Pause();
-	}
-	void Restore()
-	{
-		if (m_nextStream)
-			m_nextStream->Play();
-		if (m_currentStream)
+		if (m_currentRestartPos != -1 && m_currentStream->HasEnded())
+		{
+			m_currentStream->SetPosition(m_currentRestartPos);
 			m_currentStream->Play();
+		}
+	}
+}
+void PreviewPlayer::Pause()
+{
+	if (m_nextStream)
+		m_nextStream->Pause();
+	if (m_currentStream)
+		m_currentStream->Pause();
+}
+void PreviewPlayer::Restore()
+{
+	if (m_nextStream)
+		m_nextStream->Play();
+	if (m_currentStream)
+		m_currentStream->Play();
 	}
 
-private:
-	static const float m_fadeDuration;
-	static const float m_fadeDelayDuration;
-	float m_fadeInTimer = 0.0f;
-	float m_fadeOutTimer = 0.0f;
-	float m_fadeDelayTimer = 0.0f;
-	Ref<AudioStream> m_nextStream;
-	Ref<AudioStream> m_currentStream;
-};
+
 const float PreviewPlayer::m_fadeDuration = 0.5f;
 const float PreviewPlayer::m_fadeDelayDuration = 0.5f;
 
@@ -1301,17 +1302,7 @@ private:
 class SongSelect_Impl : public SongSelect
 {
 private:
-	struct PreviewParams
-	{
-		String filepath;
-		uint32 offset;
-		uint32 duration;
-
-		bool operator!=(const PreviewParams &rhs)
-		{
-			return filepath != rhs.filepath || offset != rhs.offset || duration != rhs.duration;
-		}
-	} m_previewParams;
+	PreviewParams m_previewParams;
 
 	Timer m_dbUpdateTimer;
 	MapDatabase *m_mapDatabase;
