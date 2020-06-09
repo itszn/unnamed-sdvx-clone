@@ -1212,7 +1212,8 @@ public:
 				if (IsMultiplayerGame())
 				{
 					g_transition->TransitionTo(ScoreScreen::Create(
-						this, m_multiplayer->GetUserId(), m_multiplayer->GetFinalStats()));
+						this, m_multiplayer->GetUserId(), 
+                        m_multiplayer->GetFinalStats(), m_multiplayer));
 				}
 				else
 				{

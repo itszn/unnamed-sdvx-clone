@@ -9,6 +9,7 @@
 #include "TransitionScreen.hpp"
 #include "GameConfig.hpp"
 #include "SongFilter.hpp"
+#include "ChatOverlay.hpp"
 #include "CollectionDialog.hpp"
 #include "GameplaySettingsDialog.hpp"
 #include <Audio/Audio.hpp>
@@ -1602,6 +1603,8 @@ public:
 
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
@@ -1712,6 +1715,8 @@ public:
 
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
@@ -1741,6 +1746,9 @@ public:
 		if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
+
 		if (m_sortSelection->Active)
 		{
 			m_sortSelection->AdvanceSelection(steps);
@@ -1756,6 +1764,10 @@ public:
 	}
 	virtual void OnKeyPressed(SDL_Scancode code)
 	{
+		if (m_multiplayer &&
+				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
+			return;
+
 		if (m_collDiag.IsActive() || m_settDiag.IsActive())
 			return;
 
@@ -1820,7 +1832,7 @@ public:
 			{
 				m_selectionWheel->SelectRandom();
 			}
-			else if (code == SDL_SCANCODE_F8) // start demo mode
+			else if (code == SDL_SCANCODE_F8 && m_multiplayer == NULL) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
@@ -1890,6 +1902,8 @@ public:
 			}
 			m_settDiag.Tick(deltaTime);
 		}
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
 	virtual void Render(float deltaTime)
@@ -1915,6 +1929,9 @@ public:
 			m_collDiag.Render(deltaTime);
 		}
 		m_settDiag.Render(deltaTime);
+
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Render(deltaTime);
 	}
 
 	void TickNavigation(float deltaTime)

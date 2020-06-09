@@ -31,6 +31,7 @@ enum MultiplayerScreenState {
 };
 
 class TextInputMultiplayer;
+class ChatOverlay;
 
 struct MultiplayerBPMInfo {
 	double start;
@@ -84,6 +85,11 @@ public:
 		return m_tcp;
 	}
 
+	ChatOverlay* GetChatOverlay()
+	{
+		return m_chatOverlay;
+	}
+
 	String GetUserId()
 	{
 		return m_userId;
@@ -101,8 +107,19 @@ public:
 		m_failed = true;
 	}
 	
-	bool HasFailed() {
+	bool HasFailed()
+	{
 		return m_failed;
+	}
+
+	bool InRoom()
+	{
+		return m_roomId != "";
+	}
+
+	const String& GetUserName()
+	{
+		return m_userName;
 	}
 
 private:
@@ -232,6 +249,8 @@ private:
 	Vector<nlohmann::json> m_finalStats;
 
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+
+	ChatOverlay* m_chatOverlay = NULL;
 
 	PreviewPlayer m_previewPlayer;
 	struct PreviewParams
