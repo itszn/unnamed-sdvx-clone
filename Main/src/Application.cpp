@@ -1638,7 +1638,7 @@ int Application::IsNamedSamplePlaying(String name)
 void Application::m_OnKeyPressed(SDL_Scancode code)
 {
 	// Fullscreen toggle
-	if (code == SDL_SCANCODE_ESCAPE)
+	if (code == SDL_SCANCODE_RETURN)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
