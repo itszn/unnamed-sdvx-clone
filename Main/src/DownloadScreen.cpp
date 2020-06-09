@@ -102,9 +102,9 @@ void DownloadScreen::OnKeyPressed(SDL_Scancode code)
 	}
 	lua_settop(m_lua, 0);
 
-	if (key == SDLK_UP || key == SDLK_DOWN)
+	if (code == SDL_SCANCODE_UP || code == SDL_SCANCODE_DOWN)
 	{
-		int dir = (key == SDLK_UP) ? -1 : 1;
+		int dir = (code == SDL_SCANCODE_UP) ? -1 : 1;
 		lua_getglobal(m_lua, "advance_selection");
 		if (lua_isfunction(m_lua, -1))
 		{
