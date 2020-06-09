@@ -89,13 +89,17 @@ bool Path::FileExists(const String& path)
 }
 String Path::Normalize(const String& path)
 {
-	char out[MAX_PATH];
-	PathCanonicalizeA(out, *path);
+	char in[MAX_PATH] = { 0 };
+	char out[MAX_PATH] = { 0 };
+	strncpy(in, *path, MAX_PATH - 1);
+	// Convert a unix style path so we can correctly handle it
 	for(uint32 i = 0; i < MAX_PATH; i++)
 	{
-		if(out[i] == '/')
-			out[i] = sep;
+		if(in[i] == '/')
+			in[i] = sep;
 	}
+	// Remove any relative path . or ..
+	PathCanonicalizeA(out, in);
 	return out;
 }
 bool Path::IsAbsolute(const String& path)

@@ -226,7 +226,7 @@ void TapeStopDSP::SetLength(double length)
 	double flength = length / 1000.0 * audio->GetSampleRate();
 	m_length = (uint32)flength;
 	m_sampleBuffer.clear();
-	m_sampleBuffer.reserve(length);
+	m_sampleBuffer.reserve(2 * m_length + 100);
 }
 void TapeStopDSP::Process(float* out, uint32 numSamples)
 {
@@ -269,7 +269,7 @@ void RetriggerDSP::SetLength(double length)
 	SetGating(m_gating);
 	if (!m_bufferReserved)
 	{
-		m_sampleBuffer.reserve(m_length + 100);
+		m_sampleBuffer.reserve(2 * m_length + 100);
 		m_bufferReserved = true;
 	}
 }
@@ -288,7 +288,7 @@ void RetriggerDSP::SetMaxLength(uint32 length)
 	float flength = (float)length / 1000.0f * (float)audio->GetSampleRate();
 	if (!m_bufferReserved)
 	{
-		m_sampleBuffer.reserve((uint32_t)flength + 100);
+		m_sampleBuffer.reserve(2 * (uint32_t)flength + 100);
 		m_bufferReserved = true;
 	}
 }

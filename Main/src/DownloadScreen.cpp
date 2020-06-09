@@ -146,6 +146,7 @@ void DownloadScreen::m_ArchiveLoop()
 				else
 				{
 					res = archive_read_free(a);
+					Log("Error opening downloaded chart archive for directory traversal", Logger::Error);
 				}
 			}
 			m_archiveLock.lock();
@@ -218,18 +219,34 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		lua_rawgeti(m_lua, LUA_REGISTRYINDEX, ar.callback);
 		struct archive_entry *entry;
 		int numEntries = 1;
+		bool readError = false;
 		lua_newtable(m_lua);
 		while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-			//Logf("%s", Logger::Info, archive_entry_pathname(entry));
+			const wchar_t* pathname_w = archive_entry_pathname_w(entry);
+			if (pathname_w == nullptr)
+			{
+				readError = true;
+				break;
+			}
+
+			const String pathname = Utility::ConvertToUTF8(pathname_w);
 			lua_pushinteger(m_lua, numEntries++);
-			lua_pushstring(m_lua, archive_entry_pathname(entry));
+			lua_pushstring(m_lua, pathname.c_str());
 			lua_settable(m_lua, -3);
 			archive_read_data_skip(ar.a);
 		}
-		archive_read_free(ar.a);
+		
+		if (archive_read_free(ar.a) != ARCHIVE_OK)
+		{
+			Log("Error closing handle for downloaded chart archive", Logger::Error);
+		}
 		lua_pushstring(m_lua, ar.id.c_str());
 		
-		if (lua_pcall(m_lua, 2, 1, 0) != 0)
+		if (readError)
+		{
+			Log("Error reading downloaded chart archive", Logger::Error);
+		}
+		else if (lua_pcall(m_lua, 2, 1, 0) != 0)
 		{
 			Logf("Lua error on calling archive callback: %s", Logger::Error, lua_tostring(m_lua, -1));
 		}
@@ -254,9 +271,14 @@ void DownloadScreen::m_ProcessArchiveResponses()
 			ar.a = archive_read_new();
 			archive_read_support_filter_all(ar.a);
 			archive_read_support_format_all(ar.a);
-			archive_read_open_memory(ar.a, ar.data.data(), ar.data.size());
-			while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-				String entryName = archive_entry_pathname(entry);
+			
+			if (archive_read_open_memory(ar.a, ar.data.data(), ar.data.size()) != ARCHIVE_OK)
+			{
+				Log("Error opening downloaded chart archive for extraction", Logger::Error);
+			}
+			else while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
+				const wchar_t* entryName_w = archive_entry_pathname_w(entry);
+				String entryName = Utility::ConvertToUTF8(entryName_w);
 				if (entryPathMap.Contains(entryName))
 				{
 					if (!m_extractFile(ar.a, entryPathMap.at(entryName)))
@@ -266,10 +288,16 @@ void DownloadScreen::m_ProcessArchiveResponses()
 					}
 				}
 			}
+
+			if (archive_read_free(ar.a) != ARCHIVE_OK)
+			{
+				Log("Error closing archive handle after extracting", Logger::Error);
+			}
 		}
+		
 		lua_settop(m_lua, 0);
 		luaL_unref(m_lua, LUA_REGISTRYINDEX, ar.callback);
-		
+
 		//pop response
 		m_archiveLock.lock();
 		m_archiveResps.pop();
