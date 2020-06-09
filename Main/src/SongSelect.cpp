@@ -1765,7 +1765,7 @@ public:
 	virtual void OnKeyPressed(SDL_Scancode code)
 	{
 		if (m_multiplayer &&
-				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(key))
+				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
 			return;
 
 		if (m_collDiag.IsActive() || m_settDiag.IsActive())

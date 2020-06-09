@@ -49,7 +49,7 @@ public:
 	void SendChatMessage(const String& message);
 	void AddMessage(const String& message);
 	void AddMessage(const String& message, int r, int g, int b);
-	bool OnKeyPressedConsume(int32 key);
+	bool OnKeyPressedConsume(SDL_Scancode key);
 	void OpenChat();
 	void CloseChat();
     void ShutdownNuklear();

@@ -327,15 +327,15 @@ void ChatOverlay::OpenChat()
 	m_focusText = true;
 }
 
-bool ChatOverlay::OnKeyPressedConsume(int32 key)
+bool ChatOverlay::OnKeyPressedConsume(SDL_Scancode code)
 {
-	if (key == SDLK_ESCAPE && m_isOpen)
+	if (code == SDL_SCANCODE_ESCAPE && m_isOpen)
 	{
 		CloseChat();
 		return true;
 	}
 
-	if (key == SDLK_RETURN && m_isOpen)
+	if (code == SDL_SCANCODE_RETURN && m_isOpen)
 	{
 		// Send message if there is one
 		if (strlen(m_chatDraft) > 0) {
@@ -346,7 +346,7 @@ bool ChatOverlay::OnKeyPressedConsume(int32 key)
 	}
 
 
-	if (key == SDLK_F8 && m_canOpen)
+	if (code == SDL_SCANCODE_F8 && m_canOpen)
 	{
 		// Toggle open
 		if (m_isOpen)

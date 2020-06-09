@@ -1004,7 +1004,7 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 	if (IsSuspended())
 		return;
 
-	if (m_chatOverlay->OnKeyPressedConsume(key))
+	if (m_chatOverlay->OnKeyPressedConsume(code))
 		return;
 
 	lua_getglobal(m_lua, "key_pressed");
