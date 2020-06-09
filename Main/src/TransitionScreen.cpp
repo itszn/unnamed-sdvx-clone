@@ -412,9 +412,9 @@ public:
 		return true;
 	}
 
-	void OnKeyPressed(int32 key)
+	void OnKeyPressed(SDL_Scancode code)
 	{
-		if (key == SDLK_ESCAPE && !m_stopped && m_canCancel)
+		if (code == SDL_SCANCODE_ESCAPE && !m_stopped && m_canCancel)
 		{
 			m_stopped = true;
 			if (m_loadingJob->IsQueued())

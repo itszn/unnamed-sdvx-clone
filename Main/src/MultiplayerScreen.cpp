@@ -49,9 +49,9 @@ public:
 	{
 		composition = comp.composition;
 	}
-	void OnKeyRepeat(int32 key)
+	void OnKeyRepeat(SDL_Scancode key)
 	{
-		if (key == SDLK_BACKSPACE)
+		if (key == SDL_SCANCODE_BACKSPACE)
 		{
 			if (input.empty())
 				backspaceCount++; // Send backspace
@@ -64,8 +64,9 @@ public:
 			}
 		}
 	}
-	void OnKeyPressed(int32 key)
+	void OnKeyPressed(SDL_Scancode code)
 	{
+		SDL_Keycode key = SDL_GetKeyFromScancode(code);
 		if (key == SDLK_v)
 		{
 			if (g_gameWindow->GetModifierKeys() == ModifierKeys::Ctrl)
@@ -976,7 +977,7 @@ void MultiplayerScreen::OnSearchStatusUpdated(String status)
 	m_statusLock.unlock();
 }
 
-void MultiplayerScreen::OnKeyPressed(int32 key)
+void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 {
 	if (IsSuspended())
 		return;
@@ -984,7 +985,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 	lua_getglobal(m_lua, "key_pressed");
 	if (lua_isfunction(m_lua, -1))
 	{
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -993,23 +994,23 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 	}
 	lua_settop(m_lua, 0);
 
-	if (key == SDLK_LEFT && m_hasSelectedMap)
+	if (code == SDL_SCANCODE_LEFT && m_hasSelectedMap)
 	{
 		m_changeDifficulty(-1);
 	}
-	else if (key == SDLK_RIGHT && m_hasSelectedMap)
+	else if (code == SDL_SCANCODE_RIGHT && m_hasSelectedMap)
 	{
 		m_changeDifficulty(1);
 	}
-	else if (key == SDLK_UP && m_screenState == MultiplayerScreenState::ROOM_LIST)
+	else if (code == SDL_SCANCODE_UP && m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
 		m_changeSelectedRoom(-1);
 	}
-	else if (key == SDLK_DOWN && m_screenState == MultiplayerScreenState::ROOM_LIST)
+	else if (code == SDL_SCANCODE_DOWN && m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
 		m_changeSelectedRoom(1);
 	}
-	else if (key == SDLK_ESCAPE)
+	else if (code == SDL_SCANCODE_ESCAPE)
 	{
 		if (m_screenState != MultiplayerScreenState::ROOM_LIST)
 		{
@@ -1047,7 +1048,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 			m_hasSelectedMap = false;
 		}
 	}
-	else if (key == SDLK_RETURN)
+	else if (code == SDL_SCANCODE_RETURN)
 	{
 		if (m_screenState == MultiplayerScreenState::JOIN_PASSWORD) 
 		{
@@ -1067,7 +1068,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 
 
 
-void MultiplayerScreen::OnKeyReleased(int32 key)
+void MultiplayerScreen::OnKeyReleased(SDL_Scancode code)
 {
 	if (IsSuspended())
 		return;
@@ -1075,7 +1076,7 @@ void MultiplayerScreen::OnKeyReleased(int32 key)
 	lua_getglobal(m_lua, "key_released");
 	if (lua_isfunction(m_lua, -1))
 	{
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_released: %s", Logger::Error, lua_tostring(m_lua, -1));

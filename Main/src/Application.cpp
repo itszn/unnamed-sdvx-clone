@@ -22,7 +22,6 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
-#include "SDL2/SDL_keycode.h"
 #include "ShadedMesh.hpp"
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -429,8 +428,16 @@ bool Application::m_LoadConfig()
 		if (g_gameConfig.Load(reader))
 			return true;
 	}
+
+	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
 }
+
+void Application::m_UpdateConfigVersion()
+{
+	g_gameConfig.UpdateVersion();
+}
+
 void Application::m_SaveConfig()
 {
 	if (!g_gameConfig.IsDirty())
@@ -638,10 +645,7 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (!m_LoadConfig())
-	{
-		Log("Failed to load config file", Logger::Warning);
-	}
+	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Warning);
 
 	// Job sheduler
 	g_jobSheduler = new JobSheduler();
@@ -693,10 +697,17 @@ bool Application::m_Init()
 		g_gameConfig.GetInt(GameConfigKeys::ScreenWidth),
 		g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
 	g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
+
 	int samplecount = g_gameConfig.GetInt(GameConfigKeys::AntiAliasing);
-	if (samplecount > 0)
-		samplecount = 1 << samplecount;
+	if (samplecount > 0) samplecount = 1 << samplecount;
+
 	g_gameWindow = new Graphics::Window(g_resolution, samplecount);
+
+	// Versioning up config uses some SDL util functions, so it must be called after SDL is initialized.
+	// SDL is initialized in the constructor of Graphics::Window.
+	// The awkward placement of this call may be avoided by initializing SDL earlier, but to avoid unwanted side-effects I'll put this here for now.
+	this->m_UpdateConfigVersion();
+
 	g_gameWindow->Show();
 
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
@@ -1629,10 +1640,10 @@ int Application::IsNamedSamplePlaying(String name)
 		return -1;
 	}
 }
-void Application::m_OnKeyPressed(int32 key)
+void Application::m_OnKeyPressed(SDL_Scancode code)
 {
 	// Fullscreen toggle
-	if (key == SDLK_RETURN)
+	if (code == SDL_SCANCODE_RETURN)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
@@ -1649,15 +1660,15 @@ void Application::m_OnKeyPressed(int32 key)
 	// Pass key to application
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyPressed(key);
+		(*it)->OnKeyPressed(code);
 		break;
 	}
 }
-void Application::m_OnKeyReleased(int32 key)
+void Application::m_OnKeyReleased(SDL_Scancode code)
 {
 	for (auto it = g_tickables.rbegin(); it != g_tickables.rend();)
 	{
-		(*it)->OnKeyReleased(key);
+		(*it)->OnKeyReleased(code);
 		break;
 	}
 }

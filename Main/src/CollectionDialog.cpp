@@ -36,9 +36,9 @@ public:
 	{
 		composition = comp.composition;
 	}
-	void OnKeyRepeat(int32 key)
+	void OnKeyRepeat(SDL_Scancode key)
 	{
-		if (key == SDLK_BACKSPACE)
+		if (key == SDL_SCANCODE_BACKSPACE)
 		{
 			if (input.empty())
 				backspaceCount++; // Send backspace
@@ -51,8 +51,9 @@ public:
 			}
 		}
 	}
-	void OnKeyPressed(int32 key)
+	void OnKeyPressed(SDL_Scancode code)
 	{
+		SDL_Keycode key = SDL_GetKeyFromScancode(code);
 		if (key == SDLK_v)
 		{
 			if (g_gameWindow->GetModifierKeys() == ModifierKeys::Ctrl)
@@ -64,7 +65,7 @@ public:
 				}
 			}
 		}
-		else if (key == SDLK_RETURN)
+		else if (code == SDL_SCANCODE_RETURN)
 		{
 			OnReturn.Call(input);
 		}
@@ -370,7 +371,7 @@ void CollectionDialog::m_OnButtonPressed(Input::Button button)
 	lua_settop(m_lua, 0);
 }
 
-void CollectionDialog::m_OnKeyPressed(int32 key)
+void CollectionDialog::m_OnKeyPressed(SDL_Scancode code)
 {
 	if (!m_active || m_closing)
 	{
@@ -379,16 +380,16 @@ void CollectionDialog::m_OnKeyPressed(int32 key)
 
 	if (m_nameEntry->active)
 	{
-		if (key == SDLK_ESCAPE)
+		if (code == SDL_SCANCODE_ESCAPE)
 			m_shouldChangeState = true;
 		return;
 	}
 
-	if (key == SDLK_DOWN)
+	if (code == SDL_SCANCODE_DOWN)
 	{
 		m_AdvanceSelection(1);
 	}
-	else if (key == SDLK_UP)
+	else if (code == SDL_SCANCODE_UP)
 	{
 		m_AdvanceSelection(-1);
 	}

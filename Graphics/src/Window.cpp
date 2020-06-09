@@ -170,30 +170,20 @@ namespace Graphics
 		{
 		}
 
-
-
 		/* input handling */
-		void HandleKeyEvent(SDL_Keycode code, uint8 newState, int32 repeat)
+		void HandleKeyEvent(const SDL_Keysym& keySym, uint8 newState, int32 repeat)
 		{
-			SDL_Keymod m = SDL_GetModState();
-			m_modKeys = ModifierKeys::None;
-			if((m & KMOD_ALT) != 0)
-			{
-				(uint8&)m_modKeys |= (uint8)ModifierKeys::Alt;
-			}
-			if((m & KMOD_CTRL) != 0)
-			{
-				(uint8&)m_modKeys |= (uint8)ModifierKeys::Ctrl;
-			}
-			if((m & KMOD_SHIFT) != 0)
-			{
-				(uint8&)m_modKeys |= (uint8)ModifierKeys::Shift;
-			}
+			const SDL_Scancode code = keySym.scancode;
+			SDL_Keymod m = static_cast<SDL_Keymod>(keySym.mod);
 
-			
-		
+			m_modKeys = ModifierKeys::None;
+
+			if((m & KMOD_ALT) != 0) (uint8&) m_modKeys |= (uint8) ModifierKeys::Alt;
+			if((m & KMOD_CTRL) != 0) (uint8&) m_modKeys |= (uint8) ModifierKeys::Ctrl;
+			if((m & KMOD_SHIFT) != 0) (uint8&) m_modKeys |= (uint8) ModifierKeys::Shift;
 
 			uint8& currentState = m_keyStates[code];
+
 			if(currentState != newState)
 			{
 				currentState = newState;
@@ -261,15 +251,11 @@ namespace Graphics
 			{
 				if(evt.type == SDL_EventType::SDL_KEYDOWN)
 				{
-					if(m_textComposition.composition.empty())
-					{
-						// Ignore key input when composition is being typed
-						HandleKeyEvent(evt.key.keysym.sym, 1, evt.key.repeat);
-					}
+					HandleKeyEvent(evt.key.keysym, 1, evt.key.repeat);
 				}
 				else if(evt.type == SDL_EventType::SDL_KEYUP)
 				{
-					HandleKeyEvent(evt.key.keysym.sym, 0, 0);
+					HandleKeyEvent(evt.key.keysym, 0, 0);
 				}
 				else if(evt.type == SDL_EventType::SDL_JOYBUTTONDOWN)
 				{
@@ -444,7 +430,7 @@ namespace Graphics
 		SDL_Cursor* currentCursor = nullptr;
 
 		// Window Input State
-		Map<SDL_Keycode, uint8> m_keyStates;
+		Map<SDL_Scancode, uint8> m_keyStates;
 		KeyMap m_keyMapping;
 		ModifierKeys m_modKeys = ModifierKeys::None;
 
@@ -551,7 +537,7 @@ namespace Graphics
 		return SDL_GetWindowDisplayIndex(m_impl->m_window);
 	}
 
-	bool Window::IsKeyPressed(SDL_Keycode key) const
+	bool Window::IsKeyPressed(SDL_Scancode key) const
 	{
 		return m_impl->m_keyStates[key] > 0;
 	}
@@ -664,9 +650,6 @@ namespace Graphics
 	{
 		return SDL_GetRelativeMouseMode() == SDL_TRUE;
 	}
-
-
-
 }
 
 namespace Graphics

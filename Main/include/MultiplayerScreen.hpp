@@ -50,8 +50,8 @@ public:
 	void Render(float deltaTime) override;
 	void ForceRender(float deltaTime) override;
 
-	void OnKeyPressed(int32 key) override;
-	void OnKeyReleased(int32 key) override;
+	void OnKeyPressed(SDL_Scancode code) override;
+	void OnKeyReleased(SDL_Scancode code) override;
 	void MousePressed(MouseButton button);
 
 	virtual void OnSuspend();

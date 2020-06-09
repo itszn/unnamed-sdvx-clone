@@ -31,8 +31,8 @@ public:
 	void Tick(float deltaTime) override;
 	void Render(float deltaTime) override;
 
-	void OnKeyPressed(int32 key) override;
-	void OnKeyReleased(int32 key) override;
+	void OnKeyPressed(SDL_Scancode code) override;
+	void OnKeyReleased(SDL_Scancode code) override;
 private:
 	struct lua_State* m_lua;
 	LuaBindable* m_bindable;

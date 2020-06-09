@@ -85,12 +85,12 @@ void DownloadScreen::Render(float deltaTime)
 	}
 }
 
-void DownloadScreen::OnKeyPressed(int32 key)
+void DownloadScreen::OnKeyPressed(SDL_Scancode code)
 {
 	lua_getglobal(m_lua, "key_pressed");
 	if (lua_isfunction(m_lua, -1))
 	{	
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -100,12 +100,12 @@ void DownloadScreen::OnKeyPressed(int32 key)
 	lua_settop(m_lua, 0);
 }
 
-void DownloadScreen::OnKeyReleased(int32 key)
+void DownloadScreen::OnKeyReleased(SDL_Scancode code)
 {
 	lua_getglobal(m_lua, "key_released");
 	if (lua_isfunction(m_lua, -1))
 	{
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_released: %s", Logger::Error, lua_tostring(m_lua, -1));
