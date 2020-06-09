@@ -959,8 +959,9 @@ public:
 		{
 			// Set start time
 			m_lastMapTime = firstObjectTime - 5000;
-			m_audioPlayback.SetPosition(m_lastMapTime);
 		}
+
+		m_audioPlayback.SetPosition(m_lastMapTime);
 
 		// Reset playback
 		m_playback.Reset(m_lastMapTime);
@@ -2166,22 +2167,22 @@ public:
 	}
 };
 
-Game* Game::Create(ChartIndex* difficulty, GameFlags flags)
+Game* Game::Create(ChartIndex* chart, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(chart, flags);
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* difficulty, GameFlags flags)
+Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(chart, flags);
 	impl->MakeMultiplayer(multiplayer);
 	return impl;
 }
 
-Game* Game::Create(const String& difficulty, GameFlags flags)
+Game* Game::Create(const String& mapPath, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(mapPath, flags);
 	return impl;
 }
 

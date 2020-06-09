@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "KShootMap.hpp"
+
 #include "Shared/Profiling.hpp"
+#include "Shared/StringEncodingDetector.hpp"
+#include "Shared/StringEncodingConverter.hpp"
 
 String KShootTick::ToString() const
 {
@@ -74,10 +77,19 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 {
 	ProfilerScope $("Load KShootMap");
 
+	StringEncoding chartEncoding = StringEncoding::Unknown;
+
 	// Read Byte Order Mark
 	uint32_t bom = 0;
 	input.Serialize(&bom, 3);
-	if(bom != 0x00bfbbef) // Expected format for UTF-8
+
+	// If the BOM is not present, the chart might not be UTF-8.
+	// This is forbidden by the spec, but there are old charts which did not use UTF-8. (#314)
+	if (bom == 0x00bfbbef)
+	{
+		chartEncoding = StringEncoding::UTF8;
+	}
+	else
 	{
 		input.Seek(0);
 	}
@@ -86,7 +98,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 	String line;
 	static const String lineEnding = "\r\n";
 
-	// Parse Header
+	// Parse header (encoding-agnostic)
 	while(TextStream::ReadLine(input, line, lineEnding))
 	{
 		line.Trim();
@@ -95,6 +107,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 		{
 			break;
 		}
+		
 		String k, v;
 		if (line.empty())
 			continue;
@@ -102,8 +115,29 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 			continue;
 		if(!line.Split("=", &k, &v))
 			return false;
-		WString str = Utility::ConvertToWString(v);
+
 		settings.FindOrAdd(k) = v;
+	}
+
+	if (chartEncoding == StringEncoding::Unknown)
+	{
+		chartEncoding = StringEncodingDetector::Detect(input, 0, input.Tell());
+
+		if (chartEncoding != StringEncoding::Unknown)
+			Logf("Chart encoding is assumed to be %s", Logger::Info, GetDisplayString(chartEncoding));
+		else
+			Log("Chart encoding couldn't be assumed. (Assuming UTF-8)", Logger::Warning);
+
+		if (chartEncoding != StringEncoding::Unknown)
+		{
+			for (auto& it : settings)
+			{
+				const String& value = it.second;
+				if (value.empty()) continue;
+
+				it.second = StringEncodingConverter::ToUTF8(chartEncoding, value);
+			}
+		}
 	}
 
 	if(metadataOnly)

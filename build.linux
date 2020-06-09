@@ -12,5 +12,6 @@ Download/install the following libraries/tools:
 - Install libarchive (3.3.3, https://www.libarchive.org/downloads/libarchive-3.3.3.tar.gz )
 - Get libgl1-mesa-dev (from package manager)
 - Get OpenSSL (from package manager)
+- Get libiconv (from package manager)
 
 (Versions/Links listed are the ones used for a working build on my machine)

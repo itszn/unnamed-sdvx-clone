@@ -67,8 +67,8 @@ namespace Graphics
 				m_changeNotification = INVALID_HANDLE_VALUE;
 			}
 
-			String rootFolder = Path::RemoveLast(m_sourcePath);
-			m_changeNotification = FindFirstChangeNotificationA(*rootFolder, false, FILE_NOTIFY_CHANGE_LAST_WRITE);
+			WString rootFolder = Utility::ConvertToWString(Path::RemoveLast(m_sourcePath));
+			m_changeNotification = FindFirstChangeNotificationW(*rootFolder, false, FILE_NOTIFY_CHANGE_LAST_WRITE);
 #endif
 		}
 
