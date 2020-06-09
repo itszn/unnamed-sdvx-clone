@@ -241,6 +241,8 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 
 
 	m_screenState = MultiplayerScreenState::IN_ROOM;
+	m_chatOverlay->EnableOpeningChat();
+
 	lua_pushstring(m_lua, "inRoom");
 	lua_setglobal(m_lua, "screenState");
 	packet["room"]["id"].get_to(m_roomId);
@@ -1062,6 +1064,7 @@ void MultiplayerScreen::OnKeyPressed(int32 key)
 				m_textInput->SetActive(false);
 
 			m_chatOverlay->AddMessage("You left the lobby", 207, 178, 41);
+			m_chatOverlay->EnableOpeningChat();
 
 			m_screenState = MultiplayerScreenState::ROOM_LIST;
 			m_stopPreview();
@@ -1397,6 +1400,7 @@ int MultiplayerScreen::lJoinWithPassword(lua_State* L)
 		
 
 		m_screenState = MultiplayerScreenState::JOIN_PASSWORD;
+		m_chatOverlay->DisableOpeningChat();
 		lua_pushstring(m_lua, "passwordScreen");
 		lua_setglobal(m_lua, "screenState");
 
@@ -1418,6 +1422,7 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 {
 	if (m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
+		m_chatOverlay->DisableOpeningChat();
 		m_screenState = MultiplayerScreenState::NEW_ROOM_NAME;
 		lua_pushstring(m_lua, "newRoomName");
 		lua_setglobal(m_lua, "screenState");
@@ -1442,6 +1447,7 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 	}
 	else if (m_screenState == MultiplayerScreenState::NEW_ROOM_PASSWORD)
 	{
+		m_chatOverlay->EnableOpeningChat();
 		nlohmann::json packet;
 		packet["topic"] = "server.room.new";
 		packet["name"] = m_newRoomName;

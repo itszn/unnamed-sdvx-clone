@@ -57,6 +57,14 @@ public:
 	bool IsOpen() {
 		return m_isOpen;
 	}
+	void EnableOpeningChat() {
+		m_canOpen = true;
+	}
+	void DisableOpeningChat() {
+		m_canOpen = false;
+		if (m_isOpen)
+			CloseChat();
+	}
 private:
 	bool m_handleChatReceived(nlohmann::json& packet);
 	void m_drawWindow();
@@ -76,4 +84,5 @@ private:
 	bool m_forceToBottom = false;
 	bool m_focusText = false;
 	Vector<std::pair<String,nk_color>> m_messages;
+	bool m_canOpen = true;
 };

@@ -145,6 +145,10 @@ nk_edit_isfocused(struct nk_context *ctx)
 
 void ChatOverlay::m_drawChatAlert()
 {
+	// Don't add alert if we can't open chat
+	if (!m_canOpen)
+		return;
+
 	const int windowFlag = NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR;
 
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
@@ -342,7 +346,7 @@ bool ChatOverlay::OnKeyPressedConsume(int32 key)
 	}
 
 
-	if (key == SDLK_F8)
+	if (key == SDLK_F8 && m_canOpen)
 	{
 		// Toggle open
 		if (m_isOpen)
