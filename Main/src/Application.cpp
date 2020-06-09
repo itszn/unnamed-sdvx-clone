@@ -556,6 +556,11 @@ void __updateChecker()
 			String status;
 			commit.at("status").get_to(status);
 			String conclusion;
+			if (commit.at("conclusion").is_null())
+			{
+				//not built yet
+				continue;
+			}
 			commit.at("conclusion").get_to(conclusion);
 
 			if (branch == "master" && status == "completed" && conclusion == "success")

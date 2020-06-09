@@ -97,11 +97,11 @@ String Path::Normalize(const String& path)
 {
   wchar_t out[MAX_PATH] = {0};
   WString wpath = Utility::ConvertToWString(path);
-	// Convert a unix style path so we can correctly handle it
+  // Convert a unix style path so we can correctly handle it
   std::replace(wpath.begin(), wpath.end(), L'/', static_cast<wchar_t>(sep));
   // Remove any relative path . or ..
-	PathCanonicalizeW(out, *wpath);
-  return out;
+  PathCanonicalizeW(out, *wpath);
+  return Utility::ConvertToUTF8(out);
 }
 bool Path::IsAbsolute(const String& path)
 {
