@@ -1,6 +1,37 @@
 #include "stdafx.h"
 #include "GameConfig.hpp"
-#include "SDL2/SDL_keycode.h"
+
+#include "Shared/Log.hpp"
+
+inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
+{
+	// To use SDL_GetScancodeFromKey, SDL must be initialized before.
+	assert(SDL_WasInit(SDL_INIT_EVENTS) != 0);
+
+	for (const GameConfigKeys key : keys)
+	{
+		const int32 keycodeInt = config.GetInt(key);
+		if (keycodeInt < 0) continue;
+
+		const SDL_Keycode keycode = static_cast<SDL_Keycode>(keycodeInt);
+		const SDL_Scancode scancode = SDL_GetScancodeFromKey(keycode);
+
+		if (scancode != SDL_SCANCODE_UNKNOWN)
+		{
+			config.Set(key, static_cast<int32>(scancode));
+		}
+		else
+		{
+			const char* keyName = SDL_GetKeyName(keycode);
+			if (keyName == nullptr) keyName = "unknown";
+
+			const String& fieldName = Enum_GameConfigKeys::ToString(key);
+
+			Logf("Unable to convert key \"%s\" (%d) into scancode, for config field \"%s\".", Logger::Error, keyName, keycode, fieldName.c_str());
+			config.Set(key, -1);
+		}
+	}
+}
 
 GameConfig::GameConfig()
 {
@@ -15,6 +46,10 @@ void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
 
 void GameConfig::InitDefaults()
 {
+	// This will be set to appropriate value in Application::m_LoadConfig.
+	// Do not set this to GameConfig::VERSION here. It will cause problems for config files with no ConfigVersion field.
+	Set(GameConfigKeys::ConfigVersion, 0);
+
 	Set(GameConfigKeys::ScreenWidth, 1280);
 	Set(GameConfigKeys::ScreenHeight, 720);
 	Set(GameConfigKeys::FullScreenWidth, -1);
@@ -65,24 +100,30 @@ void GameConfig::InitDefaults()
 	SetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, ButtonComboModeSettings::Hold);
 
 	// Default keyboard bindings
-	Set(GameConfigKeys::Key_BTS, SDLK_1); // Start button on Dao controllers
-	Set(GameConfigKeys::Key_BT0, SDLK_d);
-	Set(GameConfigKeys::Key_BT1, SDLK_f);
-	Set(GameConfigKeys::Key_BT2, SDLK_j);
-	Set(GameConfigKeys::Key_BT3, SDLK_k);
+	Set(GameConfigKeys::Key_BTS, SDL_SCANCODE_1); // Start button on Dao controllers
+	Set(GameConfigKeys::Key_BTSAlt, -1); // How about setting this to the return key, after dealing with hard-coded SDL_SCANCODE_RETURNs?
+	Set(GameConfigKeys::Key_BT0, SDL_SCANCODE_D);
+	Set(GameConfigKeys::Key_BT1, SDL_SCANCODE_F);
+	Set(GameConfigKeys::Key_BT2, SDL_SCANCODE_J);
+	Set(GameConfigKeys::Key_BT3, SDL_SCANCODE_K);
 	Set(GameConfigKeys::Key_BT0Alt, -1);
 	Set(GameConfigKeys::Key_BT1Alt, -1);
 	Set(GameConfigKeys::Key_BT2Alt, -1);
 	Set(GameConfigKeys::Key_BT3Alt, -1);
-	Set(GameConfigKeys::Key_FX0, SDLK_c);
-	Set(GameConfigKeys::Key_FX1, SDLK_m);
+	Set(GameConfigKeys::Key_FX0, SDL_SCANCODE_C);
+	Set(GameConfigKeys::Key_FX1, SDL_SCANCODE_M);
 	Set(GameConfigKeys::Key_FX0Alt, -1);
 	Set(GameConfigKeys::Key_FX1Alt, -1);
-	Set(GameConfigKeys::Key_Laser0Neg, SDLK_w);
-	Set(GameConfigKeys::Key_Laser0Pos, SDLK_e);
-	Set(GameConfigKeys::Key_Laser1Neg, SDLK_o);
-	Set(GameConfigKeys::Key_Laser1Pos, SDLK_p);
-	Set(GameConfigKeys::Key_Back, SDLK_ESCAPE);
+	Set(GameConfigKeys::Key_Laser0Neg, SDL_SCANCODE_W);
+	Set(GameConfigKeys::Key_Laser0Pos, SDL_SCANCODE_E);
+	Set(GameConfigKeys::Key_Laser1Neg, SDL_SCANCODE_O);
+	Set(GameConfigKeys::Key_Laser1Pos, SDL_SCANCODE_P);
+	Set(GameConfigKeys::Key_Laser0NegAlt, -1);
+	Set(GameConfigKeys::Key_Laser0PosAlt, -1);
+	Set(GameConfigKeys::Key_Laser1NegAlt, -1);
+	Set(GameConfigKeys::Key_Laser1PosAlt, -1);
+	Set(GameConfigKeys::Key_Back, SDL_SCANCODE_ESCAPE);
+	Set(GameConfigKeys::Key_BackAlt, -1);
 	Set(GameConfigKeys::Key_Sensitivity, 3.0f);
 	Set(GameConfigKeys::Key_LaserReleaseTime, 0.0f);
 
@@ -109,6 +150,14 @@ void GameConfig::InitDefaults()
 
 	// Default to 10ms input bounce guard
 	Set(GameConfigKeys::InputBounceGuard, 10);
+
+	SetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod, AbortMethod::Press);
+	Set(GameConfigKeys::RestartPlayHoldDuration, 2000);
+
+	SetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, AbortMethod::Press);
+	Set(GameConfigKeys::ExitPlayHoldDuration, 2000);
+
+	Set(GameConfigKeys::DisableNonButtonInputsDuringPlay, false);
 
 	Set(GameConfigKeys::LastSelected, 0);
 	Set(GameConfigKeys::LastSort, 0);
@@ -142,4 +191,58 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
+}
+
+void GameConfig::UpdateVersion()
+{
+	int32 configVersion = GetInt(GameConfigKeys::ConfigVersion);
+	if (configVersion == GameConfig::VERSION) return;
+
+	// Abnormal cases
+	if (configVersion < 0)
+	{
+		Logf("The version of the config(%d) is invalid.", Logger::Error, configVersion);
+		return;
+	}
+	if (configVersion > GameConfig::VERSION)
+	{
+		Logf("The version of the config(%d) is higher than the maximum compatible version(%d). Try updating USC.",
+			Logger::Error, configVersion, GameConfig::VERSION);
+		return;
+	}
+
+	Logf("Updating the version of GameConfig from %d to %d...", Logger::Normal, configVersion, GameConfig::VERSION);
+
+	/* Config Conversion Code Collection */
+
+	// 0 -> 1: button keys should be converted from keycodes to scancodes.
+	if (configVersion == 0)
+	{
+		ConvertKeyCodeToScanCode(*this, {
+			GameConfigKeys::Key_BTS,
+			GameConfigKeys::Key_BT0,
+			GameConfigKeys::Key_BT1,
+			GameConfigKeys::Key_BT2,
+			GameConfigKeys::Key_BT3,
+			GameConfigKeys::Key_BT0Alt,
+			GameConfigKeys::Key_BT1Alt,
+			GameConfigKeys::Key_BT2Alt,
+			GameConfigKeys::Key_BT3Alt,
+			GameConfigKeys::Key_FX0,
+			GameConfigKeys::Key_FX1,
+			GameConfigKeys::Key_FX0Alt,
+			GameConfigKeys::Key_FX1Alt,
+			GameConfigKeys::Key_Laser0Neg,
+			GameConfigKeys::Key_Laser0Pos,
+			GameConfigKeys::Key_Laser1Neg,
+			GameConfigKeys::Key_Laser1Pos,
+			GameConfigKeys::Key_Back,
+			GameConfigKeys::Key_BackAlt,
+		});
+
+		++configVersion;
+	}
+
+	assert(configVersion == GameConfig::VERSION);
+	Set(GameConfigKeys::ConfigVersion, configVersion);
 }

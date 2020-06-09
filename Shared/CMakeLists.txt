@@ -45,3 +45,9 @@ target_include_directories(Shared PRIVATE
 )
 
 target_link_libraries(Shared lua)
+
+target_link_libraries(Shared ${Iconv_LIBRARIES})
+target_include_directories(Shared SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})
+
+target_link_libraries(Shared ${LibArchive_LIBRARIES})
+target_include_directories(Shared SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})

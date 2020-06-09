@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DownloadScreen.hpp"
+
 #include "Application.hpp"
 #include "lua.hpp"
 #include "archive.h"
@@ -7,6 +8,9 @@
 #include "SkinHttp.hpp"
 #include "GameConfig.hpp"
 #include "cpr/util.h"
+
+#include "Shared/StringEncodingDetector.hpp"
+#include "Shared/StringEncodingConverter.hpp"
 
 DownloadScreen::DownloadScreen()
 {
@@ -81,12 +85,12 @@ void DownloadScreen::Render(float deltaTime)
 	}
 }
 
-void DownloadScreen::OnKeyPressed(int32 key)
+void DownloadScreen::OnKeyPressed(SDL_Scancode code)
 {
 	lua_getglobal(m_lua, "key_pressed");
 	if (lua_isfunction(m_lua, -1))
 	{	
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -96,12 +100,12 @@ void DownloadScreen::OnKeyPressed(int32 key)
 	lua_settop(m_lua, 0);
 }
 
-void DownloadScreen::OnKeyReleased(int32 key)
+void DownloadScreen::OnKeyReleased(SDL_Scancode code)
 {
 	lua_getglobal(m_lua, "key_released");
 	if (lua_isfunction(m_lua, -1))
 	{
-		lua_pushnumber(m_lua, key);
+		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on key_released: %s", Logger::Error, lua_tostring(m_lua, -1));
@@ -211,25 +215,30 @@ void DownloadScreen::m_ProcessArchiveResponses()
 	m_archiveLock.lock();
 	if (m_archiveResps.size() > 0)
 	{
-		//get response
+		// Get response
 		ArchiveResponse& ar = m_archiveResps.front();
 		m_archiveLock.unlock();
 
-		//process response
+		StringEncoding archiveEncoding = StringEncodingDetector::DetectArchive(ar.data);
+		if (archiveEncoding != StringEncoding::Unknown)
+			Logf("Archive encoding is assumed to be %s", Logger::Info, GetDisplayString(archiveEncoding));
+		else
+			Log("Archive encoding couldn't be assumed. (Assuming UTF-8)", Logger::Warning);
+
+		// Process response
 		lua_rawgeti(m_lua, LUA_REGISTRYINDEX, ar.callback);
 		struct archive_entry *entry;
 		int numEntries = 1;
 		bool readError = false;
 		lua_newtable(m_lua);
 		while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-			const wchar_t* pathname_w = archive_entry_pathname_w(entry);
-			if (pathname_w == nullptr)
+			const String pathname = StringEncodingConverter::PathnameToUTF8(archiveEncoding, entry);
+			if (pathname.empty())
 			{
 				readError = true;
 				break;
 			}
 
-			const String pathname = Utility::ConvertToUTF8(pathname_w);
 			lua_pushinteger(m_lua, numEntries++);
 			lua_pushstring(m_lua, pathname.c_str());
 			lua_settable(m_lua, -3);
@@ -250,7 +259,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		{
 			Logf("Lua error on calling archive callback: %s", Logger::Error, lua_tostring(m_lua, -1));
 		}
-		else //process returned table and extract files
+		else // Process returned table and extract files
 		{
 			auto entryPathMap = m_mapFromLuaTable(1);
 
@@ -277,8 +286,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 				Log("Error opening downloaded chart archive for extraction", Logger::Error);
 			}
 			else while (archive_read_next_header(ar.a, &entry) == ARCHIVE_OK) {
-				const wchar_t* entryName_w = archive_entry_pathname_w(entry);
-				String entryName = Utility::ConvertToUTF8(entryName_w);
+				const String entryName = StringEncodingConverter::PathnameToUTF8(archiveEncoding, entry);
 				if (entryPathMap.Contains(entryName))
 				{
 					if (!m_extractFile(ar.a, entryPathMap.at(entryName)))
@@ -298,7 +306,7 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		lua_settop(m_lua, 0);
 		luaL_unref(m_lua, LUA_REGISTRYINDEX, ar.callback);
 
-		//pop response
+		// Pop response
 		m_archiveLock.lock();
 		m_archiveResps.pop();
 	}

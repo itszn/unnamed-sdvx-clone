@@ -224,9 +224,13 @@ public:
 		m_displayIndex = 0;
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
-		m_highScores = game->GetChartIndex()->scores;
 		m_autoButtons = scoring.autoplayButtons;
-		m_chartIndex = game->GetChartIndex();
+
+		if (ChartIndex* chart = game->GetChartIndex())
+		{
+			m_chartIndex = chart;
+			m_highScores = chart->scores;
+		}
 
 		// XXX add data for multi
 		m_gaugeSamples = game->GetGaugeSamples();
@@ -505,7 +509,7 @@ public:
 	}
 
 
-	virtual void OnKeyPressed(int32 key) override
+	virtual void OnKeyPressed(SDL_Scancode code) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(key))
@@ -514,16 +518,16 @@ public:
 		if (m_collDiag.IsActive())
 			return;
 
-		if(key == SDLK_RETURN && !m_removed)
+		if(code == SDL_SCANCODE_RETURN && !m_removed)
 		{
 			g_application->RemoveTickable(this);
 			m_removed = true;
 		}
-		if (key == SDLK_F12)
+		if (code == SDL_SCANCODE_F12)
 		{
 			Capture();
 		}
-		if (key == SDLK_F9)
+		if (code == SDL_SCANCODE_F9)
 		{
 			g_application->ReloadScript("result", m_lua);
 			lua_getglobal(m_lua, "result_set");
@@ -538,7 +542,7 @@ public:
 			lua_settop(m_lua, 0);
 		}
 	}
-	virtual void OnKeyReleased(int32 key) override
+	virtual void OnKeyReleased(SDL_Scancode code) override
 	{
 	}
 	virtual void Render(float deltaTime) override

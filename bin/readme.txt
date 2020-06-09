@@ -41,6 +41,8 @@ miniaudio - Copyright (c) 2019 David Reid
 
 JSON for Modern C++ - Copyright (c) 2013-2019 Niels Lohmann
 
+libiconv - Copyright (C) 1998, 2019 Free Software Foundation, Inc.
+
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
