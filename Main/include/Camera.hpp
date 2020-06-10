@@ -144,6 +144,7 @@ private:
 	// Roll force
 	float m_rollVelocity = 0.0f;
 	float m_rollIntensity = MAX_ROLL_ANGLE;
+	float m_oldRollIntensity = MAX_ROLL_ANGLE;
 	bool m_rollKeep = false;
 	bool m_manualTiltInstant = false;
 	bool m_manualTiltRecentlyToggled = false;

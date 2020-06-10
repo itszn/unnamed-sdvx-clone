@@ -121,7 +121,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
-	bool skipLerp = false;
 
 	// Lerp crit line position
 	if (m_slowTilt)
@@ -129,28 +128,30 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
 	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
 
-	// Catch up to crit line position or roll to roll keep value with respect to roll intensity
+	// Roll to crit line position or roll keep value with respect to roll intensity
 	// 2.5 corresponds to BIGGEST roll speed
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * (m_rollKeep && !pManualTiltEnabled ? m_rollIntensity / MAX_ROLL_ANGLE : 2.5);
+	// Don't respect roll intensity if manual tilt is on, was recently toggled (off) or if roll speed is somehow 0
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 
+			Math::Max(m_rollIntensity, m_oldRollIntensity) / MAX_ROLL_ANGLE;
+	if (speedLimit == 0 || pManualTiltEnabled || m_manualTiltRecentlyToggled)
+		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f;
+
+	if (m_manualTiltRecentlyToggled)
+	{
+		// If there's more than a 10 degree delta between the manual tilt target and the current roll,
+		// increase roll speed to catch up
+		float delta = fabsf(m_actualRoll - pLaneTilt) - MAX_ROLL_ANGLE;
+		if (delta > 0)
+			speedLimit *= 1 + (delta * 360 / 2.5f);
+	}
 
 	if (pManualTiltEnabled)
 	{
-		if (m_manualTiltInstant || !m_manualTiltRecentlyToggled)
-		{
-			// Don't lerp as we've caught up to manual tilt roll
+		if (m_manualTiltInstant)
 			m_actualRoll = pLaneTilt;
-			skipLerp = true;
-		}
 		else
-		{
-			if (fabsf(m_actualRoll - pLaneTilt) > MAX_ROLL_ANGLE)
-				// If there's a large discrepancy between the manual tilt target and the current roll,
-				// increase roll speed to catch up
-				speedLimit *= 1 + (fabsf(m_actualRoll - pLaneTilt) - MAX_ROLL_ANGLE) * 36 * 4;
-
 			// Lerp to manual tilt value
 			m_actualTargetLaserRoll = pLaneTilt;
-		}
 	}
 	else if (!m_rollKeep)
 	{
@@ -158,7 +159,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
-	if (!skipLerp)
+	if (!m_manualTiltInstant)
 		// Lerp highway tilt
 		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
 
@@ -263,6 +264,7 @@ void Camera::AddRollImpulse(float dir, float strength)
 
 void Camera::SetRollIntensity(float val)
 {
+	m_oldRollIntensity = m_rollIntensity;
 	m_rollIntensity = val;
 }
 
