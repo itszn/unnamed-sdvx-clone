@@ -132,13 +132,13 @@ private:
 	// roll value
 	float m_totalRoll = 0.0f;
 	// Used for crit line position
-	float m_laserRoll = 0.0f;
+	float m_critLineRoll = 0.0f;
 	// Actual highway tilt
 	float m_actualRoll = 0.0f;
 	// Target to roll towards
 	float m_actualTargetLaserRoll = 0.0f;
 	// Target roll used for crit line
-	float m_targetLaserRoll = 0.f;
+	float m_targetCritLineRoll = 0.f;
 	bool m_targetRollSet = false;
 	bool m_lasersActive = false;
 	// Roll force

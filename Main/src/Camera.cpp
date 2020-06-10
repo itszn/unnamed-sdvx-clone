@@ -125,8 +125,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	// Lerp crit line position
 	if (m_slowTilt)
 		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
-	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
+		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+	LerpTo(m_critLineRoll, m_targetCritLineRoll, speedLimit);
 
 	// Roll to crit line position or roll keep value with respect to roll intensity
 	// 2.5 corresponds to BIGGEST roll speed
@@ -156,7 +156,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	else if (!m_rollKeep)
 	{
 		// Get highway tilt target based off of crit line position
-		m_actualTargetLaserRoll = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
+		m_actualTargetLaserRoll = (m_critLineRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
 	if (!m_manualTiltInstant)
@@ -393,7 +393,7 @@ void Camera::SetTargetRoll(float target)
 	};
 
 	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
-	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
+	m_targetCritLineRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
 	if (m_rollKeep)
 	{
@@ -443,7 +443,7 @@ float Camera::GetRoll() const
 
 float Camera::GetLaserRoll() const
 {
-	return m_laserRoll;
+	return m_critLineRoll;
 }
 
 float Camera::GetActualRoll() const
