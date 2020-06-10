@@ -687,7 +687,7 @@ public:
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
 		// Get render state from the camera
-		// Only get roll when there's no laser slam roll being applied
+		// Get roll when there's no laser slam roll and roll ignore being applied
 		float rollL = m_camera.GetRollIgnoreTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
 		float rollR = m_camera.GetRollIgnoreTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
 		float slamL = m_camera.GetSlamAmount(0);
