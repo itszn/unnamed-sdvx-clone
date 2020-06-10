@@ -13,6 +13,8 @@
 #include "json.hpp"
 #include "CollectionDialog.hpp"
 #include <Beatmap/TinySHA1.hpp>
+#include "MultiplayerScreen.hpp"
+#include "ChatOverlay.hpp"
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -42,7 +44,7 @@ private:
 	bool m_removed = false;
 	bool m_hasScreenshot = false;
 	bool m_hasRendered = false;
-	bool m_multiplayer = false;
+    MultiplayerScreen* m_multiplayer = NULL;
 	String m_playerName;
 	String m_playerId;
 	String m_displayId;
@@ -80,6 +82,8 @@ private:
 	}
 	void m_OnButtonPressed(Input::Button button)
 	{
+		if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
+			return;
 		if (m_collDiag.IsActive())
 			return;
 
@@ -214,15 +218,19 @@ public:
 
 	}
 
-	ScoreScreen_Impl(class Game* game, bool multiplayer,
+	ScoreScreen_Impl(class Game* game, MultiplayerScreen* multiplayer,
 		String uid, Vector<nlohmann::json> const* multistats)
 	{
 		m_displayIndex = 0;
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
-		m_highScores = game->GetChartIndex()->scores;
 		m_autoButtons = scoring.autoplayButtons;
-		m_chartIndex = game->GetChartIndex();
+
+		if (ChartIndex* chart = game->GetChartIndex())
+		{
+			m_chartIndex = chart;
+			m_highScores = chart->scores;
+		}
 
 		// XXX add data for multi
 		m_gaugeSamples = game->GetGaugeSamples();
@@ -501,21 +509,25 @@ public:
 	}
 
 
-	virtual void OnKeyPressed(int32 key) override
+	virtual void OnKeyPressed(SDL_Scancode code) override
 	{
+		if (m_multiplayer &&
+				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
+			return;
+
 		if (m_collDiag.IsActive())
 			return;
 
-		if(key == SDLK_RETURN && !m_removed)
+		if(code == SDL_SCANCODE_RETURN && !m_removed)
 		{
 			g_application->RemoveTickable(this);
 			m_removed = true;
 		}
-		if (key == SDLK_F12)
+		if (code == SDL_SCANCODE_F12)
 		{
 			Capture();
 		}
-		if (key == SDLK_F9)
+		if (code == SDL_SCANCODE_F9)
 		{
 			g_application->ReloadScript("result", m_lua);
 			lua_getglobal(m_lua, "result_set");
@@ -530,7 +542,7 @@ public:
 			lua_settop(m_lua, 0);
 		}
 	}
-	virtual void OnKeyReleased(int32 key) override
+	virtual void OnKeyReleased(SDL_Scancode code) override
 	{
 	}
 	virtual void Render(float deltaTime) override
@@ -549,6 +561,9 @@ public:
 		{
 			m_collDiag.Render(deltaTime);
 		}
+
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Render(deltaTime);
 	}
 	virtual void Tick(float deltaTime) override
 	{
@@ -563,6 +578,9 @@ public:
 			}
 			m_hasScreenshot = true;
 		}
+
+
+        
 
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 
@@ -587,6 +605,9 @@ public:
 		{
 			m_collDiag.Tick(deltaTime);
 		}
+
+		if (m_multiplayer)
+			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
 	virtual void OnSuspend()
@@ -661,12 +682,12 @@ public:
 
 ScoreScreen* ScoreScreen::Create(class Game* game)
 {
-	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, false, String(""), nullptr);
+	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, NULL, String(""), nullptr);
 	return impl;
 }
 
-ScoreScreen* ScoreScreen::Create(class Game* game, String uid, Vector<nlohmann::json> const* stats)
+ScoreScreen* ScoreScreen::Create(class Game* game, String uid, Vector<nlohmann::json> const* stats, MultiplayerScreen* multi)
 {
-	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, true, uid, stats);
+	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, multi, uid, stats);
 	return impl;
 }

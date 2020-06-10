@@ -180,8 +180,9 @@ String Utility::WindowsFormatMessage(uint32 code)
 		return "No additional info available";
 	}
 
-	char buffer[1024] = {0};
-	FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, 0, code, LANG_SYSTEM_DEFAULT, buffer, sizeof(buffer), 0);
-	return buffer;
+	wchar_t buffer[1024] = {0};
+	FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, 0, code, LANG_SYSTEM_DEFAULT, buffer, sizeof(buffer), 0);
+
+	return Utility::ConvertToUTF8(buffer);
 }
 #endif

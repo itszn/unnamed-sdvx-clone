@@ -2,7 +2,6 @@
 #include "Application.hpp"
 #include "CalibrationScreen.hpp"
 #include "Audio/Audio.hpp"
-#include "SDL2/SDL_keycode.h"
 #include "SettingsScreen.hpp"
 #include "../third_party/nuklear/nuklear.h"
 #include <unordered_set>
@@ -94,7 +93,10 @@ void CalibrationScreen::Render(float deltaTime)
 
 	//Draw nuklear GUI
 	{
-		if (nk_begin(m_ctx, "Options", nk_rect(50, 50, 400, 300), windowFlag))
+		const int OPTIONS_WINDOW_WIDTH = Math::Clamp(g_resolution.x - 50, 100, 400);
+		const int OPTIONS_WINDOW_HEIGHT = Math::Clamp(g_resolution.y - 50, 200, 520);
+
+		if (nk_begin(m_ctx, "Options", nk_rect(50, 50, OPTIONS_WINDOW_WIDTH, OPTIONS_WINDOW_HEIGHT), windowFlag))
 		{
 			nk_layout_row_dynamic(m_ctx, 30, 1);
 			m_audioOffset = nk_propertyi(m_ctx, "Global Offset", -1000, m_audioOffset, 1000, 1, 1);

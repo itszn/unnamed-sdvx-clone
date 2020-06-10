@@ -48,8 +48,8 @@ public:
 	MouseLockHandle LockMouse();
 
 	// Event handlers
-	virtual void OnKeyPressed(int32 key);
-	virtual void OnKeyReleased(int32 key);
+	virtual void OnKeyPressed(SDL_Scancode code);
+	virtual void OnKeyReleased(SDL_Scancode code);
 	virtual void OnMouseMotion(int32 x, int32 y);
 
 	// Request laser input state

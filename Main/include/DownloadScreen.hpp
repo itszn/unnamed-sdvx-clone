@@ -4,6 +4,7 @@
 #include "Input.hpp"
 #include "Shared/Thread.hpp"
 #include "cpr/cpr.h"
+#include "PreviewPlayer.hpp"
 #include <queue>
 
 struct ArchiveRequest
@@ -31,8 +32,8 @@ public:
 	void Tick(float deltaTime) override;
 	void Render(float deltaTime) override;
 
-	void OnKeyPressed(int32 key) override;
-	void OnKeyReleased(int32 key) override;
+	void OnKeyPressed(SDL_Scancode code) override;
+	void OnKeyReleased(SDL_Scancode code) override;
 private:
 	struct lua_State* m_lua;
 	LuaBindable* m_bindable;
@@ -50,8 +51,12 @@ private:
 	void m_ProcessArchiveResponses();
 	int m_Exit(struct lua_State* L);
 	int m_DownloadArchive(struct lua_State* L);
+	int m_PlayPreview(struct lua_State* L);
 	int m_GetSongsPath(struct lua_State* L);
 	bool m_extractFile(struct archive* a, String path);
 	Map<String, String> m_mapFromLuaTable(int index);
+
+	PreviewPlayer m_previewPlayer;
+	PreviewParams m_previewParams;
 
 };

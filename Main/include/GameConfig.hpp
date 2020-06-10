@@ -3,6 +3,9 @@
 #include "Input.hpp"
 
 DefineEnum(GameConfigKeys,
+		   // Version of the config
+		   ConfigVersion,
+
 		   // Screen settings
 		   ScreenWidth,
 		   ScreenHeight,
@@ -60,6 +63,7 @@ DefineEnum(GameConfigKeys,
 
 		   // Key bindings
 		   Key_BTS,
+		   Key_BTSAlt,
 		   Key_BT0,
 		   Key_BT1,
 		   Key_BT2,
@@ -76,7 +80,12 @@ DefineEnum(GameConfigKeys,
 		   Key_Laser0Neg,
 		   Key_Laser1Pos,
 		   Key_Laser1Neg,
+		   Key_Laser0PosAlt,
+		   Key_Laser0NegAlt,
+		   Key_Laser1PosAlt,
+		   Key_Laser1NegAlt,
 		   Key_Back,
+		   Key_BackAlt,
 		   Key_Sensitivity,
 		   Key_LaserReleaseTime,
 
@@ -97,6 +106,13 @@ DefineEnum(GameConfigKeys,
 		   Controller_Sensitivity,
 		   InputBounceGuard,
 		   SongSelSensMult,
+
+		   // In-Game Abort
+		   RestartPlayMethod,
+		   RestartPlayHoldDuration,
+		   ExitPlayMethod,
+		   ExitPlayHoldDuration,
+		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
 
 		   LastSelected,
 		   LastSort,
@@ -140,6 +156,11 @@ DefineEnum(SpeedMods,
 		   MMod,
 		   CMod);
 
+DefineEnum(AbortMethod,
+		   None,
+		   Press,
+		   Hold)
+
 #ifdef Always
 #undef Always
 #endif
@@ -159,6 +180,14 @@ DefineEnum(ButtonComboModeSettings,
 public:
 	GameConfig();
 	void SetKeyBinding(GameConfigKeys key, Key value);
+
+
+	// When this should change, the UpdateVersion MUST be updated to update the old config files.
+	// If there's no need to update the UpdateVersion, there's no need to touch this too.
+	constexpr static int32 VERSION = 1;
+
+	// Update the version of the config file to VERSION.
+	void UpdateVersion();
 
 protected:
 	virtual void InitDefaults() override;

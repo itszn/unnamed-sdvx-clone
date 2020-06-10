@@ -469,26 +469,26 @@ void GameplaySettingsDialog::m_ChangeStepSetting(int steps)
     }
 }
 
-void GameplaySettingsDialog::m_OnKeyPressed(int32 key)
+void GameplaySettingsDialog::m_OnKeyPressed(SDL_Scancode code)
 {
     if (!m_active || m_closing)
         return;
 
-    switch (key)
+    switch (code)
     {
-    case SDLK_LEFT:
+    case SDL_SCANCODE_LEFT:
         m_ChangeStepSetting(-1);
         break;
-    case SDLK_RIGHT:
+    case SDL_SCANCODE_RIGHT:
         m_ChangeStepSetting(1);
         break;
-    case SDLK_TAB:
+    case SDL_SCANCODE_TAB:
         m_AdvanceTab(1);
         break;
-    case SDLK_UP:
+    case SDL_SCANCODE_UP:
         m_AdvanceSelection(-1);
         break;
-    case SDLK_DOWN:
+    case SDL_SCANCODE_DOWN:
         m_AdvanceSelection(1);
         break;
     }

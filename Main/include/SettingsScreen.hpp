@@ -19,7 +19,7 @@ protected:
 	ButtonBindingScreen() = default;
 public:
 	virtual ~ButtonBindingScreen() = default;
-	static ButtonBindingScreen* Create(GameConfigKeys key, bool gamepad = false, int controllerIndex = 0);
+	static ButtonBindingScreen* Create(GameConfigKeys key, bool gamepad = false, int controllerIndex = 0, bool isAlternative = false);
 };
 
 class LaserSensCalibrationScreen : public IApplicationTickable

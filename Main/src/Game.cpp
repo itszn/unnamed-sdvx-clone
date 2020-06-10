@@ -21,7 +21,6 @@
 #include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
-#include "SDL2/SDL_keycode.h"
 
 extern "C"
 {
@@ -160,6 +159,12 @@ private:
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
+
+	// Hold detection for restart and exit
+	MapTime m_restartTriggerTime = 0;
+	bool m_restartTriggerTimeSet = false;
+	MapTime m_exitTriggerTime = 0;
+	bool m_exitTriggerTimeSet = false;
 
 public:
 	Game_Impl(const String& mapPath, GameFlags flags)
@@ -599,6 +604,33 @@ public:
 		if(!m_paused)
 			TickGameplay(deltaTime);
 
+		// Handles held restart / exit button
+		if (m_restartTriggerTimeSet)
+		{
+			if (m_restartTriggerTime <= m_lastMapTime)
+			{
+				m_restartTriggerTimeSet = false;
+				Restart();
+				return;
+			}
+		}
+
+		if (m_exitTriggerTimeSet)
+		{
+			if (g_input.GetButton(Input::Button::Back))
+			{
+				if (m_exitTriggerTime <= m_lastMapTime)
+				{
+					m_exitTriggerTimeSet = false;
+					TriggerManualExit();
+					return;
+				}
+			}
+			else
+			{
+				m_restartTriggerTimeSet = false;
+			}
+		}
 
 		// Update hispeed or hidden range
 		if (g_input.GetButton(Input::Button::BT_S))
@@ -960,8 +992,9 @@ public:
 		{
 			// Set start time
 			m_lastMapTime = firstObjectTime - 5000;
-			m_audioPlayback.SetPosition(m_lastMapTime);
 		}
+
+		m_audioPlayback.SetPosition(m_lastMapTime);
 
 		// Reset playback
 		m_playback.Reset(m_lastMapTime);
@@ -1179,7 +1212,8 @@ public:
 				if (IsMultiplayerGame())
 				{
 					g_transition->TransitionTo(ScoreScreen::Create(
-						this, m_multiplayer->GetUserId(), m_multiplayer->GetFinalStats()));
+						this, m_multiplayer->GetUserId(), 
+                        m_multiplayer->GetFinalStats(), m_multiplayer));
 				}
 				else
 				{
@@ -1702,45 +1736,65 @@ public:
 		}
 	}
 
-	virtual void OnKeyPressed(int32 key) override
+	void OnKeyPressed(SDL_Scancode code) override
 	{
-		if(key == SDLK_PAUSE && m_multiplayer == nullptr)
+		if (g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
+			return;
+
+		if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
 		}
-		else if(key == SDLK_RETURN) // Skip intro
+		else if(code == SDL_SCANCODE_RETURN) // Skip intro
 		{
 			if(!SkipIntro())
 				SkipOutro();
 		}
-		else if(key == SDLK_PAGEUP && m_multiplayer == nullptr)
+		else if(code == SDL_SCANCODE_PAGEUP && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(key == SDLK_F5 && m_multiplayer == nullptr) // Restart map
+		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr)
 		{
-			// Restart
-			Restart();
+			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod);
+			if (abortMethod == AbortMethod::Press)
+			{
+				Restart();
+			}
+			else if(abortMethod == AbortMethod::Hold && !m_restartTriggerTimeSet)
+			{
+				m_restartTriggerTime = m_lastMapTime + g_gameConfig.GetInt(GameConfigKeys::RestartPlayHoldDuration);
+				m_restartTriggerTimeSet = true;
+			}
 		}
-		else if(key == SDLK_F8)
+		else if(code == SDL_SCANCODE_F8)
 		{
 			m_renderDebugHUD = !m_renderDebugHUD;
 			//m_psi->visibility = m_renderDebugHUD ? Visibility::Collapsed : Visibility::Visible;
 		}
-		else if(key == SDLK_TAB)
+		else if(code == SDL_SCANCODE_TAB)
 		{
 			//g_gameWindow->SetCursorVisible(!m_settingsBar->IsShown());
 			//m_settingsBar->SetShow(!m_settingsBar->IsShown());
 		}
-		else if(key == SDLK_F9)
+		else if(code == SDL_SCANCODE_F9)
 		{
 			g_application->ReloadScript("gameplay", m_lua);
 		}
 	}
-	void m_OnButtonPressed(Input::Button buttonCode)
+
+	void OnKeyReleased(SDL_Scancode code) override
 	{
-		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
+		if (code == SDL_SCANCODE_F5)
+		{
+			m_restartTriggerTimeSet = false;
+		}
+	}
+
+	void TriggerManualExit()
+	{
+		if (IsSuccessfullyInitialized())
 		{
 			ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
 			MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
@@ -1748,6 +1802,22 @@ public:
 				m_manualExit = true;
 
 			FinishGame();
+		}
+	}
+	void m_OnButtonPressed(Input::Button buttonCode)
+	{
+		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
+		{
+			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod);
+			if (abortMethod == AbortMethod::Press)
+			{
+				TriggerManualExit();
+			}
+			else if(abortMethod == AbortMethod::Hold && !m_exitTriggerTimeSet)
+			{
+				m_exitTriggerTime = m_lastMapTime + g_gameConfig.GetInt(GameConfigKeys::RestartPlayHoldDuration);
+				m_exitTriggerTimeSet = true;
+			}
 		}
 	}
 	int m_getClearState()
@@ -2166,22 +2236,22 @@ public:
 	}
 };
 
-Game* Game::Create(ChartIndex* difficulty, GameFlags flags)
+Game* Game::Create(ChartIndex* chart, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(chart, flags);
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* difficulty, GameFlags flags)
+Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(chart, flags);
 	impl->MakeMultiplayer(multiplayer);
 	return impl;
 }
 
-Game* Game::Create(const String& difficulty, GameFlags flags)
+Game* Game::Create(const String& mapPath, GameFlags flags)
 {
-	Game_Impl* impl = new Game_Impl(difficulty, flags);
+	Game_Impl* impl = new Game_Impl(mapPath, flags);
 	return impl;
 }
 

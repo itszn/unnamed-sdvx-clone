@@ -31,6 +31,7 @@ enum MultiplayerScreenState {
 };
 
 class TextInputMultiplayer;
+class ChatOverlay;
 
 struct MultiplayerBPMInfo {
 	double start;
@@ -50,8 +51,8 @@ public:
 	void Render(float deltaTime) override;
 	void ForceRender(float deltaTime) override;
 
-	void OnKeyPressed(int32 key) override;
-	void OnKeyReleased(int32 key) override;
+	void OnKeyPressed(SDL_Scancode code) override;
+	void OnKeyReleased(SDL_Scancode code) override;
 	void MousePressed(MouseButton button);
 
 	virtual void OnSuspend();
@@ -84,6 +85,11 @@ public:
 		return m_tcp;
 	}
 
+	ChatOverlay* GetChatOverlay()
+	{
+		return m_chatOverlay;
+	}
+
 	String GetUserId()
 	{
 		return m_userId;
@@ -101,8 +107,19 @@ public:
 		m_failed = true;
 	}
 	
-	bool HasFailed() {
+	bool HasFailed()
+	{
 		return m_failed;
+	}
+
+	bool InRoom()
+	{
+		return m_roomId != "";
+	}
+
+	const String& GetUserName()
+	{
+		return m_userName;
 	}
 
 private:
@@ -233,16 +250,8 @@ private:
 
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
 
-	PreviewPlayer m_previewPlayer;
-	struct PreviewParams
-	{
-		String filepath;
-		uint32 offset;
-		uint32 duration;
+	ChatOverlay* m_chatOverlay = NULL;
 
-		bool operator!=(const PreviewParams &rhs)
-		{
-			return filepath != rhs.filepath || offset != rhs.offset || duration != rhs.duration;
-		}
-	} m_previewParams;
+	PreviewPlayer m_previewPlayer;
+	PreviewParams m_previewParams;
 };

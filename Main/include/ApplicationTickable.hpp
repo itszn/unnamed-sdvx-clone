@@ -12,8 +12,8 @@ public:
 	virtual void Tick(float deltaTime) {};
 	virtual void Render(float deltaTime) {};
 	virtual void ForceRender(float deltaTime) { Render(deltaTime); };
-	virtual void OnKeyPressed(int32 key) {};
-	virtual void OnKeyReleased(int32 key) {};
+	virtual void OnKeyPressed(SDL_Scancode code) {};
+	virtual void OnKeyReleased(SDL_Scancode code) {};
 	// Called when focus of this item is lost
 	virtual void OnSuspend() {};
 	// Called when focus to this item is restored

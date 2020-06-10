@@ -84,7 +84,7 @@ private:
     void m_ChangeStepSetting(int steps); //int, enum, toggle, are all advanced in distinct steps
     void m_OnButtonPressed(Input::Button button);
     void m_OnButtonReleased(Input::Button button);
-    void m_OnKeyPressed(int32 key);
+    void m_OnKeyPressed(SDL_Scancode code);
     Setting m_CreateToggleSetting(GameConfigKeys key, String name);
     Setting m_CreateIntSetting(GameConfigKeys key, String name, Vector2i range);
     Setting m_CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult = 1.0f);
