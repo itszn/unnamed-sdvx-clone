@@ -441,7 +441,7 @@ float Camera::GetRoll() const
 	return m_totalRoll;
 }
 
-float Camera::GetLaserRoll() const
+float Camera::GetCritLineRoll() const
 {
 	return m_critLineRoll;
 }

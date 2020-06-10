@@ -63,7 +63,7 @@ public:
 	void SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback);
 	void SetXOffsetBounce(float direction, uint32 duration, uint32 amplitude, uint32 frequency, float decay, class BeatmapPlayback &playback);
 	float GetRoll() const;
-	float GetLaserRoll() const;
+	float GetCritLineRoll() const;
 	float GetActualRoll() const;
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
