@@ -25,11 +25,11 @@
 class TextInput
 {
 public:
-	WString input;
-	WString composition;
+	String input;
+	String composition;
 	uint32 backspaceCount;
 	bool active = false;
-	Delegate<const WString &> OnTextChanged;
+	Delegate<const String &> OnTextChanged;
 
 	~TextInput()
 	{
@@ -39,7 +39,7 @@ public:
 		g_gameWindow->OnKeyPressed.RemoveAll(this);
 	}
 
-	void OnTextInput(const WString &wstr)
+	void OnTextInput(const String &wstr)
 	{
 		input += wstr;
 		OnTextChanged.Call(input);
@@ -58,6 +58,11 @@ public:
 			{
 				auto it = input.end(); // Modify input string instead
 				--it;
+				while ((*it & 0b11000000) == 0b10000000)
+				{
+					input.erase(it);
+					--it;
+				}
 				input.erase(it);
 				OnTextChanged.Call(input);
 			}
@@ -655,7 +660,7 @@ public:
 		lua_getglobal(m_lua, "songwheel");
 		//text
 		lua_pushstring(m_lua, "searchText");
-		lua_pushstring(m_lua, Utility::ConvertToUTF8(search->input).c_str());
+		lua_pushstring(m_lua, (search->input).c_str());
 		lua_settable(m_lua, -3);
 		//enabled
 		lua_pushstring(m_lua, "searchInputActive");
@@ -1589,14 +1594,13 @@ public:
 	}
 
 	/// TODO: Fix some conflicts between search field and filter selection
-	void OnSearchTermChanged(const WString &search)
+	void OnSearchTermChanged(const String &search)
 	{
 		if (search.empty())
 			m_filterSelection->AdvanceSelection(0);
 		else
 		{
-			String utf8Search = Utility::ConvertToUTF8(search);
-			Map<int32, FolderIndex *> filter = m_mapDatabase->FindFolders(utf8Search);
+			Map<int32, FolderIndex *> filter = m_mapDatabase->FindFolders(search);
 			m_selectionWheel->SetFilter(filter);
 		}
 	}

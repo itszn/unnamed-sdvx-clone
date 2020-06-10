@@ -350,8 +350,7 @@ namespace Graphics
 				}
 				else if(evt.type == SDL_EventType::SDL_TEXTINPUT)
 				{
-					WString wstr = Utility::ConvertToWString(evt.text.text);
-					outer.OnTextInput.Call(wstr);
+					outer.OnTextInput.Call(evt.text.text);
 				}
 				else if(evt.type == SDL_EventType::SDL_TEXTEDITING)
 				{
@@ -360,7 +359,7 @@ namespace Graphics
 					SDL_GetWindowSize(m_window, &scr.w, &scr.h);
 					SDL_SetTextInputRect(&scr);
 
-					m_textComposition.composition = Utility::ConvertToWString(evt.edit.text);
+					m_textComposition.composition = evt.edit.text;
 					m_textComposition.cursor = evt.edit.start;
 					m_textComposition.selectionLength = evt.edit.length;
 					outer.OnTextComposition.Call(m_textComposition);
@@ -575,12 +574,12 @@ namespace Graphics
 		return m_impl->ShowYesNoMessage(title, message);
 	}
 
-	WString Window::GetClipboard() const
+	String Window::GetClipboard() const
 	{
 		char* utf8Clipboard = SDL_GetClipboardText();
-		WString ret = Utility::ConvertToWString(utf8Clipboard);
+		String ret(utf8Clipboard);
 		SDL_free(utf8Clipboard);
-
+		
 		return ret;
 	}
 
