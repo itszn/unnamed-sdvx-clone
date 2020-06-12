@@ -24,11 +24,11 @@
 class TextInputMultiplayer
 {
 public:
-	WString input;
-	WString composition;
+	String input;
+	String composition;
 	uint32 backspaceCount;
 	bool active = false;
-	Delegate<const WString&> OnTextChanged;
+	Delegate<const String&> OnTextChanged;
 	bool start_taking_input = false;
 
 	~TextInputMultiplayer()
@@ -39,7 +39,7 @@ public:
 		g_gameWindow->OnKeyPressed.RemoveAll(this);
 	}
 
-	void OnTextInput(const WString& wstr)
+	void OnTextInput(const String& wstr)
 	{
 		if (!start_taking_input)
 			return;
@@ -60,6 +60,11 @@ public:
 			{
 				auto it = input.end(); // Modify input string instead
 				--it;
+				while ((*it & 0b11000000) == 0b10000000)
+				{
+					input.erase(it);
+					--it;
+				}
 				input.erase(it);
 				OnTextChanged.Call(input);
 			}
@@ -837,7 +842,7 @@ void MultiplayerScreen::Tick(float deltaTime)
 	m_textInput->Tick();
 
 	lua_newtable(m_lua);
-	m_PushStringToTable("text", Utility::ConvertToUTF8(m_textInput->input).c_str());
+	m_PushStringToTable("text", m_textInput->input.c_str());
 	lua_setglobal(m_lua, "textInput");
 
 
@@ -1378,7 +1383,7 @@ int MultiplayerScreen::lSaveUsername(lua_State* L)
 		return 0;
 
 	// Update username
-	m_userName = Utility::ConvertToUTF8(m_textInput->input);
+	m_userName = m_textInput->input;
 	g_gameConfig.Set(GameConfigKeys::MultiplayerUsername, m_userName);
 	m_textInput->SetActive(false);
 
@@ -1413,7 +1418,7 @@ int MultiplayerScreen::lJoinWithPassword(lua_State* L)
 	nlohmann::json packet;
 	packet["topic"] = "server.room.join";
 	packet["id"] = m_roomToJoin;
-	packet["password"] = Utility::ConvertToUTF8(m_textInput->input);
+	packet["password"] = m_textInput->input;
 	m_tcp.SendJSON(packet);
 
 	return 0;
@@ -1429,7 +1434,7 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 		lua_setglobal(m_lua, "screenState");
 
 		m_textInput->Reset();
-		m_textInput->input = Utility::ConvertToWString(m_userName + "'s Room");
+		m_textInput->input = m_userName + "'s Room";
 		m_textInput->SetActive(true);
 	}
 	else if (m_screenState == MultiplayerScreenState::NEW_ROOM_NAME)
@@ -1438,7 +1443,7 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 		{
 			return 0;
 		}
-		m_newRoomName = Utility::ConvertToUTF8(m_textInput->input);
+		m_newRoomName = m_textInput->input;
 		m_textInput->Reset();
 
 		m_screenState = MultiplayerScreenState::NEW_ROOM_PASSWORD;
@@ -1452,7 +1457,7 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 		nlohmann::json packet;
 		packet["topic"] = "server.room.new";
 		packet["name"] = m_newRoomName;
-		packet["password"] = Utility::ConvertToUTF8(m_textInput->input);
+		packet["password"] = m_textInput->input;
 		m_tcp.SendJSON(packet);
 		m_textInput->Reset();
 	}

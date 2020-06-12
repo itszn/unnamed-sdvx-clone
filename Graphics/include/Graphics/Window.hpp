@@ -14,7 +14,7 @@ namespace Graphics
 	// Text input data
 	struct TextComposition
 	{
-		WString composition;
+		String composition;
 		int32 cursor;
 		int32 selectionLength;
 	};
@@ -94,7 +94,7 @@ namespace Graphics
 		bool ShowYesNoMessage(String title, String message);
 
 		// Get the text currently in the clipboard
-		WString GetClipboard() const;
+		String GetClipboard() const;
 
 		// The number of available gamepad devices
 		int32 GetNumGamepads() const;
@@ -115,7 +115,7 @@ namespace Graphics
 		Delegate<int32> OnMouseScroll;
 		// Called for the initial an repeating presses of a key
 		Delegate<SDL_Scancode> OnKeyRepeat;
-		Delegate<const WString&> OnTextInput;
+		Delegate<const String&> OnTextInput;
 		Delegate<const TextComposition&> OnTextComposition;
 		Delegate<const Vector2i&> OnResized;
 		Delegate<bool> OnFocusChanged;

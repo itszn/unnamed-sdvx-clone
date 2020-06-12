@@ -9,12 +9,12 @@
 class TextInputCollectionDialog
 {
 public:
-	WString input;
-	WString composition;
+	String input;
+	String composition;
 	uint32 backspaceCount;
 	bool active = false;
-	Delegate<const WString&> OnTextChanged;
-	Delegate<const WString&> OnReturn;
+	Delegate<const String&> OnTextChanged;
+	Delegate<const String&> OnReturn;
 	bool start_taking_input = false;
 
 	~TextInputCollectionDialog()
@@ -25,7 +25,7 @@ public:
 		g_gameWindow->OnKeyPressed.RemoveAll(this);
 	}
 
-	void OnTextInput(const WString& wstr)
+	void OnTextInput(const String& wstr)
 	{
 		if (!start_taking_input)
 			return;
@@ -46,6 +46,11 @@ public:
 			{
 				auto it = input.end(); // Modify input string instead
 				--it;
+				while ((*it & 0b11000000) == 0b10000000)
+				{
+					input.erase(it);
+					--it;
+				}
 				input.erase(it);
 				OnTextChanged.Call(input);
 			}
@@ -179,7 +184,7 @@ void CollectionDialog::Tick(float deltaTime)
 	m_nameEntry->Tick();
 	lua_getglobal(m_lua, "dialog");
 	lua_pushstring(m_lua, "newName");
-	lua_pushstring(m_lua, *Utility::ConvertToUTF8(m_nameEntry->input));
+	lua_pushstring(m_lua, *m_nameEntry->input);
 	lua_settable(m_lua, -3);
 	lua_setglobal(m_lua, "dialog");
 
@@ -395,9 +400,9 @@ void CollectionDialog::m_OnKeyPressed(SDL_Scancode code)
 	}
 }
 
-void CollectionDialog::m_OnEntryReturn(const WString& name)
+void CollectionDialog::m_OnEntryReturn(const String& name)
 {
-	m_songdb->AddOrRemoveToCollection(Utility::ConvertToUTF8(name), m_currentId);
+	m_songdb->AddOrRemoveToCollection(name, m_currentId);
 	OnCompletion.Call();
 	Close();
 }
