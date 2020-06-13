@@ -715,15 +715,15 @@ void Scoring::m_UpdateTicks()
 						// Check laser input
 						float laserDelta = fabs(laserPositions[laserObject->index] - laserTargetPositions[laserObject->index]); \
 
-							if (laserDelta < laserDistanceLeniency)
-							{
-								m_TickHit(tick, buttonCode);
-								HitStat* stat = new HitStat(tick->object);
-								stat->time = currentTime;
-								stat->rating = ScoreHitRating::Perfect;
-								hitStats.Add(stat);
-								processed = true;
-							}
+						if (laserDelta < laserDistanceLeniency)
+						{
+							m_TickHit(tick, buttonCode);
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Perfect;
+							hitStats.Add(stat);
+							processed = true;
+						}
 					}
 				}
 			}
