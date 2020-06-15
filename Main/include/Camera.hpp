@@ -135,8 +135,9 @@ private:
 	float m_critLineRoll = 0.0f;
 	// Actual highway tilt
 	float m_actualRoll = 0.0f;
-	// Target to roll towards
-	float m_actualTargetLaserRoll = 0.0f;
+	// Target to roll towards during roll keep
+	// Always updated to prevent inconsistent roll keep behaviour at lower frame rates
+	float m_rollKeepTargetRoll = 0.0f;
 	// Target roll used for crit line
 	float m_targetCritLineRoll = 0.f;
 	bool m_targetRollSet = false;

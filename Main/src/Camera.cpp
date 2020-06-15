@@ -121,6 +121,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
 	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	float actualRollTarget = 0;
 
 	// Lerp crit line position
 	if (m_slowTilt)
@@ -134,12 +135,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 			m_actualRoll = pLaneTilt;
 		else
 			// Lerp to manual tilt value
-			m_actualTargetLaserRoll = pLaneTilt;
+			actualRollTarget = pLaneTilt;
 	}
-	else if (!m_rollKeep)
+	else if (m_rollKeep)
+	{
+		actualRollTarget = m_rollKeepTargetRoll;
+	}
+	else
 	{
 		// Get highway tilt target based off of crit line position
-		m_actualTargetLaserRoll = (m_critLineRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
+		actualRollTarget = (m_critLineRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
 	// Roll to crit line position or roll keep value with respect to roll intensity
@@ -154,18 +159,18 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	{
 		// If there's more than a 10 degree delta between the tilt target and the current roll,
 		// increase roll speed to catch up
-		float delta = fabsf(m_actualRoll - m_actualTargetLaserRoll) - MAX_ROLL_ANGLE;
+		float delta = fabsf(m_actualRoll - actualRollTarget) - MAX_ROLL_ANGLE;
 		if (delta > 0)
 			speedLimit *= 1 + (delta * 360 / 2.5f);
 	}
 
 	if (!m_manualTiltInstant)
 		// Lerp highway tilt
-		LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+		LerpTo(m_actualRoll, actualRollTarget, speedLimit);
 
 	if (m_manualTiltRecentlyToggled)
 		// Check if roll has met target
-		m_manualTiltRecentlyToggled = m_actualRoll != m_actualTargetLaserRoll;
+		m_manualTiltRecentlyToggled = m_actualRoll != actualRollTarget;
 	
 	for (int index = 0; index < 2; ++index)
 	{
@@ -210,12 +215,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	m_totalRoll = m_spinRoll + m_actualRoll;
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
-
-	if (!m_rollKeep)
-	{
-		m_targetRollSet = false;
-		m_actualTargetLaserRoll = 0.0f;
-	}
 
 	// Update camera shake effects
 	m_shakeOffset = Vector3(0.0f);
@@ -385,25 +384,17 @@ void Camera::SetTargetRoll(float target)
 {
 	auto ShouldRollDuringKeep = [](float target, float roll)
 	{
-		if (roll == 0.0f || Math::Sign(roll) == Math::Sign(target))
-		{
-			return roll == 0 || (target < roll && roll < 0) || (target > roll && roll > 0);
-		}
-		return false;
+		return (roll == 0) || (Math::Sign(roll) == Math::Sign(target) && fabsf(roll) < fabsf(target));
 	};
 
 	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
 	m_targetCritLineRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
-	if (m_rollKeep)
-	{
-		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
-		if (ShouldRollDuringKeep(actualTarget, m_actualTargetLaserRoll))
-		{
-			m_actualTargetLaserRoll = actualTarget;
-			m_targetRollSet = true;
-		}
-	}
+	// Always keep track of roll target without slams to prevent 
+	// inconsistent roll keep behaviour at lower frame rates
+	float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
+	if (!m_rollKeep || ShouldRollDuringKeep(actualTarget, m_rollKeepTargetRoll))
+		m_rollKeepTargetRoll = actualTarget;
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)
