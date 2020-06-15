@@ -140,7 +140,6 @@ private:
 	float m_rollKeepTargetRoll = 0.0f;
 	// Target roll used for crit line
 	float m_targetCritLineRoll = 0.f;
-	bool m_targetRollSet = false;
 	bool m_lasersActive = false;
 	// Roll force
 	float m_rollVelocity = 0.0f;
