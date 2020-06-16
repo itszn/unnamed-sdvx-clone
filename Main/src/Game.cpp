@@ -153,7 +153,7 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeAmount = 2.5;
+	float m_shakeAmount = 2.75;
 	float m_shakeDuration = 0.1;
 
 	Vector<ScoreReplay> m_scoreReplays;
@@ -1472,7 +1472,7 @@ public:
 		float slamSize = (object->points[1] - object->points[0]);
 		float direction = Math::Sign(slamSize);
 		slamSize = fabsf(slamSize);
-		CameraShake shake(powf(slamSize, 0.5f) * m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
+		CameraShake shake(slamSize * m_shakeDuration, slamSize * m_shakeAmount * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
 
