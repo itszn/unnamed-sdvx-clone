@@ -139,7 +139,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	}
 	else if (m_rollKeep)
 	{
-		actualRollTarget = m_rollKeepTargetRoll;
+		actualRollTarget = m_rollKeepTargetRoll * m_rollIntensity;
 	}
 	else
 	{
@@ -392,7 +392,7 @@ void Camera::SetTargetRoll(float target)
 
 	// Always keep track of roll target without slams to prevent 
 	// inconsistent roll keep behaviour at lower frame rates
-	float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
+	float actualTarget = Math::Clamp(target, -1.f, 1.f);
 	if (!m_rollKeep || ShouldRollDuringKeep(actualTarget, m_rollKeepTargetRoll))
 		m_rollKeepTargetRoll = actualTarget;
 }
