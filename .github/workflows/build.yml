@@ -33,6 +33,8 @@ jobs:
               run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
             - name: Tests
               run: rm ./bin/Tests.*
+            - name: Post Build Stuff
+              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
@@ -87,3 +89,8 @@ jobs:
               run: cmake . -DLibArchive_LIBRARY=/usr/local/opt/libarchive/lib/libarchive.dylib -DLibArchive_INCLUDE_DIR=/usr/local/opt/libarchive/include -DCMAKE_BUILD_TYPE=Release
             - name: make
               run: make
+            - name: Upload artifact
+              uses: actions/upload-artifact@master
+              with:
+                name: Game_mac
+                path: bin
