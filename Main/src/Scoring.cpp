@@ -244,6 +244,10 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	assert(index >= 0 && index <= 1);
 	if (m_currentLaserSegments[index])
 	{
+		if (m_currentLaserSegments[index]->flags & LaserObjectState::flag_Instant && 
+				!m_currentLaserSegments[index]->next)
+			return 0;
+
 		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
 	else // Check if any upcoming lasers are within 2 beats

@@ -285,8 +285,11 @@ void Camera::SetSlowTilt(bool tilt)
 void Camera::SetSlamAmount(uint32 index, float amount)
 {
 	assert(index >= 0 && index <= 1);
-	m_slamRoll[index] = amount;
-	SetRollIgnore(index, true);
+	if (m_slamDuration != 0)
+	{
+		m_slamRoll[index] = amount;
+		SetRollIgnore(index, true);
+	}
 }
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
