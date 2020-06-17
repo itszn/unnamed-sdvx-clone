@@ -509,7 +509,7 @@ function render_crit_overlay(deltaTime)
     if portrait then
         -- We're going to make temporary modifications to the transform
         gfx.Save()
-        gfx.Translate(xOffset * 0.5, 0)
+        gfx.Translate(xOffset * 0.85, 0)
 
         local bfw, bfh = gfx.ImageSize(bottomFill)
 
