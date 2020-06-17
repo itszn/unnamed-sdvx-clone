@@ -153,7 +153,7 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeAmount = 2.75;
+	float m_shakeAmount = 2;
 	float m_shakeDuration = 0.1;
 
 	Vector<ScoreReplay> m_scoreReplays;
