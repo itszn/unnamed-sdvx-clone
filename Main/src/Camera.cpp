@@ -217,18 +217,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	m_shakeOffset = Vector3(0.0f);
-
-	m_shakeEffect.time -= deltaTime;
-	if (m_shakeEffect.time >= 0.f)
+	// Check if shake effect time is > 0 to prevent division by 0 from shake effect duration
+	if (m_shakeEffect.time > 0)
 	{
 		float shakeProgress = m_shakeEffect.time / m_shakeEffect.duration;
-		float shakeIntensity = sinf(powf(shakeProgress, 1.6) * Math::pi);
-
-		Vector3 shakeVec = Vector3(m_shakeEffect.amplitude * shakeIntensity) * Vector3(cameraShakeX, cameraShakeY, cameraShakeZ);
-
-		m_shakeOffset += shakeVec;
+		m_shakeOffset = Vector3({ 0, m_shakeEffect.amplitude * shakeProgress, 0 });
 	}
+	m_shakeEffect.time = Math::Max(m_shakeEffect.time - deltaTime, 0.f);
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 

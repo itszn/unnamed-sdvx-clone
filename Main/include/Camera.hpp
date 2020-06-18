@@ -109,10 +109,6 @@ public:
 
 	float pitchUnit = KSM_PITCH_UNIT_POST_168;
 
-	float cameraShakeX = 0.0f;
-	float cameraShakeY = 0.4f;
-	float cameraShakeZ = 0.0f;
-
 	// Camera variables Landscape, Portrait
 	float basePitch[2] = { 0.f, 0.f };
 	float baseRadius[2] = { 0.3f, 0.275f };
@@ -183,5 +179,5 @@ private:
 
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
-	Vector3 m_shakeOffset;
+	Vector3 m_shakeOffset = Vector3(0.0f);;
 };
