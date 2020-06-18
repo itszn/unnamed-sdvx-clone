@@ -153,7 +153,7 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeDuration = 4 / 60.f;
+	float m_shakeDuration = 5 / 60.f;
 
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
