@@ -1468,13 +1468,11 @@ public:
 
 	void OnLaserSlamHit(LaserObjectState* object)
 	{
-		float slamSize = (object->points[1] - object->points[0]);
+		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		slamSize = fabsf(slamSize);
-		CameraShake shake(slamSize * m_shakeDuration, slamSize * -direction);
+		CameraShake shake(fabsf(slamSize) * m_shakeDuration, fabsf(slamSize) * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
-
 
 		if (object->spin.type != 0)
 		{
@@ -1483,14 +1481,11 @@ public:
 			else m_camera.SetSpin(object->GetDirection(), object->spin.duration, object->spin.type, m_playback);
 		}
 
-
-		float dir = Math::Sign(object->points[1] - object->points[0]);
-
 		float width = (object->flags & LaserObjectState::flag_Extended) ? 2.0 : 1.0;
 		float startPos = (m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f) * width;
 		float endPos = (m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f) * width;
 
-		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
+		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(direction, 0, 0));
 		ex->position = Vector3(endPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
 
@@ -1499,7 +1494,7 @@ public:
 		if (lua_isfunction(m_lua, -1))
 		{
 			// Slam size and direction
-			lua_pushnumber(m_lua, (object->points[1] - object->points[0]) * width);
+			lua_pushnumber(m_lua, slamSize * width);
 			// Start position
 			lua_pushnumber(m_lua, startPos);
 			// End position
