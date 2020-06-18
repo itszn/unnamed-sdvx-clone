@@ -179,5 +179,5 @@ private:
 
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
-	Vector3 m_shakeOffset = Vector3(0.0f);;
+	Vector3 m_shakeOffset = Vector3(0.0f);
 };
