@@ -573,6 +573,11 @@ float BeatmapPlayback::GetZoom(uint8 index)
 	return start + zoomDelta * f;
 }
 
+bool BeatmapPlayback::CheckIfManualTiltInstant()
+{
+	return m_zoomStartPoints[3] ? m_zoomStartPoints[3]->instant : false;
+}
+
 MapTime BeatmapPlayback::GetLastTime() const
 {
 	return m_playbackTime;

@@ -767,9 +767,6 @@ public:
 
 			RenderSettingsLaserColor();
 
-			FloatSetting(GameConfigKeys::RollIgnoreDuration, "Roll Ignore Duration (ms)", 0, 100, 1);
-			FloatSetting(GameConfigKeys::LaserSlamLength, "Laser Slam Duration (ms)", 0, 100, 1);
-
 			nk_tree_pop(m_nctx);
 		}
 	}

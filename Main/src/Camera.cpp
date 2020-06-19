@@ -89,7 +89,7 @@ static Transform GetOriginTransform(float pitch, float offs, float roll)
 	if (g_aspectRatio < 1.0f)
 	{
 		auto origin = Transform::Rotation({ 0, 0, roll });
-		auto anchor = Transform::Translation({ offs, -0.775f, 0 })
+		auto anchor = Transform::Translation({ offs, -0.8f, 0 })
 			* Transform::Rotation({ 1.5f, 0, 0 });
 		auto contnr = Transform::Translation({ 0, 0, -0.9f })
 			* Transform::Rotation({ -90 + pitch, 0, 0, });
@@ -120,56 +120,63 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedLimit = Math::Max(m_rollIntensity * ROLL_SPEED, MAX_ROLL_ANGLE);
+	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	float actualRollTarget = 0;
+
+	// Lerp crit line position
+	if (m_slowTilt)
+		// Roll even slower when roll is less than 1 / 10 of tilt
+		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+	LerpTo(m_critLineRoll, m_targetCritLineRoll, speedLimit);
 
 	if (pManualTiltEnabled)
 	{
-		m_actualTargetLaserRoll = pLaneTilt;
-		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f; // BIGGEST roll speed
+		if (m_manualTiltInstant)
+			m_actualRoll = pLaneTilt;
+		else
+			// Lerp to manual tilt value
+			actualRollTarget = pLaneTilt;
 	}
-	else if (!m_rollKeep)
+	else if (m_rollKeep)
 	{
-		if (m_rollIntensityChanged)
-		{
-			// Get new roll value based off of the new tilt value
-			float target = (m_laserRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
-
-			// Get the roll speed based on the larger tilt value
-			// i.e. rollSpeedFactor = 1 if NORMAL, 1.75 if BIGGER, 2.5 if BIGGEST
-			float rollSpeedFactor = Math::Max(m_oldRollIntensity, m_rollIntensity) / MAX_ROLL_ANGLE;
-			speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * rollSpeedFactor;
-			m_actualTargetLaserRoll = target;
-
-			// Check if roll has met target
-			m_rollIntensityChanged = m_actualRoll != target;
-		}
-		else if (m_actualRoll != m_laserRoll && m_rollIntensity == MAX_ROLL_ANGLE)
-		{
-			// Catch up to regular roll position if for some reason they're not the same
-			m_actualTargetLaserRoll = m_laserRoll;
-		}
-		else if (m_slowTilt)
-		{
-			// Roll even slower when roll is less than 1 / 10 of tilt
-			speedLimit /= fabsf(m_actualRoll) > m_rollIntensity * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
-		}
+		actualRollTarget = m_rollKeepTargetRoll * m_rollIntensity;
+	}
+	else
+	{
+		// Get highway tilt target based off of crit line position
+		actualRollTarget = (m_critLineRoll / MAX_ROLL_ANGLE) * m_rollIntensity;
 	}
 
-	// Lerp highway tilt
-	LerpTo(m_actualRoll, m_actualTargetLaserRoll, speedLimit);
+	// Roll to crit line position or roll keep value with respect to roll intensity
+	// 2.5 corresponds to BIGGEST roll speed
+	// Don't respect roll intensity if manual tilt is on, was recently toggled (off) or if roll speed is somehow 0
+	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED *
+		Math::Max(m_rollIntensity, m_oldRollIntensity) / MAX_ROLL_ANGLE;
+	if (speedLimit == 0 || pManualTiltEnabled || m_manualTiltRecentlyToggled)
+		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f;
 
-	// Lerp crit line position
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED; // Reset roll speed to normal
-	if (m_slowTilt)
-		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_laserRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
-	LerpTo(m_laserRoll, m_targetLaserRoll, speedLimit);
+	if (pManualTiltEnabled || m_manualTiltRecentlyToggled)
+	{
+		// If there's more than a 10 degree delta between the tilt target and the current roll,
+		// increase roll speed to catch up
+		float delta = fabsf(m_actualRoll - actualRollTarget) - MAX_ROLL_ANGLE;
+		if (delta > 0)
+			speedLimit *= 1 + (delta * 360 / 2.5f);
+	}
+
+	if (!m_manualTiltInstant)
+		// Lerp highway tilt
+		LerpTo(m_actualRoll, actualRollTarget, speedLimit);
+
+	if (m_manualTiltRecentlyToggled)
+		// Check if roll has met target
+		m_manualTiltRecentlyToggled = m_actualRoll != actualRollTarget;
 	
 	for (int index = 0; index < 2; ++index)
 	{
 		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
 
-		// Apply slam roll for 0 to 100ms (depending on user config)
+		// Apply slam roll for 100ms
 		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
 			m_slamRoll[index] = 0;
 	}
@@ -209,25 +216,14 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalRoll = m_spinRoll + m_actualRoll;
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
-	if (!m_rollKeep)
-	{
-		m_targetRollSet = false;
-		m_actualTargetLaserRoll = 0.0f;
-	}
-
 	// Update camera shake effects
-	m_shakeOffset = Vector3(0.0f);
-
-	m_shakeEffect.time -= deltaTime;
-	if (m_shakeEffect.time >= 0.f)
+	// Check if shake effect time is > 0 to prevent division by 0 from shake effect duration
+	if (m_shakeEffect.time > 0)
 	{
 		float shakeProgress = m_shakeEffect.time / m_shakeEffect.duration;
-		float shakeIntensity = sinf(powf(shakeProgress, 1.6) * Math::pi);
-
-		Vector3 shakeVec = Vector3(m_shakeEffect.amplitude * shakeIntensity) * Vector3(cameraShakeX, cameraShakeY, cameraShakeZ);
-
-		m_shakeOffset += shakeVec;
+		m_shakeOffset = Vector3({ 0, m_shakeEffect.amplitude * shakeProgress, 0 });
 	}
+	m_shakeEffect.time = Math::Max(m_shakeEffect.time - deltaTime, 0.f);
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -262,9 +258,6 @@ void Camera::AddRollImpulse(float dir, float strength)
 
 void Camera::SetRollIntensity(float val)
 {
-	if (m_rollIntensity != val)
-		m_rollIntensityChanged = true;
-
 	m_oldRollIntensity = m_rollIntensity;
 	m_rollIntensity = val;
 }
@@ -287,13 +280,17 @@ void Camera::SetSlowTilt(bool tilt)
 void Camera::SetSlamAmount(uint32 index, float amount)
 {
 	assert(index >= 0 && index <= 1);
-	m_slamRoll[index] = amount;
-	SetRollIgnore(index, true);
+	if (m_slamDuration != 0)
+	{
+		m_slamRoll[index] = amount;
+		SetRollIgnore(index, true);
+	}
 }
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamLength : 0);
+	assert(index >= 0 && index <= 1);
+	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamDuration : 0);
 }
 
 float Camera::GetRollIgnoreTimer(uint32 index)
@@ -308,14 +305,26 @@ float Camera::GetSlamAmount(uint32 index)
 	return m_slamRoll[index];
 }
 
-void Camera::SetRollIgnoreDuration(float duration)
+void Camera::SetManualTilt(bool manualTilt)
 {
-	m_rollIgnoreDuration = duration;
+	if (pManualTiltEnabled != manualTilt)
+		m_manualTiltRecentlyToggled = true;
+
+	pManualTiltEnabled = manualTilt;
 }
 
-void Camera::SetSlamLength(float length)
+void Camera::SetManualTiltInstant(bool instant)
 {
-	m_slamLength = length;
+	m_manualTiltInstant = instant;
+}
+
+void Camera::SetFancyHighwayTilt(bool fancyHighWaySetting)
+{
+	if (!fancyHighWaySetting)
+	{
+		m_rollIgnoreDuration = 0;
+		m_slamDuration = 0;
+	}
 }
 
 Vector2 Camera::Project(const Vector3& pos)
@@ -373,31 +382,17 @@ void Camera::SetTargetRoll(float target)
 {
 	auto ShouldRollDuringKeep = [](float target, float roll)
 	{
-		if (roll == 0.0f || Math::Sign(roll) == Math::Sign(target))
-		{
-			return roll == 0 || (target < roll && roll < 0) || (target > roll && roll > 0);
-		}
-		return false;
+		return (roll == 0) || (Math::Sign(roll) == Math::Sign(target) && fabsf(roll) < fabsf(target));
 	};
 
-	// Work around for slams being applied for at least 1 frame
-	float slamRollTotal = m_slamLength == 0.f ? 0 : m_slamRoll[0] + m_slamRoll[1];
-	m_targetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
+	float slamRollTotal = m_slamRoll[0] + m_slamRoll[1];
+	m_targetCritLineRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * MAX_ROLL_ANGLE;
 
-	if (!m_rollKeep)
-	{
-		m_actualTargetLaserRoll = Math::Clamp(target + slamRollTotal, -1.f, 1.f) * m_rollIntensity;
-		m_targetRollSet = true;
-	}
-	else
-	{
-		float actualTarget = Math::Clamp(target, -1.f, 1.f) * m_rollIntensity;
-		if (ShouldRollDuringKeep(actualTarget, m_actualTargetLaserRoll))
-		{
-			m_actualTargetLaserRoll = actualTarget;
-			m_targetRollSet = true;
-		}
-	}
+	// Always keep track of roll target without slams to prevent 
+	// inconsistent roll keep behaviour at lower frame rates
+	float actualTarget = Math::Clamp(target, -1.f, 1.f);
+	if (!m_rollKeep || ShouldRollDuringKeep(actualTarget, m_rollKeepTargetRoll))
+		m_rollKeepTargetRoll = actualTarget;
 }
 
 void Camera::SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback)
@@ -435,9 +430,9 @@ float Camera::GetRoll() const
 	return m_totalRoll;
 }
 
-float Camera::GetLaserRoll() const
+float Camera::GetCritLineRoll() const
 {
-	return m_laserRoll;
+	return m_critLineRoll;
 }
 
 float Camera::GetActualRoll() const

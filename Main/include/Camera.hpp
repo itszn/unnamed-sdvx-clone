@@ -63,14 +63,16 @@ public:
 	void SetSpin(float direction, uint32 duration, uint8 type, class BeatmapPlayback& playback);
 	void SetXOffsetBounce(float direction, uint32 duration, uint32 amplitude, uint32 frequency, float decay, class BeatmapPlayback &playback);
 	float GetRoll() const;
-	float GetLaserRoll() const;
+	float GetCritLineRoll() const;
 	float GetActualRoll() const;
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
 	Vector3 GetShakeOffset();
 	bool GetRollKeep();
-	void SetRollIgnoreDuration(float duration);
-	void SetSlamLength(float length);
+	void SetManualTilt(bool manualTilt);
+	void SetManualTiltInstant(bool instant);
+	// Enables/disables laser slams and roll ignore
+	void SetFancyHighwayTilt(bool fancyHighwaySetting);
 	
 	/*
 	Gets roll ignore timer for a laser
@@ -107,10 +109,6 @@ public:
 
 	float pitchUnit = KSM_PITCH_UNIT_POST_168;
 
-	float cameraShakeX = 0.0f;
-	float cameraShakeY = 0.4f;
-	float cameraShakeZ = 0.0f;
-
 	// Camera variables Landscape, Portrait
 	float basePitch[2] = { 0.f, 0.f };
 	float baseRadius[2] = { 0.3f, 0.275f };
@@ -130,36 +128,37 @@ private:
 	// roll value
 	float m_totalRoll = 0.0f;
 	// Used for crit line position
-	float m_laserRoll = 0.0f;
+	float m_critLineRoll = 0.0f;
 	// Actual highway tilt
 	float m_actualRoll = 0.0f;
-	// Target to roll towards
-	float m_actualTargetLaserRoll = 0.0f;
+	// Target to roll towards during roll keep
+	// Always updated to prevent inconsistent roll keep behaviour at lower frame rates
+	float m_rollKeepTargetRoll = 0.0f;
 	// Target roll used for crit line
-	float m_targetLaserRoll = 0.f;
-	bool m_targetRollSet = false;
+	float m_targetCritLineRoll = 0.f;
 	bool m_lasersActive = false;
 	// Roll force
 	float m_rollVelocity = 0.0f;
 	float m_rollIntensity = MAX_ROLL_ANGLE;
 	float m_oldRollIntensity = MAX_ROLL_ANGLE;
-	// Checks if camera roll needs to roll quickly due to a new tilt value
-	bool m_rollIntensityChanged = false;
 	bool m_rollKeep = false;
+	bool m_manualTiltInstant = false;
+	bool m_manualTiltRecentlyToggled = false;
 
 	// Controls if the camera rolls at a slow rate
 	// Activates when blue and red lasers are at the extremities (-1, 1 or 0, 0)
 	bool m_slowTilt = false;
+
+	// How long roll is ignored in seconds
+	float m_rollIgnoreDuration = 0.1f;
+	// Duration of slams in seconds
+	float m_slamDuration = 0.1f;
 
 	// Laser slam rolls
 	// Does not track slams that have a next segment
 	float m_slamRoll[2] = { 0.0f };
 	// Keeps track of how long roll is ignored
 	float m_rollIgnoreTimer[2] = { 0.0f };
-	// Amount of time roll is ignored in seconds
-	float m_rollIgnoreDuration = 0.0f;
-	// Duration of the slam in seconds
-	float m_slamLength = 0.0f;
 
 	// Spin variables
 	int32 m_spinDuration = 1;
@@ -180,5 +179,5 @@ private:
 
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
-	Vector3 m_shakeOffset;
+	Vector3 m_shakeOffset = Vector3(0.0f);
 };

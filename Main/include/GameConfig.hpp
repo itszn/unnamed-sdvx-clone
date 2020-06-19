@@ -140,8 +140,7 @@ DefineEnum(GameConfigKeys,
 		   MultiplayerPassword,
 		   MultiplayerUsername,
 
-		   RollIgnoreDuration,
-		   LaserSlamLength,
+		   EnableFancyHighwayRoll,
 
 		   // Gameplay options
 		   GaugeType,

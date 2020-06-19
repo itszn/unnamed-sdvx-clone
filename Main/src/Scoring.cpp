@@ -242,7 +242,9 @@ float Scoring::GetLaserPosition(uint32 index, float pos)
 float Scoring::GetLaserRollOutput(uint32 index)
 {
 	assert(index >= 0 && index <= 1);
-	if (m_currentLaserSegments[index])
+	// Ignore slams that are the last segment since Camera handles slam behaviour
+	if (m_currentLaserSegments[index] && !(m_currentLaserSegments[index]->flags & LaserObjectState::flag_Instant &&
+			!m_currentLaserSegments[index]->next))
 	{
 		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
@@ -715,15 +717,15 @@ void Scoring::m_UpdateTicks()
 						// Check laser input
 						float laserDelta = fabs(laserPositions[laserObject->index] - laserTargetPositions[laserObject->index]); \
 
-							if (laserDelta < laserDistanceLeniency)
-							{
-								m_TickHit(tick, buttonCode);
-								HitStat* stat = new HitStat(tick->object);
-								stat->time = currentTime;
-								stat->rating = ScoreHitRating::Perfect;
-								hitStats.Add(stat);
-								processed = true;
-							}
+						if (laserDelta < laserDistanceLeniency)
+						{
+							m_TickHit(tick, buttonCode);
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Perfect;
+							hitStats.Add(stat);
+							processed = true;
+						}
 					}
 				}
 			}

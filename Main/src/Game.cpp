@@ -153,8 +153,7 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeAmount = 2.5;
-	float m_shakeDuration = 0.1;
+	float m_shakeDuration = 5 / 60.f;
 
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
@@ -687,7 +686,7 @@ public:
 			m_track->SetViewRange(8.0f / (m_hispeed)); 
 
 		// Get render state from the camera
-		// Only get roll when there's no laser slam roll being applied
+		// Get roll when there's no laser slam roll and roll ignore being applied
 		float rollL = m_camera.GetRollIgnoreTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
 		float rollR = m_camera.GetRollIgnoreTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
 		float slamL = m_camera.GetSlamAmount(0);
@@ -708,7 +707,8 @@ public:
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
 		m_track->centerSplit = m_playback.GetZoom(4);
-		m_camera.pManualTiltEnabled = m_manualTiltEnabled;
+		m_camera.SetManualTilt(m_manualTiltEnabled);
+		m_camera.SetManualTiltInstant(m_playback.CheckIfManualTiltInstant());
 		m_camera.track = m_track;
 		m_camera.Tick(deltaTime,m_playback);
 		m_track->Tick(m_playback, deltaTime);
@@ -1050,9 +1050,8 @@ public:
 		m_camera.pLaneOffset = m_playback.GetZoom(2);
 		m_camera.pLaneTilt = m_playback.GetZoom(3);
 		
-		// Set roll ignore and slam durations
-		m_camera.SetRollIgnoreDuration(g_gameConfig.GetFloat(GameConfigKeys::RollIgnoreDuration) / 1000);
-		m_camera.SetSlamLength(g_gameConfig.GetFloat(GameConfigKeys::LaserSlamLength) / 1000);
+		// Enable laser slams and roll ignore behaviour
+		m_camera.SetFancyHighwayTilt(g_gameConfig.GetBool(GameConfigKeys::EnableFancyHighwayRoll));
 
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)
@@ -1469,13 +1468,11 @@ public:
 
 	void OnLaserSlamHit(LaserObjectState* object)
 	{
-		float slamSize = (object->points[1] - object->points[0]);
+		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		slamSize = fabsf(slamSize);
-		CameraShake shake(powf(slamSize, 0.5f) * m_shakeDuration, powf(slamSize, 0.5f) * m_shakeAmount * -direction);
+		CameraShake shake(fabsf(slamSize) * m_shakeDuration, fabsf(slamSize) * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
-
 
 		if (object->spin.type != 0)
 		{
@@ -1484,14 +1481,11 @@ public:
 			else m_camera.SetSpin(object->GetDirection(), object->spin.duration, object->spin.type, m_playback);
 		}
 
-
-		float dir = Math::Sign(object->points[1] - object->points[0]);
-
 		float width = (object->flags & LaserObjectState::flag_Extended) ? 2.0 : 1.0;
 		float startPos = (m_track->trackWidth * object->points[0] - m_track->trackWidth * 0.5f) * width;
 		float endPos = (m_track->trackWidth * object->points[1] - m_track->trackWidth * 0.5f) * width;
 
-		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(dir, 0, 0));
+		Ref<ParticleEmitter> ex = CreateExplosionEmitter(m_track->laserColors[object->index], Vector3(direction, 0, 0));
 		ex->position = Vector3(endPos, 0.0f, -0.05f);
 		ex->position = m_track->TransformPoint(ex->position);
 
@@ -1500,7 +1494,7 @@ public:
 		if (lua_isfunction(m_lua, -1))
 		{
 			// Slam size and direction
-			lua_pushnumber(m_lua, (object->points[1] - object->points[0]) * width);
+			lua_pushnumber(m_lua, slamSize * width);
 			// Start position
 			lua_pushnumber(m_lua, startPos);
 			// End position
@@ -2095,7 +2089,7 @@ public:
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "xOffset");
-			lua_pushnumber(L, -m_camera.GetLaserRoll() * 360);
+			lua_pushnumber(L, -m_camera.GetCritLineRoll() * 360);
 			lua_settable(L, -3);
 
 			//track x critline corners
