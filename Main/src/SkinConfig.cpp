@@ -40,7 +40,9 @@ SkinConfig::SkinConfig(String skin)
 		};
 		
 
-		Buffer buf(defFile.GetSize());
+		Buffer buf;
+		buf.resize(defFile.GetSize());
+		
 		defFile.Read(buf.data(), buf.size());
 		String jsonData((char*)buf.data(), buf.size());
 		ordered_json definitions;
