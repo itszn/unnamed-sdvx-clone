@@ -44,7 +44,7 @@ public:
         for(int32 i = 0; i < numAudioDrivers; i++)
 		{
             const char* drvName = SDL_GetAudioDriver(i);
-            Logf("Audio driver [%d]: %s", Logger::Info, i, drvName);
+            Logf("Audio driver [%d]: %s", Logger::Severity::Info, i, drvName);
 		}
 
 		SDLAudio::Main();
@@ -72,13 +72,13 @@ public:
 		desiredSpec.userdata = this;
 
 		const char* audioDriverName = SDL_GetCurrentAudioDriver();
-		Logf("Using audio driver: %s", Logger::Info, audioDriverName);
+		Logf("Using audio driver: %s", Logger::Severity::Info, audioDriverName);
 
 		int32 numAudioDevices = SDL_GetNumAudioDevices(0);
 		for(int32 i = 0; i < numAudioDevices; i++)
 		{
             const char* devName = SDL_GetAudioDeviceName(i, 0);
-            Logf("Audio device [%d]: %s", Logger::Info, i, devName);
+            Logf("Audio device [%d]: %s", Logger::Severity::Info, i, devName);
 		}
 
 
@@ -86,7 +86,7 @@ public:
 		if(m_deviceId == 0 || m_deviceId < 2)
 		{
             const char* errMsg = SDL_GetError();
-            Logf("Failed to open SDL audio device: %s", Logger::Error, errMsg);
+            Logf("Failed to open SDL audio device: %s", Logger::Severity::Error, errMsg);
 			return false;
         }
 

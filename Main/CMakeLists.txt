@@ -50,7 +50,7 @@ target_include_directories(usc-game PRIVATE
     ${INCROOT}/GUI
     ${INCROOT}/Audio
 )
-target_compile_features(usc-game PUBLIC cxx_std_14)
+target_compile_features(usc-game PUBLIC cxx_std_17)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
 target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})

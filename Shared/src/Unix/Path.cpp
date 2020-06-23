@@ -44,7 +44,7 @@ bool Path::Rename(const String& srcFile, const String& dstFile, bool overwrite)
 			return false;
 		if(Delete(*dstFile))
 		{
-			Log("Failed to rename file, overwrite was true but the destination could not be removed", Logger::Warning);
+			Log("Failed to rename file, overwrite was true but the destination could not be removed", Logger::Severity::Warning);
 			return false;
 		}
 	}
@@ -182,12 +182,12 @@ Vector<String> Path::GetSubDirs(const String& path)
 }
 bool Path::ShowInFileBrowser(const String& path)
 {
-    Log("Path::ShowInFileBrowser function not implemented yet", Logger::Error);
+    Log("Path::ShowInFileBrowser function not implemented yet", Logger::Severity::Error);
     return false;
 }
 
 bool Path::Run(const String& programPath, const String& parameters)
 {
-    Log("Path::Run function not implemented yet", Logger::Error);
+    Log("Path::Run function not implemented yet", Logger::Severity::Error);
     return false;
 }

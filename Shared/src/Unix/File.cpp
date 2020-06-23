@@ -44,7 +44,7 @@ bool File::OpenRead(const String& path)
 	int handle = open(*path, O_RDONLY);
 	if(handle == -1)
 	{
-		Logf("Failed to open file for reading %s: %d", Logger::Warning, *path, errno);
+		Logf("Failed to open file for reading %s: %d", Logger::Severity::Warning, *path, errno);
 		return false;
 	}
 
@@ -63,7 +63,7 @@ bool File::OpenWrite(const String& path, bool append /*= false*/, bool noLog /*=
 	if(handle == -1)
 	{
     if(!noLog)
-    		Logf("Failed to open file for writing %s: %d", Logger::Warning, *path, errno);
+    		Logf("Failed to open file for writing %s: %d", Logger::Severity::Warning, *path, errno);
 		return false;
 	}
 
