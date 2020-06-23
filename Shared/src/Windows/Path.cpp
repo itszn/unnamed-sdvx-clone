@@ -41,7 +41,7 @@ bool Path::Rename(const String& srcFile, const String& dstFile, bool overwrite)
 			return false;
 		if(DeleteFileW(*wdst) == FALSE)
 		{
-			Logf("Failed to rename file, overwrite was true but the destination could not be removed", Logger::Warning);
+			Logf("Failed to rename file, overwrite was true but the destination could not be removed", Logger::Severity::Warning);
 			return false;
 		}
 	}
@@ -151,13 +151,13 @@ bool Path::ShowInFileBrowser(const String& path)
 		switch (res)
 		{
 		case ERROR_FILE_NOT_FOUND:
-			Logf("Failed to show file \"%s\" in the system default explorer: File not found.", Logger::Error, path);
+			Logf("Failed to show file \"%s\" in the system default explorer: File not found.", Logger::Severity::Error, path);
 			break;
 		case ERROR_PATH_NOT_FOUND:
-			Logf("Failed to show file \"%s\" in the system default explorer: Path not found.", Logger::Error, path);
+			Logf("Failed to show file \"%s\" in the system default explorer: Path not found.", Logger::Severity::Error, path);
 			break;
 		default:
-			Logf("Failed to show file \"%s\" in the system default explorer: error %d", Logger::Error, path, res);
+			Logf("Failed to show file \"%s\" in the system default explorer: error %d", Logger::Severity::Error, path, res);
 			break;
 		}
 		return false;
@@ -173,7 +173,7 @@ bool Path::Run(const String& programPath, const String& parameters)
 
 	if (!Path::FileExists(programPath))
 	{
-		Logf("Failed to open editor: invalid path \"%s\"", Logger::Error, programPath);
+		Logf("Failed to open editor: invalid path \"%s\"", Logger::Severity::Error, programPath);
 		return false;
 	}
 
@@ -184,7 +184,7 @@ bool Path::Run(const String& programPath, const String& parameters)
 	}
 	else
 	{
-		Logf("Failed to open editor: error %d", Logger::Error, GetLastError());
+		Logf("Failed to open editor: error %d", Logger::Severity::Error, GetLastError());
 		return false;
 	}
 	return true;

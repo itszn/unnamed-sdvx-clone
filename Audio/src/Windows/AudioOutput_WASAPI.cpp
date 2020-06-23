@@ -196,7 +196,7 @@ public:
 			res = m_audioClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, mixFormat, NULL);
 			if (res == AUDCLNT_E_UNSUPPORTED_FORMAT)
 			{
-				Log("Default format not supported in exclusive mode, attempting other formats", Logger::Error);
+				Log("Default format not supported in exclusive mode, attempting other formats", Logger::Severity::Error);
 
 				int numFormats = 2;
 				WORD formats[2] = { WAVE_FORMAT_PCM, WAVE_FORMAT_IEEE_FLOAT };
@@ -233,7 +233,7 @@ public:
 				{
 					*mixFormat = allFormats[attemptingFormat];
 
-					Logf("Attempting exclusive mode format:\nSample Rate: %dhz,\nBit Depth: %dbit,\nFormat: %s\n-----", Logger::Info,
+					Logf("Attempting exclusive mode format:\nSample Rate: %dhz,\nBit Depth: %dbit,\nFormat: %s\n-----", Logger::Severity::Info,
 						mixFormat->nSamplesPerSec,
 						mixFormat->wBitsPerSample,
 						mixFormat->wFormatTag == WAVE_FORMAT_PCM ? "PCM" : "IEEE FLOAT"
@@ -247,9 +247,9 @@ public:
 					}
 				}
 				if (res == S_OK)
-					Log("Format successful", Logger::Info);
+					Log("Format successful", Logger::Severity::Info);
 				else
-					Log("No accepted format found", Logger::Error);
+					Log("No accepted format found", Logger::Severity::Error);
 
 			}
 			// Init client
@@ -275,7 +275,7 @@ public:
 		// Check if initialization was succesfull
 		if(res != S_OK)
 		{
-			Log("Failed to initialize audio client with the selected settings", Logger::Error);
+			Log("Failed to initialize audio client with the selected settings", Logger::Severity::Error);
 			SAFE_RELEASE(device);
 			SAFE_RELEASE(m_audioClient);
 			return false;
@@ -285,7 +285,7 @@ public:
 		res = m_audioClient->GetService(__uuidof(IAudioRenderClient), (void**)&m_audioRenderClient);
 		if(res != S_OK)
 		{
-			Log("Failed to get audio render client service.", Logger::Error);
+			Log("Failed to get audio render client service.", Logger::Severity::Error);
 			SAFE_RELEASE(device);
 			SAFE_RELEASE(m_audioClient);
 			return false;
@@ -351,7 +351,7 @@ public:
 			{
 				if(hr == AUDCLNT_E_DEVICE_INVALIDATED)
 				{
-					Logf("Audio device unplugged", Logger::Warning);
+					Logf("Audio device unplugged", Logger::Severity::Warning);
 					return false;
 				}
 				else

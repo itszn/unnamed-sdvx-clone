@@ -119,7 +119,7 @@ bool AudioStreamMp3::Init(Audio* audio, const String& path, bool preload)
 	// No mp3 frames found
 	if(m_frameIndices.empty())
 	{
-		Logf("No valid mp3 frames found in file \"%s\"", Logger::Warning, path);
+		Logf("No valid mp3 frames found in file \"%s\"", Logger::Severity::Warning, path);
 		return false;
 	}
 

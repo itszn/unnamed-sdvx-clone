@@ -318,7 +318,7 @@ public:
 			}
 			else 
 			{
-				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Warning);
+				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Severity::Warning);
 			}
 
 			Path::CreateDir(Path::Absolute("replays/" + hash));
@@ -482,7 +482,7 @@ public:
 		{
 			if (lua_pcall(m_lua, 0, 0, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			}
 		}
@@ -535,7 +535,7 @@ public:
 			{
 				if (lua_pcall(m_lua, 0, 0, 0) != 0)
 				{
-					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 				}
 			}
@@ -552,7 +552,7 @@ public:
 		lua_pushboolean(m_lua, m_showStats);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -634,7 +634,7 @@ public:
 		{
 			if (lua_pcall(m_lua, 0, 4, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			}
 			h = luaPopInt();

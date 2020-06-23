@@ -7,10 +7,10 @@ void ListTests()
 	TestManager& testManager = TestManager::Get();
 	Vector<String> testNames = testManager.GetAvailableTests();
 	size_t numTests = testNames.size();
-	Logf("Available Tests:", Logger::Info, typeid(testManager).name());
+	Logf("Available Tests:", Logger::Severity::Info, typeid(testManager).name());
 	for(size_t i = 0; i < numTests; i++)
 	{
-		Logf(" %s", Logger::Info, testNames[i]);
+		Logf(" %s", Logger::Severity::Info, testNames[i]);
 	}
 }
 
@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 	Vector<String> cmdLine = Path::SplitCommandLine(argc, argv);
 	if(cmdLine.empty())
 	{
-		Logf("No test to run specified, please use %s <test name>", Logger::Error, Path::GetModuleName());
+		Logf("No test to run specified, please use %s <test name>", Logger::Severity::Error, Path::GetModuleName());
 		ListTests();
 		return 1;
 	}
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 	Vector<String> testNames = testManager.GetAvailableTests();
 	if(!testNames.Contains(execName))
 	{
-		Logf("Test \"%s\" not found", Logger::Error, execName);
+		Logf("Test \"%s\" not found", Logger::Severity::Error, execName);
 		ListTests();
 		return 1;
 	}

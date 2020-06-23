@@ -231,7 +231,7 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 			const EffectType *type = defaultEffects.FindEffectType(s.second);
 			if (!type)
 			{
-				Logf("Unknown base effect type for custom effect type: %s", Logger::Warning, s.second);
+				Logf("Unknown base effect type for custom effect type: %s", Logger::Severity::Warning, s.second);
 				continue;
 			}
 			effect = AudioEffect::GetDefault(*type);
@@ -280,7 +280,7 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 				MultiParamRange pr = {ParseParam(a), ParseParam(b)};
 				if (pr.params[0].type != pr.params[1].type)
 				{
-					Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Warning, s.first, param, s.first);
+					Logf("Non matching parameters types \"[%s, %s]\" for key: %s", Logger::Severity::Warning, s.first, param, s.first);
 					continue;
 				}
 				params.Add(s.first, pr);
@@ -294,7 +294,7 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 
 	if (!typeSet)
 	{
-		Logf("Type not set for custom effect type: %s", Logger::Warning, def.typeName);
+		Logf("Type not set for custom effect type: %s", Logger::Severity::Warning, def.typeName);
 		return effect;
 	}
 
@@ -434,7 +434,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			if (foundType)
 				type = *foundType;
 			else
-				Logf("[KSH]Unknown filter type: %s", Logger::Warning, str);
+				Logf("[KSH]Unknown filter type: %s", Logger::Severity::Warning, str);
 		}
 		return type;
 	};
@@ -640,7 +640,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				const EffectType *type = effectTypeMap.FindEffectType(effectName);
 				if (type == nullptr)
 				{
-					Logf("Invalid custom effect name in ksh map: %s", Logger::Warning, effectName);
+					Logf("Invalid custom effect name in ksh map: %s", Logger::Severity::Warning, effectName);
 					return EffectType::None;
 				}
 
@@ -916,7 +916,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			}
 			else
 			{
-				Logf("[KSH]Unkown map parameter at %d:%d: %s", Logger::Warning, it.GetTime().block, it.GetTime().tick, p.first);
+				Logf("[KSH]Unkown map parameter at %d:%d: %s", Logger::Severity::Warning, it.GetTime().block, it.GetTime().tick, p.first);
 			}
 			tickSettingIndex++;
 		}

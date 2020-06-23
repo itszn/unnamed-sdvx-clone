@@ -35,7 +35,7 @@ Test("Audio.Playback")
 		t.Restart();
 		if(time > 3.0f)
 		{
-			Log("Playing sample", Logger::Info);
+			Log("Playing sample", Logger::Severity::Info);
 			testSample->Play();
 			time = 0.0;
 		}

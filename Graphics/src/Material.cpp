@@ -107,7 +107,7 @@ namespace Graphics
 			uint32 handle = shader->Handle();
 
 #ifdef _DEBUG
-			Logf("Listing shader uniforms for %s", Logger::Info, shader->GetOriginalName());
+			Logf("Listing shader uniforms for %s", Logger::Severity::Info, shader->GetOriginalName());
 #endif // _DEBUG
 
 			int32 numUniforms;
@@ -180,7 +180,7 @@ namespace Graphics
 				BoundParameterInfo& param = m_boundParameters.FindOrAdd(targetID).Add(BoundParameterInfo(t, type, loc));
 
 #ifdef _DEBUG
-				Logf("Uniform [%d, loc=%d, %s] = %s", Logger::Info,
+				Logf("Uniform [%d, loc=%d, %s] = %s", Logger::Severity::Info,
 					i, loc, Utility::Sprintf("Unknown [%d]", type), name);
 #endif // _DEBUG
 			}
@@ -205,7 +205,7 @@ namespace Graphics
 			// Regenerate parameter map
 			if(reloadedShaders)
 			{
-				Log("Reloading material", Logger::Info);
+				Log("Reloading material", Logger::Severity::Info);
 				m_boundParameters.clear();
 				m_textureIDs.clear();
 				m_mappedParameters.clear();
@@ -468,13 +468,13 @@ namespace Graphics
 
 		if(!impl->m_shaders[(size_t)ShaderType::Vertex])
 		{
-			Logf("Failed to load vertex shader for material from %s", Logger::Error, vsPath);
+			Logf("Failed to load vertex shader for material from %s", Logger::Severity::Error, vsPath);
 			delete impl;
 			return Material();
 		}
 		if(!impl->m_shaders[(size_t)ShaderType::Fragment])
 		{
-			Logf("Failed to load fragment shader for material from %s", Logger::Error, fsPath);
+			Logf("Failed to load fragment shader for material from %s", Logger::Severity::Error, fsPath);
 			delete impl;
 			return Material();
 		}

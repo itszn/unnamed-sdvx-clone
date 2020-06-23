@@ -17,7 +17,7 @@ namespace Graphics
 			int r = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
 			if(r != 0)
 			{
-                Logf("SDL_Init Failed: %s", Logger::Error, SDL_GetError());
+                Logf("SDL_Init Failed: %s", Logger::Severity::Error, SDL_GetError());
                 assert(false);
 			}
 		}
@@ -63,22 +63,22 @@ namespace Graphics
 			uint32 numJoysticks = SDL_NumJoysticks();
 			if(numJoysticks == 0)
 			{
-				Log("No joysticks found", Logger::Warning);
+				Log("No joysticks found", Logger::Severity::Warning);
 			}
 			else
 			{
-				Logf("Listing %d Joysticks:", Logger::Info, numJoysticks);
+				Logf("Listing %d Joysticks:", Logger::Severity::Info, numJoysticks);
 				for(uint32 i = 0; i < numJoysticks; i++)
 				{
 					SDL_Joystick* joystick = SDL_JoystickOpen(i);
 					if(!joystick)
 					{
-						Logf("[%d] <failed to open>", Logger::Warning, i);
+						Logf("[%d] <failed to open>", Logger::Severity::Warning, i);
 						continue;
 					}
 					String deviceName = SDL_JoystickName(joystick);
 
-					Logf("[%d] \"%s\" (%d buttons, %d axes, %d hats)", Logger::Info,
+					Logf("[%d] \"%s\" (%d buttons, %d axes, %d hats)", Logger::Severity::Info,
 						i, deviceName, SDL_JoystickNumButtons(joystick), SDL_JoystickNumAxes(joystick), SDL_JoystickNumHats(joystick));
 
 					SDL_JoystickClose(joystick);
@@ -137,7 +137,7 @@ namespace Graphics
 			int buttonid;
 			if (SDL_ShowMessageBox(&messageboxdata, &buttonid) < 0)
 			{
-				Logf("Could not display message box for '%s'", Logger::Info, *message);
+				Logf("Could not display message box for '%s'", Logger::Severity::Info, *message);
 				return false;
 			}
 			return buttonid == 1;
@@ -163,7 +163,7 @@ namespace Graphics
 		void SetVSync(int8 setting)
 		{
 			if(SDL_GL_SetSwapInterval(setting) == -1)
-				Logf("Failed to set VSync: %s", Logger::Error, SDL_GetError());
+				Logf("Failed to set VSync: %s", Logger::Severity::Error, SDL_GetError());
 		}
 
 		void SetWindowStyle(WindowStyle style)

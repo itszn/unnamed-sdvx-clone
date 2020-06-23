@@ -285,7 +285,7 @@ public:
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			g_application->RemoveTickable(m_owner);
 		}
@@ -433,7 +433,7 @@ public:
 		}
 		else
 		{
-			Logf("Could not find map for sort index %u -> %u", Logger::Warning, sortIndex, songIndex);
+			Logf("Could not find map for sort index %u -> %u", Logger::Severity::Warning, sortIndex, songIndex);
 		}
 
 		m_lastDiffIndex = songIndex;
@@ -455,7 +455,7 @@ public:
 
 		if (res == -1)
 		{
-			Logf("Couldn't find original map %u after map set change", Logger::Info, lastMapIndex);
+			Logf("Couldn't find original map %u after map set change", Logger::Severity::Info, lastMapIndex);
 			SelectMapBySortIndex(0);
 		}
 
@@ -497,7 +497,7 @@ public:
 		{
 			if (lua_pcall(m_lua, 0, 1, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			}
 			int ret = luaL_checkinteger(m_lua, -1);
@@ -675,10 +675,10 @@ private:
 	{
 		if (m_currentSort == nullptr)
 		{
-			Log("No sorting set", Logger::Warning);
+			Log("No sorting set", Logger::Severity::Warning);
 			return;
 		}
-		Logf("Sorting with %s", Logger::Info, m_currentSort->GetName().c_str());
+		Logf("Sorting with %s", Logger::Severity::Info, m_currentSort->GetName().c_str());
 		m_currentSort->SortInplace(m_sortVec, m_SourceCollection());
 	}
 	int32 m_getSortIndexFromMapIndex(uint32 mapId) const
@@ -728,7 +728,7 @@ private:
 		lua_pushinteger(m_lua, (uint64)m_currentlySelectedDiff + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_diff: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_diff", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -739,7 +739,7 @@ private:
 		lua_pushinteger(m_lua, (uint64)m_currentlySelectedLuaSortIndex + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on set_index: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_index: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_index", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -757,7 +757,7 @@ private:
 		lua_pushboolean(m_lua, true);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on songs_chaged: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -774,7 +774,7 @@ private:
 		lua_pushboolean(m_lua, false);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on songs_chaged: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on songs_chaged: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error songs_changed", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -907,7 +907,7 @@ public:
 		lua_pushboolean(m_lua, Active);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -979,7 +979,7 @@ public:
 		lua_pushboolean(m_lua, type == FilterType::Folder);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
-			Logf("Lua error on set_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_selection: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -1042,7 +1042,7 @@ public:
 		lua_pushboolean(m_lua, m_selectingFolders);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on set_mode: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_mode: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_mode", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -1147,7 +1147,7 @@ private:
 		{
 			if (lua_pcall(m_lua, 0, 0, 0) != 0)
 			{
-				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on tables_set: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
 			}
 		}
@@ -1237,7 +1237,7 @@ public:
 		lua_pushnumber(m_lua, m_selection + 1);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on set_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_selection: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -1250,7 +1250,7 @@ public:
 		lua_pushboolean(m_lua, Active);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -1291,7 +1291,7 @@ private:
 		{
 			if (lua_pcall(m_lua, 0, 0, 0) != 0)
 			{
-				Logf("Lua error on tables_set: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on tables_set: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
 			}
 		}
@@ -1572,7 +1572,7 @@ public:
 			{
 				params = {"", 0, 0};
 
-				Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+				Logf("Failed to load preview audio from [%s]", Logger::Severity::Warning, audioPath);
 				if (m_previewParams != params)
 					m_previewPlayer.FadeTo(Ref<AudioStream>());
 			}
@@ -1638,7 +1638,7 @@ public:
 				Game *game = Game::Create(chart, Game::FlagsFromSettings());
 				if (!game)
 				{
-					Log("Failed to start game", Logger::Error);
+					Log("Failed to start game", Logger::Severity::Error);
 					return;
 				}
 				game->GetScoring().autoplay = autoplay;
@@ -1843,7 +1843,7 @@ public:
 				Game *game = Game::Create(chart, GameFlags::None);
 				if (!game)
 				{
-					Log("Failed to start game", Logger::Error);
+					Log("Failed to start game", Logger::Severity::Error);
 					return;
 				}
 				game->GetScoring().autoplay = true;
@@ -1919,7 +1919,7 @@ public:
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}

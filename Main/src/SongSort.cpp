@@ -8,7 +8,7 @@ const SongSelectIndex& getSongFromCollection(uint32 index, const Map<int32,
 	auto it = collection.find(index);
 	if (it == collection.end())
 	{
-		Logf("Could not find song id %u", Logger::Error, index);
+		Logf("Could not find song id %u", Logger::Severity::Error, index);
 	}
 	return it->second;
 }

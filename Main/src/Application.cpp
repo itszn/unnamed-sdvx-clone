@@ -109,7 +109,7 @@ void Application::ApplySettings()
 	{
 		m_needSkinReload = true;
 	}
-
+	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
@@ -134,7 +134,7 @@ int32 Application::Run()
 			Game *game = LaunchMap(m_commandLine[1]);
 			if (!game)
 			{
-				Logf("LaunchMap(%s) failed", Logger::Error, m_commandLine[1]);
+				Logf("LaunchMap(%s) failed", Logger::Severity::Error, m_commandLine[1]);
 			}
 			else
 			{
@@ -250,7 +250,7 @@ void Application::m_unpackSkins()
 
 	for (FileInfo &fi : files)
 	{
-		Logf("[Archive] Extracting skin '%s'", Logger::Info, fi.fullPath);
+		Logf("[Archive] Extracting skin '%s'", Logger::Severity::Info, fi.fullPath);
 
 		// Init archive structs
 		archive *a = archive_read_new();
@@ -270,7 +270,7 @@ void Application::m_unpackSkins()
 		int res = archive_read_open_filename(a, fi.fullPath.c_str(), 10240);
 		if (res != ARCHIVE_OK)
 		{
-			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+			Logf("[Archive] Error reading skin archive '%s'", Logger::Severity::Error,
 				 archive_error_string(a));
 			archive_read_close(a);
 			archive_read_free(a);
@@ -323,7 +323,7 @@ void Application::m_unpackSkins()
 		res = archive_read_open_filename(a, fi.fullPath.c_str(), 10240);
 		if (res != ARCHIVE_OK)
 		{
-			Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+			Logf("[Archive] Error reading skin archive '%s'", Logger::Severity::Error,
 				 archive_error_string(a));
 			archive_read_close(a);
 			archive_read_free(a);
@@ -345,7 +345,7 @@ void Application::m_unpackSkins()
 			if (res == ARCHIVE_EOF)
 				break;
 			if (res < ARCHIVE_OK)
-				Logf("[Archive] Error reading skin archive '%s'", Logger::Error,
+				Logf("[Archive] Error reading skin archive '%s'", Logger::Severity::Error,
 					 archive_error_string(a));
 			if (res < ARCHIVE_WARN)
 			{
@@ -363,13 +363,13 @@ void Application::m_unpackSkins()
 			// Check for zipslip
 			if (fullOutputPath.find(dot_dot_win) != String::npos)
 			{
-				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_win.c_str(), fullOutputPath.c_str());
+				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Severity::Error, dot_dot_win.c_str(), fullOutputPath.c_str());
 				extractOk = false;
 				break;
 			}
 			if (fullOutputPath.find(dot_dot_unix) != String::npos)
 			{
-				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Error, dot_dot_unix.c_str(), fullOutputPath.c_str());
+				Logf("[Archive] Error reading skin archive: '%s' can't appear in file name '%s'", Logger::Severity::Error, dot_dot_unix.c_str(), fullOutputPath.c_str());
 				extractOk = false;
 				break;
 			}
@@ -379,14 +379,14 @@ void Application::m_unpackSkins()
 			// Write the new header
 			res = archive_write_header(ext, entry);
 			if (res < ARCHIVE_OK)
-				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+				Logf("[Archive] Error writing skin archive '%s'", Logger::Severity::Error,
 					 archive_error_string(ext));
 			else if (archive_entry_size(entry) > 0)
 			{
 				// Copy the data so it will be extracted
 				res = copyArchiveData(a, ext);
 				if (res < ARCHIVE_OK)
-					Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+					Logf("[Archive] Error writing skin archive '%s'", Logger::Severity::Error,
 						 archive_error_string(ext));
 				if (res < ARCHIVE_WARN)
 				{
@@ -396,7 +396,7 @@ void Application::m_unpackSkins()
 			}
 			res = archive_write_finish_entry(ext);
 			if (res < ARCHIVE_OK)
-				Logf("[Archive] Error writing skin archive '%s'", Logger::Error,
+				Logf("[Archive] Error writing skin archive '%s'", Logger::Severity::Error,
 					 archive_error_string(ext));
 			if (res < ARCHIVE_WARN)
 			{
@@ -458,7 +458,7 @@ void __discordError(int errorCode, const char *message)
 
 void __discordReady(const DiscordUser *user)
 {
-	Logf("[Discord] Logged in as \"%s\"", Logger::Info, user->username);
+	Logf("[Discord] Logged in as \"%s\"", Logger::Severity::Info, user->username);
 }
 
 void __discordJoinGame(const char *joins)
@@ -487,10 +487,10 @@ void __updateChecker()
 	{
 		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
 
-		Logf("Update check status code: %d", Logger::Normal, r.status_code);
+		Logf("Update check status code: %d", Logger::Severity::Normal, r.status_code);
 		if (r.status_code != 200)
 		{
-			Logf("Failed to get update information: %s", Logger::Error, r.error.message.c_str());
+			Logf("Failed to get update information: %s", Logger::Severity::Error, r.error.message.c_str());
 		}
 		else
 		{
@@ -502,7 +502,7 @@ void __updateChecker()
 			}
 			catch (const std::exception &e)
 			{
-				Logf("Failed to parse version json: \"%s\"", Logger::Error, e.what());
+				Logf("Failed to parse version json: \"%s\"", Logger::Severity::Error, e.what());
 				return;
 			}
 
@@ -537,7 +537,7 @@ void __updateChecker()
 		auto response = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/actions/runs"});
 		if (response.status_code != 200)
 		{
-			Logf("Failed to get update information: %s", Logger::Error, response.error.message.c_str());
+			Logf("Failed to get update information: %s", Logger::Severity::Error, response.error.message.c_str());
 			return;
 		}
 
@@ -549,7 +549,7 @@ void __updateChecker()
 		{
 			String errormsg;
 			commits.at("message").get_to(errormsg);
-			Logf("Failed to get update information: %s", Logger::Warning, *errormsg);
+			Logf("Failed to get update information: %s", Logger::Severity::Warning, *errormsg);
 			return;
 		}
 
@@ -584,7 +584,7 @@ void __updateChecker()
 					String updateUrl = "https://github.com/drewol/unnamed-sdvx-clone";
 					if (response.status_code != 200)
 					{
-						Logf("Failed to get update information: %s", Logger::Warning, response.error.message.c_str());
+						Logf("Failed to get update information: %s", Logger::Severity::Warning, response.error.message.c_str());
 					}
 					else
 					{
@@ -618,14 +618,14 @@ bool Application::m_Init()
 {
 	ProfilerScope $("Application Setup");
 
-	Logf("Version: %d.%d.%d", Logger::Info, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	Logf("Version: %d.%d.%d", Logger::Severity::Info, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 
 #ifdef EMBEDDED
 	Log("Embeedded version.");
 #endif
 
 #ifdef GIT_COMMIT
-	Logf("Git commit: %s", Logger::Info, GIT_COMMIT);
+	Logf("Git commit: %s", Logger::Severity::Info, GIT_COMMIT);
 #endif // GIT_COMMIT
 
 	// Must have command line
@@ -645,7 +645,8 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Warning);
+	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Severity::Warning);
+	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 
 	// Job sheduler
 	g_jobSheduler = new JobSheduler();
@@ -755,18 +756,18 @@ bool Application::m_Init()
 		{
 			if (exclusive)
 			{
-				Log("Failed to open in WASAPI Exclusive mode, attempting shared mode.", Logger::Warning);
+				Log("Failed to open in WASAPI Exclusive mode, attempting shared mode.", Logger::Severity::Warning);
 				g_gameWindow->ShowMessageBox("WASAPI Exclusive mode error.", "Failed to open in WASAPI Exclusive mode, attempting shared mode.", 1);
 				if (!g_audio->Init(false))
 				{
-					Log("Audio initialization failed", Logger::Error);
+					Log("Audio initialization failed", Logger::Severity::Error);
 					delete g_audio;
 					return false;
 				}
 			}
 			else
 			{
-				Log("Audio initialization failed", Logger::Error);
+				Log("Audio initialization failed", Logger::Severity::Error);
 				delete g_audio;
 				return false;
 			}
@@ -787,7 +788,7 @@ bool Application::m_Init()
 		g_gl = new OpenGL();
 		if (!g_gl->Init(*g_gameWindow, g_gameConfig.GetInt(GameConfigKeys::AntiAliasing)))
 		{
-			Log("Failed to create OpenGL context", Logger::Error);
+			Log("Failed to create OpenGL context", Logger::Severity::Error);
 			return false;
 		}
 #ifdef EMBEDDED
@@ -859,7 +860,7 @@ void Application::m_MainLoop()
 				assert(ch.tickable);
 				if (!ch.tickable->DoInit())
 				{
-					Log("Failed to add IApplicationTickable", Logger::Error);
+					Log("Failed to add IApplicationTickable", Logger::Severity::Error);
 					delete ch.tickable;
 					continue;
 				}
@@ -900,7 +901,7 @@ void Application::m_MainLoop()
 		// Application should end, no more active screens
 		if (!g_tickableChanges.empty() && g_tickables.empty())
 		{
-			Log("No more IApplicationTickables, shutting down", Logger::Warning);
+			Log("No more IApplicationTickables, shutting down", Logger::Severity::Warning);
 			return;
 		}
 		g_tickableChanges.clear();
@@ -1311,7 +1312,7 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
-		Logf("Lua error: %s", Logger::Error, lua_tostring(s, -1));
+		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(s, -1));
 		if (!noError)
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(s, -1), 0);
 		lua_close(s);
@@ -1331,7 +1332,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
 	{
-		Logf("Lua error: %s", Logger::Error, lua_tostring(L, -1));
+		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1));
 		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(L, -1), 0);
 		lua_close(L);
 		assert(false);
@@ -1419,7 +1420,7 @@ void Application::SetGaugeColor(int i, Color c)
 }
 void Application::DiscordError(int errorCode, const char *message)
 {
-	Logf("[Discord] %s", Logger::Warning, message);
+	Logf("[Discord] %s", Logger::Severity::Warning, message);
 }
 
 void Application::DiscordPresenceMenu(String name)
@@ -1592,12 +1593,12 @@ void Application::PlayNamedSample(String name, bool loop)
 		}
 		else
 		{
-			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Severity::Warning, *name);
 		}
 	}
 	else
 	{
-		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		Logf("No sample named \"%s\" found.", Logger::Severity::Warning, *name);
 	}
 }
 void Application::StopNamedSample(String name)
@@ -1611,12 +1612,12 @@ void Application::StopNamedSample(String name)
 		}
 		else
 		{
-			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Severity::Warning, *name);
 		}
 	}
 	else
 	{
-		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		Logf("No sample named \"%s\" found.", Logger::Severity::Warning, *name);
 	}
 }
 int Application::IsNamedSamplePlaying(String name)
@@ -1630,13 +1631,13 @@ int Application::IsNamedSamplePlaying(String name)
 		}
 		else
 		{
-			Logf("Sample \"%s\" exists but is invalid.", Logger::Warning, *name);
+			Logf("Sample \"%s\" exists but is invalid.", Logger::Severity::Warning, *name);
 			return -1;
 		}
 	}
 	else
 	{
-		Logf("No sample named \"%s\" found.", Logger::Warning, *name);
+		Logf("No sample named \"%s\" found.", Logger::Severity::Warning, *name);
 		return -1;
 	}
 }
@@ -2263,10 +2264,10 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("SetSkinSetting", lSetSkinSetting);
 
 		//constants
-		pushIntToTable("LOGGER_INFO", Logger::Severity::Info);
-		pushIntToTable("LOGGER_NORMAL", Logger::Severity::Normal);
-		pushIntToTable("LOGGER_WARNING", Logger::Severity::Warning);
-		pushIntToTable("LOGGER_ERROR", Logger::Severity::Error);
+		pushIntToTable("LOGGER_INFO", (int)Logger::Severity::Info);
+		pushIntToTable("LOGGER_NORMAL", (int)Logger::Severity::Normal);
+		pushIntToTable("LOGGER_WARNING", (int)Logger::Severity::Warning);
+		pushIntToTable("LOGGER_ERROR", (int)Logger::Severity::Error);
 		pushIntToTable("BUTTON_BTA", (int)Input::Button::BT_0);
 		pushIntToTable("BUTTON_BTB", (int)Input::Button::BT_1);
 		pushIntToTable("BUTTON_BTC", (int)Input::Button::BT_2);

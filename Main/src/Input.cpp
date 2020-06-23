@@ -45,7 +45,7 @@ void Input::Init(Graphics::Window& wnd)
 		int32 deviceIndex = g_gameConfig.GetInt(GameConfigKeys::Controller_DeviceID);
 		if(deviceIndex >= m_window->GetNumGamepads())
 		{
-			Logf("Out of range controller [%d], number of available controllers is %d", Logger::Error, deviceIndex, m_window->GetNumGamepads());
+			Logf("Out of range controller [%d], number of available controllers is %d", Logger::Severity::Error, deviceIndex, m_window->GetNumGamepads());
 		}
 		else
 		{

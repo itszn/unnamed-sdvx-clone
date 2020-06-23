@@ -15,7 +15,7 @@ String StringEncodingConverter::ToUTF8(StringEncoding encoding, const char* str,
 	iconv_t conv_d = iconv_open("UTF-8", GetIConvArg(encoding));
 	if (conv_d == (iconv_t)-1)
 	{
-		Logf("Error in StringEncodingConverter::ToUTF8: iconv_open returned -1 for encoding %s", Logger::Error, GetDisplayString(encoding));
+		Logf("Error in StringEncodingConverter::ToUTF8: iconv_open returned -1 for encoding %s", Logger::Severity::Error, GetDisplayString(encoding));
 		return String(str);
 	}
 
@@ -47,7 +47,7 @@ String StringEncodingConverter::ToUTF8(StringEncoding encoding, const char* str,
 			continue;
 		}
 
-		Logf("Error in StringEncodingConverter::ToUTF8: iconv failed with %d for encoding %s", Logger::Error, err, encoding);
+		Logf("Error in StringEncodingConverter::ToUTF8: iconv failed with %d for encoding %s", Logger::Severity::Error, err, encoding);
 		iconv_close(conv_d);
 		return String(str);
 	}
@@ -75,7 +75,7 @@ String StringEncodingConverter::PathnameToUTF8(StringEncoding encoding, struct a
 		return Utility::ConvertToUTF8(pathname_w);
 	}
 
-	Log("Error in StringEncodingConverter::PathnameToUTF8: pathname couldn't be read", Logger::Error);
+	Log("Error in StringEncodingConverter::PathnameToUTF8: pathname couldn't be read", Logger::Severity::Error);
 
 	return String();
 }

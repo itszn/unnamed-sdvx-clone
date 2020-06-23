@@ -27,7 +27,7 @@ inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<Game
 
 			const String& fieldName = Enum_GameConfigKeys::ToString(key);
 
-			Logf("Unable to convert key \"%s\" (%d) into scancode, for config field \"%s\".", Logger::Error, keyName, keycode, fieldName.c_str());
+			Logf("Unable to convert key \"%s\" (%d) into scancode, for config field \"%s\".", Logger::Severity::Error, keyName, keycode, fieldName.c_str());
 			config.Set(key, -1);
 		}
 	}
@@ -91,6 +91,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DistantButtonScale, 1.0f);
 	Set(GameConfigKeys::BTOverFXScale, 0.8f);
 	Set(GameConfigKeys::DisableBackgrounds, false);
+
+	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
 
@@ -200,17 +202,17 @@ void GameConfig::UpdateVersion()
 	// Abnormal cases
 	if (configVersion < 0)
 	{
-		Logf("The version of the config(%d) is invalid.", Logger::Error, configVersion);
+		Logf("The version of the config(%d) is invalid.", Logger::Severity::Error, configVersion);
 		return;
 	}
 	if (configVersion > GameConfig::VERSION)
 	{
 		Logf("The version of the config(%d) is higher than the maximum compatible version(%d). Try updating USC.",
-			Logger::Error, configVersion, GameConfig::VERSION);
+			Logger::Severity::Error, configVersion, GameConfig::VERSION);
 		return;
 	}
 
-	Logf("Updating the version of GameConfig from %d to %d...", Logger::Normal, configVersion, GameConfig::VERSION);
+	Logf("Updating the version of GameConfig from %d to %d...", Logger::Severity::Normal, configVersion, GameConfig::VERSION);
 
 	/* Config Conversion Code Collection */
 

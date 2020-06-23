@@ -36,13 +36,13 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 	audioPath.TrimBack(' ');
 	if(!Path::FileExists(audioPath))
 	{
-		Logf("Audio file for beatmap does not exists at: \"%s\"", Logger::Error, audioPath);
+		Logf("Audio file for beatmap does not exists at: \"%s\"", Logger::Severity::Error, audioPath);
 		return false;
 	}
 	m_music = g_audio->CreateStream(audioPath, true);
 	if(!m_music)
 	{
-		Logf("Failed to load any audio for beatmap \"%s\"", Logger::Error, audioPath);
+		Logf("Failed to load any audio for beatmap \"%s\"", Logger::Severity::Error, audioPath);
 		return false;
 	}
 
@@ -56,7 +56,7 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 	{
 		if(!Path::FileExists(audioPath) || Path::IsDirectory(audioPath))
 		{
-			Logf("FX audio for for beatmap does not exists at: \"%s\" Using real-time effects instead.", Logger::Warning, audioPath);
+			Logf("FX audio for for beatmap does not exists at: \"%s\" Using real-time effects instead.", Logger::Severity::Warning, audioPath);
 		}
 		else
 		{
@@ -86,7 +86,7 @@ bool AudioPlayback::Init(class BeatmapPlayback& playback, const String& mapRootP
 		if (!audioPath.empty()) {
 			if (!Path::FileExists(audioPath))
 			{
-				Logf("Audio for a SwitchAudio effect does not exists at: \"%s\"", Logger::Warning, audioPath);
+				Logf("Audio for a SwitchAudio effect does not exists at: \"%s\"", Logger::Severity::Warning, audioPath);
 			}
 			else
 			{
@@ -183,6 +183,7 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState* object, class Beatm
 		return;
 
 	dsp = m_buttonEffects[index].CreateDSP(m_GetDSPTrack().GetData(), *this);
+	Logf("Set effect: %s", Logger::Severity::Debug, dsp->GetName());
 
 	if(dsp)
 	{
@@ -254,7 +255,7 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 			m_laserDSP = m_laserEffect.CreateDSP(m_GetDSPTrack().GetData(), *this);
 			if(!m_laserDSP)
 			{
-				Logf("Failed to create laser DSP with type %d", Logger::Warning, m_laserEffect.type);
+				Logf("Failed to create laser DSP with type %d", Logger::Severity::Warning, m_laserEffect.type);
 				return;
 			}
 		}

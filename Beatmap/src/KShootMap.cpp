@@ -124,9 +124,9 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 		chartEncoding = StringEncodingDetector::Detect(input, 0, input.Tell());
 
 		if (chartEncoding != StringEncoding::Unknown)
-			Logf("Chart encoding is assumed to be %s", Logger::Info, GetDisplayString(chartEncoding));
+			Logf("Chart encoding is assumed to be %s", Logger::Severity::Info, GetDisplayString(chartEncoding));
 		else
-			Log("Chart encoding couldn't be assumed. (Assuming UTF-8)", Logger::Warning);
+			Log("Chart encoding couldn't be assumed. (Assuming UTF-8)", Logger::Severity::Warning);
 
 		if (chartEncoding != StringEncoding::Unknown)
 		{
@@ -179,7 +179,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 				String type = strings[0];
 				if(strings.size() != 3)
 				{
-					Logf("Invalid define found in ksh map @%d: %s", Logger::Warning, lineNumber, line);
+					Logf("Invalid define found in ksh map @%d: %s", Logger::Severity::Warning, lineNumber, line);
 					continue;
 				}
 
@@ -193,7 +193,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 					String k, v;
 					if(!param.Split("=", &k, &v))
 					{
-						Logf("Invalid parameter in custom effect definition for [%s]@%d: \"%s\"", Logger::Warning, def.typeName, lineNumber, line);
+						Logf("Invalid parameter in custom effect definition for [%s]@%d: \"%s\"", Logger::Severity::Warning, def.typeName, lineNumber, line);
 						continue;
 					}
 					def.parameters.Add(k, v);
@@ -209,7 +209,7 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 				}
 				else
 				{
-					Logf("Unkown define statement in ksh @%d: \"%s\"", Logger::Warning, lineNumber, line);
+					Logf("Unkown define statement in ksh @%d: \"%s\"", Logger::Severity::Warning, lineNumber, line);
 				}
 			}
 			else if(line.Split("=", &k, &v))
@@ -233,17 +233,17 @@ bool KShootMap::Init(BinaryStream& input, bool metadataOnly)
 				tick.fx.Split("|", &tick.fx, &tick.laser);
 				if(tick.buttons.length() != 4)
 				{
-					Logf("Invalid buttons at line %d", Logger::Error, lineNumber);
+					Logf("Invalid buttons at line %d", Logger::Severity::Error, lineNumber);
 					return false;
 				}
 				if(tick.fx.length() != 2)
 				{
-					Logf("Invalid FX buttons at line %d", Logger::Error, lineNumber);
+					Logf("Invalid FX buttons at line %d", Logger::Severity::Error, lineNumber);
 					return false;
 				}
 				if(tick.laser.length() < 2)
 				{
-					Logf("Invalid lasers at line %d", Logger::Error, lineNumber);
+					Logf("Invalid lasers at line %d", Logger::Severity::Error, lineNumber);
 					return false;
 				}
 				if(tick.laser.length() > 2)
@@ -315,7 +315,7 @@ float KShootMap::TranslateLaserChar(char c) const
 	uint32* index = laserCharacters.Find(c);
 	if(!index)
 	{
-		Logf("Invalid laser control point '%c'", Logger::Warning, c);
+		Logf("Invalid laser control point '%c'", Logger::Severity::Warning, c);
 		return 0.0f;
 	}
 	return (float)index[0] / (float)(laserCharacters.size()-1);

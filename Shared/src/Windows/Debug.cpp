@@ -28,7 +28,7 @@ namespace Debug
 		BOOL ret = SymInitialize(processHandle, nullptr, TRUE);
 		if(ret == FALSE)
 		{
-			Logf("SymInitialize failed", Logger::Warning);
+			Logf("SymInitialize failed", Logger::Severity::Warning);
 		}
 
 		String executablePath = Path::GetExecutablePath();

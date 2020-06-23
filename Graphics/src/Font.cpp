@@ -359,7 +359,7 @@ namespace Graphics
 			return false;
 
 		if(!LoadFallbackFont())
-			Log("Failed to load embedded fallback font", Logger::Error);
+			Log("Failed to load embedded fallback font", Logger::Severity::Error);
 
 		return true;
 	}

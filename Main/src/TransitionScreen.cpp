@@ -102,7 +102,7 @@ public:
 			g_application->RemoveTickable(this, true);
 			if (m_tickableToLoad)
 			{
-				Log("[Transition] Finished loading tickable", Logger::Info);
+				Log("[Transition] Finished loading tickable", Logger::Severity::Info);
 				g_application->AddTickable(m_tickableToLoad, this);
 			}
 		}
@@ -134,7 +134,7 @@ public:
 		{
 			g_application->DisposeLua(m_songlua);
 			m_songlua = nullptr;
-			Log("Song transition lua has no reset function.", Logger::Warning);
+			Log("Song transition lua has no reset function.", Logger::Severity::Warning);
 			m_legacy[1] = true;
 		}
 
@@ -143,7 +143,7 @@ public:
 			g_application->DisposeLua(m_lua);
 			m_lua = nullptr;
 			m_legacy[0] = true;
-			Log("Transition lua has no reset function.", Logger::Warning);
+			Log("Transition lua has no reset function.", Logger::Severity::Warning);
 		}
 
 		m_loadingJob = JobBase::CreateLambda([&]() {
@@ -297,7 +297,7 @@ public:
 			lua_pushnumber(lua, deltaTime);
 			if (lua_pcall(lua, 1, 1, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 				m_transition = End;
 				assert(false);
@@ -326,7 +326,7 @@ public:
 			lua_pushnumber(lua, deltaTime);
 			if (lua_pcall(lua, 1, 1, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 				g_jobSheduler->Queue(m_loadingJob);
 				m_transition = Wait;
@@ -355,20 +355,20 @@ public:
 		{
 			if (loadable && !loadable->AsyncFinalize())
 			{
-				Log("[Transition] Failed to finalize loading of tickable", Logger::Error);
+				Log("[Transition] Failed to finalize loading of tickable", Logger::Severity::Error);
 				delete m_tickableToLoad;
 				m_tickableToLoad = nullptr;
 			}
 			if (m_tickableToLoad && !m_tickableToLoad->Init()) //if it isn't null and init fails
 			{
-				Log("[Transition] Failed to initialize tickable", Logger::Error);
+				Log("[Transition] Failed to initialize tickable", Logger::Severity::Error);
 				delete m_tickableToLoad;
 				m_tickableToLoad = nullptr;
 			}
 		}
 		else
 		{
-			Log("[Transition] Failed to load tickable", Logger::Error);
+			Log("[Transition] Failed to load tickable", Logger::Severity::Error);
 			delete m_tickableToLoad;
 			m_tickableToLoad = nullptr;
 		}
@@ -400,7 +400,7 @@ public:
 		{
 			if (!loadable->AsyncLoad())
 			{
-				Log("[Transition] Failed to load tickable", Logger::Error);
+				Log("[Transition] Failed to load tickable", Logger::Severity::Error);
 				return false;
 			}
 		}

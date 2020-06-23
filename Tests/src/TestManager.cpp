@@ -18,7 +18,7 @@ int32 TestManager::RunAll()
 {
 	if(!m_Begin())
 		return -1;
-	Logf("Running tests for %s", Logger::Info, m_moduleName);
+	Logf("Running tests for %s", Logger::Severity::Info, m_moduleName);
 
 	int32 failed = 0;
 	for(int32 i = 0; i < m_tests.size(); i++)
@@ -37,7 +37,7 @@ int32 TestManager::Run(const String& testID)
 	size_t* testToRun = m_testsByName.Find(testID);
 	if(!testToRun)
 	{
-		Logf("Test not found \"%s\"", Logger::Error, testID);
+		Logf("Test not found \"%s\"", Logger::Severity::Error, testID);
 		return 1;
 	}
 	return Run(testToRun[0]);
@@ -46,7 +46,7 @@ int32 TestManager::Run(size_t testIndex)
 {
 	if(testIndex >= m_tests.size())
 	{
-		Logf("Invalid test index: %d", Logger::Error, testIndex);
+		Logf("Invalid test index: %d", Logger::Severity::Error, testIndex);
 		return 1;
 	}
 	if(!m_Begin())
@@ -91,7 +91,7 @@ bool TestManager::m_Begin()
 		Path::DeleteDir(m_testBasePath);
 	if(!Path::CreateDir(m_testBasePath))
 	{
-		Logf("Failed to create folder for intermediate test files: %s", Logger::Info, m_testBasePath);
+		Logf("Failed to create folder for intermediate test files: %s", Logger::Severity::Info, m_testBasePath);
 		return false;
 	}
 
@@ -112,7 +112,7 @@ void TestManager::m_End()
 int32 TestManager::m_RunTest(TestEntry* test)
 {
 	Logger::Get().SetColor(Logger::White);
-	Logger::Get().WriteHeader(Logger::Info);
+	Logger::Get().WriteHeader(Logger::Severity::Info);
 	Logger::Get().Write(Utility::Sprintf("Running test [%s]: ", test->m_name));
 
 	TestContext context(test->m_name, this);
@@ -134,8 +134,8 @@ int32 TestManager::m_RunTest(TestEntry* test)
 			Logger::Get().SetColor(Logger::Red);
 			Logger::Get().Write("Failed\n");
 			if(!tf.expression.empty())
-				Logf("The test expression failed:\n\t%s", Logger::Error, tf.expression);
-			Log("Stack Trace:", Logger::Error);
+				Logf("The test expression failed:\n\t%s", Logger::Severity::Error, tf.expression);
+			Log("Stack Trace:", Logger::Severity::Error);
 
 			size_t i = 0;
 			for(; i < tf.trace.size(); i++)
@@ -150,7 +150,7 @@ int32 TestManager::m_RunTest(TestEntry* test)
 			for(; i < tf.trace.size(); i++)
 			{
 				Debug::StackFrame sf = tf.trace[i];
-				Logf("%016X %s (%d:%s)", Logger::Error, sf.address, sf.function, sf.line, sf.file);
+				Logf("%016X %s (%d:%s)", Logger::Severity::Error, sf.address, sf.function, sf.line, sf.file);
 			}
 			return -1;
 		}

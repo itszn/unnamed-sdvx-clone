@@ -15,12 +15,14 @@ private:
 	FileWriter m_writer;
 	bool m_failedToOpen;
 	std::mutex m_lock;
+	Logger::Severity m_logLevel;
 
 public:
 	Logger_Impl()
 	{
 		// Store the name of the executable
 		moduleName = Path::GetModuleName();
+		m_logLevel = Logger::Severity::Debug;
 		
 #ifdef _WIN32
 		// Store console output handle
@@ -48,17 +50,18 @@ public:
 		m_lock.unlock();
 	}
 
+	void SetLogLevel(Logger::Severity level)
+	{
+		m_logLevel = level;
+	}
+
+	Logger::Severity GetLogLevel() {
+		return m_logLevel;
+	}
+
 	void WriteHeader(Logger::Severity severity)
 	{
-		// Severity strings
-		const char* severityNames[] =
-		{
-			"Normal",
-			"Warning",
-			"Error",
-			"Info",
-		};
-
+		
 		// Format a timestamp string
 		char timeStr[64];
 		time_t currentTime = time(0);
@@ -66,7 +69,7 @@ public:
 		strftime(timeStr, sizeof(timeStr), "%T", currentLocalTime);
 
 		// Write the formated header
-		Write(Utility::Sprintf("[%s][%s] ", timeStr, severityNames[(size_t)severity]));
+		Write(Utility::Sprintf("[%s][%s] ", timeStr, Logger::Enum_Severity::ToString(severity)));
 	}
 	void Write(const String& msg)
 	{
@@ -137,19 +140,24 @@ void Logger::SetColor(Color color)
 }
 void Logger::Log(const String& msg, Logger::Severity severity)
 {
+	if (severity < m_impl->GetLogLevel())
+		return;
 	switch(severity)
 	{
-	case Normal:
+	case Severity::Normal:
 		SetColor(White);
 		break;
-	case Info:
+	case Severity::Info:
 		SetColor(Gray);
 		break;
-	case Warning:
+	case Severity::Warning:
 		SetColor(Yellow);
 		break;
-	case Error:
+	case Severity::Error:
 		SetColor(Red);
+		break;
+	case Severity::Debug:
+		SetColor(Blue);
 		break;
 	}
 
@@ -166,6 +174,10 @@ void Logger::WriteHeader(Severity severity)
 void Logger::Write(const String& msg)
 {
 	m_impl->Write(msg);
+}
+void Logger::SetLogLevel(Logger::Severity level)
+{
+	m_impl->SetLogLevel(level);
 }
 void Log(const String& msg, Logger::Severity severity)
 {

@@ -480,7 +480,7 @@ public:
 			//nk_font_atlas_add_from_file(atlas, Path::Normalize("fonts/settings/mplus-1m-medium.ttf").c_str(), 24, &cfg_jp);
 			int maxSize;
 			glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
-			Logf("System max texture size: %d", Logger::Info, maxSize);
+			Logf("System max texture size: %d", Logger::Severity::Info, maxSize);
 			if (maxSize >= FULL_FONT_TEXTURE_HEIGHT && !g_gameConfig.GetBool(GameConfigKeys::LimitSettingsFont))
 			{
 				nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
@@ -846,6 +846,8 @@ public:
 			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 			ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
 
+			EnumSetting<Logger::Enum_Severity>(GameConfigKeys::LogLevel, "Logging level");
+
 			nk_tree_pop(m_nctx);
 		}
 	}
@@ -919,7 +921,7 @@ public:
 			m_gamepad = g_gameWindow->OpenGamepad(m_gamepadIndex);
 			if (!m_gamepad)
 			{
-				Logf("Failed to open gamepad: %s", Logger::Error, m_gamepadIndex);
+				Logf("Failed to open gamepad: %s", Logger::Severity::Error, m_gamepadIndex);
 				g_gameWindow->ShowMessageBox("Warning", "Could not open selected gamepad.\nEnsure the controller is connected and in the correct mode (if applicable) and selected in the previous menu.", 1);
 				return false;
 			}

@@ -9,7 +9,7 @@ static Vector<FileInfo> _ScanFiles(const String& rootFolder, String extFilter, b
 	Vector<FileInfo> ret;
 	if(!Path::IsDirectory(rootFolder))
 	{
-		Logf("Can't run ScanFiles, \"%s\" is not a folder", Logger::Warning, rootFolder);
+		Logf("Can't run ScanFiles, \"%s\" is not a folder", Logger::Severity::Warning, rootFolder);
 		return ret;
 	}
 

@@ -121,7 +121,7 @@ bool AsyncAssetLoader::Load()
 	{
 		if(!ld->AsyncLoad())
 		{
-			Logf("[AsyncLoad] Load failed on %s", Logger::Error, ld->name);
+			Logf("[AsyncLoad] Load failed on %s", Logger::Severity::Error, ld->name);
 			success = false;
 		}
 	}
@@ -134,7 +134,7 @@ bool AsyncAssetLoader::Finalize()
 	{
 		if(!ld->AsyncFinalize())
 		{
-			Logf("[AsyncLoad] Finalize failed on %s", Logger::Error, ld->name);
+			Logf("[AsyncLoad] Finalize failed on %s", Logger::Severity::Error, ld->name);
 			success = false;
 		}
 	}

@@ -228,12 +228,12 @@ bool Beatmap::m_Serialize(BinaryStream& stream, bool metadataOnly)
 	{
 		if(magic != c_magic)
 		{
-			Log("Invalid map format", Logger::Warning);
+			Log("Invalid map format", Logger::Severity::Warning);
 			return false;
 		}
 		if(version != c_mapVersion)
 		{
-			Logf("Incompatible map version [%d], loader is version %d", Logger::Warning, version, c_mapVersion);
+			Logf("Incompatible map version [%d], loader is version %d", Logger::Severity::Warning, version, c_mapVersion);
 			return false;
 		}
 	}

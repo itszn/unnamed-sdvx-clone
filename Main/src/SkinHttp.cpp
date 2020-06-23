@@ -181,7 +181,7 @@ void SkinHttp::ProcessCallbacks()
 			m_PushResponse(cr.L, cr.r);
 			if (lua_pcall(cr.L, 1, 0, 0) != 0)
 			{
-				Logf("Lua error on calling http callback: %s", Logger::Error, lua_tostring(cr.L, -1));
+				Logf("Lua error on calling http callback: %s", Logger::Severity::Error, lua_tostring(cr.L, -1));
 			}
 			lua_settop(cr.L, 0);
 			luaL_unref(cr.L, LUA_REGISTRYINDEX, cr.callback);

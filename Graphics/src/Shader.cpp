@@ -100,7 +100,7 @@ namespace Graphics
 				int s = 0;
 				glGetShaderInfoLog(programOut, sizeof(infoLogBuffer), &s, infoLogBuffer);
 
-				Logf("Shader program compile log for %s: %s", Logger::Error, m_sourcePath, infoLogBuffer);
+				Logf("Shader program compile log for %s: %s", Logger::Severity::Error, m_sourcePath, infoLogBuffer);
 				return false;
 			}
 
@@ -147,7 +147,7 @@ namespace Graphics
 				int s = 0;
 				glGetProgramInfoLog(programOut, sizeof(infoLogBuffer), &s, infoLogBuffer);
 
-				Logf("Shader program compile log for %s: %s", Logger::Error, m_sourcePath, infoLogBuffer);
+				Logf("Shader program compile log for %s: %s", Logger::Severity::Error, m_sourcePath, infoLogBuffer);
 				return false;
 			}
 

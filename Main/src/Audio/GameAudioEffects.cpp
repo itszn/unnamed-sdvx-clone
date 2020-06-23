@@ -125,7 +125,7 @@ DSP* GameAudioEffect::CreateDSP(class AudioBase* audioTrack, AudioPlayback& play
 
 	if(!ret)
 	{
-		Logf("Failed to create game audio effect for type \"%s\"", Logger::Warning, Enum_EffectType::ToString(type));
+		Logf("Failed to create game audio effect for type \"%s\"", Logger::Severity::Warning, Enum_EffectType::ToString(type));
 	}
 
 	return ret;

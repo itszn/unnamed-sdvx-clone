@@ -32,7 +32,7 @@ bool AudioStreamOgg::Init(Audio* audio, const String& path, bool preload)
 	});
 	if(r != 0)
 	{
-		Logf("ov_open_callbacks failed with code %d", Logger::Error, r);
+		Logf("ov_open_callbacks failed with code %d", Logger::Severity::Error, r);
 		return false;
 	}
 
@@ -196,7 +196,7 @@ int32 AudioStreamOgg::DecodeData_Internal()
 	{
 		// Error
 		m_playing = false;
-		Logf("Ogg Stream error %d", Logger::Warning, r);
+		Logf("Ogg Stream error %d", Logger::Severity::Warning, r);
 		return -1;
 	}
 }

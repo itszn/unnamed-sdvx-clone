@@ -116,10 +116,10 @@ bool AudioStreamWav::Init(Audio* audio, const String& path, bool preload)
 				else if (m_format.nFormat == 2)
 					format = "MS_ADPCM";
 
-				Logf("Sample format: %s", Logger::Info, format);
-				Logf("Channels: %d", Logger::Info, m_format.nChannels);
-				Logf("Sample rate: %d", Logger::Info, m_format.nSampleRate);
-				Logf("Bps: %d", Logger::Info, m_format.nBitsPerSample);
+				Logf("Sample format: %s", Logger::Severity::Info, format);
+				Logf("Channels: %d", Logger::Severity::Info, m_format.nChannels);
+				Logf("Sample rate: %d", Logger::Severity::Info, m_format.nSampleRate);
+				Logf("Bps: %d", Logger::Severity::Info, m_format.nBitsPerSample);
 				if (m_format.nFormat == 2)
 				{
 					uint16 cbSize;
@@ -237,10 +237,10 @@ bool AudioStreamWav::Init(Audio* audio, const String& path, bool preload)
 				else if (m_format.nFormat == 2)
 					format = "MS_ADPCM";
 
-				Logf("Sample format: %s", Logger::Info, format);
-				Logf("Channels: %d", Logger::Info, m_format.nChannels);
-				Logf("Sample rate: %d", Logger::Info, m_format.nSampleRate);
-				Logf("Bps: %d", Logger::Info, m_format.nBitsPerSample);
+				Logf("Sample format: %s", Logger::Severity::Info, format);
+				Logf("Channels: %d", Logger::Severity::Info, m_format.nChannels);
+				Logf("Sample rate: %d", Logger::Severity::Info, m_format.nSampleRate);
+				Logf("Bps: %d", Logger::Severity::Info, m_format.nBitsPerSample);
 				if (m_format.nFormat == 2)
 				{
 					uint16 cbSize;

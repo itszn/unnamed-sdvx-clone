@@ -45,10 +45,10 @@ Test("Beatmap.Loading")
 {
 	Beatmap beatmap = LoadTestBeatmap();
 	BeatmapSettings settings = beatmap.GetMapSettings();
-	Logf("Artist: %s\n\t\tTitle: %s\n\t\tEffector: %s\n\t\tIllust: %s", Logger::Info,
+	Logf("Artist: %s\n\t\tTitle: %s\n\t\tEffector: %s\n\t\tIllust: %s", Logger::Severity::Info,
 		settings.artist, settings.title, settings.effector, settings.illustrator);
-	Logf("Audio File: %s;%s(fx)", Logger::Info, settings.audioNoFX, settings.audioFX);
-	Logf("Jacket File: %s", Logger::Info, settings.jacketPath);
+	Logf("Audio File: %s;%s(fx)", Logger::Severity::Info, settings.audioNoFX, settings.audioFX);
+	Logf("Jacket File: %s", Logger::Severity::Info, settings.jacketPath);
 }
 
 // Test 4/4 single bpm map
@@ -73,7 +73,7 @@ Test("Beatmap.Playback")
 			playback.OnTimingPointChanged.AddLambda([](TimingPoint* obj)
 			{
 				float bpm = (float)obj->GetBPM();
-				Logf("T %.2f BPM %d/%d", Logger::Info, bpm, obj->numerator, obj->denominator);
+				Logf("T %.2f BPM %d/%d", Logger::Severity::Info, bpm, obj->numerator, obj->denominator);
 			});
 		}
 		void Update(float dt) override
@@ -83,7 +83,7 @@ Test("Beatmap.Playback")
 			int32 beatIndex = 0;
 			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
 			if(beatCount > 0)
-				Logf("> %d", Logger::Info, beatIndex);
+				Logf("> %d", Logger::Severity::Info, beatIndex);
 			playback.Update(mapTime);
 		}
 	};
@@ -113,7 +113,7 @@ Test("Beatmap.BPMChanges")
 			playback.OnTimingPointChanged.AddLambda([](TimingPoint* obj)
 			{
 				float bpm = (float)obj->GetBPM();
-				Logf("T %.2f BPM %d/%d", Logger::Info, bpm, obj->numerator, obj->denominator);
+				Logf("T %.2f BPM %d/%d", Logger::Severity::Info, bpm, obj->numerator, obj->denominator);
 			});
 		}
 		void Update(float dt) override
@@ -123,7 +123,7 @@ Test("Beatmap.BPMChanges")
 			int32 beatIndex = 0;
 			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 1);
 			if(beatCount > 0)
-				Logf("> %d", Logger::Info, beatIndex);
+				Logf("> %d", Logger::Severity::Info, beatIndex);
 			playback.Update(mapTime);
 		}
 	};
@@ -159,7 +159,7 @@ Test("Beatmap.DoubleFilter")
 			playback.OnTimingPointChanged.AddLambda([](TimingPoint* obj)
 			{
 				float bpm = (float)obj->GetBPM();
-				Logf("T %.2f BPM %d/%d", Logger::Info, bpm, obj->numerator, obj->denominator);
+				Logf("T %.2f BPM %d/%d", Logger::Severity::Info, bpm, obj->numerator, obj->denominator);
 			});
 			playback.OnObjectEntered.AddLambda([&](ObjectState* obj) {
 				if(obj->type == ObjectType::Laser)
@@ -182,7 +182,7 @@ Test("Beatmap.DoubleFilter")
 			int32 beatIndex = 0;
 			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
 			if(beatCount > 0)
-				Logf("> %d [%f] [%f]", Logger::Info, beatIndex, laserValue[0], laserValue[1]);
+				Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
 			playback.Update(mapTime);
 
 			laserValue[0] = 0.0f;
@@ -267,7 +267,7 @@ Test("Beatmap.SingleFilter")
 			playback.OnTimingPointChanged.AddLambda([](TimingPoint* obj)
 			{
 				float bpm = (float)obj->GetBPM();
-				Logf("T %.2f BPM %d/%d", Logger::Info, bpm, obj->numerator, obj->denominator);
+				Logf("T %.2f BPM %d/%d", Logger::Severity::Info, bpm, obj->numerator, obj->denominator);
 			});
 			playback.OnObjectEntered.AddLambda([&](ObjectState* obj) {
 				if(obj->type == ObjectType::Laser)
@@ -287,7 +287,7 @@ Test("Beatmap.SingleFilter")
 			int32 beatIndex = 0;
 			int32 beatCount = playback.CountBeats(lastTime, mapTime - lastTime, beatIndex, 4);
 			if(beatCount > 0)
-				Logf("> %d [%f] [%f]", Logger::Info, beatIndex, laserValue[0], laserValue[1]);
+				Logf("> %d [%f] [%f]", Logger::Severity::Info, beatIndex, laserValue[0], laserValue[1]);
 			playback.Update(mapTime);
 
 			laserValue[0] = 0.0f;

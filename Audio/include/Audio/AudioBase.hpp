@@ -11,6 +11,7 @@ public:
 	virtual ~DSP();
 	// Process <numSamples> amount of samples in stereo float format
 	virtual void Process(float* out, uint32 numSamples) = 0;
+	virtual const char* GetName() const = 0;
 
 	float mix = 1.0f;
 	uint32 priority = 0;

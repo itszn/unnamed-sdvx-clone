@@ -84,7 +84,7 @@ private:
 		lua_pushnumber(m_lua, (int32)button);
 		if (lua_pcall(m_lua, 1, 1, 0) != 0)
 		{
-			Logf("Lua error on mouse_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on mouse_pressed: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on mouse_pressed", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -117,7 +117,7 @@ private:
 			lua_pushnumber(m_lua, (int32)buttonCode);
 			if (lua_pcall(m_lua, 1, 0, 0) != 0)
 			{
-				Logf("Lua error on button_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on button_pressed: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error on button_pressed", lua_tostring(m_lua, -1), 0);
 			}
 		}
@@ -174,7 +174,7 @@ public:
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}

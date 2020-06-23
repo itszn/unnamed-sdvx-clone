@@ -16,7 +16,7 @@ TCPSocket::TCPSocket()
 	WSADATA wsa_data;
 	if (WSAStartup(MAKEWORD(1, 1), &wsa_data) != 0)
 	{
-		Logf("[Socket] Unable to start winsock!", Logger::Error);
+		Logf("[Socket] Unable to start winsock!", Logger::Severity::Error);
 	}
 #endif
 }
@@ -50,7 +50,7 @@ bool TCPSocket::Connect(String host)
 
 	host = host.substr(0, port_index);
 
-	Logf("[Socket] Connecting to %s:%s", Logger::Info, host.c_str(), port.c_str());
+	Logf("[Socket] Connecting to %s:%s", Logger::Severity::Info, host.c_str(), port.c_str());
 
 	struct addrinfo* result = nullptr;
 	struct addrinfo* ptr = nullptr;
@@ -66,7 +66,7 @@ bool TCPSocket::Connect(String host)
 	int res = getaddrinfo(host.c_str(), port.c_str(), &hints, &result);
 	if (res != 0)
 	{
-		Logf("[Socket] Unable to resolve address %s:%s %d", Logger::Error, host.c_str(), port.c_str(), res);
+		Logf("[Socket] Unable to resolve address %s:%s %d", Logger::Severity::Error, host.c_str(), port.c_str(), res);
 		return false;
 	}
 
@@ -74,14 +74,14 @@ bool TCPSocket::Connect(String host)
 	m_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 	if (invalid_socket(m_socket))
 	{
-		Logf("[Socket] Unable to create socket to address %s port %s", Logger::Error, host.c_str(), port.c_str());
+		Logf("[Socket] Unable to create socket to address %s port %s", Logger::Severity::Error, host.c_str(), port.c_str());
 		return false;
 	}
 
 	// Try to connect to host (blocking)
 	if (connect(m_socket, result->ai_addr, (int)result->ai_addrlen) != 0)
 	{
-		Logf("[Socket] Unable to connect to address %s port %s", Logger::Error, host.c_str(), port.c_str());
+		Logf("[Socket] Unable to connect to address %s port %s", Logger::Severity::Error, host.c_str(), port.c_str());
 		return false;
 	}
 
@@ -188,7 +188,7 @@ void TCPSocket::Close()
 	m_amountRead = 0;
 	m_readingMode = TCPPacketMode::NOT_READING;
 
-	Log("[Socket] Socket closed", Logger::Info);
+	Log("[Socket] Socket closed", Logger::Severity::Info);
 
 	if (m_closeCallback != nullptr)
 	{
@@ -202,7 +202,7 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 	String packetData = String(ptr, length);
 	if (mode != TCPPacketMode::JSON_LINE)
 	{
-		Logf("[Socket] Could not handle packet with mode %u", Logger::Error, mode);
+		Logf("[Socket] Could not handle packet with mode %u", Logger::Severity::Error, mode);
 		return;
 	}
 
@@ -214,14 +214,14 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 
 	if (!jsonPacket.is_object())
 	{
-		Logf("[Socket] Not an object %s", Logger::Error, static_cast<String>(jsonPacket.dump()));
+		Logf("[Socket] Not an object %s", Logger::Severity::Error, static_cast<String>(jsonPacket.dump()));
 		return;
 	}
 
 	String topic = jsonPacket.value("topic", "");
 	if (topic == "")
 	{
-		Logf("[Socket] No topic in %s", Logger::Error, static_cast<String>(jsonPacket.dump()));
+		Logf("[Socket] No topic in %s", Logger::Severity::Error, static_cast<String>(jsonPacket.dump()));
 		return;
 	}
 
@@ -243,7 +243,7 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 			m_pushJsonObject(handler->L, jsonPacket);
 			if (lua_pcall(handler->L, 1, 0, 0) != 0)
 			{
-				Logf("[Socket] Lua error on calling TCP handler: %s", Logger::Error, lua_tostring(handler->L, -1));
+				Logf("[Socket] Lua error on calling TCP handler: %s", Logger::Severity::Error, lua_tostring(handler->L, -1));
 			}
 			lua_settop(handler->L, 0);
 		}
@@ -489,7 +489,7 @@ void TCPSocket::PushFunctions(lua_State* L)
 	{
 		if (lua_pcall(L, 0, 0, 0) != 0)
 		{
-			Logf("[Socket] Lua error on init_tcp: %s", Logger::Error, lua_tostring(L, -1));
+			Logf("[Socket] Lua error on init_tcp: %s", Logger::Severity::Error, lua_tostring(L, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on init_tcp", lua_tostring(L, -1), 0);
 		}
 	}

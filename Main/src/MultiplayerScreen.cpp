@@ -206,7 +206,7 @@ void MultiplayerScreen::m_render(float deltaTime)
 
 	if (lua_pcall(m_lua, 1, 0, 0) != 0)
 	{
-		Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		g_gameWindow->ShowMessageBox("Lua Error in render", lua_tostring(m_lua, -1), 0);
 
 		g_application->RemoveTickable(this);
@@ -379,7 +379,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	// Reset score time before playing
 	m_lastScoreSent = 0;
 
-	Logf("[Multiplayer] Starting game: diff_id=%d mapId=%d path=%s", Logger::Info, chart->id, chart->folderId, chart->path.c_str());
+	Logf("[Multiplayer] Starting game: diff_id=%d mapId=%d path=%s", Logger::Severity::Info, chart->id, chart->folderId, chart->path.c_str());
 
 	// The server tells us if we are playing excessive or not
 	bool is_hard = packet["hard"];
@@ -397,7 +397,7 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	Game* game = Game::Create(this, chart, flags);
 	if (!game)
 	{
-		Log("Failed to start game", Logger::Error);
+		Log("Failed to start game", Logger::Severity::Error);
 		return 0;
 	}
 
@@ -423,7 +423,7 @@ ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String
 	if (hash.length() == 0)
 		return m_getChartByShortPath(path, diffIndex, level, true);
 	
-	Logf("[Multiplayer] looking up song hash '%s' level %u", Logger::Info, *hash, level);
+	Logf("[Multiplayer] looking up song hash '%s' level %u", Logger::Severity::Info, *hash, level);
 	for (auto folder : m_mapDatabase->FindFoldersByHash(hash))
 	{
 		ChartIndex* newChart = NULL;
@@ -449,11 +449,11 @@ ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String
 
 		if (newChart != NULL)
 		{
-			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Severity::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
 			return newChart;
 		}
 	}
-	Log("[Multiplayer] Could not find song by hash, falling back to foldername", Logger::Warning);
+	Log("[Multiplayer] Could not find song by hash, falling back to foldername", Logger::Severity::Warning);
 	return m_getChartByShortPath(path, diffIndex, level, true);
 }
 
@@ -462,7 +462,7 @@ ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String
 // diffIndex can be used as a hint to which song to pick
 ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32* diffIndex, int32 level, bool useHint)
 {
-	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Info, path.c_str(), level, *diffIndex);
+	Logf("[Multiplayer] looking up song '%s' level %u difficulty index hint %u", Logger::Severity::Info, path.c_str(), level, *diffIndex);
 
 	for (auto folder : m_mapDatabase->FindFoldersByPath(path))
 	{
@@ -496,7 +496,7 @@ ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32*
 
 		if (newChart != NULL)
 		{
-			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
+			Logf("[Multiplayer] Found: diff_id=%d mapid=%d index=%u path=%s", Logger::Severity::Info, newChart->id, newChart->folderId, *diffIndex, newChart->path.c_str());
 			return newChart;
 		}
 	}
@@ -508,7 +508,7 @@ ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32*
 		return m_getChartByShortPath(path, diffIndex, level, false);
 	}
 
-	Log("[Multiplayer] Could not find song", Logger::Warning);
+	Log("[Multiplayer] Could not find song", Logger::Severity::Warning);
 	return nullptr;
 }
 
@@ -550,7 +550,7 @@ void MultiplayerScreen::m_changeSelectedRoom(int offset)
 		lua_pushinteger(m_lua, offset);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_diff: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_diff", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -578,7 +578,7 @@ void MultiplayerScreen::m_changeDifficulty(int offset)
 		lua_pushinteger(m_lua, newInd + 1);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
-			Logf("Lua error on set_diff: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on set_diff: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on set_diff", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -593,7 +593,7 @@ void  MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInf
 	path = Path::Normalize(path);
 	if (!Path::FileExists(path))
 	{
-		Logf("Couldn't find map at %s", Logger::Error, path);
+		Logf("Couldn't find map at %s", Logger::Severity::Error, path);
 
 		info = { 0 };
 		return;
@@ -604,7 +604,7 @@ void  MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInf
 	File mapFile;
 	if (!mapFile.OpenRead(path))
 	{
-		Logf("Could not read path for beatmap: %s", Logger::Error, path);
+		Logf("Could not read path for beatmap: %s", Logger::Severity::Error, path);
 		delete newMap;
 		info = { 0 };
 		return;
@@ -819,7 +819,7 @@ void MultiplayerScreen::MousePressed(MouseButton button)
 		lua_pushnumber(m_lua, (int32)button);
 		if (lua_pcall(m_lua, 1, 1, 0) != 0)
 		{
-			Logf("Lua error on mouse_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on mouse_pressed: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on mouse_pressed", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -1018,7 +1018,7 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on key_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on key_pressed: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on key_pressed", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -1112,7 +1112,7 @@ void MultiplayerScreen::OnKeyReleased(SDL_Scancode code)
 		lua_pushnumber(m_lua, static_cast<lua_Number>(SDL_GetKeyFromScancode(code)));
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on key_released: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on key_released: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on key_released", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -1133,7 +1133,7 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 		lua_pushnumber(m_lua, (int32)buttonCode);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on button_pressed: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on button_pressed: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on button_pressed", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -1154,7 +1154,7 @@ void MultiplayerScreen::m_OnButtonReleased(Input::Button buttonCode)
 		lua_pushnumber(m_lua, (int32)buttonCode);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on button_released: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on button_released: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on button_released", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -1172,7 +1172,7 @@ void MultiplayerScreen::m_OnMouseScroll(int32 steps)
 		lua_pushnumber(m_lua, steps);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on advance_selection: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on advance_selection: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error on mouse_scroll", lua_tostring(m_lua, -1), 0);
 		}
 	}
@@ -1399,7 +1399,7 @@ int MultiplayerScreen::lJoinWithPassword(lua_State* L)
 {
 	if (m_screenState == MultiplayerScreenState::ROOM_LIST)
 	{
-		Log("In screen", Logger::Error);
+		Log("In screen", Logger::Severity::Error);
 		m_roomToJoin = luaL_checkstring(L, 2);
 		m_textInput->Reset();
 		m_textInput->SetActive(true);
@@ -1499,7 +1499,7 @@ void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
 		{
 			params = {"", 0, 0};
 
-			Logf("Failed to load preview audio from [%s]", Logger::Warning, audioPath);
+			Logf("Failed to load preview audio from [%s]", Logger::Severity::Warning, audioPath);
 			if (m_previewParams != params)
 				m_previewPlayer.FadeTo(Ref<AudioStream>());
 		}

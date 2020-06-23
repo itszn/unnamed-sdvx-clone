@@ -36,7 +36,7 @@ bool File::OpenRead(const String& path)
 		0, 0);
 	if(h == INVALID_HANDLE_VALUE)
 	{
-		Logf("Failed to open file for reading %s: %s", Logger::Warning, *path, Utility::WindowsFormatMessage(GetLastError()));
+		Logf("Failed to open file for reading %s: %s", Logger::Severity::Warning, *path, Utility::WindowsFormatMessage(GetLastError()));
 		return false;
 	}
 
@@ -56,7 +56,7 @@ bool File::OpenWrite(const String& path, bool append /*= false*/, bool noLog /*=
 	if(h == INVALID_HANDLE_VALUE)
 	{
 		if(!noLog) //if logger isn't ready this will lock up the program
-			Logf("Failed to open file for writing %s: %s", Logger::Warning, *path, Utility::WindowsFormatMessage(GetLastError()));
+			Logf("Failed to open file for writing %s: %s", Logger::Severity::Warning, *path, Utility::WindowsFormatMessage(GetLastError()));
 		return false;
 	}
 	m_impl = new File_Impl(h);

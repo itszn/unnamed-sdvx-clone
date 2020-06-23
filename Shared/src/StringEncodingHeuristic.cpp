@@ -268,5 +268,5 @@ CharClass CP949Heuristic::GetCharClass(const uint16_t ch) const
 // For debugging
 void StringEncodingHeuristic::DebugPrint() const
 {
-	Logf("Score: [%d] / Length: [%d] / Encoding: [%s]", Logger::Info, static_cast<int>(m_score), static_cast<int>(m_count), GetDisplayString(GetEncoding()));
+	Logf("Score: [%d] / Length: [%d] / Encoding: [%s]", Logger::Severity::Info, static_cast<int>(m_score), static_cast<int>(m_count), GetDisplayString(GetEncoding()));
 }

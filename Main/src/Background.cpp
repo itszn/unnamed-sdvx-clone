@@ -74,7 +74,7 @@ private:
 	{
 		if (luaL_dofile(lua, Path::Normalize(path + ".lua").c_str()))
 		{
-			Logf("Lua error: %s", Logger::Warning, lua_tostring(lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Warning, lua_tostring(lua, -1));
 			return false;
 		}
 		String matPath = path + ".fs";
@@ -156,7 +156,7 @@ public:
 		if (m_init(path))
 			return true;
 
-		Logf("Failed to load %s at path: \"%s\" Attempting to load fallback instead.", Logger::Warning, foreground ? "foreground" : "background", folderPath);
+		Logf("Failed to load %s at path: \"%s\" Attempting to load fallback instead.", Logger::Severity::Warning, foreground ? "foreground" : "background", folderPath);
 		path = Path::Absolute("skins/" + skin + "/backgrounds/fallback/");
 		folderPath = path;
 		path = Path::Normalize(path + fname);
@@ -215,7 +215,7 @@ public:
 			lua_pushnumber(lua, deltaTime);
 			if (lua_pcall(lua, 1, 0, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Error, lua_tostring(lua, -1));
+				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(lua, -1));
 				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(lua, -1), 0);
 				errored = true;
 			}

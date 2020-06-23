@@ -1174,11 +1174,11 @@ void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 		int32 guardDelta = m_playback->GetLastTime() - m_buttonGuardTime[(uint32)buttonCode];
 		if (guardDelta < m_bounceGuard && guardDelta >= 0 && m_playback->GetLastTime() > 0.0)
 		{
-			//Logf("Button %d press bounce guard hit at %dms", Logger::Info, buttonCode, m_playback->GetLastTime());
+			//Logf("Button %d press bounce guard hit at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 			return;
 		}
 
-		//Logf("Button %d pressed at %dms", Logger::Info, buttonCode, m_playback->GetLastTime());
+		//Logf("Button %d pressed at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 		m_buttonHitTime[(uint32)buttonCode] = m_playback->GetLastTime();
 		m_buttonGuardTime[(uint32)buttonCode] = m_playback->GetLastTime();
 		ObjectState* obj = m_ConsumeTick((uint32)buttonCode);
@@ -1204,13 +1204,13 @@ void Scoring::m_OnButtonReleased(Input::Button buttonCode)
 		int32 guardDelta = m_playback->GetLastTime() - m_buttonGuardTime[(uint32)buttonCode];
 		if (guardDelta < m_bounceGuard && guardDelta >= 0)
 		{
-			//Logf("Button %d release bounce guard hit at %dms", Logger::Info, buttonCode, m_playback->GetLastTime());
+			//Logf("Button %d release bounce guard hit at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 			return;
 		}
 		m_buttonGuardTime[(uint32)buttonCode] = m_playback->GetLastTime();
 	}
 
-	//Logf("Button %d released at %dms", Logger::Info, buttonCode, m_playback->GetLastTime());
+	//Logf("Button %d released at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 	m_ReleaseHoldObject((uint32)buttonCode);
 }
 

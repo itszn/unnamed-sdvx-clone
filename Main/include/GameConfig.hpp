@@ -21,6 +21,7 @@ DefineEnum(GameConfigKeys,
 		   VSync,
 		   ShowFps,
 		   ForcePortrait,
+	       LogLevel,
 
 		   // Game settings
 		   HiSpeed,

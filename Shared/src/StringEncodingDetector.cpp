@@ -81,7 +81,7 @@ StringEncoding StringEncodingDetector::Detect(BinaryStream& stream, const size_t
 
 		if (read_size < curr_size)
 		{
-			Log("StringEncodingDetector::Detect couldn't read BinaryStream properly", Logger::Error);
+			Log("StringEncodingDetector::Detect couldn't read BinaryStream properly", Logger::Severity::Error);
 			break;
 		}
 

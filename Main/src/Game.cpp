@@ -231,7 +231,7 @@ public:
 
 		if(!Path::FileExists(m_chartPath))
 		{
-			Logf("Couldn't find chart at %s", Logger::Error, m_chartPath);
+			Logf("Couldn't find chart at %s", Logger::Severity::Error, m_chartPath);
 			return false;
 		}
 
@@ -240,7 +240,7 @@ public:
 		// Check failure of above loading attempts
 		if(!m_beatmap)
 		{
-			Log("Failed to load map", Logger::Warning);
+			Log("Failed to load map", Logger::Severity::Warning);
 			return false;
 		}
 
@@ -864,7 +864,7 @@ public:
 		lua_getglobal(m_lua, "gfx"); \
 		lua_getfield(m_lua, -1, "ForceRender"); \
 		if (lua_pcall(m_lua, 0, 0, 0) != 0) { \
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1)); \
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1)); \
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0); \
 			assert(false); \
 		} \
@@ -876,7 +876,7 @@ public:
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -907,7 +907,7 @@ public:
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 			assert(false);
 		}
@@ -920,7 +920,7 @@ public:
 				lua_pushnumber(m_lua, deltaTime);
 				if (lua_pcall(m_lua, 1, 1, 0) != 0)
 				{
-					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 				}
 				m_introCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
@@ -942,7 +942,7 @@ public:
 				lua_pushnumber(m_lua, m_getClearState());
 				if (lua_pcall(m_lua, 2, 2, 0) != 0)
 				{
-					Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
 				}
 				if (lua_isnumber(m_lua, lua_gettop(m_lua)))
@@ -1027,7 +1027,7 @@ public:
 			}
 			if (!m_fxSamples[i])
 			{
-				Logf("Failed to load FX chip sample: \"%s\"", Logger::Warning, samples[i]);
+				Logf("Failed to load FX chip sample: \"%s\"", Logger::Severity::Warning, samples[i]);
 			}
 		}
 
@@ -1503,7 +1503,7 @@ public:
 			lua_pushnumber(m_lua, object->index);
 			if (lua_pcall(m_lua, 4, 0, 0) != 0)
 			{
-				Logf("Lua error on calling laser_slam_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on calling laser_slam_hit: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			}
 		}
 		lua_settop(m_lua, 0);
@@ -1543,7 +1543,7 @@ public:
 				lua_pushboolean(m_lua, delta > 0);
 				if (lua_pcall(m_lua, 1, 0, 0) != 0)
 				{
-					Logf("Lua error on calling near_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+					Logf("Lua error on calling near_hit: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 				}
 			}
 
@@ -1574,7 +1574,7 @@ public:
 			lua_pushnumber(m_lua, delta);
 			if (lua_pcall(m_lua, 3, 0, 0) != 0)
 			{
-				Logf("Lua error on calling button_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on calling button_hit: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			}
 		}
 		lua_settop(m_lua, 0);
@@ -1600,7 +1600,7 @@ public:
 			lua_pushnumber(m_lua, 0);
 			if (lua_pcall(m_lua, 3, 0, 0) != 0)
 			{
-				Logf("Lua error on calling button_hit: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on calling button_hit: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			}
 		}
 		lua_settop(m_lua, 0);
@@ -1612,7 +1612,7 @@ public:
 		lua_pushinteger(m_lua, newCombo);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on calling update_combo: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on calling update_combo: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
 	}
 	void OnScoreChanged(uint32 newScore)
@@ -1621,7 +1621,7 @@ public:
 		lua_pushinteger(m_lua, newScore);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
-			Logf("Lua error on calling update_score: %s", Logger::Error, lua_tostring(m_lua, -1));
+			Logf("Lua error on calling update_score: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
 	}
 
@@ -1725,7 +1725,7 @@ public:
 			lua_pushboolean(m_lua, object->index == 1);
 			if (lua_pcall(m_lua, 1, 0, 0) != 0)
 			{
-				Logf("Lua error on calling laser_alert: %s", Logger::Error, lua_tostring(m_lua, -1));
+				Logf("Lua error on calling laser_alert: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 			}
 		}
 	}
@@ -2213,7 +2213,7 @@ public:
 		if (m_multiplayer != nullptr)
 		{
 			pushStringToTable("user_id", m_multiplayer->GetUserId());
-			Log("[Multiplayer] Started game in multiplayer mode!", Logger::Info);
+			Log("[Multiplayer] Started game in multiplayer mode!", Logger::Severity::Info);
 		}
 
 		lua_pushstring(L, "autoplay");

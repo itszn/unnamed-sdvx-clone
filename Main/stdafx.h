@@ -41,4 +41,4 @@
 using namespace Graphics;
 
 // Asset loading macro
-#define CheckedLoad(__stmt) if(!(__stmt)){Logf("Failed to load asset [%s]", Logger::Error, #__stmt); return false; }
+#define CheckedLoad(__stmt) if(!(__stmt)){Logf("Failed to load asset [%s]", Logger::Severity::Error, #__stmt); return false; }

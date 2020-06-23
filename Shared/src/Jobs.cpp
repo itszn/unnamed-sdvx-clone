@@ -201,13 +201,13 @@ bool JobSheduler::Queue(Job job)
 	// Can't queue jobs twice
 	if(job->IsQueued())
 	{
-		Log("Tried to register a job twice", Logger::Warning);
+		Log("Tried to register a job twice", Logger::Severity::Warning);
 		return false;
 	}
 	// Can't queue finished jobs
 	if(job->IsFinished())
 	{
-		Log("Tried to register a finished job", Logger::Warning);
+		Log("Tried to register a finished job", Logger::Severity::Warning);
 		return false;
 	}
 

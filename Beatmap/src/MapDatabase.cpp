@@ -81,7 +81,7 @@ public:
 		String databasePath = Path::Absolute("maps.db");
 		if(!m_database.Open(databasePath))
 		{
-			Logf("Failed to open database [%s]", Logger::Warning, databasePath);
+			Logf("Failed to open database [%s]", Logger::Severity::Warning, databasePath);
 			assert(false);
 		}
 		m_paused.store(false);
@@ -211,7 +211,7 @@ public:
 						hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 					}
 					else {
-						Logf("Could not open chart file at \"%s\" scores will be lost.", Logger::Warning, diffpath);
+						Logf("Could not open chart file at \"%s\" scores will be lost.", Logger::Severity::Warning, diffpath);
 						continue;
 					}
 
@@ -241,7 +241,7 @@ public:
 						}
 						else
 						{
-							Logf("Could not open replay file at \"%s\" replay data will be lost.", Logger::Warning, score.replayPath);
+							Logf("Could not open replay file at \"%s\" replay data will be lost.", Logger::Severity::Warning, score.replayPath);
 						}
 						scoresToAdd.Add(score);
 						totalScoreCount++;
@@ -1195,7 +1195,7 @@ private:
 					evt.action = Event::Added;
 				}
 
-				Logf("Discovered Chart [%s]", Logger::Info, f.first);
+				Logf("Discovered Chart [%s]", Logger::Severity::Info, f.first);
 				m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Discovered Chart [%s]", f.first));
 				// Try to read map metadata
 				bool mapValid = false;
@@ -1240,7 +1240,7 @@ private:
 				{
 					if(!existing) // Never added
 					{
-						Logf("Skipping corrupted chart [%s]", Logger::Warning, f.first);
+						Logf("Skipping corrupted chart [%s]", Logger::Severity::Warning, f.first);
 						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted chart [%s]", f.first));
 						if(evt.mapData)
 							delete evt.mapData;

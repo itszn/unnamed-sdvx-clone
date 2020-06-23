@@ -8,7 +8,7 @@ DBStatement::DBStatement(const String& statement, Database* db) : m_db(*db)
 	m_compileResult = sqlite3_prepare(m_db.db, *statement, (int)statement.size()+1, &m_stmt, nullptr);
 	if(m_compileResult != SQLITE_OK)
 	{
-		Logf("Failed to compile statement:\n%s\n-> %s", Logger::Error, statement, sqlite3_errmsg(m_db.db));
+		Logf("Failed to compile statement:\n%s\n-> %s", Logger::Severity::Error, statement, sqlite3_errmsg(m_db.db));
 	}
 }
 DBStatement::DBStatement(DBStatement&& other) : m_db(other.m_db)
@@ -29,7 +29,7 @@ bool DBStatement::Step()
 	bool res = m_queryResult >= SQLITE_ROW; // Row or Done
 	if(m_queryResult < SQLITE_ROW)
 	{
-		Logf("Query Failed -> %s", Logger::Warning, sqlite3_errmsg(m_db.db));
+		Logf("Query Failed -> %s", Logger::Severity::Warning, sqlite3_errmsg(m_db.db));
 	}
 	return res;
 }
@@ -40,7 +40,7 @@ bool DBStatement::StepRow()
 	bool res = m_queryResult == SQLITE_ROW; // Row only
 	if(m_queryResult < SQLITE_ROW)
 	{
-		Logf("Query Failed -> %s", Logger::Warning, sqlite3_errmsg(m_db.db));
+		Logf("Query Failed -> %s", Logger::Severity::Warning, sqlite3_errmsg(m_db.db));
 	}
 	return res;
 }
@@ -175,7 +175,7 @@ bool Database::ExecDirect(const String& queryString)
 	char* err;
 	if(sqlite3_exec(db, *queryString, nullptr, nullptr, &err) != SQLITE_OK)
 	{
-		Logf("sqlite3_exec failed -> %s", Logger::Error, err);
+		Logf("sqlite3_exec failed -> %s", Logger::Severity::Error, err);
 		return false;
 	}
 	return true;

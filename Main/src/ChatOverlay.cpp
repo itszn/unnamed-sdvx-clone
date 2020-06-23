@@ -87,7 +87,7 @@ void ChatOverlay::InitNuklearIfNeeded()
 
 		int maxSize;
 		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
-		Logf("System max texture size: %d", Logger::Info, maxSize);
+		Logf("System max texture size: %d", Logger::Severity::Info, maxSize);
 		if (maxSize >= FULL_FONT_TEXTURE_HEIGHT && !g_gameConfig.GetBool(GameConfigKeys::LimitSettingsFont))
 		{
 			nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);

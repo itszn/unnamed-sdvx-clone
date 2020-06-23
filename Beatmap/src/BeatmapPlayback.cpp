@@ -29,7 +29,7 @@ bool BeatmapPlayback::Reset(MapTime startTime)
 	if (m_timingPoints.size() == 0)
 		return false;
 
-	Logf("Resetting BeatmapPlayback with StartTime = %d", Logger::Info, startTime);
+	Logf("Resetting BeatmapPlayback with StartTime = %d", Logger::Severity::Info, startTime);
 	m_playbackTime = startTime;
 	m_currentObj = &m_objects.front();
 	m_currentAlertObj = &m_objects.front();

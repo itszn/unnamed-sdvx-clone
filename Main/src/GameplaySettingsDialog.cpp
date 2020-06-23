@@ -225,7 +225,7 @@ void GameplaySettingsDialog::Render(float deltaTime)
     lua_pushboolean(m_lua, m_active);
     if (lua_pcall(m_lua, 2, 0, 0) != 0)
     {
-        Logf("Lua error: %s", Logger::Error, lua_tostring(m_lua, -1));
+        Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
         g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
         assert(false);
     }

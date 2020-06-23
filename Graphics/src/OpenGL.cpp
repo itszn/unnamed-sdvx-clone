@@ -84,13 +84,13 @@ namespace Graphics
 		m_impl->context = SDL_GL_CreateContext(sdlWnd);
 		if(!m_impl->context)
 		{
-            Logf("Failed to create OpenGL context: %s", Logger::Error, SDL_GetError());
+            Logf("Failed to create OpenGL context: %s", Logger::Severity::Error, SDL_GetError());
             return false;
 		}
 
 		if (SDL_GL_MakeCurrent(sdlWnd, m_impl->context) < 0)
 		{
-			Logf("Failed to set OpenGL context to current: %s", Logger::Error, SDL_GetError());
+			Logf("Failed to set OpenGL context to current: %s", Logger::Severity::Error, SDL_GetError());
 			return false;
 		}
 
@@ -124,17 +124,17 @@ namespace Graphics
 		// Setup GL debug messages to go to the console
 		if(glDebugMessageCallback && glDebugMessageControl)
 		{
-			Log("OpenGL Logging on.", Logger::Info);
+			Log("OpenGL Logging on.", Logger::Severity::Info);
 			glDebugMessageCallback(GLDebugProc, 0);
 			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE);
 			glDebugMessageControl(GL_DONT_CARE, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 0, 0, GL_FALSE);
 		}
 #endif
 
-		Logf("OpenGL Version: %s", Logger::Info, glGetString(GL_VERSION));
-		Logf("OpenGL Shading Language Version: %s", Logger::Info, glGetString(GL_SHADING_LANGUAGE_VERSION));
-		Logf("OpenGL Renderer: %s", Logger::Info, glGetString(GL_RENDERER));
-		Logf("OpenGL Vendor: %s", Logger::Info, glGetString(GL_VENDOR));
+		Logf("OpenGL Version: %s", Logger::Severity::Info, glGetString(GL_VERSION));
+		Logf("OpenGL Shading Language Version: %s", Logger::Severity::Info, glGetString(GL_SHADING_LANGUAGE_VERSION));
+		Logf("OpenGL Renderer: %s", Logger::Severity::Info, glGetString(GL_RENDERER));
+		Logf("OpenGL Vendor: %s", Logger::Severity::Info, glGetString(GL_VENDOR));
 
 		InitResourceManagers();
 
@@ -201,13 +201,13 @@ namespace Graphics
 		{
 		case DEBUG_SEVERITY_MEDIUM:
 		case DEBUG_SEVERITY_HIGH:
-			mySeverity = Logger::Warning;
+			mySeverity = Logger::Severity::Warning;
 			break;
 		default:
-			mySeverity = Logger::Info;
+			mySeverity = Logger::Severity::Info;
 			break;
 		}
 		String msgString = String(message, message + length);
-		Logf("GLDebug: %s", Logger::Info, msgString);
+		Logf("GLDebug: %s", Logger::Severity::Info, msgString);
 	}
 }
