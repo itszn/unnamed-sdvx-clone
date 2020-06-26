@@ -644,6 +644,14 @@ bool Application::m_Init()
 		}
 	}
 
+	// Set the locale so that functions such as `fopen` use UTF-8.
+	{
+		String prevLocale = setlocale(LC_CTYPE, nullptr);
+		setlocale(LC_CTYPE, ".UTF-8");
+
+		Logf("The locale was changed from %s to %s", Logger::Severity::Info, prevLocale.c_str(), setlocale(LC_CTYPE, nullptr));
+	}
+
 	// Load config
 	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Severity::Warning);
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
