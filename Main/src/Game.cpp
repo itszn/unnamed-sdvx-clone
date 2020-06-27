@@ -1365,7 +1365,7 @@ public:
 		//RenderQueue& debugRq = g_guiRenderer->Begin();
 		auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = Color::White)
 		{
-			g_application->FastText(text, pos.x, pos.y, 12, 0);
+			g_application->FastText(text, pos.x, pos.y, 12, 0, color);
 			return Vector2(0, 12);
 		};
 
@@ -1385,7 +1385,7 @@ public:
 
 		float currentBPM = (float)(60000.0 / tp.beatDuration);
 		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f", currentBPM), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Time Signature: %d/4", tp.numerator), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Time Signature: %d/%d", tp.numerator, tp.denominator), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Laser Effect Mix: %f", m_audioPlayback.GetLaserEffectMix()), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
@@ -1416,7 +1416,6 @@ public:
 			if(hitsShown++ > 16) // Max of 16 entries to display
 				break;
 
-
 			static Color hitColors[] = {
 				Color::Red,
 				Color::Yellow,
@@ -1430,7 +1429,7 @@ public:
 			MultiObjectState* obj = *(*it)->object;
 			if(obj->type == ObjectType::Single)
 			{
-				text = Utility::Sprintf("[%d] %d", obj->button.index, (*it)->delta);
+				text = Utility::Sprintf("Button [%d] %d", obj->button.index, (*it)->delta);
 			}
 			else if(obj->type == ObjectType::Hold)
 			{
