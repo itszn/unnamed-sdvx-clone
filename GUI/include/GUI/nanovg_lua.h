@@ -17,7 +17,7 @@ struct Label
 	int size;
 	float scale;
 	FontRes::TextOptions opt;
-	Graphics::Font* font;
+	Graphics::Font font;
 	String content;
 };
 
@@ -55,7 +55,7 @@ struct GUIState
 	Map<lua_State*, int> nextPaintId;
 	Map<String, Graphics::Font> fontCahce;
 	Map<lua_State*, Set<int>> vgImages;
-	Graphics::Font* currentFont;
+	Graphics::Font currentFont;
 	Vector4 fillColor;
 	int textAlign;
 	int fontSize;
@@ -83,7 +83,7 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 		Graphics::Font* cached = g_guiState.fontCahce.Find(name);
 		if (cached)
 		{
-			g_guiState.currentFont = cached;
+			g_guiState.currentFont = *cached;
 		}
 		else
 		{
@@ -103,7 +103,7 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 				return 0;
 			}
 			g_guiState.fontCahce.Add(name, newFont);
-			g_guiState.currentFont = g_guiState.fontCahce.Find(name);
+			g_guiState.currentFont = *g_guiState.fontCahce.Find(name);
 		}
 	}
 
@@ -504,7 +504,7 @@ static int lCreateLabel(lua_State* L /*const char* text, int size, bool monospac
 	int monospace = luaL_checkinteger(L, 3);
 
 	Label newLabel;
-	newLabel.text = (*g_guiState.currentFont)->CreateText(Utility::ConvertToWString(text), 
+	newLabel.text = g_guiState.currentFont->CreateText(Utility::ConvertToWString(text), 
 		size * g_guiState.t.GetScale().y,
 		(FontRes::TextOptions)monospace);
 	newLabel.scale = g_guiState.t.GetScale().y;
@@ -524,7 +524,7 @@ static int lUpdateLabel(lua_State* L /*int labelId, const char* text, int size*/
 	const char* text = luaL_checkstring(L, 2);
 	int size = luaL_checkinteger(L, 3);
 	Label updated;
-	updated.text = (*g_guiState.currentFont)->CreateText(Utility::ConvertToWString(text), size * g_guiState.t.GetScale().y);
+	updated.text = g_guiState.currentFont->CreateText(Utility::ConvertToWString(text), size * g_guiState.t.GetScale().y);
 	updated.size = size;
 	updated.scale = g_guiState.t.GetScale().y;
 	updated.content = text;
@@ -553,7 +553,7 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	if (fabsf(te.scale - g_guiState.t.GetScale().y) > 0.001)
 	{
 		te.scale = g_guiState.t.GetScale().y;
-		te.text = (*te.font)->CreateText(Utility::ConvertToWString(te.content), Math::Round((float)te.size * te.scale));
+		te.text = te.font->CreateText(Utility::ConvertToWString(te.content), Math::Round((float)te.size * te.scale));
 		g_guiState.textCache[L][labelId] = te;
 	}
 	float mwScale = 1.0f;
@@ -720,7 +720,7 @@ static int lFastText(lua_State* L /* String utf8string, float x, float y */)
 	y = luaL_checknumber(L, 3);
 
 	WString text = Utility::ConvertToWString(s);
-	Text te = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
+	Text te = g_guiState.currentFont->CreateText(text, g_guiState.fontSize);
 	Transform textTransform = g_guiState.t;
 	textTransform *= Transform::Translation(Vector2(x, y));
 
@@ -1016,7 +1016,7 @@ static int lFastTextSize(lua_State* L /* char* text */)
 	s = luaL_checkstring(L, 1);
 
 	WString text = Utility::ConvertToWString(s);
-	Text l = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
+	Text l = g_guiState.currentFont->CreateText(text, g_guiState.fontSize);
 	lua_pushnumber(L, l->size.x);
 	lua_pushnumber(L, l->size.y);
 	return 2;

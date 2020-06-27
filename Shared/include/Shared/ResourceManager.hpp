@@ -38,8 +38,7 @@ public:
 	// when the object is no longer referenced the resource manager will collect it when the next garbage collection triggers
 	const Ref<T> Register(T* pObject)
 	{
-		Ref<T> ret = Ref<T>();
-		ret.reset(pObject);
+		Ref<T> ret(pObject);
 		m_lock.lock();
 		m_objects.push_back(ret);
 		m_lock.unlock();

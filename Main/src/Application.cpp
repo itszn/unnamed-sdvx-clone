@@ -1091,14 +1091,16 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
+	//clear fonts before freeing library
+	for (auto& f : g_guiState.fontCahce)
+	{
+		f.second.reset();
+	}
+	g_guiState.currentFont.reset();
+
 	Graphics::FontRes::FreeLibrary();
 
 	Discord_Shutdown();
-
-	for(auto& id : g_guiState.nvgFonts)
-	{
-		
-	}
 
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);

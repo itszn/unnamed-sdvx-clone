@@ -198,8 +198,11 @@ namespace Graphics
 				delete s.second;
 			}
 			m_sizes.clear();
-			if (m_face)
+			if (m_face && FT_Done_Face)
+			{
 				FT_Done_Face(m_face);
+				m_face = nullptr;
+			}
 		}
 		bool Init(const String& assetPath)
 		{
