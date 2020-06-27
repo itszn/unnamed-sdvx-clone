@@ -74,7 +74,6 @@ namespace Graphics
 		// Returns the category that has space for the requested size
 		Category& AssignCategory(Vector2i requestedSize)
 		{
-			int32 mostSpace = 0;
 			Category* dstCat = nullptr;
 
 			while(true)
@@ -88,7 +87,6 @@ namespace Graphics
 					if(remainingY > requestedSize.y)
 					{
 						// This category is OK
-						mostSpace = remainingY;
 						dstCat = &cat;
 						break;
 					}
@@ -160,7 +158,6 @@ namespace Graphics
 
 		void CopySubImage(Image dst, Image src, Vector2i dstPos)
 		{
-			Vector2i dstSize = dst->GetSize();
 			Vector2i srcSize = src->GetSize();
 
 			Colori* pSrc = src->GetBits();

@@ -170,7 +170,11 @@ namespace Graphics
 		if(newCapacity > 0)
 		{
 			m_particles = new Particle[m_poolSize];
-			memset(m_particles, 0, m_poolSize * sizeof(Particle));
+			for (size_t i = 0; i < m_poolSize; i++)
+			{
+				m_particles[i] = Particle();
+			}
+			
 		}
 		else
 		{

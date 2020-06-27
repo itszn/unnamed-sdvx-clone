@@ -177,13 +177,13 @@ namespace Graphics
 
 	class Font_Impl : public FontRes
 	{
+		OpenGL* m_gl;
 		FT_Face m_face;
 		Buffer m_data;
 
 		Map<uint32, FontSize*> m_sizes;
 		uint32 m_currentSize = 0;
 
-		OpenGL* m_gl;
 
 		friend class TextRes;
 	public:
@@ -198,7 +198,7 @@ namespace Graphics
 				delete s.second;
 			}
 			m_sizes.clear();
-			if (m_face && FT_Done_Face)
+			if (m_face)
 			{
 				FT_Done_Face(m_face);
 				m_face = nullptr;

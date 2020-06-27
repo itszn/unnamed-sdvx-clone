@@ -733,6 +733,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			{
 				float vol = (float)atol(*p.second) / 100.0f;
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = vol;

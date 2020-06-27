@@ -66,7 +66,7 @@ struct GUIState
 	NVGcolor imageTint;
 	Rect scissor;
 	Vector2i resolution;
-	Map<int, ImageAnimation*> animations;
+	Map<int, Ref<ImageAnimation>> animations;
 	int scissorOffset;
 	Vector<Transform> transformStack;
 	Vector<int> nvgFonts;
@@ -128,7 +128,7 @@ static int lBeginPath(lua_State* L)
 }
 
 
-static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
+static void AnimationLoader(Vector<FileInfo> files, Ref<ImageAnimation> ia)
 {
 	ia->FrameCount = files.size();
 	files.Sort([](FileInfo& a, FileInfo& b) {
@@ -199,7 +199,7 @@ static int lTickAnimation(lua_State* L)
 	if (!g_guiState.animations.Contains(key))
 		return 0;
 
-	ImageAnimation* ia = g_guiState.animations.at(key);
+	Ref<ImageAnimation> ia = g_guiState.animations.at(key);
 	if (!ia->LoadComplete.load())
 		return 0;
 
@@ -243,7 +243,7 @@ static int LoadAnimation(lua_State* L, const char* path, float frametime, int lo
 		return -1;
 
 	int key = nvgCreateImage(g_guiState.vg, *files[0].fullPath, 0);
-	ImageAnimation* ia = new ImageAnimation();
+	Ref<ImageAnimation> ia = std::make_shared<ImageAnimation>();
 	ia->Compressed = compressed;
 	ia->TimesToLoop = loopcount;
 	ia->LoopCounter = 0;
@@ -252,7 +252,7 @@ static int LoadAnimation(lua_State* L, const char* path, float frametime, int lo
 	ia->Cancelled.store(false);
 	ia->State = L;
 	ia->JobThread = new Thread(AnimationLoader, files, ia);
-	g_guiState.animations[key] = ia;
+	g_guiState.animations.insert(std::make_pair(key, ia));
 
 	return key;
 }
@@ -261,7 +261,7 @@ static int lResetAnimation(lua_State* L)
 {
 	int key;
 	key = luaL_checkinteger(L, 1);
-	ImageAnimation* ia = g_guiState.animations[key];
+	Ref<ImageAnimation> ia = g_guiState.animations.at(key);
 	ia->CurrentFrame = 0;
 	ia->Timer = 0;
 	ia->LoopCounter = 0;
@@ -440,10 +440,10 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	alpha = luaL_checknumber(L, 6);
 	angle = luaL_checknumber(L, 7);
 
-	int imgH, imgW;
+	int imgH = -1, imgW = -1;
 	nvgImageSize(g_guiState.vg, image, &imgW, &imgH);
-	float scaleX, scaleY;
-	float tr[6];
+	float scaleX = 1.f, scaleY = 1.f;
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
 	scaleX = w / imgW;
 	scaleY = h / imgH;
@@ -1056,11 +1056,11 @@ static int DisposeGUI(lua_State* state)
 			anim.second->JobThread->join();
 		anim.second->Frames.clear();
 		anim.second->FrameData.clear();
+		delete anim.second->JobThread;
 		nvgDeleteImage(g_guiState.vg, anim.first);
 	}
 	for (int k : keysToDelete)
 	{
-		delete g_guiState.animations[k];
 		g_guiState.animations.erase(k);
 	}
 

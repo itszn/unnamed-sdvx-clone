@@ -1098,7 +1098,6 @@ void Application::m_Cleanup()
 	}
 	g_guiState.currentFont.reset();
 
-	Graphics::FontRes::FreeLibrary();
 
 	Discord_Shutdown();
 
@@ -1108,6 +1107,7 @@ void Application::m_Cleanup()
 	nvgDeleteGL3(g_guiState.vg);
 #endif
 
+	Graphics::FontRes::FreeLibrary();
 	if (m_updateThread.joinable())
 		m_updateThread.join();
 

@@ -50,8 +50,8 @@ namespace Graphics
 		}
 
 		ShaderType shaderType;
-		uint32 location;
 		uint32 paramType;
+		uint32 location;
 	};
 	struct BoundParameterList : public Vector<BoundParameterInfo>
 	{
