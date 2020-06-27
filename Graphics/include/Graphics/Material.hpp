@@ -96,5 +96,5 @@ namespace Graphics
 
 	typedef Ref<MaterialRes> Material;
 
-	DEFINE_RESOURCE_TYPE(Material, MaterialRes);
+	DEFINE_RESOURCE_TYPE(Material, MaterialRes)
 }

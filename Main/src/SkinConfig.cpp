@@ -109,7 +109,7 @@ SkinConfig::SkinConfig(String skin)
 				newsetting.selectionSetting.def = strdup(*def);
 				newsetting.selectionSetting.numOptions = values.at("values").size();
 				newsetting.selectionSetting.options = new String[newsetting.selectionSetting.numOptions];
-				for (size_t i = 0; i < newsetting.selectionSetting.numOptions; i++)
+				for (int i = 0; i < newsetting.selectionSetting.numOptions; i++)
 				{
 					values.at("values").at(i).get_to(newsetting.selectionSetting.options[i]);
 				}
@@ -142,6 +142,7 @@ SkinConfig::SkinConfig(String skin)
 				break;
 
 			case SkinSetting::Type::Color:
+			{
 				values.at("default").get_to(def);
 				ColorConfigEntry ce;
 				ce.FromString(def);
@@ -154,6 +155,9 @@ SkinConfig::SkinConfig(String skin)
 				{
 					newsetting.colorSetting.hsv = false;
 				}
+			}
+				break;
+			default:
 				break;
 			}
 			m_settings.Add(newsetting);
@@ -242,6 +246,8 @@ void SkinConfig::InitDefaults()
 			break;
 		case SkinSetting::Type::Color:
 			Set(setting.key, *setting.colorSetting.def);
+			break;
+			default:
 			break;
 		}
 

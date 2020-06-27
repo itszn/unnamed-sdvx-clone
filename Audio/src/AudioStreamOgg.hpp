@@ -11,8 +11,7 @@ protected:
 	Vector<float> m_pcm;
 	int64 m_playPos;
 
-	AudioStreamOgg() = default;
-	~AudioStreamOgg();
+
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	void SetPosition_Internal(int32 pos) override;
 	int32 GetStreamPosition_Internal() override;
@@ -25,5 +24,7 @@ private:
 	static int m_Seek(AudioStreamOgg* self, int64 offset, int whence);
 	static long m_Tell(AudioStreamOgg* self);
 public:
+	AudioStreamOgg() = default;
+	~AudioStreamOgg();
 	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };

@@ -69,6 +69,7 @@ struct GUIState
 	Map<int, ImageAnimation*> animations;
 	int scissorOffset;
 	Vector<Transform> transformStack;
+	Vector<int> nvgFonts;
 };
 
 
@@ -88,7 +89,7 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 		{
 			String path = filename;
 			Graphics::Font newFont = FontRes::Create(g_gl, path);
-			if (!newFont.IsValid())
+			if (!newFont)
 			{
 				lua_Debug ar;
 				lua_getstack(L, 1, &ar);
@@ -112,8 +113,8 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 			nvgFontFace(g_guiState.vg, name);
 			return 0;
 		}
-
-		nvgFontFaceId(g_guiState.vg, nvgCreateFont(g_guiState.vg, name, filename));
+		int fontId = nvgCreateFont(g_guiState.vg, name, filename);
+		nvgFontFaceId(g_guiState.vg, fontId);
 		nvgAddFallbackFont(g_guiState.vg, name, "fallback");
 	}
 	return 0;
@@ -140,7 +141,7 @@ static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
 
 	if (ia->Compressed.load())
 	{
-		for (size_t i = 0; i < ia->FrameCount; i++)
+		for (int i = 0; i < ia->FrameCount; i++)
 		{
 			if (ia->Cancelled.load())
 				break;
@@ -155,7 +156,7 @@ static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
 		ia->NextImage = ImageRes::Create(ia->FrameData[0]);
 	}
 	else {
-		for (size_t i = 0; i < ia->FrameCount; i++)
+		for (int i = 0; i < ia->FrameCount; i++)
 		{
 			if (ia->Cancelled.load())
 				break;
@@ -335,11 +336,6 @@ static int lText(lua_State* L /*const char* s, float x, float y*/)
 	//}
 	return 0;
 }
-static int guiText(const char* s, float x, float y)
-{
-	nvgText(g_guiState.vg, x, y, s, 0);
-	return 0;
-}
 
 static int lFontFace(lua_State* L /*const char* s*/)
 {
@@ -429,8 +425,13 @@ static int lSetImageTint(lua_State* L /*int r, int g, int b*/)
 
 static int lImageRect(lua_State* L /*float x, float y, float w, float h, int image, float alpha, float angle*/)
 {
-	float x, y, w, h, alpha, angle;
-	int image;
+	float x = 0.f;
+	float y = 0.f;
+	float w = 0.f;
+	float h = 0.f;
+	float alpha = 1.f;
+	float angle = 0.f;
+	int image = -1;
 	x = luaL_checknumber(L, 1);
 	y = luaL_checknumber(L, 2);
 	w = luaL_checknumber(L, 3);

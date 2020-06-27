@@ -454,7 +454,7 @@ public:
 			std::shuffle(swaps.begin(), swaps.end(), std::default_random_engine((int)(1000 * g_application->GetAppTime())));
 
 			bool unchanged = true;
-			for (size_t i = 0; i < 4; i++)
+			for (int i = 0; i < 4; i++)
 			{
 				if (swaps[i] != i)
 				{
@@ -555,14 +555,14 @@ public:
 		{
 			if(m_laserFollowEmitters[i])
 			{
-				m_laserFollowEmitters[i].Release();
+				m_laserFollowEmitters[i].reset();
 			}
 		}
 		for(uint32 i = 0; i < 6; i++)
 		{
 			if(m_holdEmitters[i])
 			{
-				m_holdEmitters[i].Release();
+				m_holdEmitters[i].reset();
 			}
 		}
 
@@ -595,7 +595,7 @@ public:
 			else
 			{
 				if(m_lockMouse)
-					m_lockMouse.Release();
+					m_lockMouse.reset();
 				g_gameWindow->SetCursorVisible(true);
 			}
 		}
@@ -803,8 +803,7 @@ public:
 		glFlush();
 
 		// Set laser follow particle visiblity
-		if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
-			(particleMaterial.GetData() && basicParticleTexture.GetData()))
+		if (particleMaterial &&	particleMaterial)
 		{
 			for (uint32 i = 0; i < 2; i++)
 			{
@@ -824,7 +823,7 @@ public:
 				{
 					if (m_laserFollowEmitters[i])
 					{
-						m_laserFollowEmitters[i].Release();
+						m_laserFollowEmitters[i].reset();
 					}
 				}
 			}
@@ -846,7 +845,7 @@ public:
 				{
 					if (m_holdEmitters[i])
 					{
-						m_holdEmitters[i].Release();
+						m_holdEmitters[i].reset();
 					}
 				}
 
@@ -884,8 +883,7 @@ public:
 		NVG_FLUSH();
 
 		// Render particle effects last
-		if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
-			(particleMaterial.GetData() && basicParticleTexture.GetData())) 
+		if (particleMaterial && basicParticleTexture) 
 		{
 			RenderParticles(rs, deltaTime);
 			glFlush();
@@ -1015,7 +1013,7 @@ public:
 
 		auto samples = m_beatmap->GetSamplePaths();
 		m_fxSamples = new Sample[samples.size()];
-		for (int i = 0; i < samples.size(); i++)
+		for (size_t i = 0; i < samples.size(); i++)
 		{
 			if (default_sfx.Contains(samples[i]))
 			{
@@ -1407,8 +1405,6 @@ public:
 		if(m_scoring.autoplay)
 			textPos.y += RenderText("Autoplay enabled", textPos, Color::Blue).y;
 
-		// List recent hits and their delay
-		Vector2 tableStart = textPos;
 		uint32 hitsShown = 0;
 		// Show all hit debug info on screen (up to a maximum)
 		for(auto it = m_scoring.hitStats.rbegin(); it != m_scoring.hitStats.rend(); it++)
@@ -1554,8 +1550,7 @@ public:
 			// Create hit effect particle
 			Color hitColor = (buttonIdx < 4) ? Color::White : Color::FromHSV(20, 0.7f, 1.0f);
 			float hitWidth = (buttonIdx < 4) ? m_track->buttonWidth : m_track->fxbuttonWidth;
-			if ((particleMaterial.IsValid() && basicParticleTexture.IsValid()) &&
-				(particleMaterial.GetData() && basicParticleTexture.GetData())) 
+			if (particleMaterial && basicParticleTexture) 
 			{
 				Ref<ParticleEmitter> emitter = CreateHitEmitter(hitColor, hitWidth);
 				emitter->position.x = m_track->GetButtonPlacement(buttonIdx);

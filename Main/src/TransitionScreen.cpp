@@ -347,7 +347,7 @@ public:
 		}
 	}
 
-	void OnFinished(Job job)
+	void OnFinished(Job& job)
 	{
 		// Finalize?
 		IAsyncLoadable *loadable = dynamic_cast<IAsyncLoadable *>(m_tickableToLoad);

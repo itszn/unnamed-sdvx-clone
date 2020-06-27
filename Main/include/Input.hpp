@@ -4,7 +4,7 @@
 DefineEnum(InputDevice,
 	Keyboard,
 	Mouse,
-	Controller);
+	Controller)
 
 typedef Ref<int32> MouseLockHandle;
 
@@ -27,7 +27,7 @@ public:
 		LS_1Neg, // Right laser-	(<----|)
 		LS_1Pos, // Right laser+
 		Back,
-		Length);
+		Length)
 
 	~Input();
 	void Init(Graphics::Window& wnd);

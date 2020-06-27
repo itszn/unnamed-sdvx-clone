@@ -15,6 +15,20 @@ void PanDSP::Process(float* out, uint32 numSamples)
 	}
 }
 
+BQFDSP::BQFDSP()
+{
+	for (size_t i = 0; i < 2; i++)
+	{
+		for (size_t j = 0; j < order; j++)
+		{
+			za[i][j] = 0.f;
+			zb[i][j] = 0.f;
+		}
+		
+	}
+	
+}
+
 void BQFDSP::Process(float* out, uint32 numSamples)
 {
 	for(uint32 c = 0; c < 2; c++)

@@ -331,7 +331,7 @@ namespace Graphics
 			ret->mesh->SetData(vertices);
 			ret->mesh->SetPrimitiveType(PrimitiveType::TriangleList);
 
-			Text textObj = Ref<TextRes>(ret);
+			Text textObj = Utility::MakeRef(ret);
 			// Insert into cache
 			size->cache.AddText(str, textObj);
 			return textObj;

@@ -42,6 +42,6 @@ Ref<AudioStream> AudioStream::Create(Audio* audio, const String& path, bool prel
 {
 	Ref<AudioStream> impl = FindImplementation(audio, path, preload);
 	if(impl)
-		audio->GetImpl()->Register(impl.GetData());
+		audio->GetImpl()->Register(impl.get());
 	return impl;
 }

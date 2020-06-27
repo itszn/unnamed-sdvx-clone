@@ -101,7 +101,7 @@ namespace Graphics
 		{
 			m_shaders[(size_t)t] = shader;
 
-			if (!shader.IsValid())
+			if (shader.get() == nullptr)
 				return;
 
 			uint32 handle = shader->Handle();

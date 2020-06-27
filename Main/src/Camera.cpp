@@ -279,7 +279,7 @@ void Camera::SetSlowTilt(bool tilt)
 
 void Camera::SetSlamAmount(uint32 index, float amount)
 {
-	assert(index >= 0 && index <= 1);
+	assert(index <= 1);
 	if (m_slamDuration != 0)
 	{
 		m_slamRoll[index] = amount;
@@ -289,19 +289,19 @@ void Camera::SetSlamAmount(uint32 index, float amount)
 
 void Camera::SetRollIgnore(uint32 index, bool slam)
 {
-	assert(index >= 0 && index <= 1);
+	assert(index <= 1);
 	m_rollIgnoreTimer[index] = m_rollIgnoreDuration + (slam ? m_slamDuration : 0);
 }
 
 float Camera::GetRollIgnoreTimer(uint32 index)
 {
-	assert(index >= 0 && index <= 1);
+	assert(index <= 1);
 	return m_rollIgnoreTimer[index];
 }
 
 float Camera::GetSlamAmount(uint32 index)
 {
-	assert(index >= 0 && index <= 1);
+	assert(index <= 1);
 	return m_slamRoll[index];
 }
 
@@ -336,11 +336,6 @@ Vector2 Camera::Project(const Vector3& pos)
 	screenSpace += Vector2(0.5f, 0.5f);
 	screenSpace *= m_rsLast.viewportSize;
 	return screenSpace.xy();
-}
-
-static float Lerp(float a, float b, float alpha)
-{
-	return a + (b - a) * alpha;
 }
 
 RenderState Camera::CreateRenderState(bool clipped)

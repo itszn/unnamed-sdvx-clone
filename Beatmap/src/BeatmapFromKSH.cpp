@@ -712,6 +712,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			{
 				// Inser filter type change event
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectType;
 				evt->data.effectVal = ParseFilterType(p.second);
@@ -722,6 +723,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				// Inser filter type change event
 				float gain = (float)atol(*p.second) / 100.0f;
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = gain;

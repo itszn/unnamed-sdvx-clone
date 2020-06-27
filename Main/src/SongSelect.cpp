@@ -125,7 +125,7 @@ void PreviewPlayer::FadeTo(Ref<AudioStream> stream, int32 restartPos /* = -1 */)
 	m_fadeDelayTimer = 0.0f;
 	m_nextStream = stream;
 	m_nextRestartPos = restartPos;
-	stream.Release();
+	stream.reset();
 }
 void PreviewPlayer::Update(float deltaTime)
 {
@@ -155,7 +155,7 @@ void PreviewPlayer::Update(float deltaTime)
 
 		if (m_fadeOutTimer >= m_fadeDuration)
 			if (m_currentStream)
-				m_currentStream.Release();
+				m_currentStream.reset();
 	}
 
 	if (m_fadeDelayTimer >= m_fadeDelayDuration && m_fadeInTimer < m_fadeDuration)
@@ -166,7 +166,7 @@ void PreviewPlayer::Update(float deltaTime)
 			m_currentStream = m_nextStream;
 			if (m_currentStream)
 				m_currentStream->SetVolume(1.0f);
-			m_nextStream.Release();
+			m_nextStream.reset();
 			m_currentRestartPos = m_nextRestartPos;
 		}
 		else
@@ -402,7 +402,7 @@ public:
 	{
 		for (const auto &it : m_SourceCollection())
 		{
-			if (it.second.GetFolder()->id == id)
+			if (it.second.GetFolder()->id == (int32)id)
 			{
 				SelectMapByMapIndex(it.first);
 				break;
@@ -472,7 +472,7 @@ public:
 		return foundSortIndex;
 	}
 
-	void AdvanceSelection(uint32 offset)
+	void AdvanceSelection(int32 offset)
 	{
 		uint32 vecLen = m_sortVec.size();
 		if (vecLen == 0)
@@ -483,7 +483,7 @@ public:
 		{
 			newIndex += vecLen;
 		}
-		if (newIndex >= vecLen) // Rolled over
+		if ((uint32)newIndex >= vecLen) // Rolled over
 		{
 			newIndex -= vecLen;
 		}
@@ -1181,26 +1181,45 @@ public:
 		g_gameConfig.Set(GameConfigKeys::LastSort, m_selection);
 		for (SongSort *s : m_sorts)
 		{
-			TitleSort *t = (TitleSort *)s;
-			ScoreSort *sc = (ScoreSort *)s;
-			DateSort *d = (DateSort *)s;
-			switch (s->GetType())
-			{
-			case TITLE_ASC:
-			case TITLE_DESC:
-				delete t;
-				break;
-			case SCORE_DESC:
-			case SCORE_ASC:
-				delete sc;
-				break;
-			case DATE_DESC:
-			case DATE_ASC:
-				delete d;
-				break;
-			}
+			delete s;
+			// TitleSort *t = (TitleSort *)s;
+			// ScoreSort *sc = (ScoreSort *)s;
+			// DateSort *d = (DateSort *)s;
+			// EffectorSort *e = (EffectorSort *)s;
+			// ArtistSort* a = (ArtistSort*)s;
+			// switch (s->GetType())
+			// {
+			// case TITLE_ASC:
+			// case TITLE_DESC:
+			// 	delete t;
+			// 	break;
+			// case SCORE_DESC:
+			// case SCORE_ASC:
+			// 	delete sc;
+			// 	break;
+			// case DATE_DESC:
+			// case DATE_ASC:
+			// 	delete d;
+			// 	break;
+			// case EFFECTOR_DESC:
+			// case EFFECTOR_ASC:
+			// 	delete e;
+			// 	break;
+			// case ARTIST_ASC:
+			// case ARTIST_DESC:
+			// 	delete a;
+			// 	break;
+			// default:
+			// 	break;
+			// }
 		}
 		m_sorts.clear();
+
+		if (m_lua)
+		{
+			g_application->DisposeLua(m_lua);
+			m_lua = nullptr;
+		}
 	}
 
 	bool Init()
@@ -1397,7 +1416,7 @@ public:
 
 	String m_getCurrentChartName()
 	{
-
+		return String();
 	}
 
 	void m_SetCurrentChartOffset(int newValue)
@@ -1432,12 +1451,12 @@ public:
 		m_filterSelection->SetMapDB(m_mapDatabase);
 
 
-		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersAdded);
-		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersUpdated);
-		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersCleared);
-		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.GetData(), &SelectionWheel::OnFoldersRemoved);
-		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.GetData(), &SelectionWheel::OnSearchStatusUpdated);
-		m_selectionWheel->OnSongsChanged.Add(m_filterSelection.GetData(), &FilterSelection::OnSongsChanged);
+		m_mapDatabase->OnFoldersAdded.Add(m_selectionWheel.get(), &SelectionWheel::OnFoldersAdded);
+		m_mapDatabase->OnFoldersUpdated.Add(m_selectionWheel.get(), &SelectionWheel::OnFoldersUpdated);
+		m_mapDatabase->OnFoldersCleared.Add(m_selectionWheel.get(), &SelectionWheel::OnFoldersCleared);
+		m_mapDatabase->OnFoldersRemoved.Add(m_selectionWheel.get(), &SelectionWheel::OnFoldersRemoved);
+		m_mapDatabase->OnSearchStatusUpdated.Add(m_selectionWheel.get(), &SelectionWheel::OnSearchStatusUpdated);
+		m_selectionWheel->OnSongsChanged.Add(m_filterSelection.get(), &FilterSelection::OnSongsChanged);
 		m_mapDatabase->StartSearching();
 
 		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilter), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
@@ -1560,7 +1579,7 @@ public:
 		if (newPreview)
 		{
 			Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
-			if (previewAudio && previewAudio.GetData())
+			if (previewAudio)
 			{
 				previewAudio->SetPosition(diff->preview_offset);
 
@@ -1584,7 +1603,7 @@ public:
 	// When a map is selected in the song wheel
 	void OnFolderSelected(FolderIndex *folder)
 	{
-		if (!folder->charts.empty() && folder->charts.size() > m_selectionWheel->GetSelectedDifficultyIndex())
+		if (!folder->charts.empty() && (int)folder->charts.size() > m_selectionWheel->GetSelectedDifficultyIndex())
 			m_updatePreview(folder->charts[m_selectionWheel->GetSelectedDifficultyIndex()], true);
 	}
 	// When a difficulty is selected in the song wheel
@@ -1742,6 +1761,8 @@ public:
 			{
 				m_sortSelection->Active = !m_sortSelection->Active;
 			}
+			break;
+			default:
 			break;
 		}
 	}
@@ -1949,7 +1970,7 @@ public:
 		else
 		{
 			if (m_lockMouse)
-				m_lockMouse.Release();
+				m_lockMouse.reset();
 			g_gameWindow->SetCursorVisible(true);
 		}
 
@@ -2010,7 +2031,7 @@ public:
 		m_previewPlayer.Pause();
 		m_mapDatabase->PauseSearching();
 		if (m_lockMouse)
-			m_lockMouse.Release();
+			m_lockMouse.reset();
 	}
 	virtual void OnRestore()
 	{

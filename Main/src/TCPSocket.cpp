@@ -260,7 +260,7 @@ void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
 	else if (val.is_array())
 	{
 		lua_newtable(L);
-		for (int index = 0; index < val.size(); index++)
+		for (size_t index = 0; index < val.size(); index++)
 		{
 			lua_pushinteger(L, index + 1);
 			m_pushJsonValue(L, val[index]);
@@ -389,7 +389,7 @@ void TCPSocket::ProcessSocket()
 			if (m_readingMode == TCPPacketMode::JSON_LINE)
 			{
 				// Scan the new bytes for line break
-				int tokenIndex;
+				uint32 tokenIndex;
 				for (tokenIndex = newDataStart;
 					tokenIndex < m_amountRead && m_dataBuff[tokenIndex] != '\n'; tokenIndex++);
 

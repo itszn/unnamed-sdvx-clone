@@ -1095,6 +1095,11 @@ void Application::m_Cleanup()
 
 	Discord_Shutdown();
 
+	for(auto& id : g_guiState.nvgFonts)
+	{
+		
+	}
+
 #ifdef EMBEDDED
 	nvgDeleteGLES2(g_guiState.vg);
 #else
@@ -2305,26 +2310,26 @@ bool JacketLoadingJob::Run()
 		b.resize(response.text.length());
 		memcpy(b.data(), response.text.c_str(), b.size());
 		loadedImage = ImageRes::Create(b);
-		if (loadedImage.IsValid())
+		if (loadedImage)
 		{
 			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
 			{
 				loadedImage->ReSize({w, h});
 			}
 		}
-		return loadedImage.IsValid();
+		return loadedImage.get() != nullptr;
 	}
 	else
 	{
 		loadedImage = ImageRes::Create(imagePath);
-		if (loadedImage.IsValid())
+		if (loadedImage)
 		{
 			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
 			{
 				loadedImage->ReSize({w, h});
 			}
 		}
-		return loadedImage.IsValid();
+		return loadedImage.get() != nullptr;
 	}
 }
 void JacketLoadingJob::Finalize()

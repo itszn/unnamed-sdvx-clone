@@ -53,7 +53,7 @@ void ScoreSort::SortInplace(Vector<uint32>& vec, const Map<int32,
 		{
 			for (auto& score : diff->scores)
 			{
-				if (score->score < maxScore)
+				if (score->score < (int32)maxScore)
 					continue;
 				maxScore = score->score;
 			}

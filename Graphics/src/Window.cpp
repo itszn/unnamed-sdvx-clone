@@ -91,7 +91,7 @@ namespace Graphics
 			// Release gamepads
 			for(auto it : m_gamepads)
 			{
-				it.second.Destroy();
+				it.second.reset();
 			}
 
 			SDL_DestroyWindow(m_window);
@@ -610,7 +610,7 @@ namespace Graphics
 	{
 		Ref<Gamepad_Impl>* openGamepad = m_impl->m_gamepads.Find(deviceIndex);
 		if(openGamepad)
-			return openGamepad->As<Gamepad>();
+			return Utility::CastRef<Gamepad_Impl, Gamepad>(*openGamepad);
 		Ref<Gamepad_Impl> newGamepad;
 
 		Gamepad_Impl* gamepadImpl = new Gamepad_Impl();
@@ -631,7 +631,7 @@ namespace Graphics
 			m_impl->m_gamepads.Add(deviceIndex, newGamepad);
 			m_impl->m_joystickMap.Add(SDL_JoystickInstanceID(gamepadImpl->m_joystick), gamepadImpl);
 		}
-		return newGamepad.As<Gamepad>();
+		return Utility::CastRef<Gamepad_Impl, Gamepad>(newGamepad);
 	}
 
 	void Window::SetMousePos(const Vector2i& pos)

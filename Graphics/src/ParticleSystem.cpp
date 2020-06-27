@@ -37,7 +37,7 @@ namespace Graphics
 			{
 				(*it)->Render(rs, deltaTime);
 
-				if(it->GetRefCount() == 1)
+				if(it->use_count() == 1)
 				{
 					if((*it)->HasFinished())
 					{
@@ -65,7 +65,7 @@ namespace Graphics
 		{
 			for(auto em : m_emitters)
 			{
-				em.Destroy();
+				em.reset();
 			}
 			m_emitters.clear();
 		}

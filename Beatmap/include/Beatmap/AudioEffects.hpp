@@ -33,7 +33,7 @@ DefineEnum(EffectType,
 	UserDefined7,
 	UserDefined8,
 	UserDefined9 // etc...
-	);
+	)
 
 /*
 	Effect parameter that is used to define a certain time range/period/speed
@@ -86,7 +86,9 @@ public:
 	EffectParam(T value)
 	{
 		values[0] = value;
+		values[1] = value;
 		isRange = false;
+		timeFunction = Interpolation::Linear;
 	}
 	EffectParam(T valueA, T valueB, Interpolation::TimeFunction timeFunction = Interpolation::Linear)
 	{
@@ -198,10 +200,6 @@ struct AudioEffect
 		} pitchshift;
 		struct
 		{
-			// Peak Q factor (>=0)
-			EffectParam<float> peakQ;
-			// Peak amplification (>=0)
-			EffectParam<float> gain;
 			// Q factor for filter (>0)
 			EffectParam<float> q;
 			// Cuttoff frequency (Hz)
@@ -209,10 +207,6 @@ struct AudioEffect
 		} lpf;
 		struct
 		{
-			// Peak Q factor (>=0)
-			EffectParam<float> peakQ;
-			// Peak amplification (>=0)
-			EffectParam<float> gain;
 			// Q factor for filter (>0)
 			EffectParam<float> q;
 			// Cuttoff frequency (Hz)

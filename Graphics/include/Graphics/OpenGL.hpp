@@ -29,7 +29,7 @@ namespace Graphics
 
 	public:
 		OpenGL();
-		~OpenGL();
+		virtual ~OpenGL();
 		void InitResourceManagers();
 		bool Init(Window& window, uint32 antialiasing);
 

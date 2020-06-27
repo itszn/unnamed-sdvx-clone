@@ -23,5 +23,5 @@ namespace Graphics
 
 	typedef Ref<ParticleSystemRes> ParticleSystem;
 
-	DEFINE_RESOURCE_TYPE(ParticleSystem, ParticleSystemRes);
+	DEFINE_RESOURCE_TYPE(ParticleSystem, ParticleSystemRes)
 }

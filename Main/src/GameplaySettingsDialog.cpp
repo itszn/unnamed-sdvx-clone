@@ -25,10 +25,10 @@ GameplaySettingsDialog::~GameplaySettingsDialog()
 template <typename EnumClass>
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateEnumSetting(GameConfigKeys key, String name)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Enum,
-    }));
+    Setting s = std::make_unique<SettingData>();
+
+    s->name = name;
+    s->type = SettingType::Enum;
 
     EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
     for (auto it = nameMap.begin(); it != nameMap.end(); it++)
@@ -54,10 +54,9 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateEnumSetting(Game
 
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Floating,
-    }));
+    Setting s = std::make_unique<SettingData>();
+    s->name = name;
+    s->type = SettingType::Floating;
 
     auto getter = [key](float& value) {
         value = g_gameConfig.GetFloat(key);
@@ -78,10 +77,9 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateFloatSetting(Gam
 
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateIntSetting(GameConfigKeys key, String name, Vector2i range)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Integer,
-    }));
+    Setting s = std::make_unique<SettingData>();
+    s->name = name;
+    s->type = SettingType::Integer;
 
     auto getter = [key](int& value) {
         value = g_gameConfig.GetInt(key);
@@ -101,11 +99,10 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateIntSetting(GameC
 
 GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateToggleSetting(GameConfigKeys key, String name)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Toggle,
-    }));
+    Setting s = std::make_unique<SettingData>();
 
+    s->name = name;
+    s->type = SettingType::Toggle;
 
     auto getter = [key](bool& value) {
         value = g_gameConfig.GetBool(key);
@@ -450,22 +447,26 @@ void GameplaySettingsDialog::m_ChangeStepSetting(int steps)
 
     switch (currentSetting->type)
     {
-    case SettingType::Integer:
-        currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps,
-                                                     currentSetting->intSetting.min,
-                                                     currentSetting->intSetting.max);
-        currentSetting->intSetting.setter.Call(currentSetting->intSetting.val);
-        break;
-    case SettingType::Toggle:
-        currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
-        currentSetting->boolSetting.setter.Call(currentSetting->boolSetting.val);
-        break;
-    case SettingType::Enum:
-        int size = currentSetting->enumSetting.options.size();
-        AdvanceLooping(currentSetting->enumSetting.val, steps, size);
-        String &newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
-        currentSetting->enumSetting.setter.Call(newVal);
-        break;
+        case SettingType::Integer:
+            currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps,
+                                                        currentSetting->intSetting.min,
+                                                        currentSetting->intSetting.max);
+            currentSetting->intSetting.setter.Call(currentSetting->intSetting.val);
+            break;
+        case SettingType::Toggle:
+            currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
+            currentSetting->boolSetting.setter.Call(currentSetting->boolSetting.val);
+            break;
+        case SettingType::Enum:
+        {
+            int size = currentSetting->enumSetting.options.size();
+            AdvanceLooping(currentSetting->enumSetting.val, steps, size);
+            String &newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
+            currentSetting->enumSetting.setter.Call(newVal);
+        }
+            break;
+        case SettingType::Floating:
+            break;        
     }
 }
 
@@ -490,6 +491,8 @@ void GameplaySettingsDialog::m_OnKeyPressed(SDL_Scancode code)
         break;
     case SDL_SCANCODE_DOWN:
         m_AdvanceSelection(1);
+        break;
+    default:
         break;
     }
 }

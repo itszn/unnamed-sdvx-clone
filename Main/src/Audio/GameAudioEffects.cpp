@@ -39,6 +39,8 @@ DSP* GameAudioEffect::CreateDSP(class AudioBase* audioTrack, AudioPlayback& play
 	{
 		// Don't set anthing for biquad Filters
 		BQFDSP* bqfDSP = new BQFDSP();
+
+
 		audioTrack->AddDSP(bqfDSP);
 		ret = bqfDSP;
 		break;
@@ -121,6 +123,8 @@ DSP* GameAudioEffect::CreateDSP(class AudioBase* audioTrack, AudioPlayback& play
 		ret = ps;
 		break;
 	}
+	default:
+	break;
 	}
 
 	if(!ret)
@@ -196,5 +200,7 @@ void GameAudioEffect::SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectSta
 		ps->amount = (float)object->effectParams[0];
 		break;
 	}
+	default:
+	break;
 	}
 }
