@@ -10,7 +10,7 @@ private:
 	int64 m_playbackPointer = 0;
 	uint64 m_dataPosition = 0;
 	const int sample_rate = 48000;
-	ma_decoder m_decoder;
+	ma_decoder m_decoder = {  };
 	int m_byteRate;
 protected:
 	bool Init(Audio* audio, const String& path, bool preload) override;
@@ -21,7 +21,7 @@ protected:
 	float* GetPCM_Internal() override;
 	uint32 GetSampleRate_Internal() const override;
 public:
-	AudioStreamMa();
+	AudioStreamMa() = default;
 	~AudioStreamMa();
 	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };

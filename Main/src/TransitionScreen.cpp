@@ -87,6 +87,7 @@ public:
 
 	virtual void Tick(float deltaTime)
 	{
+		if(m_tickableToLoad == nullptr) return;
 		m_transitionTimer += deltaTime;
 
 		if (m_transition == Wait && m_lastComplete)
@@ -104,6 +105,7 @@ public:
 			{
 				Log("[Transition] Finished loading tickable", Logger::Severity::Info);
 				g_application->AddTickable(m_tickableToLoad, this);
+				m_tickableToLoad = nullptr;
 			}
 		}
 		m_lastComplete = m_loadComplete;
@@ -112,6 +114,7 @@ public:
 	{
 		if (m_tickableToLoad && m_transition == End)
 		{
+			Log("transition tickable nulled", Logger::Severity::Debug);
 			m_tickableToLoad = nullptr;
 		}
 	}

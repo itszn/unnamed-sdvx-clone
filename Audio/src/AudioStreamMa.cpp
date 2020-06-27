@@ -11,10 +11,6 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
-AudioStreamMa::AudioStreamMa()
-{
-	memset(&m_decoder, 0, sizeof(ma_decoder));
-}
 
 AudioStreamMa::~AudioStreamMa()
 {
@@ -141,10 +137,11 @@ uint32 AudioStreamMa::GetSampleRate_Internal() const
 
 Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, bool preload)
 {
-	Ref<AudioStreamMa> impl;
+	AudioStreamMa* impl = new AudioStreamMa();
 	if (!impl->Init(audio, path, preload))
 	{
-		impl.reset();
+		delete impl;
+		impl = nullptr;
 	}
-	return Utility::CastRef<AudioStreamMa, AudioStream>(impl);
+	return Utility::CastRef<AudioStreamMa, AudioStream>(Ref<AudioStreamMa>(impl));
 }

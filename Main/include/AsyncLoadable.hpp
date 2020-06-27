@@ -10,7 +10,9 @@
 class IAsyncLoadable
 {
 public:
-	virtual ~IAsyncLoadable() = default;
+	virtual ~IAsyncLoadable() {
+		Log("Tickable destroyed", Logger::Severity::Debug);
+		};
 	// Loads this object
 	//	returns success
 	virtual bool AsyncLoad() = 0;

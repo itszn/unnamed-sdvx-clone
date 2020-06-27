@@ -1356,7 +1356,8 @@ private:
 	float m_advanceDiff = 0.0f;
 	float m_sensMult = 1.0f;
 	MouseLockHandle m_lockMouse;
-	bool m_suspended = false;
+	bool m_suspended = true;
+	bool m_hasRestored = false;
 	bool m_previewLoaded = true;
 	bool m_showScores = false;
 	uint64_t m_previewDelayTicks = 0;
@@ -1933,9 +1934,7 @@ public:
 
 	virtual void Render(float deltaTime)
 	{
-		if (m_suspended)
-			return;
-
+		if (m_suspended && m_hasRestored) return;
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
@@ -2037,6 +2036,7 @@ public:
 	{
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;
+		m_hasRestored = true;
 		m_previewPlayer.Restore();
 		m_selectionWheel->ResetLuaTables();
 		m_mapDatabase->ResumeSearching();
