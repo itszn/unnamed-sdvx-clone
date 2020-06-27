@@ -7,7 +7,7 @@ extern "C"
 
 class AudioStreamMp3 : public AudioStreamBase
 {
-	mp3_decoder_t* m_decoder;
+	mp3_decoder_t* m_decoder = nullptr;
 	size_t m_mp3dataOffset = 0;
 	size_t m_mp3dataLength = 0;
 	int32 m_mp3samplePosition = 0;

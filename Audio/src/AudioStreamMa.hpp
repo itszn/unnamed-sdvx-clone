@@ -21,7 +21,7 @@ protected:
 	float* GetPCM_Internal() override;
 	uint32 GetSampleRate_Internal() const override;
 public:
-	AudioStreamMa() = default;
+	AudioStreamMa();
 	~AudioStreamMa();
 	static Ref<AudioStream> Create(class Audio* audio, const String& path, bool preload);
 };

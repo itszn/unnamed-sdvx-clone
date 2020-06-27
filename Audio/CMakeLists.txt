@@ -39,6 +39,9 @@ target_include_directories(Audio PRIVATE
 
 if(UNIX AND NOT APPLE)
     target_compile_options(Audio PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-value) 
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(Audio PUBLIC -Wno-maybe-uninitialized) 
+    endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif(UNIX AND NOT APPLE)
 
 # Dependencies

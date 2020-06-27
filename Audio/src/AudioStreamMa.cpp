@@ -11,6 +11,11 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
+AudioStreamMa::AudioStreamMa()
+{
+	memset(&m_decoder, 0, sizeof(ma_decoder));
+}
+
 AudioStreamMa::~AudioStreamMa()
 {
 	Deregister();
