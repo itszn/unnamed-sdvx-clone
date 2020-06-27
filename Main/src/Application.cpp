@@ -23,7 +23,6 @@
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "ShadedMesh.hpp"
-#include <execinfo.h>
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -1126,21 +1125,6 @@ class Game *Application::LaunchMap(const String &mapPath)
 void Application::Shutdown()
 {
 	g_gameWindow->Close();
-}
-
-
-void PrintStack()
-{
-	int j, nptrs;
-    void *buffer[100];
-    char **strings;
-
-   	nptrs = backtrace(buffer, 100);
-    strings = backtrace_symbols(buffer, nptrs);
-    for (j = 0; j < nptrs; j++)
-        Logf("\t%s", Logger::Severity::Debug, strings[j]);
-
-    free(strings);
 }
 
 void Application::AddTickable(class IApplicationTickable *tickable, class IApplicationTickable *insertBefore)
