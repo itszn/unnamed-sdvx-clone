@@ -6,7 +6,7 @@
 class AudioStreamOgg : public AudioStreamBase
 {
 protected:
-	OggVorbis_File m_ovf = { 0 };
+	OggVorbis_File m_ovf;
 	vorbis_info m_info;
 	Vector<float> m_pcm;
 	int64 m_playPos;

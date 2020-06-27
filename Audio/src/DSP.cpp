@@ -197,8 +197,8 @@ void GateDSP::Process(float* out, uint32 numSamples)
 	if(m_length < 2)
 		return;
 
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -244,8 +244,8 @@ void TapeStopDSP::SetLength(double length)
 }
 void TapeStopDSP::Process(float* out, uint32 numSamples)
 {
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -312,12 +312,12 @@ void RetriggerDSP::Process(float* out, uint32 numSamples)
 		return;
 
 	///TODO: Clean up casting
-	int32 startSample = (double)startTime * ((double)audio->GetSampleRate() / 1000.0);
-	int32 nowSample = (double)audioBase->GetPosition() * ((double)audio->GetSampleRate() / 1000.0);
+	uint32 startSample = (double)startTime * ((double)audio->GetSampleRate() / 1000.0);
+	uint32 nowSample = (double)audioBase->GetPosition() * ((double)audio->GetSampleRate() / 1000.0);
 	float* pcmSource = audioBase->GetPCM();
 	double rateMult = (double)audioBase->GetSampleRate() / audio->GetSampleRate();
-	int32 pcmStartSample = (double)lastTimingPoint * ((double)audioBase->GetSampleRate() / 1000.0);
-	int32 baseStartRepeat = (double)lastTimingPoint * ((double)audio->GetSampleRate() / 1000.0);
+	uint32 pcmStartSample = (double)lastTimingPoint * ((double)audioBase->GetSampleRate() / 1000.0);
+	uint32 baseStartRepeat = (double)lastTimingPoint * ((double)audio->GetSampleRate() / 1000.0);
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -362,8 +362,8 @@ void WobbleDSP::Process(float* out, uint32 numSamples)
 		return;
 
 	static Interpolation::CubicBezier easing(Interpolation::EaseInExpo);
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -400,8 +400,8 @@ void PhaserDSP::Process(float* out, uint32 numSamples)
 	if (m_length == 0)
 		return;
 
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -473,8 +473,8 @@ void FlangerDSP::Process(float* out, uint32 numSamples)
 	if(m_bufferLength <= 0)
 		return;
 
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -523,8 +523,8 @@ void EchoDSP::Process(float* out, uint32 numSamples)
 	float* data = m_sampleBuffer.data();
 	if (!data)
 		return;
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -567,8 +567,8 @@ void SidechainDSP::Process(float* out, uint32 numSamples)
 	if(m_length == 0)
 		return;
 
-	int32 startSample = startTime * audio->GetSampleRate() / 1000.0;
-	int32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
+	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{

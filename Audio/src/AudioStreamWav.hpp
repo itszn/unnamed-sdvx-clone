@@ -30,7 +30,7 @@ private:
 		uint16 nBitsPerSample;
 	};
 	Buffer m_Internaldata;
-	WavFormat m_format = { 0 };
+	WavFormat m_format;
 	Vector<float> m_pcm;
 	int64 m_playbackPointer = 0;
 	uint64 m_dataPosition = 0;

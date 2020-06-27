@@ -62,7 +62,7 @@ set_output_postfixes(usc-game)
 if(MSVC)
     set_target_properties(usc-game PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS")
     set_target_properties(usc-game PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-else()
+elseif(NOT APPLE)
     target_compile_options(usc-game PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function)
 endif(MSVC)
 

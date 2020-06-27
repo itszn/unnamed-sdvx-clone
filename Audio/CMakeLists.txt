@@ -37,6 +37,10 @@ target_include_directories(Audio PRIVATE
     ${PCHROOT}
 )
 
+if(UNIX AND NOT APPLE)
+    target_compile_options(Audio PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-value) 
+endif(UNIX AND NOT APPLE)
+
 # Dependencies
 ## Local Dependencies
 target_link_libraries(Audio Shared)

@@ -93,7 +93,7 @@ int32 AudioStreamMa::DecodeData_Internal()
 		int actualRead = 0;
 		for (size_t i = 0; i < samplesPerRead; i++)
 		{
-			if (m_playbackPointer >= m_samplesTotal)
+			if (m_playbackPointer >= (int64)m_samplesTotal)
 			{
 				m_currentBufferSize = samplesPerRead;
 				m_remainingBufferData = samplesPerRead;
@@ -114,7 +114,7 @@ int32 AudioStreamMa::DecodeData_Internal()
 		float decodeBuffer[256];
 
 		int totalRead = ma_decoder_read_pcm_frames(&m_decoder, decodeBuffer, samplesPerRead);
-		for (size_t i = 0; i < totalRead; i++)
+		for (int i = 0; i < totalRead; i++)
 		{
 			m_readBuffer[0][i] = decodeBuffer[i * 2];
 			m_readBuffer[1][i] = decodeBuffer[i * 2 + 1];
@@ -136,11 +136,10 @@ uint32 AudioStreamMa::GetSampleRate_Internal() const
 
 Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, bool preload)
 {
-	AudioStreamMa* impl = new AudioStreamMa();
+	Ref<AudioStreamMa> impl;
 	if (!impl->Init(audio, path, preload))
 	{
-		delete impl;
-		impl = nullptr;
+		impl.reset();
 	}
-	return Utility::CastRef<AudioStreamMa, AudioStream>(Utility::MakeRef<AudioStreamMa>(impl));
+	return Utility::CastRef<AudioStreamMa, AudioStream>(impl);
 }

@@ -190,7 +190,7 @@ void AudioStreamBase::Process(float* out, uint32 numSamples)
 
 	if(m_samplePos > 0)
 	{
-		if(m_samplePos >= m_samplesTotal)
+		if((uint64)m_samplePos >= m_samplesTotal)
 		{
 			if(!m_ended)
 			{

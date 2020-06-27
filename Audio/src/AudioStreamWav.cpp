@@ -159,7 +159,7 @@ bool AudioStreamWav::Init(Audio* audio, const String& path, bool preload)
 
 
 				//Decode to float
-				int pos = 0;
+				uint64 pos = 0;
 				m_pcm.resize(2 * m_samplesTotal * sizeof(float));
 				if (m_format.nFormat == 1)
 				{
@@ -191,10 +191,10 @@ bool AudioStreamWav::Init(Audio* audio, const String& path, bool preload)
 					
 					while (pos < m_samplesTotal)
 					{
-						int newDecoded = m_decode_ms_adpcm(m_Internaldata, &decodedBuffer, pos);
+						uint32 newDecoded = m_decode_ms_adpcm(m_Internaldata, &decodedBuffer, pos);
 						pos += m_format.nBlockAlign;
 						int16* src = ((int16*)decodedBuffer.data());
-						for (size_t i = 0; i < newDecoded; i++)
+						for (uint32 i = 0; i < newDecoded; i++)
 						{
 							m_pcm[(2 * decoded) + (i * 2)] = (float)src[i * 2] / (float)0x7FFF;
 							m_pcm[(2 * decoded) + (i * 2) + 1] = (float)src[i * 2 + 1] / (float)0x7FFF;
@@ -335,7 +335,7 @@ int32 AudioStreamWav::DecodeData_Internal()
 			{
 				for (uint32 i = 0; i < samplesPerRead; i++)
 				{
-					if (m_playbackPointer >= m_samplesTotal)
+					if (m_playbackPointer >= (int64)m_samplesTotal)
 					{
 						m_currentBufferSize = samplesPerRead;
 						m_remainingBufferData = samplesPerRead;
@@ -352,7 +352,7 @@ int32 AudioStreamWav::DecodeData_Internal()
 				// Mix mono sample
 				for (uint32 i = 0; i < samplesPerRead; i++)
 				{
-					if (m_playbackPointer >= m_samplesTotal)
+					if (m_playbackPointer >= (int64)m_samplesTotal)
 					{
 						m_currentBufferSize = samplesPerRead;
 						m_remainingBufferData = samplesPerRead;
@@ -409,7 +409,7 @@ int32 AudioStreamWav::DecodeData_Internal()
 				m_playbackPointer++;
 				continue;
 			}
-			else if (m_playbackPointer >= m_samplesTotal)
+			else if (m_playbackPointer >= (int64)m_samplesTotal)
 			{
 				m_currentBufferSize = samplesPerRead;
 				m_remainingBufferData = samplesPerRead;
