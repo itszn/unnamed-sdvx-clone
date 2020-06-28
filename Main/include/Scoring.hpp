@@ -95,8 +95,8 @@ public:
 	bool GetFXActive();
 	float GetLaserOutput();
 
-	float GetMeanHitDelta();
-	int16 GetMedianHitDelta();
+	float GetMeanHitDelta(bool absolute = false);
+	int16 GetMedianHitDelta(bool absolute = false);
 
 	// Check if an object is currently held
 	//	works only for lasers and hold buttons

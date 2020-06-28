@@ -1,4 +1,4 @@
-# Unnamed SDVX clone ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/drewol/unnamed-sdvx-clone?branch=master&svg=true&retina=true)](https://ci.appveyor.com/project/drewol/unnamed-sdvx-clone) [![Linux Build Status](https://travis-ci.org/Drewol/unnamed-sdvx-clone.svg?branch=master)](https://travis-ci.org/Drewol/unnamed-sdvx-clone)
+# Unnamed SDVX clone ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Build](https://github.com/Drewol/unnamed-sdvx-clone/workflows/Build/badge.svg)](https://github.com/Drewol/unnamed-sdvx-clone/actions)
 A game based on [KShootMania](http://www.kshootmania.com/) and [SDVX](https://remywiki.com/What_is_SOUND_VOLTEX).
 
 ### [**Download latest Windows build**](https://drewol.me/Downloads/Game.zip)

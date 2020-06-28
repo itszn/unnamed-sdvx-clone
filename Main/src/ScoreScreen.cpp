@@ -37,8 +37,11 @@ private:
 	float* m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
-	float m_meanHitDelta;
-	MapTime m_medianHitDelta;
+
+	//0 = normal, 1 = absolute
+	float m_meanHitDelta[2] = {0.f, 0.f};
+	MapTime m_medianHitDelta[2] = {0, 0};
+
 	ScoreIndex m_scoredata;
 	bool m_restored = false;
 	bool m_removed = false;
@@ -153,8 +156,11 @@ public:
 			m_badge = Scoring::CalculateBadge(m_scoredata);
 		}
 
-		m_meanHitDelta = scoring.GetMeanHitDelta();
-		m_medianHitDelta = scoring.GetMedianHitDelta();
+		m_meanHitDelta[0] = scoring.GetMeanHitDelta();
+		m_medianHitDelta[0] = scoring.GetMedianHitDelta();
+
+		m_meanHitDelta[1] = scoring.GetMeanHitDelta(true);
+		m_medianHitDelta[1] = scoring.GetMedianHitDelta(true);
 
 		// Make texture for performance graph samples
 		m_graphTex = TextureRes::Create(g_gl);
@@ -194,8 +200,8 @@ public:
 		m_scoredata.gameflags = data["flags"];
 		m_badge = data["clear"];
 
-		m_meanHitDelta = data["mean_delta"];
-		m_medianHitDelta = data["median_delta"];
+		m_meanHitDelta[0] = data["mean_delta"];
+		m_medianHitDelta[0] = data["median_delta"];
 
 		m_playerName = static_cast<String>(data.value("name",""));
 
@@ -399,8 +405,10 @@ public:
 		m_PushStringToTable("effector", m_beatmapSettings.effector);
 		m_PushStringToTable("bpm", m_beatmapSettings.bpm);
 		m_PushStringToTable("jacketPath", m_jacketPath);
-		m_PushIntToTable("medianHitDelta", m_medianHitDelta);
-		m_PushFloatToTable("meanHitDelta", m_meanHitDelta);
+		m_PushIntToTable("medianHitDelta", m_medianHitDelta[0]);
+		m_PushFloatToTable("meanHitDelta", m_meanHitDelta[0]);
+		m_PushIntToTable("medianHitDeltaAbs", m_medianHitDelta[1]);
+		m_PushFloatToTable("meanHitDeltaAbs", m_meanHitDelta[1]);
 		m_PushIntToTable("earlies", m_timedHits[0]);
 		m_PushIntToTable("lates", m_timedHits[1]);
 		m_PushStringToTable("grade", Scoring::CalculateGrade(m_score).c_str());

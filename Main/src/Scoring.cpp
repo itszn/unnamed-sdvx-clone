@@ -281,7 +281,7 @@ float Scoring::GetLaserOutput()
 	float f = Math::Min(1.0f, m_timeSinceOutputSet / laserOutputInterpolationDuration);
 	return m_laserOutputSource + (m_laserOutputTarget - m_laserOutputSource) * f;
 }
-float Scoring::GetMeanHitDelta()
+float Scoring::GetMeanHitDelta(bool absolute)
 {
 	float sum = 0;
 	uint32 count = 0;
@@ -289,21 +289,21 @@ float Scoring::GetMeanHitDelta()
 	{
 		if (hit->object->type != ObjectType::Single || hit->rating == ScoreHitRating::Miss)
 			continue;
-		sum += hit->delta;
+		sum += absolute ? abs(hit->delta) : hit->delta;
 		count++;
 	}
 	if (count == 0)
 		return 0.0f;
 	return sum / count;
 }
-int16 Scoring::GetMedianHitDelta()
+int16 Scoring::GetMedianHitDelta(bool absolute)
 {
 	Vector<MapTime> deltas;
 	for (auto hit : hitStats)
 	{
 		if (hit->object->type != ObjectType::Single || hit->rating == ScoreHitRating::Miss)
 			continue;
-		deltas.Add(hit->delta);
+		deltas.Add(absolute ? abs(hit->delta) : hit->delta);
 	}
 	if (deltas.size() == 0)
 		return 0;
