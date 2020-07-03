@@ -1739,7 +1739,7 @@ void Application::m_OnFocusChanged(bool focused)
 	}
 }
 
-int Application::FastText(String inputText, float x, float y, int size, int align)
+int Application::FastText(String inputText, float x, float y, int size, int align, const Color& color /* = Color::White */)
 {
 	WString text = Utility::ConvertToWString(inputText);
 	String fontpath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));
@@ -1768,7 +1768,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 	}
 
 	MaterialParameterSet params;
-	params.SetParameter("color", Vector4(1.f, 1.f, 1.f, 1.f));
+	params.SetParameter("color", color);
 	g_application->GetRenderQueueBase()->Draw(textTransform, te, g_application->GetFontMaterial(), params);
 	return 0;
 }

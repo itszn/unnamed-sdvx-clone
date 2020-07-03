@@ -248,6 +248,7 @@ private:
 	void m_SetHoldObject(ObjectState* obj, uint32 index);
 	void m_ReleaseHoldObject(ObjectState* obj);
 	void m_ReleaseHoldObject(uint32 index);
+	bool m_IsBeingHold(const ScoreTick* tick) const;
 
 	// Updates the target laser positions and currently tracked laser segments for those
 	//  also updates laser input and returns lasers back to idle position when not used
@@ -278,10 +279,13 @@ private:
 	float m_lastLaserInputDirection[2] = { 0.0f };
 	// Decides if the coming tick should be auto completed
 	float m_autoLaserTime[2] = { 0,0 };
+	
 	// Saves the time when a button was hit, used to decide if a button was held before a hold object was active
 	MapTime m_buttonHitTime[6] = { 0, 0, 0, 0, 0, 0 };
+	MapTime m_buttonReleaseTime[6] = { 0, 0, 0, 0, 0, 0 };
 	// Saves the time when a button was hit or released for bounce guarding
 	MapTime m_buttonGuardTime[6] = { 0, 0, 0, 0, 0, 0 };
+
 	// Max number of ticks to assist
 	float m_assistLevel = 1.5f;
 	float m_assistPunish = 1.5f;
@@ -305,9 +309,11 @@ private:
 
 	// Ticks for each BT[4] / FX[2] / Laser[2]
 	Vector<ScoreTick*> m_ticks[8];
+
 	// Hold objects
 	ObjectState* m_holdObjects[8];
 	Set<ObjectState*> m_heldObjects;
+	bool m_prevHoldHit[6];
 
 	GameFlags m_flags;
 };
