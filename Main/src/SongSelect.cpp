@@ -1648,7 +1648,6 @@ public:
 					// When we are in multiplayer, just report the song and exit instead
 					m_multiplayer->SetSelectedMap(folder, m_selectionWheel->GetSelectedChart());
 
-					m_suspended = true;
 					g_application->RemoveTickable(this);
 					return;
 				}
@@ -1662,7 +1661,6 @@ public:
 					return;
 				}
 				game->GetScoring().autoplay = autoplay;
-				m_suspended = true;
 
 				// Transition to game
 				g_transition->TransitionTo(game);
