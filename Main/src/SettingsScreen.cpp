@@ -589,6 +589,7 @@ public:
 		{
 			RenderSettingsInput();
 			RenderSettingsGame();
+			RenderSettingsDisplay();
 			RenderSettingsSystem();
 			RenderSettingsOnline();
 
@@ -731,6 +732,21 @@ public:
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
 			ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
 
+			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
+			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+
+			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
+
+			nk_tree_pop(m_nctx);
+		}
+	}
+
+	// Display settings
+	void RenderSettingsDisplay()
+	{
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", NK_MINIMIZED))
+		{
 			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
@@ -750,11 +766,6 @@ public:
 			ToggleSetting(GameConfigKeys::DisableBackgrounds, "Disable Song Backgrounds");
 			FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale", 1.0f, 5.0f);
 			ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
-			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
-			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
-
-			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
 
 			if (m_skins.size() > 0)
 			{
@@ -766,7 +777,6 @@ public:
 			}
 
 			EnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "In-game score display is:");
-
 			RenderSettingsLaserColor();
 
 			nk_tree_pop(m_nctx);
