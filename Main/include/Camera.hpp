@@ -17,6 +17,7 @@ static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // Percent of m_rollIntensity where camera rolls at its slowest rate
 static const float SLOWEST_TILT_THRESHOLD = 0.1f;
+// If this value is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
 static const float ROLL_SPEED = 4;
 
