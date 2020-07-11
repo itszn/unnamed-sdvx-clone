@@ -451,15 +451,18 @@ float PhaserDSP::APF::Update(float in)
 	return y;
 }
 
-void FlangerDSP::SetLength(double length)
-{
+void FlangerDSP::SetLength(double length) {
 	double flength = length / 1000.0 * audio->GetSampleRate();
 	m_length = (uint32)flength;
 }
-void FlangerDSP::SetDelayRange(uint32 min, uint32 max)
+
+void FlangerDSP::SetDelayRange(uint32 offset, uint32 depth)
 {
-	assert(max > min);
 	// Assuming 44100hz is the base sample rate
+	uint32 max = offset + depth;
+	uint32 min = offset;
+
+
 	float mult = (float)audio->GetSampleRate() / 44100.f;
 	m_min = min * mult;
 	m_max = max * mult;
@@ -468,22 +471,21 @@ void FlangerDSP::SetDelayRange(uint32 min, uint32 max)
 }
 void FlangerDSP::Process(float* out, uint32 numSamples)
 {
-	float* data = m_sampleBuffer.data();
-
-	if(m_bufferLength <= 0)
+	if (m_bufferLength <= 0)
 		return;
 
 	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
+	float* data = m_sampleBuffer.data();
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
-		if(currentSample + i < startSample)
+		if (currentSample + i < startSample)
 		{
 			continue;
 		}
 		// Determine where we want to sample past samples
-		float f =  fmodf(((float)m_time / (float)m_length), 1.f);
+		float f = fmodf(((float)m_time / (float)m_length), 1.f);
 		f = fabsf(f * 2 - 1);
 		uint32 d = (uint32)(m_min + ((m_max - 1) - m_min) * (f));
 
@@ -493,17 +495,17 @@ void FlangerDSP::Process(float* out, uint32 numSamples)
 			samplePos = m_bufferLength + samplePos;
 
 		// Inject new sample
-		data[m_bufferOffset + 0] = out[i*2];
-		data[m_bufferOffset + 1] = out[i*2+1];
+		data[m_bufferOffset + 0] = out[i * 2];
+		data[m_bufferOffset + 1] = out[i * 2 + 1];
 
 		// Apply delay
-		out[i * 2] = (data[samplePos] + out[i*2]) * 0.5f * mix +
+		out[i * 2] = (data[samplePos] + out[i * 2]) * 0.5f * mix +
 			out[i * 2] * (1 - mix);
-		out[i * 2 + 1] = (data[samplePos+1] + out[i*2+1]) * 0.5f * mix +
-			out[i * 2+1] * (1 - mix);
+		out[i * 2 + 1] = (data[samplePos + 1] + out[i * 2 + 1]) * 0.5f * mix +
+			out[i * 2 + 1] * (1 - mix);
 
 		m_bufferOffset += 2;
-		if(m_bufferOffset >= m_bufferLength)
+		if (m_bufferOffset >= m_bufferLength)
 			m_bufferOffset = 0;
 		m_time++;
 	}

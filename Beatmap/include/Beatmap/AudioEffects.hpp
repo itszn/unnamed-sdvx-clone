@@ -119,6 +119,9 @@ struct AudioEffect
 	// Use this to get default effect settings
 	static const AudioEffect& GetDefault(EffectType type);
 
+	
+	void SetDefaultEffectParams(int16* params);
+
 	// The effect type
 	EffectType type = EffectType::None;
 
