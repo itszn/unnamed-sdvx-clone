@@ -827,7 +827,8 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					point->index = 3;
 					point->zoom = atof(*p.second) * -(10.0 / 360.0);
 					point->instant = lastManualTiltPoint ? lastManualTiltPoint->time == point->time : false;
-					m_zoomControlPoints.Add(point);
+					
+					lastManualTiltPoint = m_zoomControlPoints.Add(point);
 					CHECK_FIRST;
 
 					isManualTilt = true;
