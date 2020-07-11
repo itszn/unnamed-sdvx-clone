@@ -798,7 +798,7 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
-			if (hos->time - Scoring::goodHitTime <= currentTime)
+			if (hos->time - Scoring::holdHitTime <= currentTime)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
@@ -1025,7 +1025,7 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	if (!m_prevHoldHit[index]) return false;
 
 	// b) The last button release happened inside the 'near window' for the end of this hold object.
-	if (obj->time + obj->duration - m_buttonReleaseTime[index] - m_inputOffset > Scoring::goodHitTime) return false;
+	if (obj->time + obj->duration - m_buttonReleaseTime[index] - m_inputOffset > Scoring::holdHitTime) return false;
 
 	return true;
 }
