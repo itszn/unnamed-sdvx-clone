@@ -473,10 +473,12 @@ void FlangerDSP::Process(float* out, uint32 numSamples)
 {
 	if (m_bufferLength <= 0)
 		return;
+	float* data = m_sampleBuffer.data();
+	if (data == nullptr)
+		return;
 
 	uint32 startSample = startTime * audio->GetSampleRate() / 1000.0;
 	uint32 currentSample = audioBase->GetPosition() * audio->GetSampleRate() / 1000.0;
-	float* data = m_sampleBuffer.data();
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
