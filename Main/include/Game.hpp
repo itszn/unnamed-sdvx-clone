@@ -25,7 +25,8 @@ End};
 
 struct ScoreReplay
 {
-	int32 currentScore = 0;
+	int32 currentScore = 0; //< Current score; updated during playback
+	int32 currentMaxScore = 0; //< Current max possible score; updated during playback
 	int32 maxScore = 0;
 	int32 nextHitStat = 0;
 	Vector<SimpleHitStat> replay;

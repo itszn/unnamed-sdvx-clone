@@ -569,6 +569,7 @@ public:
 		for (auto& replay : m_scoreReplays)
 		{
 			replay.currentScore = 0;
+			replay.currentMaxScore = 0;
 			replay.nextHitStat = 0;
 		}
 
@@ -1363,7 +1364,7 @@ public:
 		textPos.y += RenderText(Utility::Sprintf("Laser Effect Mix: %f", m_audioPlayback.GetLaserEffectMix()), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
-		textPos.y += RenderText(Utility::Sprintf("Score: %d (Max: %d)", m_scoring.currentHitScore, m_scoring.mapTotals.maxScore), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
 		
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
 
@@ -1588,10 +1589,10 @@ public:
 			Logf("Lua error on calling update_combo: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
 	}
-	void OnScoreChanged(uint32 newScore)
+	void OnScoreChanged()
 	{
 		lua_getglobal(m_lua, "update_score");
-		lua_pushinteger(m_lua, newScore);
+		lua_pushinteger(m_lua, m_scoring.CalculateCurrentDisplayScore());
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on calling update_score: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
@@ -1978,6 +1979,7 @@ public:
 					SimpleHitStat shs = replay.replay[replay.nextHitStat];
 					if (shs.rating < 3)
 					{
+						replay.currentMaxScore += 2;
 						replay.currentScore += shs.rating;
 					}
 					replay.nextHitStat++;
@@ -1991,14 +1993,13 @@ public:
 			lua_settable(L, -3);
 
 			lua_pushstring(L, "currentScore");
-			lua_pushnumber(L, m_scoring.CalculateScore(replay.currentScore));
+			lua_pushnumber(L, m_scoring.CalculateCurrentDisplayScore(replay));
 			lua_settable(L, -3);
 
 			lua_settable(L, -3);
 			replayCounter++;
 		}
 		lua_setfield(L, -1, "scoreReplays");
-
 
 		//progress
 		lua_pushstring(L, "progress");
@@ -2037,8 +2038,6 @@ public:
 		lua_pushstring(L, "suddenCutoff");
 		lua_pushnumber(L, m_track->suddenCutoff);
 		lua_settable(L, -3);
-
-
 
 		//critLine
 		{

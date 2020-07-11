@@ -141,6 +141,7 @@ bool GameplaySettingsDialog::Init()
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::RandomizeChart, "Random"));
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(m_CreateToggleSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
+    gameTab->settings.push_back(m_CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
 
     Tab hidsudTab = std::make_unique<TabData>();
     hidsudTab->name = "Hid/Sud";

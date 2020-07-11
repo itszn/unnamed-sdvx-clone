@@ -46,8 +46,8 @@ void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
 
 void GameConfig::InitDefaults()
 {
-	// This will be set to appropriate value in Application::m_LoadConfig.
-	// Do not set this to GameConfig::VERSION here. It will cause problems for config files with no ConfigVersion field.
+	// Do not set ConfigVersion to GameConfig::VERSION here. It will cause problems for config files with no ConfigVersion field.
+	// For new config, ConfigVersion will be set to the appropriate value in Application::m_LoadConfig.
 	Set(GameConfigKeys::ConfigVersion, 0);
 
 	Set(GameConfigKeys::ScreenWidth, 1280);
@@ -95,6 +95,7 @@ void GameConfig::InitDefaults()
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
 	SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::MMod);
+	SetEnum<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, ScoreDisplayModes::Additive);
 
 	// Input settings
 	SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);

@@ -206,7 +206,7 @@ void Scoring::Reset()
 	m_CleanupHitStats();
 	m_CleanupTicks();
 
-	OnScoreChanged.Call(0);
+	OnScoreChanged.Call();
 }
 
 void Scoring::FinishGame()
@@ -816,9 +816,11 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 
 void Scoring::m_OnTickProcessed(ScoreTick* tick, uint32 index)
 {
+	currentMaxScore += (uint32)ScoreHitRating::Perfect;
+
 	if (OnScoreChanged.IsHandled())
 	{
-		OnScoreChanged.Call(CalculateCurrentScore());
+		OnScoreChanged.Call();
 	}
 }
 void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
@@ -875,6 +877,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 		stat->rating = ScoreHitRating::Perfect;
 		stat->hold++;
 	}
+
 	m_OnTickProcessed(tick, index);
 
 	// Count hits per category (miss,perfect,etc.)
@@ -1311,6 +1314,12 @@ MapTotals Scoring::CalculateMapTotals() const
 	return ret;
 }
 
+constexpr static uint32 CalculateScore(const uint32 currHitScore, const uint32 maxHitScore, const uint32 maxScore)
+{
+	if (maxHitScore == 0) return 0;
+	else return (uint32) (((double) currHitScore / (double) maxHitScore) * (double) maxScore);
+}
+
 uint32 Scoring::CalculateCurrentScore() const
 {
 	return CalculateScore(currentHitScore);
@@ -1318,7 +1327,43 @@ uint32 Scoring::CalculateCurrentScore() const
 
 uint32 Scoring::CalculateScore(uint32 hitScore) const
 {
-	return (uint32)(((double)hitScore / (double)mapTotals.maxScore) * 10000000.0);
+	return ::CalculateScore(hitScore, mapTotals.maxScore, 10000000);
+}
+
+uint32 Scoring::CalculateCurrentDisplayScore() const
+{
+	return CalculateCurrentDisplayScore(currentHitScore, currentMaxScore);
+}
+
+uint32 Scoring::CalculateCurrentDisplayScore(const ScoreReplay& replay) const
+{
+	return CalculateCurrentDisplayScore(replay.currentScore, replay.currentMaxScore);
+}
+
+uint32 Scoring::CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const
+{
+	switch (g_gameConfig.GetEnum<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode))
+	{
+	case ScoreDisplayModes::Average:
+		return CalculateCurrentAverageScore(currHit, currMaxHit);
+		break;
+	case ScoreDisplayModes::Subtractive:
+		return CalculateCurrentMaxPossibleScore(currHit, currMaxHit);
+		break;
+	case ScoreDisplayModes::Additive:
+	default:
+		return CalculateScore(currHit);
+	}
+}
+
+uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxHit) const
+{
+	return CalculateScore(mapTotals.maxScore - (currMaxHit - currHit));
+}
+
+uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const
+{
+	return ::CalculateScore(currHit, currMaxHit, 10000000);
 }
 
 uint32 Scoring::CalculateCurrentGrade() const

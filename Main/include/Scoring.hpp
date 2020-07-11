@@ -117,6 +117,16 @@ public:
 	uint32 CalculateCurrentScore() const;
 	uint32 CalculateScore(uint32 hitScore) const;
 
+	uint32 CalculateCurrentDisplayScore() const;
+	uint32 CalculateCurrentDisplayScore(const ScoreReplay& replay) const;
+	uint32 CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const;
+
+	// The score if the rest would be played perfectly
+	uint32 CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxHit) const;
+
+	// The score based on the current pace
+	uint32 CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const;
+
 	// Calculates the grade connected to the current score
 	// Ranges from 0 to 5 (AAA,AA,A,B,C,D) in that order
 	uint32 CalculateCurrentGrade() const;
@@ -145,7 +155,7 @@ public:
 
 	// Called when score has changed
 	//	(New Score)
-	Delegate<uint32> OnScoreChanged;
+	Delegate<> OnScoreChanged;
 
 	// Object timing window
 	static const MapTime missHitTime;
