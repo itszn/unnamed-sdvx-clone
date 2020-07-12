@@ -14,7 +14,7 @@ public:
 	// Resets the playback of the map
 	// Must be called before any other function is called on this object
 	// returns false if the map contains no objects or timing or otherwise invalid
-	bool Reset(MapTime startTime = 0);
+	bool Reset(MapTime initTime = 0, MapTimeRange viewRange = {});
 
 	// Updates the time of the playback
 	// checks all items that have been triggered between last time and this time
@@ -122,6 +122,10 @@ private:
 
 	// Current map position of this playback object
 	MapTime m_playbackTime;
+
+	// Disregard objects outside of these ranges
+	MapTimeRange m_viewRange;
+
 	Vector<TimingPoint*> m_timingPoints;
 	Vector<ChartStop*> m_chartStops;
 	Vector<ObjectState*> m_objects;

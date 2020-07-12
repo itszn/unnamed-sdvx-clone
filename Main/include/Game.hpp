@@ -67,9 +67,10 @@ public:
 	virtual ChartIndex* GetChartIndex() = 0;
 	// The beatmap
 	virtual Ref<class Beatmap> GetBeatmap() = 0;
-	// Song was manually ended
-	virtual bool GetManualExit() = 0;
+	
+	virtual bool IsStorableScore() = 0;
 	virtual float GetPlaybackSpeed() = 0;
+
 	// Get lua state
 	virtual struct lua_State* GetLuaState() = 0;
 	// Set demo mode

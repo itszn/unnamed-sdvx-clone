@@ -147,7 +147,7 @@ public:
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
 		m_scoredata.gameflags = (uint32)m_flags;
-		if (game->GetManualExit())
+		if (!game->IsStorableScore())
 		{
 			m_badge = 0;
 		}
@@ -296,7 +296,7 @@ public:
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
-		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && !game->GetManualExit())
+		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
 		{
 			ScoreIndex* newScore = new ScoreIndex();
 			auto chart = game->GetChartIndex();

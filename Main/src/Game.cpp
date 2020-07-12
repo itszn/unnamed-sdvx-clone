@@ -1,14 +1,16 @@
 #include "stdafx.h"
 #include "Game.hpp"
 #include "Application.hpp"
+
 #include <array>
 #include <random>
 #include <unordered_set>
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
-#include "Scoring.hpp"
 #include <Audio/Audio.hpp>
+
+#include "Scoring.hpp"
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "Background.hpp"
@@ -62,6 +64,8 @@ public:
 	ChartIndex* m_chartIndex = nullptr;
 
 private:
+	static constexpr MapTime AUDIO_LEADIN = 3000;
+
 	bool m_playing = true;
 	bool m_started = false;
 	bool m_demo = false;
@@ -88,8 +92,6 @@ private:
 
 	// Game Canvas
 	Ref<HealthGauge> m_scoringGauge;
-	//Ref<SettingsBar> m_settingsBar;
-	//Ref<Label> m_scoreText;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -109,6 +111,13 @@ private:
 	// The play field
 	Track* m_track = nullptr;
 
+	// Time range to play
+	MapTimeRange m_playRange = {};
+	// Current position
+	MapTime m_lastMapTime = 0;
+	// End of the map
+	MapTime m_endTime = 0;
+
 	// The camera watching the playfield
 	Camera m_camera;
 
@@ -125,12 +134,10 @@ private:
 	const TimingPoint* m_currentTiming;
 	// Currently visible gameplay objects
 	Vector<ObjectState*> m_currentObjectSet;
-	MapTime m_lastMapTime;
 
 	// Rate to sample gauge;
 	MapTime m_gaugeSampleRate;
 	float m_gaugeSamples[256] = { 0.0f };
-	MapTime m_endTime;
 
 	// Combo gain animation
 	Timer m_comboAnimation;
@@ -192,6 +199,7 @@ public:
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
+
 	~Game_Impl()
 	{
 		if(m_track)
@@ -222,7 +230,6 @@ public:
 		g_input.OnButtonPressed.RemoveAll(this);
 		g_transition->OnLoadingComplete.RemoveAll(this);
 	}
-
 
 	AsyncAssetLoader loader;
 	virtual bool AsyncLoad() override
@@ -415,8 +422,9 @@ public:
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
+
 		///TODO: Set more accurate endTime
-		int64 endTime = startTime + (m_endTime / 1000) + 5;
+		int64 endTime = startTime + (m_playRange.Length(m_endTime) + AUDIO_LEADIN) / 1000;
 		g_application->DiscordPresenceSong(mapSettings, startTime, endTime);
 
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
@@ -542,7 +550,7 @@ public:
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_playback.Reset(m_lastMapTime);
+		m_playback.Reset(m_lastMapTime, m_playRange);
 		m_scoring.Reset();
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
@@ -956,23 +964,26 @@ public:
 		// Select the correct first object to set the intial playback position
 		// if it starts before a certain time frame, the song starts at a negative time (lead-in)
 		ObjectState *const* firstObj = &m_beatmap->GetLinearObjects().front();
-		while((*firstObj)->type == ObjectType::Event && firstObj != &m_beatmap->GetLinearObjects().back())
+		for(; firstObj != &m_beatmap->GetLinearObjects().back(); ++firstObj)
 		{
-			firstObj++;
+			if ((*firstObj)->type == ObjectType::Event) continue;
+			if ((*firstObj)->time < m_playRange.begin) continue;
+
+			break;
 		}
-		m_lastMapTime = 0;
-		MapTime firstObjectTime = (*firstObj)->time;
-		if(firstObjectTime < 3000)
+
+		m_lastMapTime = m_playRange.begin;
+
+		const MapTime firstObjectTime = (*firstObj)->time;
+		if(firstObjectTime < m_lastMapTime + AUDIO_LEADIN)
 		{
-			// Set start time
-			m_lastMapTime = firstObjectTime - 5000;
+			m_lastMapTime = firstObjectTime - AUDIO_LEADIN;
 		}
 
 		m_audioPlayback.SetPosition(m_lastMapTime);
-
-		// Reset playback
-		m_playback.Reset(m_lastMapTime);
+		m_playback.Reset(m_lastMapTime, m_playRange);
 	}
+
 	// Loads sound effects
 	bool InitSFX()
 	{
@@ -1154,6 +1165,12 @@ public:
 		{
 			FinishGame();
 		}
+
+		if (m_playRange.begin < m_lastMapTime && !m_playRange.Includes(m_lastMapTime))
+		{
+			FinishGame();
+		}
+
 		if (m_outroCompleted && !m_transitioning)
 		{
 			g_transition->OnLoadingComplete.RemoveAll(this);
@@ -1764,10 +1781,17 @@ public:
 	{
 		if (IsSuccessfullyInitialized())
 		{
-			ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
-			MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
-			if (timePastEnd < 0)
+			if (IsPartialPlay())
+			{
 				m_manualExit = true;
+			}
+			else
+			{
+				ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
+				MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
+				if (timePastEnd < 0)
+					m_manualExit = true;
+			}
 
 			FinishGame();
 		}
@@ -1871,6 +1895,14 @@ public:
 		m_multiplayer = multiplayer;
 	}
 
+	constexpr bool IsPartialPlay() const noexcept
+	{
+		if (m_playRange.begin != 0) return true;
+		if (!m_playRange.HasEnd()) return false;
+
+		return m_playRange.end < m_endTime;
+	}
+
 	virtual bool IsPlaying() const override
 	{
 		return m_playing;
@@ -1922,9 +1954,15 @@ public:
 	{
 		return m_lua;
 	}
-	virtual bool GetManualExit() override
+	virtual bool IsStorableScore() override
 	{
-		return m_manualExit;
+		if (m_scoring.autoplay) return false;
+		if (m_scoring.autoplayButtons) return false;
+
+		if (m_manualExit) return false;
+		if (IsPartialPlay()) return false;
+
+		return true;
 	}
 	virtual float GetPlaybackSpeed() override
 	{
@@ -2002,9 +2040,21 @@ public:
 		lua_setfield(L, -1, "scoreReplays");
 
 		//progress
-		lua_pushstring(L, "progress");
-		lua_pushnumber(L, Math::Clamp((float)m_lastMapTime / m_endTime, 0.f, 1.f));
-		lua_settable(L, -3);
+		{
+			MapTime progress = m_lastMapTime - m_playRange.begin;
+			MapTime duration = m_playRange.Length(m_endTime);
+
+			// Fallback to default
+			if (duration == 0)
+			{
+				progress = m_lastMapTime;
+				duration = m_endTime;
+			}
+
+			lua_pushstring(L, "progress");
+			lua_pushnumber(L, Math::Clamp((float) progress / duration, 0.f, 1.f));
+			lua_settable(L, -3);
+		}
 		//hispeed
 		lua_pushstring(L, "hispeed");
 		lua_pushnumber(L, m_hispeed);
