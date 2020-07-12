@@ -1836,7 +1836,7 @@ public:
 			{
 				m_selectionWheel->SelectRandom();
 			}
-			else if (code == SDL_SCANCODE_F8 && m_multiplayer == NULL) // start demo mode
+			else if (code == SDL_SCANCODE_F8 && m_multiplayer == nullptr) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
@@ -1879,6 +1879,22 @@ public:
 			else if (code == SDL_SCANCODE_RETURN && m_searchInput->active)
 			{
 				m_searchInput->SetActive(false);
+			}
+			else if (code == SDL_SCANCODE_GRAVE)
+			{
+				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+
+				Game* practiceGame = Game::CreatePractice(chart, GameFlags::None);
+				if (!practiceGame)
+				{
+					Log("Failed to start practice", Logger::Severity::Error);
+					return;
+				}
+
+				m_suspended = true;
+
+				// Transition to practice mode
+				g_transition->TransitionTo(practiceGame);
 			}
 		}
 	}

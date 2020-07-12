@@ -80,6 +80,10 @@ private:
 
 	MultiplayerScreen* m_multiplayer = nullptr;
 
+	// Making this into a separate class would be better, but it will (obviously) take a lot of work.
+	// If you who are reading this comment have a lot of free time, feel free to refactor Game_Impl. :)
+	bool m_isPracticeSetup = false;
+
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
 
@@ -112,6 +116,7 @@ private:
 	Track* m_track = nullptr;
 
 	PlayOptions m_playOptions;
+	MapTimeRange m_practiceSetupRange = { 0, 0 };
 
 	// Current position
 	MapTime m_lastMapTime = 0;
@@ -347,7 +352,8 @@ public:
 		// Get fps limit
 		m_fpsTarget = g_gameConfig.GetInt(GameConfigKeys::FPSTarget);
 
-		ApplyAudioLeadin();
+		m_lastMapTime = GetAudioLeadinTime();
+		InitPlaybacks();
 
 		// Load audio offset
 		int songOffset = 0;
@@ -524,25 +530,39 @@ public:
 
 		return true;
 	}
-	virtual bool Init() override
+
+	bool Init() override
 	{
 		return true;
 	}
 
 	// Restart map
-	virtual void Restart()
+	void Restart()
 	{
-		m_camera = Camera();
-		//bool audioReinit = m_audioPlayback.Init(m_playback, m_mapRootPath);
-		//assert(audioReinit);
+		JumpTo(GetAudioLeadinTime());
+	}
 
+	void JumpTo(MapTime newTime)
+	{
+		if (m_endTime < newTime)
+		{
+			newTime = m_endTime;
+		}
+		if (m_playOptions.range.HasEnd() && m_playOptions.range.end <= newTime)
+		{
+			newTime = m_playOptions.range.end - 1;
+		}
+
+		const MapTime mapTimeDiff = m_lastMapTime - newTime;
+
+		m_camera = Camera();
+		
 		// Audio leadin
-		MapTime mapTimeDiff = m_lastMapTime;
 		m_audioPlayback.SetEffectEnabled(0, false);
 		m_audioPlayback.SetEffectEnabled(1, false);
-		ApplyAudioLeadin();
 
-		mapTimeDiff -= m_lastMapTime;
+		m_lastMapTime = newTime;
+		InitPlaybacks();
 
 		// Keep the exit trigger time
 		if (m_exitTriggerTimeSet)
@@ -555,7 +575,7 @@ public:
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_playback.Reset(m_lastMapTime, m_playOptions.range);
+		m_playback.Reset(m_lastMapTime, { std::max(m_playOptions.range.begin, newTime), m_playOptions.range.end } );
 		m_scoring.Reset();
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
@@ -588,13 +608,18 @@ public:
 
 		m_track->ClearEffects();
 		m_particleSystem->Reset();
-		m_audioPlayback.SetPlaybackSpeed(1.0f);
 		m_audioPlayback.SetVolume(1.0f);
 
 		//unhide notes
 		m_hiddenObjects.clear();
 
+		if (m_isPracticeSetup)
+		{
+			m_audioPlayback.Pause();
+			m_paused = true;
+		}
 	}
+
 	virtual void Tick(float deltaTime) override
 	{
 		// Lock mouse to screen when playing
@@ -964,12 +989,12 @@ public:
 	}
 
 	// Wait before start of map
-	void ApplyAudioLeadin()
+	MapTime GetAudioLeadinTime()
 	{
 		// Select the correct first object to set the intial playback position
 		// if it starts before a certain time frame, the song starts at a negative time (lead-in)
-		ObjectState *const* firstObj = &m_beatmap->GetLinearObjects().front();
-		for(; firstObj != &m_beatmap->GetLinearObjects().back(); ++firstObj)
+		ObjectState* const* firstObj = &m_beatmap->GetLinearObjects().front();
+		for (; firstObj != &m_beatmap->GetLinearObjects().back(); ++firstObj)
 		{
 			if ((*firstObj)->type == ObjectType::Event) continue;
 			if ((*firstObj)->time < m_playOptions.range.begin) continue;
@@ -977,16 +1002,18 @@ public:
 			break;
 		}
 
-		m_lastMapTime = m_playOptions.range.begin;
-
+		const MapTime beginTime = m_playOptions.range.begin;
 		const MapTime firstObjectTime = (*firstObj)->time;
-		if(firstObjectTime < m_lastMapTime + AUDIO_LEADIN)
-		{
-			m_lastMapTime = firstObjectTime - AUDIO_LEADIN;
-		}
 
+		return std::min(beginTime, firstObjectTime - AUDIO_LEADIN);
+	}
+
+	void InitPlaybacks()
+	{
 		m_audioPlayback.SetPosition(m_lastMapTime);
 		m_playback.Reset(m_lastMapTime, m_playOptions.range);
+
+		ApplyPlaybackSpeed();
 	}
 
 	// Loads sound effects
@@ -1024,6 +1051,7 @@ public:
 
 		return true;
 	}
+
 	bool InitGameplay()
 	{
 		// Playback and timing
@@ -1051,6 +1079,7 @@ public:
 		}
 		m_playback.cMod = m_speedMod == SpeedMods::CMod;
 		m_playback.cModSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
+
 		// Register input bindings
 		m_scoring.OnButtonMiss.Add(this, &Game_Impl::OnButtonMiss);
 		m_scoring.OnLaserSlamHit.Add(this, &Game_Impl::OnLaserSlamHit);
@@ -1073,6 +1102,13 @@ public:
 
 		return true;
 	}
+
+	void ApplyPlaybackSpeed()
+	{
+		const float playbackSpeed = Math::Clamp(m_playOptions.playbackSpeed, 0.1f, 10.0f);
+		m_audioPlayback.SetPlaybackSpeed(playbackSpeed);
+	}
+
 	// Processes input and Updates scoring, also handles audio timing management
 	void TickGameplay(float deltaTime)
 	{
@@ -1086,6 +1122,7 @@ public:
 
 			// Start playback of audio in first gameplay tick
 			m_audioPlayback.Play();
+			m_paused = false;
 			m_started = true;
 
 			if(g_application->GetAppCommandLine().Contains("-autoskip"))
@@ -1174,7 +1211,7 @@ public:
 		{
 			EndCurrentRun();
 		}
-		else if (m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
+		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
 			FailCurrentRun();
 		}
@@ -1226,6 +1263,14 @@ public:
 	// Called when the end is reached
 	void EndCurrentRun()
 	{
+		if (m_isPracticeSetup)
+		{
+			m_audioPlayback.Pause();
+			m_paused = true;
+
+			return;
+		}
+
 		if (!IsMultiplayerGame() && m_playOptions.loopOnSuccess)
 		{
 			Restart();
@@ -1430,8 +1475,17 @@ public:
 		Vector2 buttonStateTextPos = Vector2(g_resolution.x - 200.0f, 100.0f);
 		RenderText(g_input.GetControllerStateString(), buttonStateTextPos);
 
-		if(m_scoring.autoplay)
-			textPos.y += RenderText("Autoplay enabled", textPos, Color::Blue).y;
+		if (m_scoring.autoplay)
+		{
+			if (m_isPracticeSetup)
+			{
+				textPos.y += RenderText("Practice Setup", textPos, Color::Blue).y;
+			}
+			else
+			{
+				textPos.y += RenderText("Autoplay enabled", textPos, Color::Blue).y;
+			}
+		}
 
 		// List recent hits and their delay
 		Vector2 tableStart = textPos;
@@ -1713,7 +1767,6 @@ public:
 				m_rollIntensity = 0;
 			else
 			{
-				//m_rollIntensity = m_rollIntensityBase + (float)(i - 1) * 0.0125f;
 				m_rollIntensity = MAX_ROLL_ANGLE * (1.0 + 0.75 * (i - 1));
 			}
 			m_camera.SetRollIntensity(m_rollIntensity);
@@ -1757,8 +1810,27 @@ public:
 
 	void OnKeyPressed(SDL_Scancode code) override
 	{
-		if (g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
+		if (!m_isPracticeSetup && g_gameConfig.GetBool(GameConfigKeys::DisableNonButtonInputsDuringPlay))
 			return;
+
+		if (m_isPracticeSetup)
+		{
+			assert(!IsMultiplayerGame());
+
+			switch (code)
+			{
+			case SDL_SCANCODE_SPACE:
+				m_audioPlayback.TogglePause();
+				m_paused = m_audioPlayback.IsPaused();
+				return;
+			case SDL_SCANCODE_UP:
+			case SDL_SCANCODE_DOWN:
+				const MapTime increment = 2000 * (code == SDL_SCANCODE_UP ? 1 : -1);
+				JumpTo(Math::Clamp(m_lastMapTime + increment, 0, m_endTime));
+				m_audioPlayback.Pause(); m_paused = true;
+				return;
+			}
+		}
 
 		if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
 		{
@@ -1767,14 +1839,14 @@ public:
 		}
 		else if(code == SDL_SCANCODE_RETURN) // Skip intro
 		{
-			if(!SkipIntro())
+			if(!SkipIntro() && !m_isPracticeSetup)
 				SkipOutro();
 		}
 		else if(code == SDL_SCANCODE_PAGEUP && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr)
+		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr && !m_isPracticeSetup)
 		{
 			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod);
 			if (abortMethod == AbortMethod::Press)
@@ -1790,7 +1862,6 @@ public:
 		else if(code == SDL_SCANCODE_F8)
 		{
 			m_renderDebugHUD = !m_renderDebugHUD;
-			//m_psi->visibility = m_renderDebugHUD ? Visibility::Collapsed : Visibility::Visible;
 		}
 		else if(code == SDL_SCANCODE_TAB)
 		{
@@ -1832,10 +1903,67 @@ public:
 	}
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
+		if (m_isPracticeSetup)
+		{
+			switch (buttonCode)
+			{
+			case Input::Button::Back:
+				TriggerManualExit();
+				break;
+			case Input::Button::FX_0:
+			case Input::Button::FX_1:
+			{
+				MapTime& rangePoint = buttonCode == Input::Button::FX_0 ? m_practiceSetupRange.begin : m_practiceSetupRange.end;
+				if (rangePoint == m_lastMapTime)
+					rangePoint = 0;
+				else
+					rangePoint = m_lastMapTime;
+			}
+				break;
+			case Input::Button::BT_0:
+			case Input::Button::BT_1:
+			{
+				const static float PLAYBACK_SPEEDS[] = { 0.25f, 0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
+				constexpr int PLAYBACK_SPEEDS_LEN = sizeof(PLAYBACK_SPEEDS) / sizeof(float);
+
+				float new_playback = 1.0f;
+				if (buttonCode == Input::Button::BT_0)
+				{
+					for (int i = 0; i < PLAYBACK_SPEEDS_LEN; ++i)
+					{
+						if (PLAYBACK_SPEEDS[i] < m_playOptions.playbackSpeed - 0.05f)
+							new_playback = PLAYBACK_SPEEDS[i];
+						else
+							break;
+					}
+				}
+				else
+				{
+					for (int i = PLAYBACK_SPEEDS_LEN; i-->0;)
+					{
+						if (PLAYBACK_SPEEDS[i] > m_playOptions.playbackSpeed + 0.05f)
+							new_playback = PLAYBACK_SPEEDS[i];
+						else
+							break;
+					}
+				}
+
+				m_playOptions.playbackSpeed = new_playback;
+				ApplyPlaybackSpeed();
+			}
+				break;
+			case Input::Button::BT_S:
+				StartPractice();
+				break;
+			}
+
+			return;
+		}
+
 		if (buttonCode == Input::Button::Back && IsSuccessfullyInitialized())
 		{
 			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod);
-			if (abortMethod == AbortMethod::Press)
+			if (m_paused || abortMethod == AbortMethod::Press)
 			{
 				TriggerManualExit();
 			}
@@ -1926,7 +2054,38 @@ public:
 
 	void MakeMultiplayer(MultiplayerScreen* multiplayer)
 	{
+		assert(!m_isPracticeSetup);
 		m_multiplayer = multiplayer;
+	}
+
+	void MakePracticeSetup()
+	{
+		assert(!IsMultiplayerGame());
+
+		m_isPracticeSetup = true;
+		m_scoring.autoplay = true;
+
+		m_practiceSetupRange = m_playOptions.range;
+		m_playOptions.range = { 0, 0 };
+	}
+
+	void StartPractice()
+	{
+		if (!m_isPracticeSetup || IsMultiplayerGame())
+			return;
+
+		m_isPracticeSetup = false;
+		m_scoring.autoplay = false;
+
+		m_playOptions.range = m_practiceSetupRange;
+		
+		if (IsPartialPlay())
+		{
+			m_playOptions.loopOnFail = true;
+			m_playOptions.loopOnSuccess = true;
+		}
+
+		Restart();
 	}
 
 	constexpr bool IsPartialPlay() const noexcept
@@ -1992,6 +2151,7 @@ public:
 	{
 		if (m_scoring.autoplay) return false;
 		if (m_scoring.autoplayButtons) return false;
+		if (m_isPracticeSetup) return false;
 
 		if (m_manualExit) return false;
 		if (IsPartialPlay()) return false;
@@ -2303,6 +2463,13 @@ Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, PlayOption
 Game* Game::Create(const String& mapPath, PlayOptions&& options)
 {
 	Game_Impl* impl = new Game_Impl(mapPath, std::move(options));
+	return impl;
+}
+
+Game* Game::CreatePractice(ChartIndex* chart, PlayOptions&& options)
+{
+	Game_Impl* impl = new Game_Impl(chart, std::move(options));
+	impl->MakePracticeSetup();
 	return impl;
 }
 
