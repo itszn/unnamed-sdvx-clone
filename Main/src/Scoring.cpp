@@ -207,6 +207,7 @@ void Scoring::Reset()
 	m_CleanupTicks();
 
 	OnScoreChanged.Call();
+	OnComboChanged.Call(0);
 }
 
 void Scoring::FinishGame()

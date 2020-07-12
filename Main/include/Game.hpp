@@ -31,6 +31,7 @@ struct ScoreReplay
 	int32 nextHitStat = 0;
 	Vector<SimpleHitStat> replay;
 };
+
 GameFlags operator|(const GameFlags& a, const GameFlags& b);
 GameFlags operator&(const GameFlags& a, const GameFlags& b);
 GameFlags operator~(const GameFlags& a);
@@ -43,11 +44,27 @@ class Game : public IAsyncLoadableApplicationTickable
 protected:
 	Game() = default;
 public:
+	struct PlayOptions;
+
 	virtual ~Game() = default;
-	static Game* Create(ChartIndex* chart, GameFlags flags);
-	static Game* Create(MultiplayerScreen*, ChartIndex* chart, GameFlags flags);
-	static Game* Create(const String& mapPath, GameFlags flags);
+	static Game* Create(ChartIndex* chart, const PlayOptions& options);
+	static Game* Create(MultiplayerScreen*, ChartIndex* chart, const PlayOptions& options);
+	static Game* Create(const String& mapPath, const PlayOptions& options);
 	static GameFlags FlagsFromSettings();
+
+	struct PlayOptions
+	{
+		PlayOptions() {}
+
+		// Implicitly used for normal gameplay
+		PlayOptions(GameFlags flags) : flags(flags) {}
+		
+		bool loopOnSuccess = false;
+		bool loopOnFail = false;
+
+		MapTimeRange range = { 0, 0 };
+		GameFlags flags = GameFlags::None;
+	};
 
 public:
 	// When the game is still going, false when the map is done, all ending sequences have played, etc.

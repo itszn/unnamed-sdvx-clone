@@ -111,8 +111,8 @@ private:
 	// The play field
 	Track* m_track = nullptr;
 
-	// Time range to play
-	MapTimeRange m_playRange = {};
+	PlayOptions m_playOptions;
+
 	// Current position
 	MapTime m_lastMapTime = 0;
 	// End of the map
@@ -156,7 +156,7 @@ private:
 	ParticleSystem m_particleSystem;
 	Ref<ParticleEmitter> m_laserFollowEmitters[2];
 	Ref<ParticleEmitter> m_holdEmitters[6];
-	GameFlags m_flags;
+
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
@@ -173,25 +173,25 @@ private:
 	bool m_exitTriggerTimeSet = false;
 
 public:
-	Game_Impl(const String& mapPath, GameFlags flags)
+	Game_Impl(const String& mapPath, const PlayOptions& options)
 	{
 		// Store path to map
 		m_chartPath = Path::Normalize(mapPath);
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
-		m_flags = flags;
+		m_playOptions = options;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
-	Game_Impl(ChartIndex* chart, GameFlags flags)
+	Game_Impl(ChartIndex* chart, const PlayOptions& options)
 	{
 		// Store path to map
 		m_chartPath = Path::Normalize(chart->path);
 		m_chartIndex = chart;
-		m_flags = flags;
+		m_playOptions = options;
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 
@@ -378,11 +378,8 @@ public:
 		if(!loader.Load())
 			return false;
 
-
-
 		// Load particle material
 		m_particleSystem = ParticleSystemRes::Create(g_gl);
-
 
 		return true;
 	}
@@ -424,7 +421,7 @@ public:
 		int64 startTime = Shared::Time::Now().Data();
 
 		///TODO: Set more accurate endTime
-		int64 endTime = startTime + (m_playRange.Length(m_endTime) + AUDIO_LEADIN) / 1000;
+		int64 endTime = startTime + (m_playOptions.range.Length(m_endTime) + AUDIO_LEADIN) / 1000;
 		g_application->DiscordPresenceSong(mapSettings, startTime, endTime);
 
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
@@ -442,11 +439,11 @@ public:
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
 		}
-		g_application->LoadGauge((m_flags & GameFlags::Hard) != GameFlags::None);
+		g_application->LoadGauge((GetFlags() & GameFlags::Hard) != GameFlags::None);
 
 
 		// Do this here so we don't get input events while still loading
-		m_scoring.SetFlags(m_flags);
+		m_scoring.SetFlags(GetFlags());
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
@@ -454,7 +451,7 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		if ((m_flags & GameFlags::Random) != GameFlags::None)
+		if ((GetFlags() & GameFlags::Random) != GameFlags::None)
 		{
 			//Randomize
 			std::array<int,4> swaps = { 0,1,2,3 };
@@ -502,7 +499,7 @@ public:
 
 		}
 
-		if ((m_flags & GameFlags::Mirror) != GameFlags::None)
+		if ((GetFlags() & GameFlags::Mirror) != GameFlags::None)
 		{
 			int buttonSwaps[] = { 3,2,1,0,5,4 };
 
@@ -541,16 +538,25 @@ public:
 		//assert(audioReinit);
 
 		// Audio leadin
+		MapTime mapTimeDiff = m_lastMapTime;
 		m_audioPlayback.SetEffectEnabled(0, false);
 		m_audioPlayback.SetEffectEnabled(1, false);
 		ApplyAudioLeadin();
+
+		mapTimeDiff -= m_lastMapTime;
+
+		// Keep the exit trigger time
+		if (m_exitTriggerTimeSet)
+		{
+			m_exitTriggerTime -= mapTimeDiff;
+		}
 
 		m_paused = false;
 		m_started = false;
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_playback.Reset(m_lastMapTime, m_playRange);
+		m_playback.Reset(m_lastMapTime, m_playOptions.range);
 		m_scoring.Reset();
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
@@ -967,12 +973,12 @@ public:
 		for(; firstObj != &m_beatmap->GetLinearObjects().back(); ++firstObj)
 		{
 			if ((*firstObj)->type == ObjectType::Event) continue;
-			if ((*firstObj)->time < m_playRange.begin) continue;
+			if ((*firstObj)->time < m_playOptions.range.begin) continue;
 
 			break;
 		}
 
-		m_lastMapTime = m_playRange.begin;
+		m_lastMapTime = m_playOptions.range.begin;
 
 		const MapTime firstObjectTime = (*firstObj)->time;
 		if(firstObjectTime < m_lastMapTime + AUDIO_LEADIN)
@@ -981,7 +987,7 @@ public:
 		}
 
 		m_audioPlayback.SetPosition(m_lastMapTime);
-		m_playback.Reset(m_lastMapTime, m_playRange);
+		m_playback.Reset(m_lastMapTime, m_playOptions.range);
 	}
 
 	// Loads sound effects
@@ -1124,16 +1130,16 @@ public:
 			m_scoring.currentGauge = 0.0f;
 		}
 		// Stop playing if gauge is on hard and at 0%
-		if ((m_flags & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
+		if ((GetFlags() & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
 		{
 			// In multiplayer we don't stop, but we send the final score
 			if (m_multiplayer == nullptr) {
-				FinishGame();
+				FailCurrentRun();
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
 
-				m_flags = m_flags & ~GameFlags::Hard;
-				m_scoring.SetFlags(m_flags);
+				m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
+				m_scoring.SetFlags(m_playOptions.flags);
 			}
 		}
 
@@ -1163,12 +1169,12 @@ public:
 		
 		if(m_audioPlayback.HasEnded())
 		{
-			FinishGame();
+			EndCurrentRun();
 		}
 
-		if (m_playRange.begin < m_lastMapTime && !m_playRange.Includes(m_lastMapTime))
+		if (m_playOptions.range.begin < m_lastMapTime && !m_playOptions.range.Includes(m_lastMapTime))
 		{
-			FinishGame();
+			EndCurrentRun();
 		}
 
 		if (m_outroCompleted && !m_transitioning)
@@ -1187,7 +1193,7 @@ public:
 				while (!game) // ensure a working game
 				{
 					ChartIndex* chart = m_db->GetRandomChart();
-					game = Game::Create(chart, m_flags);
+					game = Game::Create(chart, m_playOptions);
 				}
 				game->GetScoring().autoplay = true;
 				game->SetDemoMode(true);
@@ -1215,6 +1221,32 @@ public:
 		}
 	}
 
+	// Called when the end is reached
+	void EndCurrentRun()
+	{
+		if (!IsMultiplayerGame() && m_playOptions.loopOnSuccess)
+		{
+			Restart();
+		}
+		else
+		{
+			FinishGame();
+		}
+	}
+
+	// Called when the current play is failed for whatever reason
+	void FailCurrentRun()
+	{
+		if (!IsMultiplayerGame() && m_playOptions.loopOnFail)
+		{
+			Restart();
+		}
+		else
+		{
+			FinishGame();
+		}
+	}
+
 	// Called when game is finished and the score screen should show up
 	void FinishGame()
 	{
@@ -1237,7 +1269,7 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(diff, m_flags);
+				game = Game::Create(diff, m_playOptions);
 			}
 			game->GetScoring().autoplay = true;
 			game->SetDemoMode(true);
@@ -1690,7 +1722,7 @@ public:
 		}
 		else if (key == EventKey::ChartEnd)
 		{
-			FinishGame();
+			EndCurrentRun();
 		}
 	}
 
@@ -1820,7 +1852,7 @@ public:
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
-		scoreData.gameflags = (uint32)m_flags;
+		scoreData.gameflags = (uint32) GetFlags();
 		scoreData.gauge = m_scoring.currentGauge;
 		scoreData.score = m_scoring.CalculateCurrentScore();
 		return Scoring::CalculateBadge(scoreData);
@@ -1897,10 +1929,10 @@ public:
 
 	constexpr bool IsPartialPlay() const noexcept
 	{
-		if (m_playRange.begin != 0) return true;
-		if (!m_playRange.HasEnd()) return false;
+		if (m_playOptions.range.begin != 0) return true;
+		if (!m_playOptions.range.HasEnd()) return false;
 
-		return m_playRange.end < m_endTime;
+		return m_playOptions.range.end < m_endTime;
 	}
 
 	virtual bool IsPlaying() const override
@@ -1948,7 +1980,7 @@ public:
 	}
 	virtual GameFlags GetFlags() override
 	{
-		return m_flags;
+		return m_playOptions.flags;
 	}
 	virtual lua_State* GetLuaState() override 
 	{
@@ -2041,8 +2073,8 @@ public:
 
 		//progress
 		{
-			MapTime progress = m_lastMapTime - m_playRange.begin;
-			MapTime duration = m_playRange.Length(m_endTime);
+			MapTime progress = m_lastMapTime - m_playOptions.range.begin;
+			MapTime duration = m_playOptions.range.Length(m_endTime);
 
 			// Fallback to default
 			if (duration == 0)
@@ -2207,7 +2239,7 @@ public:
 
 		pushIntToTable("difficulty", mapSettings.difficulty);
 		pushIntToTable("level", mapSettings.level);
-		pushIntToTable("gaugeType", (m_flags & GameFlags::Hard) != GameFlags::None ? 1 : 0);
+		pushIntToTable("gaugeType", (GetFlags() & GameFlags::Hard) != GameFlags::None ? 1 : 0);
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
@@ -2252,22 +2284,22 @@ public:
 	}
 };
 
-Game* Game::Create(ChartIndex* chart, GameFlags flags)
+Game* Game::Create(ChartIndex* chart, const PlayOptions& options)
 {
-	Game_Impl* impl = new Game_Impl(chart, flags);
+	Game_Impl* impl = new Game_Impl(chart, options);
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, GameFlags flags)
+Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, const PlayOptions& options)
 {
-	Game_Impl* impl = new Game_Impl(chart, flags);
+	Game_Impl* impl = new Game_Impl(chart, options);
 	impl->MakeMultiplayer(multiplayer);
 	return impl;
 }
 
-Game* Game::Create(const String& mapPath, GameFlags flags)
+Game* Game::Create(const String& mapPath, const PlayOptions& options)
 {
-	Game_Impl* impl = new Game_Impl(mapPath, flags);
+	Game_Impl* impl = new Game_Impl(mapPath, options);
 	return impl;
 }
 
