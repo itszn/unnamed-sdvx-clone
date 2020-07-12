@@ -3,6 +3,7 @@
 #include "AsyncLoadable.hpp"
 #include <Beatmap/MapDatabase.hpp>
 #include "json.hpp"
+#include "GameFailCondition.hpp"
 
 class MultiplayerScreen;
 
@@ -47,9 +48,9 @@ public:
 	struct PlayOptions;
 
 	virtual ~Game() = default;
-	static Game* Create(ChartIndex* chart, const PlayOptions& options);
-	static Game* Create(MultiplayerScreen*, ChartIndex* chart, const PlayOptions& options);
-	static Game* Create(const String& mapPath, const PlayOptions& options);
+	static Game* Create(ChartIndex* chart, PlayOptions&& options);
+	static Game* Create(MultiplayerScreen*, ChartIndex* chart, PlayOptions&& options);
+	static Game* Create(const String& mapPath, PlayOptions&& options);
 	static GameFlags FlagsFromSettings();
 
 	struct PlayOptions
@@ -58,12 +59,17 @@ public:
 
 		// Implicitly used for normal gameplay
 		PlayOptions(GameFlags flags) : flags(flags) {}
+		PlayOptions(PlayOptions&&) = default;
 		
 		bool loopOnSuccess = false;
 		bool loopOnFail = false;
 
 		MapTimeRange range = { 0, 0 };
 		GameFlags flags = GameFlags::None;
+
+		float playbackSpeed = 1.0f;
+
+		std::unique_ptr<GameFailCondition> failCondition = nullptr;
 	};
 
 public:

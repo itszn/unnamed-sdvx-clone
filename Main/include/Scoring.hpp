@@ -122,6 +122,7 @@ public:
 	uint32 CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const;
 
 	// The score if the rest would be played perfectly
+	uint32 CalculateCurrentMaxPossibleScore() const;
 	uint32 CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxHit) const;
 
 	// The score based on the current pace

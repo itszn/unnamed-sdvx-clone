@@ -1357,6 +1357,11 @@ uint32 Scoring::CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) 
 	}
 }
 
+uint32 Scoring::CalculateCurrentMaxPossibleScore() const
+{
+	return CalculateCurrentMaxPossibleScore(currentHitScore, currentMaxScore);
+}
+
 uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxHit) const
 {
 	return CalculateScore(mapTotals.maxScore - (currMaxHit - currHit));

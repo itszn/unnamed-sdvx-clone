@@ -173,25 +173,24 @@ private:
 	bool m_exitTriggerTimeSet = false;
 
 public:
-	Game_Impl(const String& mapPath, const PlayOptions& options)
+	Game_Impl(const String& mapPath, PlayOptions&& options) : m_playOptions(std::move(options))
 	{
 		// Store path to map
 		m_chartPath = Path::Normalize(mapPath);
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
-		m_playOptions = options;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
 		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
-	Game_Impl(ChartIndex* chart, const PlayOptions& options)
+	Game_Impl(ChartIndex* chart, PlayOptions&& options) : m_playOptions(std::move(options))
 	{
 		// Store path to map
 		m_chartPath = Path::Normalize(chart->path);
 		m_chartIndex = chart;
-		m_playOptions = options;
+
 		// Get Parent path
 		m_chartRootPath = Path::RemoveLast(m_chartPath, nullptr);
 
@@ -1171,10 +1170,13 @@ public:
 		{
 			EndCurrentRun();
 		}
-
-		if (m_playOptions.range.begin < m_lastMapTime && !m_playOptions.range.Includes(m_lastMapTime))
+		else if (m_playOptions.range.begin < m_lastMapTime && !m_playOptions.range.Includes(m_lastMapTime))
 		{
 			EndCurrentRun();
+		}
+		else if (m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
+		{
+			FailCurrentRun();
 		}
 
 		if (m_outroCompleted && !m_transitioning)
@@ -1193,7 +1195,7 @@ public:
 				while (!game) // ensure a working game
 				{
 					ChartIndex* chart = m_db->GetRandomChart();
-					game = Game::Create(chart, m_playOptions);
+					game = Game::Create(chart, std::move(m_playOptions));
 				}
 				game->GetScoring().autoplay = true;
 				game->SetDemoMode(true);
@@ -1269,7 +1271,7 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(diff, m_playOptions);
+				game = Game::Create(diff, m_playOptions.flags);
 			}
 			game->GetScoring().autoplay = true;
 			game->SetDemoMode(true);
@@ -1993,6 +1995,7 @@ public:
 
 		if (m_manualExit) return false;
 		if (IsPartialPlay()) return false;
+		if (GetPlaybackSpeed() < 1.0f) return false;
 
 		return true;
 	}
@@ -2284,22 +2287,22 @@ public:
 	}
 };
 
-Game* Game::Create(ChartIndex* chart, const PlayOptions& options)
+Game* Game::Create(ChartIndex* chart, PlayOptions&& options)
 {
-	Game_Impl* impl = new Game_Impl(chart, options);
+	Game_Impl* impl = new Game_Impl(chart, std::move(options));
 	return impl;
 }
 
-Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, const PlayOptions& options)
+Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, PlayOptions&& options)
 {
-	Game_Impl* impl = new Game_Impl(chart, options);
+	Game_Impl* impl = new Game_Impl(chart, std::move(options));
 	impl->MakeMultiplayer(multiplayer);
 	return impl;
 }
 
-Game* Game::Create(const String& mapPath, const PlayOptions& options)
+Game* Game::Create(const String& mapPath, PlayOptions&& options)
 {
-	Game_Impl* impl = new Game_Impl(mapPath, options);
+	Game_Impl* impl = new Game_Impl(mapPath, std::move(options));
 	return impl;
 }
 
