@@ -1474,21 +1474,9 @@ public:
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 		m_previewParams = {"", 0, 0};
 		m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
+
 		if (!m_settDiag.Init())
-		{
-			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing game settings dialog", "No game settings dialog script file could be found, suggested solution:\n"
-				"Would you like to copy \"scripts/gamesettingsdialog.lua\" from the default skin to your current skin?");
-			if (!copyDefault)
-				return false;
-			String defaultPath = Path::Normalize(Path::Absolute("skins/Default/scripts/gamesettingsdialog.lua"));
-			String skinPath = Path::Normalize(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/gamesettingsdialog.lua"));
-			Path::Copy(defaultPath, skinPath);
-			if (!m_settDiag.Init())
-			{
-				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default", 2);
-				return false;
-			}
-		}
+			return false;
 
 		GameplaySettingsDialog::Tab songTab = std::make_unique<GameplaySettingsDialog::TabData>();
 		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>();

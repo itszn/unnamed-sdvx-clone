@@ -5,4 +5,5 @@ class GameplaySettingsDialog: public BaseGameSettingsDialog
 {
 public:
     void InitTabs() override;
+    void OnAdvanceTab() override;
 };

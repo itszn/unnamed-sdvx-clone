@@ -80,6 +80,7 @@ public:
 
 protected:
     virtual void InitTabs() = 0;
+    virtual void OnAdvanceTab() {};
 
     Setting CreateToggleSetting(GameConfigKeys key, String name);
     Setting CreateIntSetting(GameConfigKeys key, String name, Vector2i range);
@@ -88,6 +89,7 @@ protected:
     template <typename EnumClass>
     Setting CreateEnumSetting(GameConfigKeys key, String name);
 
+    inline int GetCurrentTab() const { return m_currentTab; }
     inline void SetCurrentTab(int tabIndex) { m_currentTab = tabIndex; }
 
 private:

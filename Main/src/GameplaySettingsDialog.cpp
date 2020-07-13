@@ -37,3 +37,8 @@ void GameplaySettingsDialog::InitTabs()
 
     SetCurrentTab(g_gameConfig.GetInt(GameConfigKeys::GameplaySettingsDialogLastTab));
 }
+
+void GameplaySettingsDialog::OnAdvanceTab()
+{
+    g_gameConfig.Set(GameConfigKeys::GameplaySettingsDialogLastTab, GetCurrentTab());
+}
