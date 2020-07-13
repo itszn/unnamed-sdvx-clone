@@ -329,11 +329,11 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		lua_settop(m_lua, 0);
 		luaL_unref(m_lua, LUA_REGISTRYINDEX, ar.callback);
 
-		setlocale(LC_CTYPE, defaultLocale.c_str());
-
 		// Pop response
 		m_archiveLock.lock();
 		m_archiveResps.pop();
+
+		setlocale(LC_CTYPE, defaultLocale.c_str());
 	}
 	m_archiveLock.unlock();
 }
