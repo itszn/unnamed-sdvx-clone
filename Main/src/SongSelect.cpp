@@ -1503,7 +1503,6 @@ public:
 		songTab->settings.push_back(std::move(songOffsetSetting));
 		m_settDiag.AddTab(std::move(songTab));
 		
-
 		if (m_hasCollDiag)
 		{
 			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
