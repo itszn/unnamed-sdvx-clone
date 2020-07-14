@@ -8,6 +8,7 @@ enum class SettingType
     Integer,
     Floating,
     Toggle,
+    Button,
     Enum
 };
 
@@ -34,6 +35,7 @@ public:
             int val;
             int min;
             int max;
+            int step = 1;
             Delegate<int&> getter;
             Delegate<int> setter;
         } intSetting;
@@ -77,6 +79,8 @@ public:
 
     inline void Open() { assert(!m_active); m_targetActive = true; }
     inline void Close() { assert(m_active); m_targetActive = false; }
+
+    Delegate<const BaseGameSettingsDialog *> onClose;
 
 protected:
     virtual void InitTabs() = 0;

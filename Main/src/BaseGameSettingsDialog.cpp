@@ -26,9 +26,19 @@ BaseGameSettingsDialog::~BaseGameSettingsDialog()
 
 void BaseGameSettingsDialog::Tick(float deltaTime)
 {
-    m_active = m_targetActive;
+    if (m_active != m_targetActive)
+    {
+        m_active = m_targetActive;
+        if (!m_active)
+        {
+            onClose.Call(this);
+        }
+    }
+
     if (!m_active)
+    {
         return;
+    }
 
     if (!m_enableFXInputs)
     {
@@ -167,6 +177,7 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameCon
     s->intSetting.val = g_gameConfig.GetInt(key);
     s->intSetting.min = range.x;
     s->intSetting.max = range.y;
+    s->intSetting.step = 1;
     s->intSetting.setter.AddLambda(std::move(setter));
     s->intSetting.getter.AddLambda(std::move(getter));
     return s;
@@ -259,9 +270,10 @@ void BaseGameSettingsDialog::m_SetTables()
                             pushIntToTable("max", setting->floatSetting.max);
                             break;
                         case SettingType::Toggle:
+                        case SettingType::Button:
                             setting->boolSetting.getter.Call(setting->boolSetting.val);
                             pushStringToTable("type", "toggle");
-                            pushBoolToTable("value", setting->boolSetting.val);
+                            pushBoolToTable("value", setting->type == SettingType::Button ? false : setting->boolSetting.val);
                             break;
                         case SettingType::Enum:
                             setting->enumSetting.getter.Call(newEnumVal);
@@ -395,12 +407,13 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
     switch (currentSetting->type)
     {
     case SettingType::Integer:
-        currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps,
+        currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps * currentSetting->intSetting.step,
             currentSetting->intSetting.min,
             currentSetting->intSetting.max);
         currentSetting->intSetting.setter.Call(currentSetting->intSetting.val);
         break;
     case SettingType::Toggle:
+    case SettingType::Button:
         currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
         currentSetting->boolSetting.setter.Call(currentSetting->boolSetting.val);
         break;

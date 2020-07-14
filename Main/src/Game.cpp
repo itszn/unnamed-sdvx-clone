@@ -87,6 +87,7 @@ private:
 	bool m_isPracticeSetup = false;
 	bool m_isPracticeMode = false;
 	std::unique_ptr<PracticeModeSettingsDialog> m_practiceSetupDialog = nullptr;
+	bool m_playOnDialogClose = false;
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
@@ -392,7 +393,22 @@ public:
 
 		if (m_isPracticeSetup)
 		{
-			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_practiceSetupRange);
+			m_playOnDialogClose = true;
+			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
+			m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
+			m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
+			m_practiceSetupDialog->onClose.AddLambda([this](auto) {
+				if (m_playOnDialogClose)
+				{
+					m_audioPlayback.Play();
+				}
+				else
+				{
+					m_audioPlayback.Pause();
+				}
+
+				m_paused = m_audioPlayback.IsPaused();
+			});
 		}
 		
 		return true;
@@ -437,12 +453,12 @@ public:
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
 
-		///TODO: Set more accurate endTime
+		// TODO: Set more accurate endTime
 		int64 endTime = startTime + (int64) ((m_playOptions.range.Length(m_endTime) + AUDIO_LEADIN * m_audioPlayback.GetPlaybackSpeed()) / 1000);
 		g_application->DiscordPresenceSong(mapSettings, startTime, endTime);
 
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
-		//Set gameplay table
+		// Set gameplay table
 		SetInitialGameplayLua(m_lua);
 
 		// For multiplayer we also bind the TCP in
@@ -1756,7 +1772,6 @@ public:
 		}
 	}
 
-
 	void OnTimingPointChanged(TimingPoint* tp)
 	{
 	   m_hispeed = m_modSpeed / tp->GetBPM(); 
@@ -1920,7 +1935,7 @@ public:
 	{
 		if (IsSuccessfullyInitialized())
 		{
-			if (m_isPracticeMode)
+			if (m_isPracticeMode && !m_isPracticeSetup)
 			{
 				RevertToPracticeSetup();
 				return;
@@ -1943,63 +1958,25 @@ public:
 		{
 			switch (buttonCode)
 			{
-			case Input::Button::FX_0:
-				m_audioPlayback.TogglePause();
-				m_paused = m_audioPlayback.IsPaused();
-				break;
-			case Input::Button::FX_1:
-				m_audioPlayback.Pause();
-				m_paused = true;
-
-				if (m_practiceSetupDialog)
-					m_practiceSetupDialog->Open();
-				break;
 			case Input::Button::Back:
 				TriggerManualExit();
 				break;
-			case Input::Button::BT_0:
-			case Input::Button::BT_1:
-			{
-				MapTime& rangePoint = buttonCode == Input::Button::BT_0 ? m_practiceSetupRange.begin : m_practiceSetupRange.end;
-				if (rangePoint == m_lastMapTime)
-					rangePoint = 0;
-				else
-					rangePoint = m_lastMapTime;
-			}
-				break;
-			case Input::Button::BT_2:
-			case Input::Button::BT_3:
-			{
-				const static float PLAYBACK_SPEEDS[] = { 0.25f, 0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
-				constexpr int PLAYBACK_SPEEDS_LEN = sizeof(PLAYBACK_SPEEDS) / sizeof(float);
-
-				float new_playback = 1.0f;
-				if (buttonCode == Input::Button::BT_2)
+			case Input::Button::FX_0:
+			case Input::Button::FX_1:
+				if (g_input.GetButton(buttonCode == Input::Button::FX_0 ? Input::Button::FX_1 : Input::Button::FX_0))
 				{
-					new_playback = PLAYBACK_SPEEDS[0];
-					for (int i = 1; i < PLAYBACK_SPEEDS_LEN; ++i)
-					{
-						if (PLAYBACK_SPEEDS[i] < m_playOptions.playbackSpeed - 0.05f)
-							new_playback = PLAYBACK_SPEEDS[i];
-						else
-							break;
-					}
+					m_audioPlayback.Pause();
+					m_paused = true;
+
+					if (m_practiceSetupDialog)
+						m_practiceSetupDialog->Open();
 				}
 				else
 				{
-					new_playback = PLAYBACK_SPEEDS[PLAYBACK_SPEEDS_LEN-1];
-					for (int i = PLAYBACK_SPEEDS_LEN-1; i-->0;)
-					{
-						if (PLAYBACK_SPEEDS[i] > m_playOptions.playbackSpeed + 0.05f)
-							new_playback = PLAYBACK_SPEEDS[i];
-						else
-							break;
-					}
+					m_playOnDialogClose = !m_paused;
+					m_audioPlayback.TogglePause();
+					m_paused = m_audioPlayback.IsPaused();
 				}
-
-				m_playOptions.playbackSpeed = new_playback;
-				ApplyPlaybackSpeed();
-			}
 				break;
 			case Input::Button::BT_S:
 				StartPractice();
@@ -2118,8 +2095,6 @@ public:
 
 		m_scoring.autoplay = true;
 
-		m_triggerPause = true;
-
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
 	}
@@ -2155,13 +2130,6 @@ public:
 
 		m_playOptions.range = m_practiceSetupRange;
 		
-		// TODO: remove this after working on the settings dialog
-		if (IsPartialPlay())
-		{
-			m_playOptions.loopOnFail = true;
-			m_playOptions.loopOnSuccess = true;
-		}
-
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			m_practiceSetupDialog->Close();
 

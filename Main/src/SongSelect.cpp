@@ -1871,7 +1871,7 @@ public:
 			{
 				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
 
-				Game* practiceGame = Game::CreatePractice(chart, GameFlags::None);
+				Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
 				if (!practiceGame)
 				{
 					Log("Failed to start practice", Logger::Severity::Error);
