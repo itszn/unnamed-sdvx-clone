@@ -389,6 +389,11 @@ public:
 
 		// Load particle material
 		m_particleSystem = ParticleSystemRes::Create(g_gl);
+
+		if (m_isPracticeSetup)
+		{
+			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_practiceSetupRange);
+		}
 		
 		return true;
 	}
@@ -1938,7 +1943,11 @@ public:
 		{
 			switch (buttonCode)
 			{
-			case Input::Button::BT_3:
+			case Input::Button::FX_0:
+				m_audioPlayback.TogglePause();
+				m_paused = m_audioPlayback.IsPaused();
+				break;
+			case Input::Button::FX_1:
 				m_audioPlayback.Pause();
 				m_paused = true;
 
@@ -1948,24 +1957,24 @@ public:
 			case Input::Button::Back:
 				TriggerManualExit();
 				break;
-			case Input::Button::FX_0:
-			case Input::Button::FX_1:
+			case Input::Button::BT_0:
+			case Input::Button::BT_1:
 			{
-				MapTime& rangePoint = buttonCode == Input::Button::FX_0 ? m_practiceSetupRange.begin : m_practiceSetupRange.end;
+				MapTime& rangePoint = buttonCode == Input::Button::BT_0 ? m_practiceSetupRange.begin : m_practiceSetupRange.end;
 				if (rangePoint == m_lastMapTime)
 					rangePoint = 0;
 				else
 					rangePoint = m_lastMapTime;
 			}
 				break;
-			case Input::Button::BT_0:
-			case Input::Button::BT_1:
+			case Input::Button::BT_2:
+			case Input::Button::BT_3:
 			{
 				const static float PLAYBACK_SPEEDS[] = { 0.25f, 0.3f, 0.35f, 0.4f, 0.45f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 				constexpr int PLAYBACK_SPEEDS_LEN = sizeof(PLAYBACK_SPEEDS) / sizeof(float);
 
 				float new_playback = 1.0f;
-				if (buttonCode == Input::Button::BT_0)
+				if (buttonCode == Input::Button::BT_2)
 				{
 					new_playback = PLAYBACK_SPEEDS[0];
 					for (int i = 1; i < PLAYBACK_SPEEDS_LEN; ++i)
@@ -2113,8 +2122,6 @@ public:
 
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
-
-		m_practiceSetupDialog = std::unique_ptr<PracticeModeSettingsDialog>(new PracticeModeSettingsDialog());
 	}
 
 	void RevertToPracticeSetup()
