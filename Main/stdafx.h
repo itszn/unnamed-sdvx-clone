@@ -22,6 +22,7 @@
 
 #include <memory.h>
 #include <cinttypes>
+#include <memory>
 
 // TODO: reference additional headers your program requires here
 #include <Shared/Shared.hpp>
