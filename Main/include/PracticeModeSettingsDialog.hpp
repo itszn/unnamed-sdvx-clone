@@ -11,10 +11,12 @@ public:
 
 	Delegate<MapTime> onSetMapTime;
 	Delegate<float> onSpeedChange;
+	Delegate<> onSettingChange;
 
 private:
 	Tab m_CreatePlaybackTab();
-	Tab m_CreateConditionTab();
+	Tab m_CreateFailConditionTab();
+	Tab m_CreateGameSettingTab();
 
 	MapTime m_endTime;
 	MapTime& m_lastMapTime;

@@ -115,7 +115,8 @@ private:
 	// Audio playback manager (music and FX))
 	AudioPlayback m_audioPlayback;
 	// Applied audio offset
-	int32 m_audioOffset = 0;
+	int32 m_globalOffset = 0;
+	int32 m_songOffset = 0;
 	int32 m_fpsTarget = 0;
 	// The play field
 	Track* m_track = nullptr;
@@ -358,7 +359,6 @@ public:
 		m_fpsTarget = g_gameConfig.GetInt(GameConfigKeys::FPSTarget);
 
 		m_lastMapTime = GetAudioLeadinTime();
-		InitPlaybacks();
 
 		// Load audio offset
 		int songOffset = 0;
@@ -367,8 +367,10 @@ public:
 			songOffset = m_chartIndex->custom_offset;
 		}
 
-		m_audioOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset) + songOffset;
-		m_playback.audioOffset = m_audioOffset;
+		m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+		m_songOffset = songOffset;
+
+		InitPlaybacks();
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
 
@@ -396,11 +398,19 @@ public:
 			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
 			m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
 			m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
-			m_practiceSetupDialog->onClose.AddLambda([this](auto) {
+			m_practiceSetupDialog->onClose.AddLambda([this]() {
 				if (m_playOnDialogClose) m_audioPlayback.Play();
 				else m_audioPlayback.Pause();
 
 				m_paused = m_audioPlayback.IsPaused();
+			});
+			m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
+				int newGlobalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+				if (newGlobalOffset != m_globalOffset)
+				{
+					m_globalOffset = newGlobalOffset;
+					JumpTo(m_lastMapTime);
+				}
 			});
 		}
 		
@@ -601,7 +611,7 @@ public:
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_playback.Reset(m_lastMapTime, { std::max(m_playOptions.range.begin, newTime), m_playOptions.range.end } );
+		m_playback.Reset(m_lastMapTime, std::max(m_playOptions.range.begin, newTime) );
 		m_scoring.Reset();
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
@@ -1037,10 +1047,17 @@ public:
 		return std::min(beginTime, (MapTime) (firstObjectTime - AUDIO_LEADIN * m_audioPlayback.GetPlaybackSpeed()));
 	}
 
+	inline int32 GetAudioOffset()
+	{
+		return m_globalOffset + m_songOffset;
+	}
+
 	void InitPlaybacks()
 	{
-		m_audioPlayback.SetPosition(m_lastMapTime + m_audioOffset);
-		m_playback.Reset(m_lastMapTime, m_playOptions.range);
+		m_audioPlayback.SetPosition(m_lastMapTime + GetAudioOffset());
+
+		m_playback.audioOffset = GetAudioOffset();
+		m_playback.Reset(m_lastMapTime, m_playOptions.range.begin);
 
 		ApplyPlaybackSpeed();
 	}
@@ -1171,7 +1188,7 @@ public:
 		const BeatmapSettings& beatmapSettings = m_beatmap->GetMapSettings();
 
 		// Update beatmap playback
-		MapTime playbackPositionMs = m_audioPlayback.GetPosition() - m_audioOffset;
+		MapTime playbackPositionMs = m_audioPlayback.GetPosition() - GetAudioOffset();
 		m_playback.Update(playbackPositionMs);
 
 		MapTime delta = playbackPositionMs - m_lastMapTime;
@@ -2204,9 +2221,11 @@ public:
 		if (m_scoring.autoplayButtons) return false;
 		if (m_isPracticeSetup) return false;
 
+		// GetPlaybackSpeed() returns 0 on end of a song
+		if (m_playOptions.playbackSpeed < 1.0f) return false;
+
 		if (m_manualExit) return false;
 		if (IsPartialPlay()) return false;
-		if (GetPlaybackSpeed() < 1.0f) return false;
 
 		return true;
 	}

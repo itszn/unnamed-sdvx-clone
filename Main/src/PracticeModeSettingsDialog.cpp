@@ -9,7 +9,8 @@ PracticeModeSettingsDialog::PracticeModeSettingsDialog(MapTime endTime, MapTime&
 void PracticeModeSettingsDialog::InitTabs()
 {
     AddTab(std::move(m_CreatePlaybackTab()));
-    AddTab(std::move(m_CreateConditionTab()));
+    AddTab(std::move(m_CreateFailConditionTab()));
+    AddTab(std::move(m_CreateGameSettingTab()));
 
     SetCurrentTab(0);
 }
@@ -42,7 +43,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     loopBeginSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
     playbackTab->settings.emplace_back(std::move(loopBeginSetting));
 
-    Setting loopBeginButton = CreateButton("Set to current position",
+    Setting loopBeginButton = CreateButton("Set to here",
         std::move([this](const auto&) { m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
     playbackTab->settings.emplace_back(std::move(loopBeginButton));
 
@@ -50,7 +51,11 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     loopEndSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
     playbackTab->settings.emplace_back(std::move(loopEndSetting));
 
-    Setting loopEndButton = CreateButton("Set to current position",
+    Setting loopEndClearButton = CreateButton("Clear",
+        std::move([this](const auto&) { m_range.end = 0; }));
+    playbackTab->settings.emplace_back(std::move(loopEndClearButton));
+
+    Setting loopEndButton = CreateButton("Set to here",
         std::move([this](const auto&) { m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
     playbackTab->settings.emplace_back(std::move(loopEndButton));
 
@@ -103,10 +108,10 @@ static inline std::unique_ptr<GameFailCondition> CreateGameFailCondition(GameFai
     }
 }
 
-PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateConditionTab()
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditionTab()
 {
     Tab conditionTab = std::make_unique<TabData>();
-    conditionTab->name = "Condition";
+    conditionTab->name = "Failing";
 
     Setting conditionType = std::make_unique<SettingData>("Fail condition", SettingType::Enum);
     for (const char* str : GAME_FAIL_CONDITION_TYPE_STR)
@@ -176,4 +181,26 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateConditionTab
     conditionTab->settings.emplace_back(std::move(missNearThreshold));
 
     return conditionTab;
+}
+
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingTab()
+{
+    Tab gameSettingTab = std::make_unique<TabData>();
+    gameSettingTab->name = "GameSetting";
+
+    Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
+    globalOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
+    gameSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
+
+    Setting chartOffsetSetting = std::make_unique<SettingData>("Chart offset", SettingType::Integer);
+    chartOffsetSetting->intSetting.min = -200;
+    chartOffsetSetting->intSetting.max = 200;
+    chartOffsetSetting->intSetting.val = 0;
+    // TODO: get and set the chart offset
+    gameSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
+
+    // TODO: speed mod
+    // TODO: hidden and sudden
+
+    return gameSettingTab;
 }

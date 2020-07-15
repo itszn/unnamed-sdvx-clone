@@ -16,7 +16,7 @@ BeatmapPlayback::~BeatmapPlayback()
 		m_timingPoints.clear();
 	}
 }
-bool BeatmapPlayback::Reset(MapTime initTime, MapTimeRange viewRange)
+bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 {
 	m_effectObjects.clear();
 	m_timingPoints = m_beatmap->GetLinearTimingPoints();
@@ -30,9 +30,9 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTimeRange viewRange)
 	if (m_timingPoints.size() == 0)
 		return false;
 
-	Logf("Resetting BeatmapPlayback, InitTime = %d, ViewRange = %d to %d", Logger::Severity::Info, initTime, viewRange.begin, viewRange.end);
+	Logf("Resetting BeatmapPlayback, InitTime = %d, Start = %d", Logger::Severity::Info, initTime, start);
 	m_playbackTime = initTime;
-	m_viewRange = { viewRange.begin, viewRange.end };
+	m_viewRange = { std::max(start, 0), 0 };
 
 	m_currentObj = &m_objects.front();
 	m_currentAlertObj = &m_objects.front();

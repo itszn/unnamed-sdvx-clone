@@ -31,7 +31,7 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
         m_active = m_targetActive;
         if (!m_active)
         {
-            onClose.Call(this);
+            onClose.Call();
         }
     }
 
@@ -503,6 +503,7 @@ void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
             }
                 break;
             case SettingType::Button:
+                pushStringToTable(lua, "type", "button");
                 break;
             }
             lua_settable(lua, -3);

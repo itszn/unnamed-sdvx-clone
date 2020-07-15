@@ -14,7 +14,7 @@ public:
 	// Resets the playback of the map
 	// Must be called before any other function is called on this object
 	// returns false if the map contains no objects or timing or otherwise invalid
-	bool Reset(MapTime initTime = 0, MapTimeRange viewRange = {});
+	bool Reset(MapTime initTime = 0, MapTime start = 0);
 
 	// Updates the time of the playback
 	// checks all items that have been triggered between last time and this time

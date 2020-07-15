@@ -133,7 +133,7 @@ function render(deltaTime, visible)
     gfx.StrokeColor(255, 127, 0)
     gfx.Stroke()
 
-    local settingHeigt = 30
+    local settingHeight = 30
     local tab = SettingsDiag.tabs[SettingsDiag.currentTab]
     for si, setting in ipairs(tab.settings) do
         local disp = ""
@@ -158,14 +158,28 @@ function render(deltaTime, visible)
                 gfx.LineTo(xmax + 5 + width * setting.value, 20)
                 gfx.StrokeColor(255,127,0)
                 gfx.StrokeWidth(2)
-                gfx.Stroke()
-                
+                gfx.Stroke() 
             end
+        elseif setting.type == "button" then
+            disp = string.format("%s", setting.name)
+            local xmin, ymin, xmax,ymax = gfx.TextBounds(0, 0, disp)
+            gfx.BeginPath()
+            gfx.Rect(-2, 3, 4+xmax-xmin, 28)
+            gfx.FillColor(0, 64, 128)
+            if si == SettingsDiag.currentSetting then
+                gfx.StrokeColor(255, 127, 0)
+            else
+                gfx.StrokeColor(0,127,255)
+            end
+            gfx.StrokeWidth(2)
+            gfx.Fill()
+            gfx.Stroke()
+            gfx.FillColor(255,255,255)
         else
             disp = string.format("%s:", setting.name)
             local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, disp)
             gfx.BeginPath()
-            gfx.Rect(xmax + 5, 7, 20,20)
+            gfx.Rect(xmax + 5, 5, 20,20)
             gfx.FillColor(255, 127, 0, setting.value and 255 or 0)
             gfx.StrokeColor(0,127,255)
             gfx.StrokeWidth(2)
@@ -175,8 +189,12 @@ function render(deltaTime, visible)
         end
         gfx.Text(disp, 0 ,0)
         if si == SettingsDiag.currentSetting then
-            local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, setting.name .. ":")
-            ymax = ymax + settingHeigt * (si - 1)
+            local setting_name = setting.name .. ":"
+            if setting.type == "button" then
+                setting_name = setting.name
+            end
+            local xmin,ymin, xmax,ymax = gfx.TextBounds(0, 0, setting_name)
+            ymax = ymax + settingHeight * (si - 1)
             if xmax ~= prevSettingStroke.x or ymax ~= prevSettingStroke.y then
                 settingsStrokeAnimation.x:restart(settingStroke.x, xmax, 0.1)
                 settingsStrokeAnimation.y:restart(settingStroke.y, ymax, 0.1)
@@ -185,7 +203,7 @@ function render(deltaTime, visible)
             prevSettingStroke.x = xmax
             prevSettingStroke.y = ymax
         end
-        gfx.Translate(0, settingHeigt)
+        gfx.Translate(0, settingHeight)
     end
 
 

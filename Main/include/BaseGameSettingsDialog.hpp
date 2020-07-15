@@ -84,7 +84,7 @@ public:
     inline void Open() { assert(!m_active); m_targetActive = true; }
     inline void Close() { assert(m_active); m_targetActive = false; }
 
-    Delegate<const BaseGameSettingsDialog *> onClose;
+    Delegate<> onClose;
 
 protected:
     virtual void InitTabs() = 0;
