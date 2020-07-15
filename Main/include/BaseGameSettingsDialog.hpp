@@ -10,7 +10,6 @@ enum class SettingType
     Boolean,
     Enum,
     Button,
-    Text,
 };
 
 // Base class for popup dialog for game settings
@@ -75,6 +74,7 @@ public:
     void Tick(float deltaTime);
     void Render(float deltaTime);
     bool Init();
+    bool IsSelectionOnButton();
 
     inline void AddTab(Tab tab) { m_tabs.emplace_back(std::move(tab)); }
 
@@ -96,6 +96,7 @@ protected:
 
     Setting CreateBoolSetting(String label, bool& val);
     Setting CreateIntSetting(String label, int& val, Vector2i range, int step = 1);
+    Setting CreateButton(String label, std::function<void(const BaseGameSettingsDialog::SettingData&)>&& callback);
 
     template <typename EnumClass>
     Setting CreateEnumSetting(GameConfigKeys key, String name);

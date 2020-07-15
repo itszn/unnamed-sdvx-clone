@@ -138,6 +138,15 @@ bool BaseGameSettingsDialog::Init()
     return true;
 }
 
+bool BaseGameSettingsDialog::IsSelectionOnButton()
+{
+    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+        return false;
+
+    auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
+    return currentSetting->type == SettingType::Button;
+}
+
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult)
 {
     Setting s = std::make_unique<SettingData>(name, SettingType::Floating);
@@ -197,6 +206,14 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(String 
 
     s->setter.AddLambda(std::move(setter));
     s->getter.AddLambda(std::move(getter));
+
+    return s;
+}
+
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateButton(String label, std::function<void(const BaseGameSettingsDialog::SettingData &)>&& callback)
+{
+    Setting s = std::make_unique<SettingData>(label, SettingType::Button);
+    s->setter.AddLambda(std::move(callback));
 
     return s;
 }
@@ -297,6 +314,10 @@ void BaseGameSettingsDialog::m_OnButtonPressed(Input::Button button)
 
     switch (button)
     {
+    case Input::Button::BT_S:
+        if (IsSelectionOnButton())
+            m_ChangeStepSetting(1);
+        break;
     case Input::Button::FX_0:
         if (g_input.GetButton(Input::Button::FX_1))
             Close();

@@ -38,21 +38,21 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     Tab playbackTab = std::make_unique<TabData>();
     playbackTab->name = "Playback";
 
-    Setting loopBeginButton = std::make_unique<SettingData>("Set start point to the current position", SettingType::Button);
-    loopBeginButton->setter.AddLambda([this](const SettingData&) { m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime); });
-    playbackTab->settings.emplace_back(std::move(loopBeginButton));
-
-    Setting loopEndButton = std::make_unique<SettingData>("Set end point to the current position", SettingType::Button);
-    loopEndButton->setter.AddLambda([this](const SettingData&) { m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime); });
-    playbackTab->settings.emplace_back(std::move(loopEndButton));
-
     Setting loopBeginSetting = CreateIntSetting("Start point", m_range.begin, {0, m_endTime}, 50);
     loopBeginSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
     playbackTab->settings.emplace_back(std::move(loopBeginSetting));
 
+    Setting loopBeginButton = CreateButton("Set to current position",
+        std::move([this](const auto&) { m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
+    playbackTab->settings.emplace_back(std::move(loopBeginButton));
+
     Setting loopEndSetting = CreateIntSetting("End point", m_range.end, { 0, m_endTime }, 50);
     loopEndSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
     playbackTab->settings.emplace_back(std::move(loopEndSetting));
+
+    Setting loopEndButton = CreateButton("Set to current position",
+        std::move([this](const auto&) { m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
+    playbackTab->settings.emplace_back(std::move(loopEndButton));
 
     Setting loopOnSuccess = CreateBoolSetting("Loop on success", m_playOptions.loopOnSuccess);
     playbackTab->settings.emplace_back(std::move(loopOnSuccess));

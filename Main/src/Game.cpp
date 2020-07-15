@@ -393,19 +393,12 @@ public:
 
 		if (m_isPracticeSetup)
 		{
-			m_playOnDialogClose = true;
 			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
 			m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
 			m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
 			m_practiceSetupDialog->onClose.AddLambda([this](auto) {
-				if (m_playOnDialogClose)
-				{
-					m_audioPlayback.Play();
-				}
-				else
-				{
-					m_audioPlayback.Pause();
-				}
+				if (m_playOnDialogClose) m_audioPlayback.Play();
+				else m_audioPlayback.Pause();
 
 				m_paused = m_audioPlayback.IsPaused();
 			});
@@ -1046,7 +1039,7 @@ public:
 
 	void InitPlaybacks()
 	{
-		m_audioPlayback.SetPosition(m_lastMapTime);
+		m_audioPlayback.SetPosition(m_lastMapTime + m_audioOffset);
 		m_playback.Reset(m_lastMapTime, m_playOptions.range);
 
 		ApplyPlaybackSpeed();
@@ -1952,7 +1945,10 @@ public:
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
-			return;
+		{
+			if (buttonCode != Input::Button::BT_S || m_practiceSetupDialog->IsSelectionOnButton())
+				return;
+		}
 
 		if (m_isPracticeSetup)
 		{
@@ -2099,6 +2095,9 @@ public:
 
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
+
+		m_playOnDialogClose = true;
+		m_triggerPause = true;
 	}
 
 	void RevertToPracticeSetup()
@@ -2110,6 +2109,8 @@ public:
 
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
+
+		m_playOnDialogClose = true;
 
 		m_audioPlayback.Pause();
 		m_paused = true;
