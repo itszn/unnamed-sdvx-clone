@@ -502,7 +502,6 @@ void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
                 lua_settable(lua, -3);
             }
                 break;
-            case SettingType::Text:
             case SettingType::Button:
                 break;
             }
