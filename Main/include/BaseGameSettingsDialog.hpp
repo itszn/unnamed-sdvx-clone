@@ -109,6 +109,7 @@ private:
     void m_AdvanceSelection(int steps);
     void m_AdvanceTab(int steps);
     void m_ChangeStepSetting(int steps); //int, enum, toggle, are all advanced in distinct steps
+    void m_PressSettingButton();
     void m_OnButtonPressed(Input::Button button);
     void m_OnButtonReleased(Input::Button button);
     void m_OnKeyPressed(SDL_Scancode code);

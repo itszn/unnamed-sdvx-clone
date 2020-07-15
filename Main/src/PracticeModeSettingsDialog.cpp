@@ -15,8 +15,8 @@ void PracticeModeSettingsDialog::InitTabs()
     SetCurrentTab(0);
 }
 
-const static Vector<float> SPEEDS = { 0.25f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
-const static Vector<String> SPEEDS_STR = { "0.25", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0" };
+const static Vector<float> SPEEDS = { 0.25f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 0.95f, 1.0f };
+const static Vector<String> SPEEDS_STR = { "0.25", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.95", "1.0" };
 static int GetSpeedInd(float f)
 {
     if (f <= SPEEDS.front())

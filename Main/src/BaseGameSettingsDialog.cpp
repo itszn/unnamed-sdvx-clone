@@ -315,8 +315,7 @@ void BaseGameSettingsDialog::m_OnButtonPressed(Input::Button button)
     switch (button)
     {
     case Input::Button::BT_S:
-        if (IsSelectionOnButton())
-            m_ChangeStepSetting(1);
+        m_PressSettingButton();
         break;
     case Input::Button::FX_0:
         if (g_input.GetButton(Input::Button::FX_1))
@@ -407,13 +406,15 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
 
     switch (currentSetting->type)
     {
+    case SettingType::Button:
+        // Do not call a setter for buttons
+        return;
     case SettingType::Integer:
         currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps * currentSetting->intSetting.step,
             currentSetting->intSetting.min,
             currentSetting->intSetting.max);
         break;
     case SettingType::Boolean:
-    case SettingType::Button:
         currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
         break;
     case SettingType::Enum:
@@ -424,6 +425,16 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
     }
 
     currentSetting->setter.Call(*currentSetting);
+}
+
+void BaseGameSettingsDialog::m_PressSettingButton()
+{
+    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+        return;
+
+    auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
+    if (currentSetting->type == SettingType::Button)
+        currentSetting->setter.Call(*currentSetting);
 }
 
 void BaseGameSettingsDialog::m_OnKeyPressed(SDL_Scancode code)
