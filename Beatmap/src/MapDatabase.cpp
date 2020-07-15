@@ -37,6 +37,7 @@ public:
 	int32 m_nextFolderId = 1;
 	int32 m_nextChartId = 1;
 	String m_sortField = "title";
+	bool m_transferScores = true;
 
 	struct SearchState
 	{
@@ -76,8 +77,9 @@ public:
 	static const int32 m_version = 14;
 
 public:
-	MapDatabase_Impl(MapDatabase& outer) : m_outer(outer)
+	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
 	{
+		m_transferScores = transferScores;
 		String databasePath = Path::Absolute("maps.db");
 		if(!m_database.Open(databasePath))
 		{
@@ -550,6 +552,7 @@ public:
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score FROM Scores WHERE chart_hash=?");
+		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
 		Set<FolderIndex*> addedEvents;
 		Set<FolderIndex*> removeEvents;
@@ -725,6 +728,15 @@ public:
 				chart->bpm = e.mapData->bpm;
 				chart->illustrator = e.mapData->illustrator;
 				chart->jacket_path = e.mapData->jacketPath;
+
+
+				// Check if the hash has changed...
+				if (chart->hash != e.hash && m_transferScores) {
+					moveScores.BindString(1, e.hash);
+					moveScores.BindString(2, chart->hash);
+					moveScores.Step();
+					moveScores.Rewind();
+				}
 				chart->hash = e.hash;
 
 
@@ -893,6 +905,10 @@ public:
 
 		m_paused.store(false);
 		m_cvPause.notify_all();
+	}
+
+	void SetChartUpdateBehavior(bool transferScores) {
+		m_transferScores = transferScores;
 	}
 
 private:
@@ -1259,13 +1275,12 @@ private:
 		m_searching = false;
 	}
 
-
 };
 
 void MapDatabase::FinishInit()
 {
 	assert(!m_impl);
-	m_impl = new MapDatabase_Impl(*this);
+	m_impl = new MapDatabase_Impl(*this, m_transferScores);
 }
 MapDatabase::MapDatabase(bool postponeInit)
 {
@@ -1276,7 +1291,7 @@ MapDatabase::MapDatabase(bool postponeInit)
 }
 MapDatabase::MapDatabase()
 {
-	m_impl = new MapDatabase_Impl(*this);
+	m_impl = new MapDatabase_Impl(*this, true);
 }
 MapDatabase::~MapDatabase()
 {
@@ -1292,6 +1307,7 @@ bool MapDatabase::IsSearching() const
 }
 void MapDatabase::StartSearching()
 {
+	assert(m_impl);
 	m_impl->StartSearching();
 }
 void MapDatabase::PauseSearching()
@@ -1362,4 +1378,9 @@ void MapDatabase::AddScore(ScoreIndex* score)
 ChartIndex* MapDatabase::GetRandomChart()
 {
 	return m_impl->GetRandomChart();
+}
+void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
+	m_transferScores = transferScores;
+	if (m_impl != NULL)
+		m_impl->SetChartUpdateBehavior(transferScores);
 }

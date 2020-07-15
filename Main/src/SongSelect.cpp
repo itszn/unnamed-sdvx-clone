@@ -1366,6 +1366,7 @@ public:
 		m_mapDatabase->OnDatabaseUpdateStarted.Add(this, &SongSelect_Impl::m_onDatabaseUpdateStart);
 		m_mapDatabase->OnDatabaseUpdateDone.Add(this, &SongSelect_Impl::m_onDatabaseUpdateDone);
 		m_mapDatabase->OnDatabaseUpdateProgress.Add(this, &SongSelect_Impl::m_onDatabaseUpdateProgress);
+		m_mapDatabase->SetChartUpdateBehavior(g_gameConfig.GetBool(GameConfigKeys::TransferScoresOnChartUpdate));
 		m_mapDatabase->FinishInit();
 
 		// Setup the map database
