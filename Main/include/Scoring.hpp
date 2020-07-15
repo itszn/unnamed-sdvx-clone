@@ -66,9 +66,8 @@ public:
 	Scoring();
 	~Scoring();
 
-	static String CalculateGrade(uint32 score);
-	static uint8 CalculateBadge(const ScoreIndex& score);
-	static uint8 CalculateBestBadge(Vector<ScoreIndex*> scores);
+	static ClearMark CalculateBadge(const ScoreIndex& score);
+	static ClearMark CalculateBestBadge(Vector<ScoreIndex*> scores);
 
 	// Needs to be set to find out which objects are active/hittable
 	void SetPlayback(BeatmapPlayback& playback);
@@ -127,10 +126,6 @@ public:
 
 	// The score based on the current pace
 	uint32 CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const;
-
-	// Calculates the grade connected to the current score
-	// Ranges from 0 to 5 (AAA,AA,A,B,C,D) in that order
-	uint32 CalculateCurrentGrade() const;
 
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))

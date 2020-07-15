@@ -41,5 +41,7 @@
 #include <Graphics/Font.hpp>
 using namespace Graphics;
 
+#include "BasicDefinitions.hpp"
+
 // Asset loading macro
 #define CheckedLoad(__stmt) if(!(__stmt)){Logf("Failed to load asset [%s]", Logger::Severity::Error, #__stmt); return false; }

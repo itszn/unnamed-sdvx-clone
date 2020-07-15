@@ -1,11 +1,5 @@
 #pragma once
 
-enum class GradeMark : uint8
-{
-	D, C, B, A, Ap, AA, AAp, AAA, AAAp, S,
-	S_995, PUC
-};
-
 class Scoring;
 
 class GameFailCondition

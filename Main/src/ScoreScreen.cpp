@@ -29,7 +29,7 @@ private:
 	bool m_autoButtons;
 	bool m_startPressed;
 	bool m_showStats;
-	uint8 m_badge;
+	ClearMark m_badge;
 	uint32 m_score;
 	uint32 m_maxCombo;
 	uint32 m_categorizedHits[3];
@@ -149,7 +149,7 @@ public:
 		m_scoredata.gameflags = (uint32)m_flags;
 		if (!game->IsStorableScore())
 		{
-			m_badge = 0;
+			m_badge = ClearMark::NotPlayed;
 		}
 		else
 		{
@@ -198,7 +198,7 @@ public:
 		m_scoredata.gauge = m_finalGaugeValue;
 
 		m_scoredata.gameflags = data["flags"];
-		m_badge = data["clear"];
+		m_badge = static_cast<ClearMark>(data["clear"]);
 
 		m_meanHitDelta[0] = data["mean_delta"];
 		m_medianHitDelta[0] = data["median_delta"];
@@ -411,8 +411,8 @@ public:
 		m_PushFloatToTable("meanHitDeltaAbs", m_meanHitDelta[1]);
 		m_PushIntToTable("earlies", m_timedHits[0]);
 		m_PushIntToTable("lates", m_timedHits[1]);
-		m_PushStringToTable("grade", Scoring::CalculateGrade(m_score).c_str());
-		m_PushIntToTable("badge", m_badge);
+		m_PushStringToTable("grade", ToDisplayString(ToGradeMark(m_score)));
+		m_PushIntToTable("badge", static_cast<int>(m_badge));
 
 		if (m_multiplayer)
 		{
@@ -475,7 +475,7 @@ public:
 				m_PushIntToTable("goods", score->almost);
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
-				m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
+				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);

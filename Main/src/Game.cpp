@@ -985,7 +985,7 @@ public:
 			if (lua_isfunction(m_lua, -1))
 			{
 				lua_pushnumber(m_lua, deltaTime);
-				lua_pushnumber(m_lua, m_getClearState());
+				lua_pushnumber(m_lua, static_cast<lua_Number>(m_getClearState()));
 				if (lua_pcall(m_lua, 2, 2, 0) != 0)
 				{
 					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
@@ -2000,10 +2000,11 @@ public:
 			}
 		}
 	}
-	int m_getClearState()
+	ClearMark m_getClearState()
 	{
 		if (m_manualExit)
-			return 0;
+			return ClearMark::NotPlayed;
+
 		ScoreIndex scoreData;
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
@@ -2011,6 +2012,7 @@ public:
 		scoreData.gameflags = (uint32) GetFlags();
 		scoreData.gauge = m_scoring.currentGauge;
 		scoreData.score = m_scoring.CalculateCurrentScore();
+
 		return Scoring::CalculateBadge(scoreData);
 	}
 

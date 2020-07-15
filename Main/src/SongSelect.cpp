@@ -830,7 +830,7 @@ private:
 			m_PushIntToTable("id", diff->id);
 			m_PushStringToTable("effector", diff->effector.c_str());
 			m_PushStringToTable("illustrator", diff->illustrator.c_str());
-			m_PushIntToTable("topBadge", Scoring::CalculateBestBadge(diff->scores));
+			m_PushIntToTable("topBadge", static_cast<int>(Scoring::CalculateBestBadge(diff->scores)));
 			lua_pushstring(m_lua, "scores");
 			lua_newtable(m_lua);
 			int scoreIndex = 0;
@@ -845,7 +845,7 @@ private:
 				m_PushIntToTable("goods", score->almost);
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
-				m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
+				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);

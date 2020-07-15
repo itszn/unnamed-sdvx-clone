@@ -20,56 +20,33 @@ Scoring::~Scoring()
 	m_CleanupTicks();
 }
 
-String Scoring::CalculateGrade(uint32 score)
+ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 {
-	if (score >= 9900000) // S
-		return "S";
-	if (score >= 9800000) // AAA+
-		return "AAA+";
-	if (score >= 9700000) // AAA
-		return "AAA";
-	if (score >= 9500000) // AA+
-		return "AA+";
-	if (score >= 9300000) // AA
-		return "AA";
-	if (score >= 9000000) // A+
-		return "A+";
-	if (score >= 8700000) // A
-		return "A";
-	if (score >= 7500000) // B
-		return "B";
-	if (score >= 6500000) // C
-		return "C";
-	return "D"; // D
-}
-
-uint8 Scoring::CalculateBadge(const ScoreIndex& score)
-{
-	if (score.score == 10000000) //Perfect
-		return 5;
+	if (score.score >= MAX_SCORE) //Perfect
+		return ClearMark::Perfect;
 	if (score.miss == 0) //Full Combo
-		return 4;
+		return ClearMark::FullCombo;
 	if (((GameFlags)score.gameflags & GameFlags::Hard) != GameFlags::None && score.gauge > 0) //Hard Clear
-		return 3;
+		return ClearMark::HardClear;
 	if (((GameFlags)score.gameflags & GameFlags::Hard) == GameFlags::None && score.gauge >= 0.70) //Normal Clear
-		return 2;
+		return ClearMark::NormalClear;
 
-	return 1; //Failed
+	return ClearMark::Played; //Failed
 }
 
-uint8 Scoring::CalculateBestBadge(Vector<ScoreIndex*> scores)
+ClearMark Scoring::CalculateBestBadge(Vector<ScoreIndex*> scores)
 {
 	if (scores.size() < 1)
-		return 0;
-	uint8 top = 1;
+		return ClearMark::NotPlayed;
+
+	ClearMark top = ClearMark::Played;
+
 	for (ScoreIndex* score : scores)
 	{
-		uint8 temp = CalculateBadge(*score);
-		if (temp > top)
-		{
-			top = temp;
-		}
+		ClearMark temp = CalculateBadge(*score);
+		if (temp > top) top = temp;
 	}
+
 	return top;
 }
 
@@ -1328,7 +1305,7 @@ uint32 Scoring::CalculateCurrentScore() const
 
 uint32 Scoring::CalculateScore(uint32 hitScore) const
 {
-	return ::CalculateScore(hitScore, mapTotals.maxScore, 10000000);
+	return ::CalculateScore(hitScore, mapTotals.maxScore, MAX_SCORE);
 }
 
 uint32 Scoring::CalculateCurrentDisplayScore() const
@@ -1369,23 +1346,7 @@ uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxH
 
 uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const
 {
-	return ::CalculateScore(currHit, currMaxHit, 10000000);
-}
-
-uint32 Scoring::CalculateCurrentGrade() const
-{
-	uint32 value = (uint32)((double)CalculateCurrentScore() * (double)0.9 + currentGauge * 1000000.0);
-	if (value > 9800000) // AAA
-		return 0;
-	if (value > 9400000) // AA
-		return 1;
-	if (value > 8900000) // A
-		return 2;
-	if (value > 8000000) // B
-		return 3;
-	if (value > 7000000) // C
-		return 4;
-	return 5; // D
+	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
 }
 
 MapTime ScoreTick::GetHitWindow() const
