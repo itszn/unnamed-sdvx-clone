@@ -1409,13 +1409,15 @@ public:
 		}
 	}
 
-	void m_GetCurrentChartOffset(int &value)
+	int m_GetCurrentChartOffset()
 	{
 		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
 		if (chart)
 		{
-			value = m_selectionWheel->GetSelectedChart()->custom_offset;
+			return m_selectionWheel->GetSelectedChart()->custom_offset;
 		}
+
+		return 0;
 	}
 
 	bool AsyncFinalize() override
@@ -1479,15 +1481,15 @@ public:
 			return false;
 
 		GameplaySettingsDialog::Tab songTab = std::make_unique<GameplaySettingsDialog::TabData>();
-		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>();
+		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>("Song Offset", SettingType::Integer);
 		songTab->name = "Song";
 		songOffsetSetting->name = "Song Offset";
 		songOffsetSetting->type = SettingType::Integer;
 		songOffsetSetting->intSetting.val = 0;
 		songOffsetSetting->intSetting.min = -200;
 		songOffsetSetting->intSetting.max = 200;
-		songOffsetSetting->intSetting.setter.Add(this, &SongSelect_Impl::m_SetCurrentChartOffset);
-		songOffsetSetting->intSetting.getter.Add(this, &SongSelect_Impl::m_GetCurrentChartOffset);
+		songOffsetSetting->setter.AddLambda([this](const auto& data) { m_SetCurrentChartOffset(data.intSetting.val); });
+		songOffsetSetting->getter.AddLambda([this](auto& data) { data.intSetting.val = m_GetCurrentChartOffset(); });
 		songTab->settings.push_back(std::move(songOffsetSetting));
 		m_settDiag.AddTab(std::move(songTab));
 		

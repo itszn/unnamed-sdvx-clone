@@ -17,9 +17,9 @@ void GameplaySettingsDialog::InitTabs()
     Tab gameTab = std::make_unique<TabData>();
     gameTab->name = "Game";
     gameTab->settings.push_back(CreateEnumSetting<Enum_GaugeTypes>(GameConfigKeys::GaugeType, "Gauge"));
-    gameTab->settings.push_back(CreateToggleSetting(GameConfigKeys::RandomizeChart, "Random"));
-    gameTab->settings.push_back(CreateToggleSetting(GameConfigKeys::MirrorChart, "Mirror"));
-    gameTab->settings.push_back(CreateToggleSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
+    gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::RandomizeChart, "Random"));
+    gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::MirrorChart, "Mirror"));
+    gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
     gameTab->settings.push_back(CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
 
     Tab hidsudTab = std::make_unique<TabData>();
@@ -28,7 +28,7 @@ void GameplaySettingsDialog::InitTabs()
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade", { 0.f, 1.f }));
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff", { 0.f, 1.f }));
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::SuddenFade, "Sudden Fade", { 0.f, 1.f }));
-    hidsudTab->settings.push_back(CreateToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover"));
+    hidsudTab->settings.push_back(CreateBoolSetting(GameConfigKeys::ShowCover, "Show Track Cover"));
 
     AddTab(std::move(offsetTab));
     AddTab(std::move(speedTab));

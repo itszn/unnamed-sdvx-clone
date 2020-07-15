@@ -51,8 +51,9 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
         m_knobAdvance[i] += g_input.GetInputLaserDir(i) * m_sensMult;
     }
 
-    m_AdvanceSelection(m_knobAdvance[0]);
-    m_knobAdvance[0] -= truncf(m_knobAdvance[0]);
+    const int knobAdvance0Trunc = static_cast<int>(truncf(m_knobAdvance[0]));
+    m_AdvanceSelection(knobAdvance0Trunc);
+    m_knobAdvance[0] -= knobAdvance0Trunc;
 
     if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
         return;
@@ -73,13 +74,15 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
         currentSetting->floatSetting.val = Math::Clamp(currentSetting->floatSetting.val,
             currentSetting->floatSetting.min,
             currentSetting->floatSetting.max);
-        currentSetting->floatSetting.setter.Call(currentSetting->floatSetting.val);
+
+        currentSetting->setter.Call(*currentSetting);
         m_knobAdvance[1] = 0.f;
     }
     else
     {
-        m_ChangeStepSetting((int)m_knobAdvance[1]);
-        m_knobAdvance[1] -= truncf(m_knobAdvance[1]);
+        const int knobAdvance1Trunc = static_cast<int>(truncf(m_knobAdvance[1]));
+        m_ChangeStepSetting(knobAdvance1Trunc);
+        m_knobAdvance[1] -= knobAdvance1Trunc;
     }
 }
 
@@ -137,98 +140,134 @@ bool BaseGameSettingsDialog::Init()
 
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Floating,
-        }));
+    Setting s = std::make_unique<SettingData>(name, SettingType::Floating);
 
-    auto getter = [key](float& value) {
-        value = g_gameConfig.GetFloat(key);
+    auto getter = [key](SettingData& data) {
+        data.floatSetting.val = g_gameConfig.GetFloat(key);
     };
 
-    auto setter = [key](float newValue) {
-        g_gameConfig.Set(key, newValue);
+    auto setter = [key](const SettingData& data) {
+        g_gameConfig.Set(key, data.floatSetting.val);
     };
 
     s->floatSetting.val = g_gameConfig.GetFloat(key);
     s->floatSetting.min = range.x;
     s->floatSetting.max = range.y;
     s->floatSetting.mult = mult;
-    s->floatSetting.setter.AddLambda(std::move(setter));
-    s->floatSetting.getter.AddLambda(std::move(getter));
+    s->setter.AddLambda(std::move(setter));
+    s->getter.AddLambda(std::move(getter));
+    return s;
+}
+
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateBoolSetting(String label, bool& val)
+{
+    Setting s = std::make_unique<SettingData>(label, SettingType::Boolean);
+    
+    auto getter = [&val](SettingData& data) {
+        data.boolSetting.val = val;
+    };
+
+    auto setter = [&val](const SettingData& data) {
+        val = data.boolSetting.val;
+    };
+
+    s->boolSetting.val = val;
+    s->setter.AddLambda(std::move(setter));
+    s->getter.AddLambda(std::move(getter));
+
+    return s;
+}
+
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(String label, int& val, Vector2i range, int step)
+{
+    Setting s = std::make_unique<SettingData>(label, SettingType::Integer);
+
+    auto getter = [&val](SettingData& data) {
+        data.intSetting.val = val;
+    };
+
+    auto setter = [&val](const SettingData& data) {
+        val = data.intSetting.val;
+    };
+
+    s->intSetting.min = range.x;
+    s->intSetting.max = range.y;
+    s->intSetting.val = val;
+    s->intSetting.step = step;
+
+    s->setter.AddLambda(std::move(setter));
+    s->getter.AddLambda(std::move(getter));
+
     return s;
 }
 
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameConfigKeys key, String name, Vector2i range)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Integer,
-        }));
+    Setting s = std::make_unique<SettingData>(name, SettingType::Integer);
 
-    auto getter = [key](int& value) {
-        value = g_gameConfig.GetInt(key);
+    auto getter = [key](SettingData& data) {
+        data.intSetting.val = g_gameConfig.GetInt(key);
     };
 
-    auto setter = [key](int newValue) {
-        g_gameConfig.Set(key, newValue);
+    auto setter = [key](const SettingData& data) {
+        g_gameConfig.Set(key, data.intSetting.val);
     };
 
     s->intSetting.val = g_gameConfig.GetInt(key);
     s->intSetting.min = range.x;
     s->intSetting.max = range.y;
     s->intSetting.step = 1;
-    s->intSetting.setter.AddLambda(std::move(setter));
-    s->intSetting.getter.AddLambda(std::move(getter));
+    s->setter.AddLambda(std::move(setter));
+    s->getter.AddLambda(std::move(getter));
     return s;
 }
 
-BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateToggleSetting(GameConfigKeys key, String name)
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateBoolSetting(GameConfigKeys key, String name)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Toggle,
-        }));
+    Setting s = std::make_unique<SettingData>(name, SettingType::Boolean);
 
-
-    auto getter = [key](bool& value) {
-        value = g_gameConfig.GetBool(key);
+    auto getter = [key](SettingData& data) {
+        data.boolSetting.val = g_gameConfig.GetBool(key);
     };
 
-    auto setter = [key](bool newValue) {
-        g_gameConfig.Set(key, newValue);
+    auto setter = [key](const SettingData& data) {
+        g_gameConfig.Set(key, data.boolSetting.val);
     };
 
     s->boolSetting.val = g_gameConfig.GetBool(key);
-    s->boolSetting.setter.AddLambda(std::move(setter));
-    s->boolSetting.getter.AddLambda(std::move(getter));
+    s->setter.AddLambda(std::move(setter));
+    s->getter.AddLambda(std::move(getter));
     return s;
 }
+
+
+void pushStringToTable(lua_State* lua, const char* name, const String& data) {
+    lua_pushstring(lua, name);
+    lua_pushstring(lua, data.c_str());
+    lua_settable(lua, -3);
+};
+
+void pushIntToTable(lua_State* lua, const char* name, int data) {
+    lua_pushstring(lua, name);
+    lua_pushinteger(lua, data);
+    lua_settable(lua, -3);
+};
+
+void pushBoolToTable(lua_State* lua, const char* name, bool data) {
+    lua_pushstring(lua, name);
+    lua_pushboolean(lua, data);
+    lua_settable(lua, -3);
+};
+
+void pushFloatToTable(lua_State* lua, const char* name, float data) {
+    lua_pushstring(lua, name);
+    lua_pushnumber(lua, data);
+    lua_settable(lua, -3);
+};
 
 void BaseGameSettingsDialog::m_SetTables()
 {
     assert(m_lua);
-
-    auto pushStringToTable = [&](const char* name, String data) {
-        lua_pushstring(m_lua, name);
-        lua_pushstring(m_lua, data.c_str());
-        lua_settable(m_lua, -3);
-    };
-    auto pushIntToTable = [&](const char* name, int data) {
-        lua_pushstring(m_lua, name);
-        lua_pushinteger(m_lua, data);
-        lua_settable(m_lua, -3);
-    };
-    auto pushBoolToTable = [&](const char* name, bool data) {
-        lua_pushstring(m_lua, name);
-        lua_pushboolean(m_lua, data);
-        lua_settable(m_lua, -3);
-    };
-    auto pushFloatToTable = [&](const char* name, float data) {
-        lua_pushstring(m_lua, name);
-        lua_pushnumber(m_lua, data);
-        lua_settable(m_lua, -3);
-    };
 
     lua_newtable(m_lua);
     {
@@ -236,76 +275,17 @@ void BaseGameSettingsDialog::m_SetTables()
         lua_newtable(m_lua);
         {
             int tabCounter = 0;
-            for (auto&& tab : m_tabs)
+            for (auto& tab : m_tabs)
             {
                 lua_pushinteger(m_lua, ++tabCounter);
-                lua_newtable(m_lua);
-                pushStringToTable("name", tab->name);
-                lua_pushstring(m_lua, "settings");
-                lua_newtable(m_lua);
-                {
-                    int settingCounter = 0;
-                    for (auto&& setting : tab->settings)
-                    {
-                        lua_pushinteger(m_lua, ++settingCounter);
-                        lua_newtable(m_lua);
-                        pushStringToTable("name", setting->name);
-
-                        //also get settings values in case they've been changed elsewhere
-                        String newEnumVal;
-                        switch (setting->type)
-                        {
-                        case SettingType::Integer:
-                            setting->intSetting.getter.Call(setting->intSetting.val);
-                            pushStringToTable("type", "int");
-                            pushIntToTable("value", setting->intSetting.val);
-                            pushIntToTable("min", setting->intSetting.min);
-                            pushIntToTable("max", setting->intSetting.max);
-                            break;
-                        case SettingType::Floating:
-                            setting->floatSetting.getter.Call(setting->floatSetting.val);
-                            pushStringToTable("type", "float");
-                            pushFloatToTable("value", setting->floatSetting.val);
-                            pushIntToTable("min", setting->floatSetting.min);
-                            pushIntToTable("max", setting->floatSetting.max);
-                            break;
-                        case SettingType::Toggle:
-                        case SettingType::Button:
-                            setting->boolSetting.getter.Call(setting->boolSetting.val);
-                            pushStringToTable("type", "toggle");
-                            pushBoolToTable("value", setting->type == SettingType::Button ? false : setting->boolSetting.val);
-                            break;
-                        case SettingType::Enum:
-                            setting->enumSetting.getter.Call(newEnumVal);
-                            setting->enumSetting.val = std::distance(setting->enumSetting.options.begin(),
-                                std::find(setting->enumSetting.options.begin(),
-                                    setting->enumSetting.options.end(),
-                                    newEnumVal));
-                            pushStringToTable("type", "enum");
-                            pushIntToTable("value", setting->enumSetting.val + 1);
-                            lua_pushstring(m_lua, "options");
-                            lua_newtable(m_lua);
-                            int optionCounter = 0;
-                            for (auto&& o : setting->enumSetting.options)
-                            {
-                                lua_pushinteger(m_lua, ++optionCounter);
-                                lua_pushstring(m_lua, *o);
-                                lua_settable(m_lua, -3);
-                            }
-                            lua_settable(m_lua, -3);
-                            break;
-                        }
-                        lua_settable(m_lua, -3);
-                    }
-                    lua_settable(m_lua, -3);
-                }
+                tab->SetLua(m_lua);
                 lua_settable(m_lua, -3);
             }
             lua_settable(m_lua, -3);
         }
 
-        pushIntToTable("currentTab", m_currentTab + 1);
-        pushIntToTable("currentSetting", m_currentSetting + 1);
+        pushIntToTable(m_lua, "currentTab", m_currentTab + 1);
+        pushIntToTable(m_lua, "currentSetting", m_currentSetting + 1);
     }
     lua_setglobal(m_lua, "SettingsDiag");
 }
@@ -410,20 +390,19 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
         currentSetting->intSetting.val = Math::Clamp(currentSetting->intSetting.val + steps * currentSetting->intSetting.step,
             currentSetting->intSetting.min,
             currentSetting->intSetting.max);
-        currentSetting->intSetting.setter.Call(currentSetting->intSetting.val);
         break;
-    case SettingType::Toggle:
+    case SettingType::Boolean:
     case SettingType::Button:
         currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
-        currentSetting->boolSetting.setter.Call(currentSetting->boolSetting.val);
         break;
     case SettingType::Enum:
         int size = currentSetting->enumSetting.options.size();
         AdvanceLooping(currentSetting->enumSetting.val, steps, size);
         String& newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
-        currentSetting->enumSetting.setter.Call(newVal);
         break;
     }
+
+    currentSetting->setter.Call(*currentSetting);
 }
 
 void BaseGameSettingsDialog::m_OnKeyPressed(SDL_Scancode code)
@@ -448,5 +427,66 @@ void BaseGameSettingsDialog::m_OnKeyPressed(SDL_Scancode code)
     case SDL_SCANCODE_DOWN:
         m_AdvanceSelection(1);
         break;
+    }
+}
+
+void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
+{
+    lua_newtable(lua);
+    pushStringToTable(lua, "name", name);
+    lua_pushstring(lua, "settings");
+    lua_newtable(lua);
+    {
+        int settingCounter = 0;
+        for (auto& setting : settings)
+        {
+            lua_pushinteger(lua, ++settingCounter);
+            lua_newtable(lua);
+            pushStringToTable(lua, "name", setting->name);
+
+            // Also get settings values in case they've been changed elsewhere
+            setting->getter.Call(*setting);
+
+            switch (setting->type)
+            {
+            case SettingType::Integer:
+                pushStringToTable(lua, "type", "int");
+                pushIntToTable(lua, "value", setting->intSetting.val);
+                pushIntToTable(lua, "min", setting->intSetting.min);
+                pushIntToTable(lua, "max", setting->intSetting.max);
+                break;
+            case SettingType::Floating:
+                pushStringToTable(lua, "type", "float");
+                pushFloatToTable(lua, "value", setting->floatSetting.val);
+                pushIntToTable(lua, "min", setting->floatSetting.min);
+                pushIntToTable(lua, "max", setting->floatSetting.max);
+                break;
+            case SettingType::Boolean:
+                pushStringToTable(lua, "type", "toggle");
+                pushBoolToTable(lua, "value", setting->boolSetting.val);
+                break;
+            case SettingType::Enum:
+            {
+                pushStringToTable(lua, "type", "enum");
+                pushIntToTable(lua, "value", setting->enumSetting.val + 1);
+                lua_pushstring(lua, "options");
+                lua_newtable(lua);
+                int optionCounter = 0;
+                for (auto&& o : setting->enumSetting.options)
+                {
+                    lua_pushinteger(lua, ++optionCounter);
+                    lua_pushstring(lua, *o);
+                    lua_settable(lua, -3);
+                }
+                lua_settable(lua, -3);
+            }
+                break;
+            case SettingType::Text:
+            case SettingType::Button:
+                break;
+            }
+            lua_settable(lua, -3);
+        }
+        lua_settable(lua, -3);
     }
 }

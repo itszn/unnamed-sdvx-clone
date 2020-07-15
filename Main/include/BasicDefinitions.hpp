@@ -16,7 +16,7 @@ enum class ClearMark : uint8
 	NotPlayed, Played, NormalClear, HardClear, FullCombo, Perfect,
 };
 
-extern const char* GRADE_MARK_STR[];
+extern const char* GRADE_MARK_STR[14];
 
 constexpr const char* ToDisplayString(GradeMark grade)
 {
@@ -69,7 +69,7 @@ constexpr GradeMark ToGradeMarkExt(uint32 score)
 	return ToGradeMark(score);
 }
 
-extern const char* CLEAR_MARK_STR[];
+extern const char* CLEAR_MARK_STR[6];
 
 constexpr const char* ToDisplayString(ClearMark mark)
 {

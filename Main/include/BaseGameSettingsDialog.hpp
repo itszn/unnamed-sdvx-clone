@@ -7,9 +7,10 @@ enum class SettingType
 {
     Integer,
     Floating,
-    Toggle,
+    Boolean,
+    Enum,
     Button,
-    Enum
+    Text,
 };
 
 // Base class for popup dialog for game settings
@@ -18,16 +19,22 @@ class BaseGameSettingsDialog
 public:
     typedef struct SettingData
     {
+        SettingData(const String& name, SettingType type) : name(name), type(type) {}
+
         String name;
         SettingType type;
+
+        // Called to update setting
+        Delegate<SettingData&> getter;
+        // Called when the setting is updated
+        Delegate<const SettingData&> setter;
+
         struct
         {
             float val;
             float min;
             float max;
-            float mult; //multiply input by
-            Delegate<float&> getter;
-            Delegate<float> setter;
+            float mult;
         } floatSetting;
 
         struct
@@ -36,23 +43,18 @@ public:
             int min;
             int max;
             int step = 1;
-            Delegate<int&> getter;
-            Delegate<int> setter;
         } intSetting;
 
         struct
         {
             int val;
+            Map<uint32, int> enumToVal;
             Vector<String> options;
-            Delegate<String&> getter;
-            Delegate<String> setter;
         } enumSetting;
 
         struct
         {
             bool val;
-            Delegate<bool&> getter;
-            Delegate<bool> setter;
         } boolSetting;
 
     } SettingData;
@@ -62,6 +64,8 @@ public:
     {
         String name;
         Vector<Setting> settings;
+
+        void SetLua(struct lua_State* lua);
     } TabData;
     typedef std::unique_ptr<TabData> Tab;
 
@@ -86,9 +90,12 @@ protected:
     virtual void InitTabs() = 0;
     virtual void OnAdvanceTab() {};
 
-    Setting CreateToggleSetting(GameConfigKeys key, String name);
+    Setting CreateBoolSetting(GameConfigKeys key, String name);
     Setting CreateIntSetting(GameConfigKeys key, String name, Vector2i range);
     Setting CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult = 1.0f);
+
+    Setting CreateBoolSetting(String label, bool& val);
+    Setting CreateIntSetting(String label, int& val, Vector2i range, int step = 1);
 
     template <typename EnumClass>
     Setting CreateEnumSetting(GameConfigKeys key, String name);
@@ -126,29 +133,29 @@ private:
 template <typename EnumClass>
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateEnumSetting(GameConfigKeys key, String name)
 {
-    Setting s = std::make_unique<SettingData>(SettingData({
-        name,
-        SettingType::Enum,
-        }));
+    Setting s = std::make_unique<SettingData>(name, SettingType::Enum);
+
+    int ind = 0;
 
     EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
-    for (auto it = nameMap.begin(); it != nameMap.end(); it++)
+    for (auto& it : nameMap)
     {
-        s->enumSetting.options.Add(*(*it).second);
+        s->enumSetting.options.Add(it.second);
+        s->enumSetting.enumToVal.Add(static_cast<int>(it.first), ind++);
     }
-    String current = EnumClass::ToString(g_gameConfig.GetEnum<EnumClass>(key));
 
-    s->enumSetting.val = std::distance(s->enumSetting.options.begin(), std::find(s->enumSetting.options.begin(), s->enumSetting.options.end(), current));
+    s->enumSetting.val = s->enumSetting.enumToVal[static_cast<uint32>(g_gameConfig.GetEnum<EnumClass>(key))];
 
-    auto getter = [key](String& value) {
-        value = EnumClass::ToString(g_gameConfig.GetEnum<EnumClass>(key));
+    auto getter = [key](SettingData& data) {
+        data.enumSetting.val = data.enumSetting.enumToVal[static_cast<uint32>(g_gameConfig.GetEnum<EnumClass>(key))];
     };
 
-    auto setter = [key](String newValue) {
-        g_gameConfig.SetEnum<EnumClass>(key, EnumClass::FromString(newValue));
+    auto setter = [key](const SettingData& data) {
+        g_gameConfig.SetEnum<EnumClass>(key, EnumClass::FromString(data.enumSetting.options[data.enumSetting.val]));
     };
-    s->enumSetting.getter.AddLambda(std::move(getter));
-    s->enumSetting.setter.AddLambda(std::move(setter));
+
+    s->getter.AddLambda(std::move(getter));
+    s->setter.AddLambda(std::move(setter));
 
     return s;
 }
