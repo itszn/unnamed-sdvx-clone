@@ -18,12 +18,12 @@ enum class ClearMark : uint8
 
 extern const char* GRADE_MARK_STR[14];
 
-constexpr const char* ToDisplayString(GradeMark grade)
+inline const char* ToDisplayString(GradeMark grade)
 {
 	return GRADE_MARK_STR[static_cast<std::uint_fast8_t>(grade)];
 }
 
-constexpr uint32 ToMinScore(GradeMark grade)
+inline uint32 ToMinScore(GradeMark grade)
 {
 	switch (grade)
 	{
@@ -46,7 +46,7 @@ constexpr uint32 ToMinScore(GradeMark grade)
 	assert(false);
 }
 
-constexpr GradeMark ToGradeMark(uint32 score)
+inline GradeMark ToGradeMark(uint32 score)
 {
 	if (score >= ToMinScore(GradeMark::S))    return GradeMark::S;
 	if (score >= ToMinScore(GradeMark::AAAp)) return GradeMark::AAAp;
@@ -60,7 +60,7 @@ constexpr GradeMark ToGradeMark(uint32 score)
 	return GradeMark::D;
 }
 
-constexpr GradeMark ToGradeMarkExt(uint32 score)
+inline GradeMark ToGradeMarkExt(uint32 score)
 {
 	if (score >= ToMinScore(GradeMark::PUC))   return GradeMark::PUC;
 	if (score >= ToMinScore(GradeMark::S_999)) return GradeMark::S_999;
@@ -71,7 +71,7 @@ constexpr GradeMark ToGradeMarkExt(uint32 score)
 
 extern const char* CLEAR_MARK_STR[6];
 
-constexpr const char* ToDisplayString(ClearMark mark)
+inline const char* ToDisplayString(ClearMark mark)
 {
 	return CLEAR_MARK_STR[static_cast<std::uint_fast8_t>(mark)];
 }
