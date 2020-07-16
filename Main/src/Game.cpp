@@ -65,8 +65,6 @@ public:
 	ChartIndex* m_chartIndex = nullptr;
 
 private:
-	static constexpr MapTime AUDIO_LEADIN = 3000;
-
 	bool m_playing = true;
 	bool m_started = false;
 	bool m_demo = false;
@@ -117,6 +115,8 @@ private:
 	// Applied audio offset
 	int32 m_globalOffset = 0;
 	int32 m_songOffset = 0;
+	int32 m_tempOffset = 0;
+
 	int32 m_fpsTarget = 0;
 	// The play field
 	Track* m_track = nullptr;
@@ -342,14 +342,9 @@ public:
 		m_lastMapTime = GetAudioLeadinTime();
 
 		// Load audio offset
-		int songOffset = 0;
-		if (m_chartIndex)
-		{
-			songOffset = m_chartIndex->custom_offset;
-		}
-
 		m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
-		m_songOffset = songOffset;
+		m_songOffset = m_chartIndex ? m_chartIndex->custom_offset : 0;
+		m_tempOffset = 0;
 
 		InitPlaybacks();
 
@@ -420,7 +415,7 @@ public:
 		int64 startTime = Shared::Time::Now().Data();
 
 		// TODO: Set more accurate endTime
-		int64 endTime = startTime + (int64) ((m_playOptions.range.Length(m_endTime) + AUDIO_LEADIN * m_audioPlayback.GetPlaybackSpeed()) / 1000);
+		int64 endTime = startTime + (m_playOptions.range.Length(m_endTime) + GetAudioLeadIn()) / 1000;
 		g_application->DiscordPresenceSong(mapSettings, startTime, endTime);
 
 		String jacketPath = m_chartRootPath + "/" + mapSettings.jacketPath;
@@ -1007,12 +1002,18 @@ public:
 		const MapTime beginTime = m_playOptions.range.begin;
 		const MapTime firstObjectTime = (*firstObj)->time;
 
-		return std::min(beginTime, (MapTime) (firstObjectTime - AUDIO_LEADIN * m_audioPlayback.GetPlaybackSpeed()));
+		return std::min(beginTime, firstObjectTime - GetAudioLeadIn());
 	}
 
-	inline int32 GetAudioOffset()
+	inline int32 GetAudioOffset() const
 	{
-		return m_globalOffset + m_songOffset;
+		return m_globalOffset + m_songOffset + m_tempOffset;
+	}
+
+	inline MapTime GetAudioLeadIn() const
+	{
+		const GameConfigKeys leadInTimeOpt = m_isPracticeMode ? GameConfigKeys::PracticeLeadInTime : GameConfigKeys::LeadInTime;
+		return static_cast<MapTime>(g_gameConfig.GetInt(leadInTimeOpt) * m_audioPlayback.GetPlaybackSpeed());
 	}
 
 	void InitPlaybacks()
@@ -1928,10 +1929,7 @@ public:
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
-		{
-			if (buttonCode != Input::Button::BT_S || m_practiceSetupDialog->IsSelectionOnPressable())
-				return;
-		}
+			return;
 
 		if (m_isPracticeSetup)
 		{
@@ -1956,9 +1954,6 @@ public:
 					m_audioPlayback.TogglePause();
 					m_paused = m_audioPlayback.IsPaused();
 				}
-				break;
-			case Input::Button::BT_S:
-				StartPractice();
 				break;
 			}
 
@@ -2087,7 +2082,7 @@ public:
 	{
 		assert(m_isPracticeSetup && m_isPracticeMode && !IsMultiplayerGame());
 
-		m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_beatmap, m_lastMapTime, m_playOptions, m_practiceSetupRange);
+		m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(*this, m_lastMapTime, m_tempOffset, m_playOptions, m_practiceSetupRange);
 		m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
 		m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
 		m_practiceSetupDialog->onClose.AddLambda([this]() {
@@ -2097,12 +2092,18 @@ public:
 			m_paused = m_audioPlayback.IsPaused();
 		});
 		m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
-			int newGlobalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
-			if (newGlobalOffset != m_globalOffset)
+			int oldAudioOffset = GetAudioOffset();
+
+			m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+			if(m_chartIndex) m_songOffset = m_chartIndex->custom_offset;
+
+			if(oldAudioOffset != GetAudioOffset())
 			{
-				m_globalOffset = newGlobalOffset;
 				JumpTo(m_lastMapTime);
 			}
+		});
+		m_practiceSetupDialog->onPressStart.AddLambda([this]() {
+			StartPractice();
 		});
 	}
 

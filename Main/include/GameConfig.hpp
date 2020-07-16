@@ -54,6 +54,9 @@ DefineEnum(GameConfigKeys,
 		   DisableBackgrounds,
 		   ScoreDisplayMode,
 
+		   LeadInTime,
+		   PracticeLeadInTime,
+
 		   // Input device setting per element
 		   LaserInputDevice,
 		   ButtonInputDevice,

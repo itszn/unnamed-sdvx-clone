@@ -91,6 +91,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DistantButtonScale, 1.0f);
 	Set(GameConfigKeys::BTOverFXScale, 0.8f);
 	Set(GameConfigKeys::DisableBackgrounds, false);
+	Set(GameConfigKeys::LeadInTime, 3000);
+	Set(GameConfigKeys::PracticeLeadInTime, 1000);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 

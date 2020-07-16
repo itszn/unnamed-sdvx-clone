@@ -732,6 +732,9 @@ public:
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
 			ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
 
+			IntSetting(GameConfigKeys::LeadInTime, "Lead-in time", 250, 10000, 250);
+			IntSetting(GameConfigKeys::PracticeLeadInTime, "(for practice mode)", 250, 10000, 250);
+
 			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 

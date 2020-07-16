@@ -1,63 +1,106 @@
 #include "stdafx.h"
 #include "PracticeModeSettingsDialog.hpp"
+#include "Beatmap/MapDatabase.hpp"
 
-PracticeModeSettingsDialog::PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range)
-    : m_beatmap(beatmap), m_endTime(beatmap->GetLastObjectTime()),
-    m_lastMapTime(lastMapTime), m_playOptions(playOptions), m_range(range)
+PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& lastMapTime,
+    int32& tempOffset, Game::PlayOptions& playOptions, MapTimeRange& range)
+    : m_chartIndex(game.GetChartIndex()), m_beatmap(game.GetBeatmap()),
+    m_endTime(m_beatmap->GetLastObjectTime()),  m_lastMapTime(lastMapTime),
+    m_tempOffset(tempOffset), m_playOptions(playOptions), m_range(range)
 {
 }
 
 void PracticeModeSettingsDialog::InitTabs()
 {
-    AddTab(std::move(m_CreatePlaybackTab()));
+    AddTab(std::move(m_CreateMainSettingTab()));
+    AddTab(std::move(m_CreateLoopingTab()));
     AddTab(std::move(m_CreateFailConditionTab()));
-    AddTab(std::move(m_CreateGameSettingTab()));
+    AddTab(std::move(m_CreateOffsetTab()));
 
     SetCurrentTab(0);
 }
 
-PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab()
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingTab()
+{
+    Tab mainSettingTab = std::make_unique<TabData>();
+    mainSettingTab->name = "Main";
+
+    Setting loopBeginButton = CreateButton("Set to here (0ms)", [this](const auto&) {
+        m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
+    });
+    m_setStartButton = loopBeginButton.get();
+    mainSettingTab->settings.emplace_back(std::move(loopBeginButton));
+
+    Setting loopEndButton = CreateButton("Set to here (0ms)", [this](const auto&) {
+        m_SetEndTime(m_lastMapTime);
+    });
+    m_setEndButton = loopEndButton.get();
+    mainSettingTab->settings.emplace_back(std::move(loopEndButton));
+
+    Setting loopOnSuccess = CreateBoolSetting("Loop on success", m_playOptions.loopOnSuccess);
+    mainSettingTab->settings.emplace_back(std::move(loopOnSuccess));
+
+    Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
+    mainSettingTab->settings.emplace_back(std::move(loopOnFail));
+
+    Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
+    speedSetting->intSetting.min = 25;
+    speedSetting->intSetting.max = 100;
+    speedSetting->intSetting.val = Math::Round(m_playOptions.playbackSpeed * 100);
+    speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });
+    speedSetting->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = Math::Round(m_playOptions.playbackSpeed * 100); });
+    mainSettingTab->settings.emplace_back(std::move(speedSetting));
+
+    mainSettingTab->settings.emplace_back(CreateButton("Start practice", [this](const auto&) { onPressStart.Call(); }));
+
+    return mainSettingTab;
+}
+
+void PracticeModeSettingsDialog::m_SetStartTime(MapTime time, int measure)
+{
+    m_range.begin = time;
+    m_startMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
+    m_setStartButton->name = Utility::Sprintf("Set to here (%dms)", time);
+    onSetMapTime.Call(time);
+    if (m_range.end < time)
+    {
+        m_range.end = time;
+        m_endMeasure = m_startMeasure;
+    }
+}
+
+void PracticeModeSettingsDialog::m_SetEndTime(MapTime time, int measure)
+{
+    m_range.end = time;
+    m_endMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
+    m_setEndButton->name = Utility::Sprintf("Set to here (%dms)", time);
+
+    if(time != 0) onSetMapTime.Call(time);
+}
+
+
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
 {
     Tab playbackTab = std::make_unique<TabData>();
-    playbackTab->name = "Playback";
+    playbackTab->name = "Looping";
 
     // Loop begin
     {
         Setting loopBeginMeasureSetting = CreateIntSetting("Start point (measure #)", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopBeginMeasureSetting->setter.AddLambda([this](const SettingData& data) {
-            m_range.begin = m_MeasureToTime(data.intSetting.val);
-            onSetMapTime.Call(m_range.begin);
-            if (m_range.end < m_range.begin)
-            {
-                m_range.end = m_range.begin;
-                m_endMeasure = data.intSetting.val;
-            }
+            m_SetStartTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
         });
         playbackTab->settings.emplace_back(std::move(loopBeginMeasureSetting));
 
         Setting loopBeginMSSetting = CreateIntSetting("- in milliseconds", m_range.begin, {0, m_endTime}, 50);
         loopBeginMSSetting->setter.AddLambda([this](const SettingData& data) {
-            m_startMeasure = m_TimeToMeasure(data.intSetting.val);
-            onSetMapTime.Call(data.intSetting.val);
-            if (m_range.end < data.intSetting.val)
-            {
-                m_range.end = data.intSetting.val;
-                m_endMeasure = m_startMeasure;
-            }
+            m_SetStartTime(data.intSetting.val);
         });
         playbackTab->settings.emplace_back(std::move(loopBeginMSSetting));
 
-        Setting loopBeginButton = CreateButton("Set to here",
-            std::move([this](const auto&) {
-                m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime);
-                m_startMeasure = m_TimeToMeasure(m_range.begin);
-                if (m_range.end < m_range.begin)
-                {
-                    m_range.end = m_range.begin;
-                    m_endMeasure = m_startMeasure;
-                }
-            }
-        ));
+        Setting loopBeginButton = CreateButton("Set to here", [this](const auto&) {
+            m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
+        });
         playbackTab->settings.emplace_back(std::move(loopBeginButton));
     }
 
@@ -65,28 +108,24 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     {
         Setting loopEndMeasureSetting = CreateIntSetting("End point (measure #)", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopEndMeasureSetting->setter.AddLambda([this](const SettingData& data) {
-            m_range.end = m_MeasureToTime(data.intSetting.val);
-            onSetMapTime.Call(m_range.end);
+            m_SetEndTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
         });
         playbackTab->settings.emplace_back(std::move(loopEndMeasureSetting));
 
         Setting loopEndMSSetting = CreateIntSetting("- in milliseconds", m_range.end, {0, m_endTime}, 50);
         loopEndMSSetting->setter.AddLambda([this](const SettingData& data) {
-            m_endMeasure = m_TimeToMeasure(data.intSetting.val);
-            onSetMapTime.Call(data.intSetting.val);
+            m_SetEndTime(data.intSetting.val);
         });
         playbackTab->settings.emplace_back(std::move(loopEndMSSetting));
 
-        Setting loopEndClearButton = CreateButton("Clear",
-            std::move([this](const auto&) { m_range.end = 0; }));
+        Setting loopEndClearButton = CreateButton("Clear", [this](const auto&) {
+            m_SetEndTime(0);
+        });
         playbackTab->settings.emplace_back(std::move(loopEndClearButton));
 
-        Setting loopEndButton = CreateButton("Set to here",
-            std::move([this](const auto&) {
-                m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime);
-                m_endMeasure = m_TimeToMeasure(m_range.end);
-            }
-        ));
+        Setting loopEndButton = CreateButton("Set to here", [this](const auto&) {
+            m_SetEndTime(m_lastMapTime);
+        });
         playbackTab->settings.emplace_back(std::move(loopEndButton));
     }
 
@@ -96,14 +135,6 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
     playbackTab->settings.emplace_back(std::move(loopOnFail));
 
-    Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
-    speedSetting->intSetting.min = 25;
-    speedSetting->intSetting.max = 100;
-    speedSetting->intSetting.val = Math::Round(m_playOptions.playbackSpeed * 100);
-    speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });
-    speedSetting->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = Math::Round(m_playOptions.playbackSpeed * 100); });
-    playbackTab->settings.emplace_back(std::move(speedSetting));
-
     return playbackTab;
 }
 
@@ -112,7 +143,7 @@ enum class GameFailConditionType
     None, Score, Grade, Miss, MissAndNear
 };
 
-const char* GAME_FAIL_CONDITION_TYPE_STR[5] = { "None", "Score", "Grade", "Miss", "Miss+Near" };
+const char* GAME_FAIL_CONDITION_TYPE_STR[5] = { "None", "Score", "Grade", "Miss", "MissNear" };
 
 static inline GameFailConditionType GetGameFailConditionType(const GameFailCondition* failCondition)
 {
@@ -148,89 +179,77 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditio
         conditionType->enumSetting.options.Add(str);
     conditionType->enumSetting.val = static_cast<int>(GameFailConditionType::None);
     conditionType->getter.AddLambda([this](SettingData& data) {
-        data.intSetting.val = static_cast<int>(GetGameFailConditionType(m_playOptions.failCondition.get()));
+        data.enumSetting.val = static_cast<int>(GetGameFailConditionType(m_playOptions.failCondition.get()));
     });
     conditionType->setter.AddLambda([this](const SettingData& data) {
         m_playOptions.failCondition = CreateGameFailCondition(static_cast<GameFailConditionType>(data.enumSetting.val));
     });
     conditionTab->settings.emplace_back(std::move(conditionType));
 
-    Setting scoreThreshold = std::make_unique<SettingData>("Score less than", SettingType::Integer);
-    scoreThreshold->intSetting.min = 800 * 10000;
-    scoreThreshold->intSetting.max = 1000 * 10000;
-    scoreThreshold->intSetting.step = 10000;
-    scoreThreshold->intSetting.val = 10000000;
-    scoreThreshold->getter.AddLambda([this](SettingData& data) {
-        if (auto* cond = dynamic_cast<GameFailCondition::Score*>(m_playOptions.failCondition.get()))
-            data.intSetting.val = cond->GetMinAllowed();
+    Setting scoreCondition = CreateIntSetting("Score less than", m_condScore, { 800 * 10000, 1000 * 10000 }, 10000);
+    scoreCondition->getter.AddLambda([this](SettingData& data) {
+        data.intSetting.val = m_condScore;
     });
-    scoreThreshold->setter.AddLambda([this](const SettingData& data) {
+    scoreCondition->setter.AddLambda([this](const SettingData& data) {
         m_playOptions.failCondition = std::make_unique<GameFailCondition::Score>(data.intSetting.val);
     });
-    conditionTab->settings.emplace_back(std::move(scoreThreshold));
+    conditionTab->settings.emplace_back(std::move(scoreCondition));
 
-    Setting gradeThreshold = std::make_unique<SettingData>("Grade less than", SettingType::Enum);
+    Setting gradeCondition = std::make_unique<SettingData>("Grade less than", SettingType::Enum);
     for (const char* str : GRADE_MARK_STR)
-        gradeThreshold->enumSetting.options.Add(str);
-    gradeThreshold->enumSetting.val = static_cast<int>(GradeMark::PUC);
-    gradeThreshold->getter.AddLambda([this](SettingData& data) {
-        if (auto* cond = dynamic_cast<GameFailCondition::Grade*>(m_playOptions.failCondition.get()))
-        {
-            data.enumSetting.val = static_cast<int>(cond->GetMinAllowed());
-        }
+        gradeCondition->enumSetting.options.Add(str);
+    gradeCondition->enumSetting.val = static_cast<int>(m_condGrade);
+    gradeCondition->getter.AddLambda([this](SettingData& data) {
+        data.enumSetting.val = static_cast<int>(m_condGrade);
     });
-    gradeThreshold->setter.AddLambda([this](const SettingData& data) {
-        m_playOptions.failCondition = std::make_unique<GameFailCondition::Grade>(static_cast<GradeMark>(data.enumSetting.val));
+    gradeCondition->setter.AddLambda([this](const SettingData& data) {
+        m_condGrade = static_cast<GradeMark>(data.enumSetting.val);
+        m_playOptions.failCondition = std::make_unique<GameFailCondition::Grade>(m_condGrade);
     });
-    conditionTab->settings.emplace_back(std::move(gradeThreshold));
+    conditionTab->settings.emplace_back(std::move(gradeCondition));
 
-    Setting missThreshold = std::make_unique<SettingData>("Miss count more than", SettingType::Integer);
-    missThreshold->intSetting.min = 0;
-    missThreshold->intSetting.max = 100;
-    missThreshold->intSetting.val = 0;
-    missThreshold->getter.AddLambda([this](SettingData& data) {
-        if (auto* cond = dynamic_cast<GameFailCondition::MissCount*>(m_playOptions.failCondition.get()))
-            data.intSetting.val = cond->GetMaxAllowed();
+    Setting missCondition = CreateIntSetting("Miss more than", m_condMiss, { 0, 100 });
+    missCondition->getter.AddLambda([this](SettingData& data) {
+        data.intSetting.val = m_condMiss;
     });
-    missThreshold->setter.AddLambda([this](const SettingData& data) {
+    missCondition->setter.AddLambda([this](const SettingData& data) {
         m_playOptions.failCondition = std::make_unique<GameFailCondition::MissCount>(data.intSetting.val);
     });
-    conditionTab->settings.emplace_back(std::move(missThreshold));
+    conditionTab->settings.emplace_back(std::move(missCondition));
 
-    Setting missNearThreshold = std::make_unique<SettingData>("Miss+Near count more than", SettingType::Integer);
-    missNearThreshold->intSetting.min = 0;
-    missNearThreshold->intSetting.max = 100;
-    missNearThreshold->intSetting.val = 0;
-    missNearThreshold->getter.AddLambda([this](SettingData& data) {
-        if (auto* cond = dynamic_cast<GameFailCondition::MissAndNearCount*>(m_playOptions.failCondition.get()))
-            data.intSetting.val = cond->GetMaxAllowed();
+    Setting missNearCondition = CreateIntSetting("Miss+Near more than", m_condMissNear, { 0, 100 });
+    missNearCondition->getter.AddLambda([this](SettingData& data) {
+        data.intSetting.val = m_condMissNear;
     });
-    missNearThreshold->setter.AddLambda([this](const SettingData& data) {
+    missNearCondition->setter.AddLambda([this](const SettingData& data) {
         m_playOptions.failCondition = std::make_unique<GameFailCondition::MissAndNearCount>(data.intSetting.val);
     });
-    conditionTab->settings.emplace_back(std::move(missNearThreshold));
+    conditionTab->settings.emplace_back(std::move(missNearCondition));
 
     return conditionTab;
 }
 
-PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingTab()
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
 {
-    Tab gameSettingTab = std::make_unique<TabData>();
-    gameSettingTab->name = "Game";
+    Tab offSetSettingTab = std::make_unique<TabData>();
+    offSetSettingTab->name = "Offset";
 
     Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
     globalOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
-    gameSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
+    offSetSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
 
-    Setting chartOffsetSetting = std::make_unique<SettingData>("Chart offset", SettingType::Integer);
-    chartOffsetSetting->intSetting.min = -200;
-    chartOffsetSetting->intSetting.max = 200;
-    chartOffsetSetting->intSetting.val = 0;
-    // TODO: get and set the chart offset
-    gameSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
+    if (m_chartIndex)
+    {
+        Setting chartOffsetSetting = CreateIntSetting("Chart offset", m_chartIndex->custom_offset, { -200, 200 });
+        chartOffsetSetting->setter.AddLambda([this](const SettingData& data) {
+            onSettingChange.Call();
+            });
+        offSetSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
+    }
 
-    // TODO: speed mod
-    // TODO: hidden and sudden
+    Setting tempOffsetSetting = CreateIntSetting("Temporary offset", m_tempOffset, { -200, 200 });
+    tempOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
+    offSetSettingTab->settings.emplace_back(std::move(tempOffsetSetting));
 
-    return gameSettingTab;
+    return offSetSettingTab;
 }

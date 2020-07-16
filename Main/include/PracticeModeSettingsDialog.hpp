@@ -3,27 +3,36 @@
 #include "Beatmap/BeatmapObjects.hpp"
 #include "Game.hpp"
 
+struct ChartIndex;
 class PracticeModeSettingsDialog : public BaseGameSettingsDialog
 {
 public:
-	PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range);
+	PracticeModeSettingsDialog(Game& game, MapTime& lastMapTime,
+		int32& tempOffset, Game::PlayOptions& playOptions, MapTimeRange& range);
 	void InitTabs() override;
 
 	Delegate<MapTime> onSetMapTime;
 	Delegate<float> onSpeedChange;
 	Delegate<> onSettingChange;
+	Delegate<> onPressStart;
 
 private:
-	Tab m_CreatePlaybackTab();
+	Tab m_CreateMainSettingTab();
+	Tab m_CreateLoopingTab();
 	Tab m_CreateFailConditionTab();
-	Tab m_CreateGameSettingTab();
+	Tab m_CreateOffsetTab();
 
 	inline MapTime m_MeasureToTime(int measure) const { return m_beatmap->GetMapTimeFromMeasureInd(measure-1); }
 	inline int m_TimeToMeasure(MapTime time) const { return m_beatmap->GetMeasureIndFromMapTime(time)+1; }
 
+	void m_SetStartTime(MapTime time, int measure = -1);
+	void m_SetEndTime(MapTime time, int measure = -1);
+
+	ChartIndex* m_chartIndex;
 	Ref<Beatmap> m_beatmap;
 	MapTime m_endTime;
 	MapTime& m_lastMapTime;
+	int32& m_tempOffset;
 
 	// for ranges, use m_range instead of m_playOptions
 	MapTimeRange& m_range;
@@ -32,5 +41,14 @@ private:
 	// Offset by 1
 	int m_startMeasure = 1;
 	int m_endMeasure = 1;
+
+	SettingData* m_setStartButton = nullptr;
+	SettingData* m_setEndButton = nullptr;
+
+	// Fail conditions
+	int m_condScore = MAX_SCORE;
+	GradeMark m_condGrade = GradeMark::PUC;
+	int m_condMiss = 0;
+	int m_condMissNear = 0;
 };
 
