@@ -195,6 +195,7 @@ void GameConfig::InitDefaults()
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
+	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
 }
 
 void GameConfig::UpdateVersion()

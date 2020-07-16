@@ -738,6 +738,8 @@ public:
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
 
+			ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
+
 			nk_tree_pop(m_nctx);
 		}
 	}
@@ -777,6 +779,7 @@ public:
 			}
 
 			EnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "In-game score display is:");
+
 			RenderSettingsLaserColor();
 
 			nk_tree_pop(m_nctx);

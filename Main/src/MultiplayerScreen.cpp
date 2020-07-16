@@ -1258,6 +1258,7 @@ bool MultiplayerScreen::AsyncLoad()
 	m_mapDatabase->OnDatabaseUpdateStarted.Add(this, &MultiplayerScreen::m_onDatabaseUpdateStart);
 	m_mapDatabase->OnDatabaseUpdateDone.Add(this, &MultiplayerScreen::m_onDatabaseUpdateDone);
 	m_mapDatabase->OnDatabaseUpdateProgress.Add(this, &MultiplayerScreen::m_onDatabaseUpdateProgress);
+	m_mapDatabase->SetChartUpdateBehavior(g_gameConfig.GetBool(GameConfigKeys::TransferScoresOnChartUpdate));
 	m_mapDatabase->FinishInit();
 
 	m_mapDatabase->AddSearchPath(g_gameConfig.GetString(GameConfigKeys::SongFolder));
