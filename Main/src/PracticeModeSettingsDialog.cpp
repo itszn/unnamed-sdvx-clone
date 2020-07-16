@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "PracticeModeSettingsDialog.hpp"
 
-PracticeModeSettingsDialog::PracticeModeSettingsDialog(MapTime endTime, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range)
-    : m_endTime(endTime), m_lastMapTime(lastMapTime), m_playOptions(playOptions), m_range(range)
+PracticeModeSettingsDialog::PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime endTime, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range)
+    : m_beatmap(beatmap), m_endTime(endTime), m_lastMapTime(lastMapTime), m_playOptions(playOptions), m_range(range)
 {
 }
 
@@ -15,49 +15,79 @@ void PracticeModeSettingsDialog::InitTabs()
     SetCurrentTab(0);
 }
 
-const static Vector<float> SPEEDS = { 0.25f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 0.95f, 1.0f };
-const static Vector<String> SPEEDS_STR = { "0.25", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.95", "1.0" };
-static int GetSpeedInd(float f)
-{
-    if (f <= SPEEDS.front())
-        return 0;
-    if (f >= SPEEDS.back())
-        return static_cast<int>(SPEEDS.size()) - 1;
-
-    int minInd = 0;
-    for (int i = 1; i < SPEEDS.size(); ++i)
-    {
-        if (std::abs(f - SPEEDS[i]) < std::abs(f - SPEEDS[minInd]))
-            minInd = i;
-    }
-
-    return minInd;
-}
-
 PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab()
 {
     Tab playbackTab = std::make_unique<TabData>();
     playbackTab->name = "Playback";
 
-    Setting loopBeginSetting = CreateIntSetting("Start point", m_range.begin, {0, m_endTime}, 50);
-    loopBeginSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
-    playbackTab->settings.emplace_back(std::move(loopBeginSetting));
+    // Loop begin
+    {
+        Setting loopBeginMeasureSetting = CreateIntSetting("Start point (measure #)", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
+        loopBeginMeasureSetting->setter.AddLambda([this](const SettingData& data) {
+            m_range.begin = m_MeasureToTime(data.intSetting.val-1);
+            onSetMapTime.Call(m_range.begin);
+            if (m_range.end < m_range.begin)
+            {
+                m_range.end = m_range.begin;
+                m_endMeasure = data.intSetting.val;
+            }
+        });
+        playbackTab->settings.emplace_back(std::move(loopBeginMeasureSetting));
 
-    Setting loopBeginButton = CreateButton("Set to here",
-        std::move([this](const auto&) { m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
-    playbackTab->settings.emplace_back(std::move(loopBeginButton));
+        Setting loopBeginMSSetting = CreateIntSetting("- in milliseconds", m_range.begin, {0, m_endTime}, 50);
+        loopBeginMSSetting->setter.AddLambda([this](const SettingData& data) {
+            m_startMeasure = m_TimeToMeasure(data.intSetting.val)+1;
+            onSetMapTime.Call(data.intSetting.val);
+            if (m_range.end < data.intSetting.val)
+            {
+                m_range.end = data.intSetting.val;
+                m_endMeasure = m_startMeasure;
+            }
+        });
+        playbackTab->settings.emplace_back(std::move(loopBeginMSSetting));
 
-    Setting loopEndSetting = CreateIntSetting("End point", m_range.end, { 0, m_endTime }, 50);
-    loopEndSetting->setter.AddLambda([this](const SettingData& data) { onSetMapTime.Call(data.intSetting.val); });
-    playbackTab->settings.emplace_back(std::move(loopEndSetting));
+        Setting loopBeginButton = CreateButton("Set to here",
+            std::move([this](const auto&) {
+                m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime);
+                m_startMeasure = m_TimeToMeasure(m_range.begin) + 1;
+                if (m_range.end < m_range.begin)
+                {
+                    m_range.end = m_range.begin;
+                    m_endMeasure = m_startMeasure;
+                }
+            }
+        ));
+        playbackTab->settings.emplace_back(std::move(loopBeginButton));
+    }
 
-    Setting loopEndClearButton = CreateButton("Clear",
-        std::move([this](const auto&) { m_range.end = 0; }));
-    playbackTab->settings.emplace_back(std::move(loopEndClearButton));
+    // Loop end
+    {
+        Setting loopEndMeasureSetting = CreateIntSetting("End point (measure #)", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
+        loopEndMeasureSetting->setter.AddLambda([this](const SettingData& data) {
+            m_range.end = m_MeasureToTime(data.intSetting.val-1);
+            onSetMapTime.Call(m_range.end);
+        });
+        playbackTab->settings.emplace_back(std::move(loopEndMeasureSetting));
 
-    Setting loopEndButton = CreateButton("Set to here",
-        std::move([this](const auto&) { m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime); }));
-    playbackTab->settings.emplace_back(std::move(loopEndButton));
+        Setting loopEndMSSetting = CreateIntSetting("- in milliseconds", m_range.end, {0, m_endTime}, 50);
+        loopEndMSSetting->setter.AddLambda([this](const SettingData& data) {
+            m_endMeasure = m_TimeToMeasure(data.intSetting.val)+1;
+            onSetMapTime.Call(data.intSetting.val);
+        });
+        playbackTab->settings.emplace_back(std::move(loopEndMSSetting));
+
+        Setting loopEndClearButton = CreateButton("Clear",
+            std::move([this](const auto&) { m_range.end = 0; }));
+        playbackTab->settings.emplace_back(std::move(loopEndClearButton));
+
+        Setting loopEndButton = CreateButton("Set to here",
+            std::move([this](const auto&) {
+                m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime);
+                m_endMeasure = m_TimeToMeasure(m_range.end) + 1;
+            }
+        ));
+        playbackTab->settings.emplace_back(std::move(loopEndButton));
+    }
 
     Setting loopOnSuccess = CreateBoolSetting("Loop on success", m_playOptions.loopOnSuccess);
     playbackTab->settings.emplace_back(std::move(loopOnSuccess));
@@ -65,13 +95,12 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
     playbackTab->settings.emplace_back(std::move(loopOnFail));
 
-    assert(SPEEDS.size() == SPEEDS_STR.size());
-
-    Setting speedSetting = std::make_unique<SettingData>("Playback speed", SettingType::Enum);
-    speedSetting->enumSetting.options = SPEEDS_STR;
-    speedSetting->enumSetting.val = GetSpeedInd(m_playOptions.playbackSpeed);
-    speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(SPEEDS[data.enumSetting.val]); });
-    speedSetting->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = GetSpeedInd(m_playOptions.playbackSpeed); });
+    Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
+    speedSetting->intSetting.min = 25;
+    speedSetting->intSetting.max = 100;
+    speedSetting->intSetting.val = Math::Round(m_playOptions.playbackSpeed * 100);
+    speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });
+    speedSetting->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = Math::Round(m_playOptions.playbackSpeed * 100); });
     playbackTab->settings.emplace_back(std::move(speedSetting));
 
     return playbackTab;
@@ -186,7 +215,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditio
 PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingTab()
 {
     Tab gameSettingTab = std::make_unique<TabData>();
-    gameSettingTab->name = "GameSetting";
+    gameSettingTab->name = "Game";
 
     Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
     globalOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
@@ -203,4 +232,78 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingT
     // TODO: hidden and sudden
 
     return gameSettingTab;
+}
+
+constexpr double MEASURE_EPSILON = 0.0001;
+
+inline int GetBarCount(const TimingPoint* a, const TimingPoint* b)
+{
+    const MapTime measureDuration = b->time - a->time;
+    const double barCount = measureDuration / a->GetBarDuration();
+    int barCountInt = Math::Round(barCount);
+
+    if (std::abs(barCount - static_cast<double>(barCountInt)) >= MEASURE_EPSILON)
+    {
+        Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Warning, a->time, barCount);
+        if (barCount > barCountInt) ++barCountInt;
+    }
+
+    return barCountInt;
+}
+
+MapTime PracticeModeSettingsDialog::m_MeasureToTime(int measure)
+{
+    if (measure < 0) return 0;
+
+    int currMeasureCount = 0;
+
+    auto& timingPoints = m_beatmap->GetLinearTimingPoints();
+    for (int i = 0; i < timingPoints.size(); ++i)
+    {
+        bool isInCurrentTimingPoint = false;
+        if (i == timingPoints.size() - 1 || measure <= currMeasureCount)
+        {
+            isInCurrentTimingPoint = true;
+        }
+        else
+        {
+            const int barCount = GetBarCount(timingPoints[i], timingPoints[i+1]);
+
+            if (measure < currMeasureCount + barCount)
+                isInCurrentTimingPoint = true;
+            else
+                currMeasureCount += barCount;
+        }
+        if (isInCurrentTimingPoint)
+        {
+            measure -= currMeasureCount;
+            return static_cast<MapTime>(timingPoints[i]->time + timingPoints[i]->GetBarDuration() * measure);
+        }
+    }
+
+    assert(false);
+    return 0;
+}
+
+int PracticeModeSettingsDialog::m_TimeToMeasure(MapTime time)
+{
+    if (time <= 0) return 0;
+
+    int currMeasureCount = 0;
+
+    auto& timingPoints = m_beatmap->GetLinearTimingPoints();
+
+    for (int i = 0; i < timingPoints.size(); ++i)
+    {
+        if (i < timingPoints.size() - 1 && timingPoints[i + 1]->time <= time)
+        {
+            currMeasureCount += GetBarCount(timingPoints[i], timingPoints[i + 1]);
+            continue;
+        }
+
+        return currMeasureCount + static_cast<int>((time - timingPoints[i]->time) / timingPoints[i]->GetBarDuration());
+    }
+
+    assert(false);
+    return 0;
 }

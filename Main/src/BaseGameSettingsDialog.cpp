@@ -482,10 +482,20 @@ void BaseGameSettingsDialog::TabData::SetLua(lua_State* lua)
             switch (setting->type)
             {
             case SettingType::Integer:
-                pushStringToTable(lua, "type", "int");
-                pushIntToTable(lua, "value", setting->intSetting.val);
-                pushIntToTable(lua, "min", setting->intSetting.min);
-                pushIntToTable(lua, "max", setting->intSetting.max);
+                if (setting->intSetting.div > 1)
+                {
+                    pushStringToTable(lua, "type", "float");
+                    pushFloatToTable(lua, "value", setting->intSetting.val / (float) setting->intSetting.div);
+                    pushIntToTable(lua, "min", setting->intSetting.min / (float)setting->intSetting.div);
+                    pushIntToTable(lua, "max", setting->intSetting.max / (float)setting->intSetting.div);
+                }
+                else
+                {
+                    pushStringToTable(lua, "type", "int");
+                    pushIntToTable(lua, "value", setting->intSetting.val);
+                    pushIntToTable(lua, "min", setting->intSetting.min);
+                    pushIntToTable(lua, "max", setting->intSetting.max);
+                }
                 break;
             case SettingType::Floating:
                 pushStringToTable(lua, "type", "float");

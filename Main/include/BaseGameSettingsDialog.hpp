@@ -42,6 +42,7 @@ public:
             int min;
             int max;
             int step = 1;
+            int div = 1; // For decimal values
         } intSetting;
 
         struct

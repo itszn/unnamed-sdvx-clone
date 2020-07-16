@@ -395,7 +395,7 @@ public:
 
 		if (m_isPracticeSetup)
 		{
-			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
+			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_beatmap, m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
 			m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
 			m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
 			m_practiceSetupDialog->onClose.AddLambda([this]() {
@@ -1054,7 +1054,7 @@ public:
 
 	void InitPlaybacks()
 	{
-		m_audioPlayback.SetPosition(m_lastMapTime + GetAudioOffset());
+		m_audioPlayback.SetPosition(std::max(m_lastMapTime + GetAudioOffset(), 0));
 
 		m_playback.audioOffset = GetAudioOffset();
 		m_playback.Reset(m_lastMapTime, m_playOptions.range.begin);
