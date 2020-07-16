@@ -93,7 +93,7 @@ public:
 	// Retrieves audio effect settings for a given filter effect id
 	AudioEffect GetFilter(EffectType type) const;
 
-	// Get the timing of the last object
+	// Get the timing of the last (non-event) object
 	MapTime GetLastObjectTime() const;
 
 	// Measure -> Time

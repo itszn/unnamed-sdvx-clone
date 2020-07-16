@@ -44,6 +44,7 @@ inline uint32 ToMinScore(GradeMark grade)
 	}
 
 	assert(false);
+	return 0;
 }
 
 inline GradeMark ToGradeMark(uint32 score)

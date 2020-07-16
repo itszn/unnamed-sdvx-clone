@@ -73,7 +73,7 @@ private:
 	bool m_introCompleted = false;
 	bool m_outroCompleted = false;
 	bool m_paused = false;
-	bool m_triggerPause = false; // Whether to cause on next first gameplaytick on play
+	bool m_triggerPause = false; // Whether to trigger a pause on next first gameplay tick
 	bool m_ended = false;
 	bool m_transitioning = false;
 	bool m_saveSpeed = false;
@@ -87,7 +87,7 @@ private:
 	bool m_isPracticeSetup = false;
 	bool m_isPracticeMode = false;
 	std::unique_ptr<PracticeModeSettingsDialog> m_practiceSetupDialog = nullptr;
-	bool m_playOnDialogClose = false;
+	bool m_playOnDialogClose = false; // Whether to unpause on dialog closing
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
@@ -1451,7 +1451,7 @@ public:
 	{
 		// Render debug overlay elements
 		//RenderQueue& debugRq = g_guiRenderer->Begin();
-		auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = Color::White)
+		auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = {1.0f, 1.0f, 0.5f, 1.0f})
 		{
 			g_application->FastText(text, pos.x, pos.y, 12, 0, color);
 			return Vector2(0, 12);
@@ -1469,18 +1469,19 @@ public:
 		textPos.y += RenderText(bms.title, textPos).y;
 		textPos.y += RenderText(bms.artist, textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("%.2f FPS", g_application->GetRenderFPS()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Audio Offset: %d ms", g_audio->audioLatency), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Offset (ms): Global %d, Song %d, Audio %d (%d)",
+			m_globalOffset, m_songOffset, GetAudioOffset(), g_audio->audioLatency), textPos).y;
 
 		float currentBPM = (float)(60000.0 / tp.beatDuration);
-		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f", currentBPM), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f | Time Sig: %d/%d", currentBPM, tp.numerator, tp.denominator), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Time Signature: %d/%d", tp.numerator, tp.denominator), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Laser Effect Mix: %f", m_audioPlayback.GetLaserEffectMix()), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos).y;
+		if (IsPartialPlay())
+			textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Laser Filter Input: %f", m_scoring.GetLaserOutput()), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
-		
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-
 		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
@@ -1496,7 +1497,7 @@ public:
 		{
 			if (m_isPracticeSetup)
 			{
-				textPos.y += RenderText("Practice Setup", textPos, Color::Blue).y;
+				textPos.y += RenderText("Practice setup", textPos, Color::Blue).y;
 			}
 			else
 			{
@@ -1830,7 +1831,9 @@ public:
 			return;
 
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
-			return;
+		{
+			if (code != SDL_SCANCODE_F8) return;
+		}
 
 		if (m_isPracticeSetup)
 		{
@@ -2144,10 +2147,8 @@ public:
 
 	constexpr bool IsPartialPlay() const noexcept
 	{
-		if (m_playOptions.range.begin != 0) return true;
-		if (!m_playOptions.range.HasEnd()) return false;
-
-		return m_playOptions.range.end < m_endTime;
+		if (m_playOptions.range.begin > 0) return true;
+		return m_playOptions.range.HasEnd();
 	}
 
 	virtual bool IsPlaying() const override
