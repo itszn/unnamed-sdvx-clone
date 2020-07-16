@@ -303,6 +303,11 @@ void BaseGameSettingsDialog::m_SetTables()
 
         pushIntToTable(m_lua, "currentTab", m_currentTab + 1);
         pushIntToTable(m_lua, "currentSetting", m_currentSetting + 1);
+
+        pushFloatToTable(m_lua, "posX", m_pos.x);
+        pushFloatToTable(m_lua, "posY", m_pos.y);
+
+        pushStringToTable(m_lua, "message", m_message.c_str());
     }
     lua_setglobal(m_lua, "SettingsDiag");
 }

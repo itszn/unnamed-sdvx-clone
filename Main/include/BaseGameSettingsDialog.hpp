@@ -105,6 +105,9 @@ protected:
     inline int GetCurrentTab() const { return m_currentTab; }
     inline void SetCurrentTab(int tabIndex) { m_currentTab = tabIndex; }
 
+    String m_message = "";
+    Vector2 m_pos = { 0.5f, 0.5f };
+
 private:
     void m_SetTables();
     void m_AdvanceSelection(int steps);

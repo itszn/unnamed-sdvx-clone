@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "GameplaySettingsDialog.hpp"
 
+GameplaySettingsDialog::GameplaySettingsDialog()
+{
+    m_message = "Press both FX keys to open/close.";
+}
+
 void GameplaySettingsDialog::InitTabs()
 {
     Tab offsetTab = std::make_unique<TabData>();
