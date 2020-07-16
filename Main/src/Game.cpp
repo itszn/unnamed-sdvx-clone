@@ -694,8 +694,8 @@ public:
 					m_paused = true;
 				}
 
-				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 100), 0, m_endTime);
-				InitPlaybacks(m_lastMapTime);
+				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 500), 0, m_endTime);
+				JumpTo(m_lastMapTime);
 			}
 		}
 
@@ -1036,12 +1036,39 @@ public:
 
 	void InitPlaybacks(int beginTime)
 	{
-		m_audioPlayback.SetPosition(std::max(m_lastMapTime + GetAudioOffset(), 0));
+		m_audioPlayback.SetPosition(m_lastMapTime + GetAudioOffset());
 
 		m_playback.audioOffset = GetAudioOffset();
 		m_playback.Reset(m_lastMapTime, std::max(beginTime, m_playOptions.range.begin));
 
 		ApplyPlaybackSpeed();
+		m_LuaUpdateProgress();
+	}
+
+	void m_LuaUpdateProgress()
+	{
+		if (!m_lua) return;
+
+		lua_getglobal(m_lua, "gameplay");
+		m_LuaUpdateProgress(m_lua);
+		lua_setglobal(m_lua, "gameplay");
+	}
+
+	void m_LuaUpdateProgress(lua_State* L)
+	{
+		MapTime progress = m_lastMapTime - m_playOptions.range.begin;
+		MapTime duration = m_playOptions.range.Length(m_endTime);
+
+		// Fallback to default
+		if (duration == 0)
+		{
+			progress = m_lastMapTime;
+			duration = m_endTime;
+		}
+
+		lua_pushstring(L, "progress");
+		lua_pushnumber(L, Math::Clamp((float)progress / duration, 0.f, 1.f));
+		lua_settable(L, -3);
 	}
 
 	// Loads sound effects
@@ -2153,7 +2180,7 @@ public:
 		m_audioPlayback.Pause();
 		m_paused = true;
 
-		JumpTo(m_practiceSetupRange.begin);
+		JumpTo(m_lastMapTime);
 		
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Open();
@@ -2324,21 +2351,8 @@ public:
 		lua_setfield(L, -1, "scoreReplays");
 
 		//progress
-		{
-			MapTime progress = m_lastMapTime - m_playOptions.range.begin;
-			MapTime duration = m_playOptions.range.Length(m_endTime);
+		m_LuaUpdateProgress(L);
 
-			// Fallback to default
-			if (duration == 0)
-			{
-				progress = m_lastMapTime;
-				duration = m_endTime;
-			}
-
-			lua_pushstring(L, "progress");
-			lua_pushnumber(L, Math::Clamp((float) progress / duration, 0.f, 1.f));
-			lua_settable(L, -3);
-		}
 		//hispeed
 		lua_pushstring(L, "hispeed");
 		lua_pushnumber(L, m_hispeed);

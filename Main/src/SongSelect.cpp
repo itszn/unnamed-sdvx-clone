@@ -1507,7 +1507,7 @@ public:
 
 			game->GetScoring().autoplay = true;
 
-			m_settDiag.Close();
+			if(m_settDiag.IsActive()) m_settDiag.Close();
 			m_suspended = true;
 
 			// Transition to game
@@ -1527,7 +1527,7 @@ public:
 				return;
 			}
 
-			m_settDiag.Close();
+			if (m_settDiag.IsActive()) m_settDiag.Close();
 			m_suspended = true;
 
 			// Transition to practice mode
