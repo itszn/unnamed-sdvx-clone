@@ -1443,7 +1443,7 @@ public:
 	{
 		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		CameraShake shake(fabsf(slamSize) * m_shakeDuration, fabsf(slamSize) * -direction);
+		CameraShake shake(fabsf(slamSize) * m_shakeDuration, pow(fabsf(slamSize), 0.5f) * -direction);
 		m_camera.AddCameraShake(shake);
 		m_slamSample->Play();
 
