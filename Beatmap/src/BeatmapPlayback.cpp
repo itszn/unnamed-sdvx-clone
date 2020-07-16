@@ -2,8 +2,6 @@
 #include "BeatmapPlayback.hpp"
 #include "Shared/Profiling.hpp"
 
-static const uint32 EARLY_VISIBILITY = 200;
-
 BeatmapPlayback::BeatmapPlayback(Beatmap& beatmap) : m_beatmap(&beatmap)
 {
 }
@@ -36,7 +34,7 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 	m_playbackTime = initTime;
 
 	// Ensure that nothing could go wrong when the start is 0
-	if (start <= 0) start = std::min(start, initTime) - EARLY_VISIBILITY;
+	if (start <= 0) start = INT_MIN;
 	m_viewRange = { start, start };
 
 	m_currentObj = &m_objects.front();
@@ -346,9 +344,11 @@ void BeatmapPlayback::MakeCalibrationPlayback()
 
 Vector<ObjectState*> BeatmapPlayback::GetObjectsInRange(MapTime range)
 {
+	static const uint32 earlyVisibility = 200;
+
 	const TimingPoint& tp = GetCurrentTimingPoint();
 
-	MapTime begin = (MapTime) (m_playbackTime - EARLY_VISIBILITY);
+	MapTime begin = (MapTime) (m_playbackTime - earlyVisibility);
 	MapTime end = m_playbackTime + range;
 
 	Vector<ObjectState*> ret;
