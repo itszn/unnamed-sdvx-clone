@@ -34,7 +34,7 @@ bool BeatmapPlayback::Reset(MapTime initTime, MapTime start)
 	m_playbackTime = initTime;
 
 	// Ensure that nothing could go wrong when the start is 0
-	if (start <= 0) start = INT_MIN;
+	if (start <= 0) start = std::numeric_limits<decltype(start)>::min();
 	m_viewRange = { start, start };
 
 	m_currentObj = &m_objects.front();
