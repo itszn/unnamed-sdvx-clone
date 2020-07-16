@@ -6,7 +6,7 @@
 class PracticeModeSettingsDialog : public BaseGameSettingsDialog
 {
 public:
-	PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime endTime, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range);
+	PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range);
 	void InitTabs() override;
 
 	Delegate<MapTime> onSetMapTime;
@@ -18,8 +18,8 @@ private:
 	Tab m_CreateFailConditionTab();
 	Tab m_CreateGameSettingTab();
 
-	MapTime m_MeasureToTime(int measure);
-	int m_TimeToMeasure(MapTime time);
+	inline MapTime m_MeasureToTime(int measure) const { return m_beatmap->GetMapTimeFromMeasureInd(measure-1); }
+	inline int m_TimeToMeasure(MapTime time) const { return m_beatmap->GetMeasureIndFromMapTime(time)+1; }
 
 	Ref<Beatmap> m_beatmap;
 	MapTime m_endTime;
@@ -29,6 +29,7 @@ private:
 	MapTimeRange& m_range;
 	Game::PlayOptions& m_playOptions;
 
+	// Offset by 1
 	int m_startMeasure = 1;
 	int m_endMeasure = 1;
 };

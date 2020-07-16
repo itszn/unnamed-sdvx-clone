@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "PracticeModeSettingsDialog.hpp"
 
-PracticeModeSettingsDialog::PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime endTime, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range)
-    : m_beatmap(beatmap), m_endTime(endTime), m_lastMapTime(lastMapTime), m_playOptions(playOptions), m_range(range)
+PracticeModeSettingsDialog::PracticeModeSettingsDialog(Ref<Beatmap> beatmap, MapTime& lastMapTime, Game::PlayOptions& playOptions, MapTimeRange& range)
+    : m_beatmap(beatmap), m_endTime(beatmap->GetLastObjectTime()),
+    m_lastMapTime(lastMapTime), m_playOptions(playOptions), m_range(range)
 {
 }
 
@@ -24,7 +25,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     {
         Setting loopBeginMeasureSetting = CreateIntSetting("Start point (measure #)", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopBeginMeasureSetting->setter.AddLambda([this](const SettingData& data) {
-            m_range.begin = m_MeasureToTime(data.intSetting.val-1);
+            m_range.begin = m_MeasureToTime(data.intSetting.val);
             onSetMapTime.Call(m_range.begin);
             if (m_range.end < m_range.begin)
             {
@@ -36,7 +37,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
 
         Setting loopBeginMSSetting = CreateIntSetting("- in milliseconds", m_range.begin, {0, m_endTime}, 50);
         loopBeginMSSetting->setter.AddLambda([this](const SettingData& data) {
-            m_startMeasure = m_TimeToMeasure(data.intSetting.val)+1;
+            m_startMeasure = m_TimeToMeasure(data.intSetting.val);
             onSetMapTime.Call(data.intSetting.val);
             if (m_range.end < data.intSetting.val)
             {
@@ -49,7 +50,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
         Setting loopBeginButton = CreateButton("Set to here",
             std::move([this](const auto&) {
                 m_range.begin = Math::Clamp(m_lastMapTime, 0, m_endTime);
-                m_startMeasure = m_TimeToMeasure(m_range.begin) + 1;
+                m_startMeasure = m_TimeToMeasure(m_range.begin);
                 if (m_range.end < m_range.begin)
                 {
                     m_range.end = m_range.begin;
@@ -64,14 +65,14 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
     {
         Setting loopEndMeasureSetting = CreateIntSetting("End point (measure #)", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopEndMeasureSetting->setter.AddLambda([this](const SettingData& data) {
-            m_range.end = m_MeasureToTime(data.intSetting.val-1);
+            m_range.end = m_MeasureToTime(data.intSetting.val);
             onSetMapTime.Call(m_range.end);
         });
         playbackTab->settings.emplace_back(std::move(loopEndMeasureSetting));
 
         Setting loopEndMSSetting = CreateIntSetting("- in milliseconds", m_range.end, {0, m_endTime}, 50);
         loopEndMSSetting->setter.AddLambda([this](const SettingData& data) {
-            m_endMeasure = m_TimeToMeasure(data.intSetting.val)+1;
+            m_endMeasure = m_TimeToMeasure(data.intSetting.val);
             onSetMapTime.Call(data.intSetting.val);
         });
         playbackTab->settings.emplace_back(std::move(loopEndMSSetting));
@@ -83,7 +84,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreatePlaybackTab(
         Setting loopEndButton = CreateButton("Set to here",
             std::move([this](const auto&) {
                 m_range.end = Math::Clamp(m_lastMapTime, 0, m_endTime);
-                m_endMeasure = m_TimeToMeasure(m_range.end) + 1;
+                m_endMeasure = m_TimeToMeasure(m_range.end);
             }
         ));
         playbackTab->settings.emplace_back(std::move(loopEndButton));
@@ -232,78 +233,4 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingT
     // TODO: hidden and sudden
 
     return gameSettingTab;
-}
-
-constexpr double MEASURE_EPSILON = 0.0001;
-
-inline int GetBarCount(const TimingPoint* a, const TimingPoint* b)
-{
-    const MapTime measureDuration = b->time - a->time;
-    const double barCount = measureDuration / a->GetBarDuration();
-    int barCountInt = Math::Round(barCount);
-
-    if (std::abs(barCount - static_cast<double>(barCountInt)) >= MEASURE_EPSILON)
-    {
-        Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Warning, a->time, barCount);
-        if (barCount > barCountInt) ++barCountInt;
-    }
-
-    return barCountInt;
-}
-
-MapTime PracticeModeSettingsDialog::m_MeasureToTime(int measure)
-{
-    if (measure < 0) return 0;
-
-    int currMeasureCount = 0;
-
-    auto& timingPoints = m_beatmap->GetLinearTimingPoints();
-    for (int i = 0; i < timingPoints.size(); ++i)
-    {
-        bool isInCurrentTimingPoint = false;
-        if (i == timingPoints.size() - 1 || measure <= currMeasureCount)
-        {
-            isInCurrentTimingPoint = true;
-        }
-        else
-        {
-            const int barCount = GetBarCount(timingPoints[i], timingPoints[i+1]);
-
-            if (measure < currMeasureCount + barCount)
-                isInCurrentTimingPoint = true;
-            else
-                currMeasureCount += barCount;
-        }
-        if (isInCurrentTimingPoint)
-        {
-            measure -= currMeasureCount;
-            return static_cast<MapTime>(timingPoints[i]->time + timingPoints[i]->GetBarDuration() * measure);
-        }
-    }
-
-    assert(false);
-    return 0;
-}
-
-int PracticeModeSettingsDialog::m_TimeToMeasure(MapTime time)
-{
-    if (time <= 0) return 0;
-
-    int currMeasureCount = 0;
-
-    auto& timingPoints = m_beatmap->GetLinearTimingPoints();
-
-    for (int i = 0; i < timingPoints.size(); ++i)
-    {
-        if (i < timingPoints.size() - 1 && timingPoints[i + 1]->time <= time)
-        {
-            currMeasureCount += GetBarCount(timingPoints[i], timingPoints[i + 1]);
-            continue;
-        }
-
-        return currMeasureCount + static_cast<int>((time - timingPoints[i]->time) / timingPoints[i]->GetBarDuration());
-    }
-
-    assert(false);
-    return 0;
 }

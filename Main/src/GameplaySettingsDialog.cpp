@@ -21,6 +21,8 @@ void GameplaySettingsDialog::InitTabs()
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
     gameTab->settings.push_back(CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
+    gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
+    gameTab->settings.push_back(CreateButton("Practice", [this](const auto&) { onPressPractice.Call(); }));
 
     Tab hidsudTab = std::make_unique<TabData>();
     hidsudTab->name = "Hid/Sud";

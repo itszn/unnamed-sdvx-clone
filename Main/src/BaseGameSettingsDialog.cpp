@@ -138,13 +138,13 @@ bool BaseGameSettingsDialog::Init()
     return true;
 }
 
-bool BaseGameSettingsDialog::IsSelectionOnButton()
+bool BaseGameSettingsDialog::IsSelectionOnPressable()
 {
     if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
         return false;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
-    return currentSetting->type == SettingType::Button;
+    return currentSetting->type == SettingType::Button || currentSetting->type == SettingType::Boolean;
 }
 
 BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult)
@@ -315,7 +315,7 @@ void BaseGameSettingsDialog::m_OnButtonPressed(Input::Button button)
     switch (button)
     {
     case Input::Button::BT_S:
-        m_PressSettingButton();
+        m_PressSetting();
         break;
     case Input::Button::FX_0:
         if (g_input.GetButton(Input::Button::FX_1))
@@ -427,14 +427,26 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
     currentSetting->setter.Call(*currentSetting);
 }
 
-void BaseGameSettingsDialog::m_PressSettingButton()
+void BaseGameSettingsDialog::m_PressSetting()
 {
     if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
         return;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
-    if (currentSetting->type == SettingType::Button)
-        currentSetting->setter.Call(*currentSetting);
+
+    switch (currentSetting->type)
+    {
+    case SettingType::Button:
+        break;
+    case SettingType::Boolean:
+        currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
+        break;
+    default:
+        // Do not call a setter for non-pressables
+        return;
+    }
+
+    currentSetting->setter.Call(*currentSetting);
 }
 
 void BaseGameSettingsDialog::m_OnKeyPressed(SDL_Scancode code)

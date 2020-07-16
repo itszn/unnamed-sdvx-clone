@@ -75,7 +75,7 @@ public:
     void Tick(float deltaTime);
     void Render(float deltaTime);
     bool Init();
-    bool IsSelectionOnButton();
+    bool IsSelectionOnPressable();
 
     inline void AddTab(Tab tab) { m_tabs.emplace_back(std::move(tab)); }
 
@@ -110,7 +110,7 @@ private:
     void m_AdvanceSelection(int steps);
     void m_AdvanceTab(int steps);
     void m_ChangeStepSetting(int steps); //int, enum, toggle, are all advanced in distinct steps
-    void m_PressSettingButton();
+    void m_PressSetting();
     void m_OnButtonPressed(Input::Button button);
     void m_OnButtonReleased(Input::Button button);
     void m_OnKeyPressed(SDL_Scancode code);

@@ -1492,7 +1492,44 @@ public:
 		songOffsetSetting->getter.AddLambda([this](auto& data) { data.intSetting.val = m_GetCurrentChartOffset(); });
 		songTab->settings.push_back(std::move(songOffsetSetting));
 		m_settDiag.AddTab(std::move(songTab));
+
+		m_settDiag.onPressAutoplay.AddLambda([this]() {
+			if (m_multiplayer != nullptr) return;
+
+			ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+			Game* game = Game::Create(chart, Game::FlagsFromSettings());
+			if (!game)
+			{
+				Log("Failed to start game", Logger::Severity::Error);
+				return;
+			}
+
+			game->GetScoring().autoplay = true;
+			m_suspended = true;
+
+			// Transition to game
+			g_transition->TransitionTo(game);
+		});
 		
+		m_settDiag.onPressPractice.AddLambda([this]() {
+			if (m_multiplayer != nullptr) return;
+
+			ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+			m_mapDatabase->UpdateChartOffset(chart);
+
+			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
+			if (!practiceGame)
+			{
+				Log("Failed to start practice", Logger::Severity::Error);
+				return;
+			}
+
+			m_suspended = true;
+
+			// Transition to practice mode
+			g_transition->TransitionTo(practiceGame);
+		});
+
 		if (m_hasCollDiag)
 		{
 			m_collDiag.OnCompletion.Add(this, &SongSelect_Impl::m_OnSongAddedToCollection);
@@ -1871,19 +1908,7 @@ public:
 			}
 			else if (code == SDL_SCANCODE_GRAVE)
 			{
-				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
-
-				Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
-				if (!practiceGame)
-				{
-					Log("Failed to start practice", Logger::Severity::Error);
-					return;
-				}
-
-				m_suspended = true;
-
-				// Transition to practice mode
-				g_transition->TransitionTo(practiceGame);
+				m_settDiag.onPressPractice.Call();
 			}
 		}
 	}

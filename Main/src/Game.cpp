@@ -266,30 +266,11 @@ public:
 		{
 			m_renderDebugHUD = true;
 		}
+				
+		m_endTime = m_beatmap->GetLastObjectTime();
+		m_gaugeSampleRate = m_endTime / 256;
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
-
-		MapTime firstObjectTime = m_beatmap->GetLinearObjects().front()->time;
-		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
-		while ((*lastObj)->type == ObjectType::Event && lastObj != &m_beatmap->GetLinearObjects().front())
-		{
-			lastObj--;
-		}
-
-		MapTime lastObjectTime = (*lastObj)->time;
-		if ((*lastObj)->type == ObjectType::Hold)
-		{
-			HoldObjectState* lastHold = (HoldObjectState*)(*lastObj);
-			lastObjectTime += lastHold->duration;
-		}
-		else if ((*lastObj)->type == ObjectType::Laser)
-		{
-			LaserObjectState* lastHold = (LaserObjectState*)(*lastObj);
-			lastObjectTime += lastHold->duration;
-		}
-		
-		m_endTime = lastObjectTime;
-		m_gaugeSampleRate = lastObjectTime / 256;
 
 		// Move this somewhere else?
 		// Set hi-speed for m-Mod
@@ -319,7 +300,7 @@ public:
 				lastMT = tp->time;
 				lastBPM = thisBPM;
 			}
-			bpmDurations[lastBPM] += lastObjectTime - lastMT;
+			bpmDurations[lastBPM] += m_endTime - lastMT;
 
 			if (bpmDurations[lastBPM] > largestMT)
 			{
@@ -394,25 +375,7 @@ public:
 		m_particleSystem = ParticleSystemRes::Create(g_gl);
 
 		if (m_isPracticeSetup)
-		{
-			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_beatmap, m_endTime, m_lastMapTime, m_playOptions, m_practiceSetupRange);
-			m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
-			m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
-			m_practiceSetupDialog->onClose.AddLambda([this]() {
-				if (m_playOnDialogClose) m_audioPlayback.Play();
-				else m_audioPlayback.Pause();
-
-				m_paused = m_audioPlayback.IsPaused();
-			});
-			m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
-				int newGlobalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
-				if (newGlobalOffset != m_globalOffset)
-				{
-					m_globalOffset = newGlobalOffset;
-					JumpTo(m_lastMapTime);
-				}
-			});
-		}
+			m_InitPracticeSetupDialog();
 		
 		return true;
 	}
@@ -1963,7 +1926,7 @@ public:
 	{
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 		{
-			if (buttonCode != Input::Button::BT_S || m_practiceSetupDialog->IsSelectionOnButton())
+			if (buttonCode != Input::Button::BT_S || m_practiceSetupDialog->IsSelectionOnPressable())
 				return;
 		}
 
@@ -2115,6 +2078,29 @@ public:
 
 		m_playOnDialogClose = true;
 		m_triggerPause = true;
+	}
+
+	void m_InitPracticeSetupDialog()
+	{
+		assert(m_isPracticeSetup && m_isPracticeMode && !IsMultiplayerGame());
+
+		m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(m_beatmap, m_lastMapTime, m_playOptions, m_practiceSetupRange);
+		m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
+		m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
+		m_practiceSetupDialog->onClose.AddLambda([this]() {
+			if (m_playOnDialogClose) m_audioPlayback.Play();
+			else m_audioPlayback.Pause();
+
+			m_paused = m_audioPlayback.IsPaused();
+		});
+		m_practiceSetupDialog->onSettingChange.AddLambda([this]() {
+			int newGlobalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+			if (newGlobalOffset != m_globalOffset)
+			{
+				m_globalOffset = newGlobalOffset;
+				JumpTo(m_lastMapTime);
+			}
+		});
 	}
 
 	void RevertToPracticeSetup()
