@@ -13,6 +13,8 @@ public:
 	class Score;
 	// Fails when the max possible grade is lower than the given value
 	class Grade;
+	// Failes when the gauge is less than the given value
+	class Gauge;
 	// Fails when the current # of misses is above the given value
 	class MissCount;
 	// Fails when the current # of misses + nears is above the given value
@@ -41,6 +43,18 @@ public:
 
 protected:
 	GradeMark m_grade;
+};
+
+class GameFailCondition::Gauge : public GameFailCondition
+{
+public:
+	Gauge(float gauge) noexcept : m_gauge(gauge) {}
+	bool IsFailed(const Scoring&) const override;
+
+	float GetMinAllowed() const { return m_gauge; }
+
+protected:
+	float m_gauge;
 };
 
 class GameFailCondition::MissCount : public GameFailCondition

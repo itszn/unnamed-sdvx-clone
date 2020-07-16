@@ -13,6 +13,11 @@ bool GameFailCondition::Grade::IsFailed(const Scoring& scoring) const
 	return scoring.CalculateCurrentMaxPossibleScore() < ToMinScore(m_grade);
 }
 
+bool GameFailCondition::Gauge::IsFailed(const Scoring& scoring) const
+{
+	return scoring.currentGauge < m_gauge;
+}
+
 bool GameFailCondition::MissCount::IsFailed(const Scoring& scoring) const
 {
 	return scoring.categorizedHits[0] > m_count;

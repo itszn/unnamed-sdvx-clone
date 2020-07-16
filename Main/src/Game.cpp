@@ -339,14 +339,14 @@ public:
 		// Get fps limit
 		m_fpsTarget = g_gameConfig.GetInt(GameConfigKeys::FPSTarget);
 
-		m_lastMapTime = GetAudioLeadinTime();
+		m_lastMapTime = GetPlayStartTime();
 
 		// Load audio offset
 		m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
 		m_songOffset = m_chartIndex ? m_chartIndex->custom_offset : 0;
 		m_tempOffset = 0;
 
-		InitPlaybacks();
+		InitPlaybacks(0);
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
 
@@ -531,7 +531,10 @@ public:
 	// Restart map
 	void Restart()
 	{
-		JumpTo(GetAudioLeadinTime());
+		m_paused = false;
+		m_triggerPause = false;
+		m_playOnDialogClose = true;
+		JumpTo(GetPlayStartTime());
 	}
 
 	void JumpTo(MapTime newTime)
@@ -556,7 +559,7 @@ public:
 		m_audioPlayback.SetEffectEnabled(1, false);
 
 		m_lastMapTime = newTime;
-		InitPlaybacks();
+		InitPlaybacks(newTime);
 
 		// Keep the exit trigger time
 		if (m_exitTriggerTimeSet)
@@ -569,7 +572,6 @@ public:
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_playback.Reset(m_lastMapTime, std::max(m_playOptions.range.begin, newTime) );
 		m_scoring.Reset();
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
@@ -678,6 +680,22 @@ public:
 					m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
 					m_playback.cModSpeed = m_modSpeed;
 				}
+			}
+		}
+
+		if (m_isPracticeSetup && !(m_practiceSetupDialog && m_practiceSetupDialog->IsActive()))
+		{
+			float scroll = g_input.GetInputLaserDir(0) + g_input.GetInputLaserDir(1) * 5.0f;
+			if (scroll != 0)
+			{
+				if (!m_paused)
+				{
+					m_audioPlayback.Pause();
+					m_paused = true;
+				}
+
+				m_lastMapTime = Math::Clamp(static_cast<MapTime>(m_lastMapTime + scroll * 100), 0, m_endTime);
+				InitPlaybacks(m_lastMapTime);
 			}
 		}
 
@@ -986,7 +1004,7 @@ public:
 	}
 
 	// Wait before start of map
-	MapTime GetAudioLeadinTime()
+	MapTime GetPlayStartTime()
 	{
 		// Select the correct first object to set the intial playback position
 		// if it starts before a certain time frame, the song starts at a negative time (lead-in)
@@ -1016,12 +1034,12 @@ public:
 		return static_cast<MapTime>(g_gameConfig.GetInt(leadInTimeOpt) * m_audioPlayback.GetPlaybackSpeed());
 	}
 
-	void InitPlaybacks()
+	void InitPlaybacks(int beginTime)
 	{
 		m_audioPlayback.SetPosition(std::max(m_lastMapTime + GetAudioOffset(), 0));
 
 		m_playback.audioOffset = GetAudioOffset();
-		m_playback.Reset(m_lastMapTime, m_playOptions.range.begin);
+		m_playback.Reset(m_lastMapTime, std::max(beginTime, m_playOptions.range.begin));
 
 		ApplyPlaybackSpeed();
 	}
@@ -1967,10 +1985,23 @@ public:
 			{
 				TriggerManualExit();
 			}
-			else if(abortMethod == AbortMethod::Hold && !m_exitTriggerTimeSet)
+			else if(!m_exitTriggerTimeSet)
 			{
-				m_exitTriggerTime = m_lastMapTime + (MapTime) (g_gameConfig.GetInt(GameConfigKeys::RestartPlayHoldDuration) * m_audioPlayback.GetPlaybackSpeed());
-				m_exitTriggerTimeSet = true;
+				int exitPlayHoldDuration = g_gameConfig.GetInt(GameConfigKeys::ExitPlayHoldDuration);
+
+				// Set arbitrary hold duration if the practice mode is being played now.
+				// This is to prevent softlocks.
+				if (abortMethod == AbortMethod::None && m_isPracticeMode && (m_playOptions.loopOnFail || m_playOptions.loopOnSuccess))
+				{
+					abortMethod = AbortMethod::Hold;
+					exitPlayHoldDuration = 2000;
+				}
+
+				if (abortMethod == AbortMethod::Hold)
+				{
+					m_exitTriggerTime = m_lastMapTime + (MapTime)(exitPlayHoldDuration * m_audioPlayback.GetPlaybackSpeed());
+					m_exitTriggerTimeSet = true;
+				}
 			}
 		}
 	}
