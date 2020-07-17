@@ -120,13 +120,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	// Percentage of m_rollIntensity where camera rolls at its slowest rate
+	const float slowestTiltThreshold = 0.1f;
+	const float rollSpeed = 4;
+	float speedLimit = MAX_ROLL_ANGLE * rollSpeed;
 	float actualRollTarget = 0;
 
 	// Lerp crit line position
 	if (m_slowTilt)
 		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * slowestTiltThreshold ? 4.f : 8.f;
 	LerpTo(m_critLineRoll, m_targetCritLineRoll, speedLimit);
 
 	if (pManualTiltEnabled)
@@ -150,10 +153,10 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	// Roll to crit line position or roll keep value with respect to roll intensity
 	// 2.5 corresponds to BIGGEST roll speed
 	// Don't respect roll intensity if manual tilt is on, was recently toggled (off) or if roll speed is somehow 0
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED *
+	speedLimit = MAX_ROLL_ANGLE * rollSpeed *
 		Math::Max(m_rollIntensity, m_oldRollIntensity) / MAX_ROLL_ANGLE;
 	if (speedLimit == 0 || pManualTiltEnabled || m_manualTiltRecentlyToggled)
-		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f;
+		speedLimit = MAX_ROLL_ANGLE * rollSpeed * 2.5f;
 
 	if (pManualTiltEnabled || m_manualTiltRecentlyToggled)
 	{
@@ -482,6 +485,6 @@ float Camera::m_ClampRoll(float in) const
 	}
 }
 
-CameraShake::CameraShake(float amplitude) : amplitude(amplitude * SHAKE_AMOUNT)
+CameraShake::CameraShake(float amplitude) : amplitude(-amplitude * SHAKE_AMOUNT)
 {
 }
