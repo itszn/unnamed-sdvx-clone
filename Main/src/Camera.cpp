@@ -217,13 +217,12 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	// Check if shake effect time is > 0 to prevent division by 0 from shake effect duration
-	if (m_shakeEffect.time > 0)
+	m_shakeOffset = m_shakeEffect.amplitude;
+	if (fabsf(m_shakeEffect.amplitude) > 0)
 	{
-		float shakeProgress = m_shakeEffect.time / m_shakeEffect.duration;
-		m_shakeOffset = Vector3({ 0, m_shakeEffect.amplitude * shakeProgress, 0 });
+		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
+		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
 	}
-	m_shakeEffect.time = Math::Max(m_shakeEffect.time - deltaTime, 0.f);
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -359,7 +358,7 @@ RenderState Camera::CreateRenderState(bool clipped)
 	float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
 
 	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
-	auto cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, 0, 0) + m_shakeOffset);
+	auto cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
 
 	// Calculate clipping distances
 	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
@@ -454,12 +453,12 @@ Vector2i Camera::GetScreenCenter()
 	float fov = fovs[portrait];
 
 	ret.x = m_rsLast.viewportSize.x / 2;
-	ret.x -= (m_shakeOffset.y / (fov * g_aspectRatio)) * m_rsLast.viewportSize.x;
+	ret.x -= (m_shakeOffset / (fov * g_aspectRatio)) * m_rsLast.viewportSize.x;
 
 	return ret;
 }
 
-Vector3 Camera::GetShakeOffset()
+float Camera::GetShakeOffset()
 {
 	return m_shakeOffset;
 }
@@ -483,12 +482,6 @@ float Camera::m_ClampRoll(float in) const
 	}
 }
 
-CameraShake::CameraShake(float duration) : duration(duration)
+CameraShake::CameraShake(float amplitude) : amplitude(amplitude * SHAKE_AMOUNT)
 {
-	time = duration;
 }
-CameraShake::CameraShake(float duration, float amplitude) : duration(duration), amplitude(amplitude)
-{
-	time = duration;
-}
-

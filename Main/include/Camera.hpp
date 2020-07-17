@@ -6,11 +6,8 @@
 struct CameraShake
 {
 	CameraShake() = default;
-	CameraShake(float duration);
-	CameraShake(float duration, float amplitude);
-	float amplitude;
-	float duration;
-	float time = 0.0f;
+	CameraShake(float amplitude);
+	float amplitude = 0.0f;
 };
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
@@ -20,6 +17,7 @@ static const float SLOWEST_TILT_THRESHOLD = 0.1f;
 // If this value is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
 static const float ROLL_SPEED = 4;
+static const float SHAKE_AMOUNT = 1.1;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
@@ -68,7 +66,7 @@ public:
 	float GetActualRoll() const;
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
-	Vector3 GetShakeOffset();
+	float GetShakeOffset();
 	bool GetRollKeep();
 	void SetManualTilt(bool manualTilt);
 	void SetManualTiltInstant(bool instant);
@@ -180,5 +178,5 @@ private:
 
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
-	Vector3 m_shakeOffset = Vector3(0.0f);
+	float m_shakeOffset = 0.f;
 };

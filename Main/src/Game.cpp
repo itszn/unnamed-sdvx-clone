@@ -153,8 +153,6 @@ private:
 	bool m_manualExit = false;
 	bool m_showCover = true;
 
-	float m_shakeDuration = 5 / 60.f;
-
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
@@ -1443,8 +1441,7 @@ public:
 	{
 		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		CameraShake shake(fabsf(slamSize) * m_shakeDuration, fabsf(slamSize) * -direction);
-		m_camera.AddCameraShake(shake);
+		m_camera.AddCameraShake(CameraShake(-slamSize));
 		m_slamSample->Play();
 
 		if (object->spin.type != 0)
