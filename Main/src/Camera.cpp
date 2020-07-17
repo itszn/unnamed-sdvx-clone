@@ -220,7 +220,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	m_shakeOffset = m_shakeEffect.amplitude;
+	// Reduce slam shake when highway is tilted horizontally to minimise slams having too much impact
+	m_shakeOffset = m_shakeEffect.amplitude * (1 - fabsf(sinf(m_actualRoll * 360 * Math::degToRad)));
 	if (fabsf(m_shakeEffect.amplitude) > 0)
 	{
 		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
