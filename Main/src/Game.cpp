@@ -1981,11 +1981,9 @@ public:
 			switch (buttonCode)
 			{
 			case Input::Button::Back:
-				TriggerManualExit();
-				break;
 			case Input::Button::FX_0:
 			case Input::Button::FX_1:
-				if (g_input.GetButton(buttonCode == Input::Button::FX_0 ? Input::Button::FX_1 : Input::Button::FX_0))
+				if (buttonCode == Input::Button::Back || g_input.GetButton(buttonCode == Input::Button::FX_0 ? Input::Button::FX_1 : Input::Button::FX_0))
 				{
 					m_audioPlayback.Pause();
 					m_paused = true;
@@ -2160,9 +2158,8 @@ public:
 				JumpTo(m_lastMapTime);
 			}
 		});
-		m_practiceSetupDialog->onPressStart.AddLambda([this]() {
-			StartPractice();
-		});
+		m_practiceSetupDialog->onPressStart.Add(this, &Game_Impl::StartPractice);
+		m_practiceSetupDialog->onPressExit.Add(this, &Game_Impl::TriggerManualExit);
 	}
 
 	void RevertToPracticeSetup()

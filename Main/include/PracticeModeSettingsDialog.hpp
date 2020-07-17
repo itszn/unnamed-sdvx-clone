@@ -15,6 +15,7 @@ public:
 	Delegate<float> onSpeedChange;
 	Delegate<> onSettingChange;
 	Delegate<> onPressStart;
+	Delegate<> onPressExit;
 
 private:
 	Tab m_CreateMainSettingTab();

@@ -54,6 +54,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
     mainSettingTab->settings.emplace_back(std::move(speedSetting));
 
     mainSettingTab->settings.emplace_back(CreateButton("Start practice", [this](const auto&) { onPressStart.Call(); }));
+    mainSettingTab->settings.emplace_back(CreateButton("Exit to song selection", [this](const auto&) { onPressExit.Call(); }));
 
     return mainSettingTab;
 }
