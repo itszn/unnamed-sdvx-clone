@@ -86,6 +86,8 @@ private:
 	bool m_isPracticeMode = false;
 	std::unique_ptr<PracticeModeSettingsDialog> m_practiceSetupDialog = nullptr;
 	bool m_playOnDialogClose = false; // Whether to unpause on dialog closing
+	unsigned int m_loopCount = 0;
+	unsigned int m_loopSuccess = 0;
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
@@ -659,7 +661,7 @@ public:
 			}
 			else
 			{
-				m_restartTriggerTimeSet = false;
+				m_exitTriggerTimeSet = false;
 			}
 		}
 
@@ -1336,6 +1338,7 @@ public:
 
 		if (!IsMultiplayerGame() && m_playOptions.loopOnSuccess)
 		{
+			m_CreateCurrentRunReport(true);
 			Restart();
 		}
 		else
@@ -1349,12 +1352,19 @@ public:
 	{
 		if (!IsMultiplayerGame() && m_playOptions.loopOnFail)
 		{
+			m_CreateCurrentRunReport(false);
 			Restart();
 		}
 		else
 		{
 			FinishGame();
 		}
+	}
+
+	void m_CreateCurrentRunReport(bool success)
+	{
+		++m_loopCount;
+		if (success) ++m_loopSuccess;
 	}
 
 	// Called when game is finished and the score screen should show up
@@ -2197,6 +2207,9 @@ public:
 		
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			m_practiceSetupDialog->Close();
+
+		m_loopCount = 0;
+		m_loopSuccess = 0;
 
 		Restart();
 	}
