@@ -1927,7 +1927,13 @@ public:
 			}
 		}
 
-		if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
+		if (code == SDL_SCANCODE_BACKSPACE && m_isPracticeMode)
+		{
+			// Bailout
+			m_manualExit = true;
+			FinishGame();
+		}
+		else if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
