@@ -1056,6 +1056,7 @@ static int DisposeGUI(lua_State* state)
 			anim.second->JobThread->join();
 		anim.second->Frames.clear();
 		anim.second->FrameData.clear();
+		keysToDelete.Add(anim.first);
 		delete anim.second->JobThread;
 		nvgDeleteImage(g_guiState.vg, anim.first);
 	}
