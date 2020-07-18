@@ -139,7 +139,7 @@ bool AudioStreamMp3::Init(Audio* audio, const String& path, bool preload)
 		int totalSamples = 0;
 		while (r > 0)
 		{
-			for (size_t i = 0; i < r; i++)
+			for (int32 i = 0; i < r; i++)
 			{
 				m_pcm.Add(m_readBuffer[0][i]);
 				m_pcm.Add(m_readBuffer[1][i]);	
@@ -218,7 +218,7 @@ int32 AudioStreamMp3::DecodeData_Internal()
 				m_playPos++;
 				continue;
 			}
-			else if (m_playPos >= m_samplesTotal)
+			else if ((uint64)m_playPos >= m_samplesTotal)
 			{
 				m_currentBufferSize = samplesPerRead;
 				m_remainingBufferData = samplesPerRead;

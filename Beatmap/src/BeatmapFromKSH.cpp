@@ -164,16 +164,30 @@ struct MultiParamRange
 		r.isRange = isRange;
 		return r;
 	}
-	EffectParam<EffectDuration> ToDurationParam()
+	EffectParam<EffectDuration> ToDurationParam(bool isAbsolute)
 	{
-		auto r = params[0].type == MultiParam::Float ? EffectParam<EffectDuration>(params[0].fval, params[1].fval) : EffectParam<EffectDuration>(params[0].ival, params[1].ival);
+		EffectParam<EffectDuration> r;
+		if (isAbsolute)
+		{
+			if (params[0].type == MultiParam::Float)
+			{
+				r = EffectParam<EffectDuration>((int)(1000.f * params[0].fval), (int)(1000.f * params[1].fval));
+			}
+			else
+			{
+				r = EffectParam<EffectDuration>(params[0].ival, params[1].ival);
+			}
+		}
+		else {
+			r = params[0].type == MultiParam::Float ? EffectParam<EffectDuration>(params[0].fval, params[1].fval) : EffectParam<EffectDuration>(params[0].ival, params[1].ival);
+		}
 		r.isRange = isRange;
 		return r;
 	}
 	EffectParam<int32> ToSamplesParam()
 	{
 		EffectParam<int32> r;
-		if (params[0].type == MultiParam::Int)
+		if (params[0].type == MultiParam::Int || params[0].type == MultiParam::Samples)
 			r = EffectParam<int32>(params[0].ival, params[1].ival);
 		r.isRange = isRange;
 		return r;
@@ -305,11 +319,11 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 			target = param->ToFloatParam();
 		}
 	};
-	auto AssignDurationIfSet = [&](EffectParam<EffectDuration> &target, const String &name) {
+	auto AssignDurationIfSet = [&](EffectParam<EffectDuration> &target, const String &name, bool absolute) {
 		auto *param = params.Find(name);
 		if (param)
 		{
-			target = param->ToDurationParam();
+			target = param->ToDurationParam(absolute);
 		}
 	};
 	auto AssignSamplesIfSet = [&](EffectParam<int32> &target, const String &name) {
@@ -340,29 +354,31 @@ AudioEffect ParseCustomEffect(const KShootEffectDefinition &def, Vector<String> 
 		AssignSamplesIfSet(effect.bitcrusher.reduction, "amount");
 		break;
 	case EffectType::Echo:
-		AssignDurationIfSet(effect.duration, "waveLength");
+		AssignDurationIfSet(effect.duration, "waveLength", false);
 		AssignFloatIfSet(effect.echo.feedback, "feedbackLevel");
 		break;
 	case EffectType::Flanger:
-		AssignDurationIfSet(effect.duration, "period");
+		AssignDurationIfSet(effect.duration, "period", true);
+		AssignIntIfSet(effect.flanger.depth, "depth");
+		AssignIntIfSet(effect.flanger.offset, "delay");
 		break;
 	case EffectType::Gate:
-		AssignDurationIfSet(effect.duration, "waveLength");
+		AssignDurationIfSet(effect.duration, "waveLength", false);
 		AssignFloatIfSet(effect.gate.gate, "rate");
 		break;
 	case EffectType::Retrigger:
-		AssignDurationIfSet(effect.duration, "waveLength");
+		AssignDurationIfSet(effect.duration, "waveLength", false);
 		AssignFloatIfSet(effect.retrigger.gate, "rate");
-		AssignDurationIfSet(effect.retrigger.reset, "updatePeriod");
+		AssignDurationIfSet(effect.retrigger.reset, "updatePeriod", false);
 		break;
 	case EffectType::Wobble:
-		AssignDurationIfSet(effect.duration, "waveLength");
+		AssignDurationIfSet(effect.duration, "waveLength", false);
 		AssignFloatIfSet(effect.wobble.min, "loFreq");
 		AssignFloatIfSet(effect.wobble.max, "hiFreq");
 		AssignFloatIfSet(effect.wobble.q, "Q");
 		break;
 	case EffectType::TapeStop:
-		AssignDurationIfSet(effect.duration, "speed");
+		AssignDurationIfSet(effect.duration, "speed", false);
 		break;
 	case EffectType::SwitchAudio:
 		AssignIntIfSet(effect.switchaudio.index, "index");
@@ -656,6 +672,25 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					else
 						paramsOut[0] = atoi(*effectParams);
 				}
+				else //set default params
+				{
+					if (*type < EffectType::UserDefined0) {
+						switch (*type)
+						{
+						case EffectType::Flanger:
+							paramsOut[0] = 45;
+							paramsOut[1] = 15;
+							break;
+
+						default:
+							break;
+						}
+					}
+					else {
+						m_customEffects.at(*type).SetDefaultEffectParams(paramsOut);
+					}
+				}
+
 				return *type;
 			};
 
@@ -712,6 +747,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			{
 				// Inser filter type change event
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectType;
 				evt->data.effectVal = ParseFilterType(p.second);
@@ -722,6 +758,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 				// Inser filter type change event
 				float gain = (float)atol(*p.second) / 100.0f;
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = gain;
@@ -731,6 +768,7 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 			{
 				float vol = (float)atol(*p.second) / 100.0f;
 				EventObjectState *evt = new EventObjectState();
+				evt->interTickIndex = tickSettingIndex;
 				evt->time = mapTime;
 				evt->key = EventKey::LaserEffectMix;
 				evt->data.floatVal = vol;

@@ -147,7 +147,7 @@ template<typename T>
 bool StringBase<T>::Split(const StringBase& delim, StringBase* l, StringBase* r) const
 {
 	size_t f = find(delim);
-	if(f == -1)
+	if(f == (size_t)-1)
 		return false;
 	StringBase selfCopy = *this;
 	if(r)
@@ -200,7 +200,6 @@ Vector<StringBase<T>> StringBase<T>::Explode(const StringBase& delim) const
 template<typename T>
 void StringBase<T>::TrimFront(T c)
 {
-	StringBase& s = (*this);
 	while(length() > 0)
 	{
 		if(front() != c)
@@ -211,7 +210,6 @@ void StringBase<T>::TrimFront(T c)
 template<typename T>
 void StringBase<T>::TrimBack(T c)
 {
-	StringBase& s = (*this);
 	while(length() > 0)
 	{
 		if(back() != c)

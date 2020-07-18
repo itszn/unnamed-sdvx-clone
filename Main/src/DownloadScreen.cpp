@@ -398,6 +398,7 @@ bool DownloadScreen::m_extractFile(archive * a, String path)
 		f.Write(buff, size);
 	}
 	f.Close();
+	return true;
 }
 
 //https://stackoverflow.com/a/6142700
@@ -472,7 +473,7 @@ int DownloadScreen::m_PlayPreview(lua_State* L)
 
 	// Try to play the preview
 	Ref<AudioStream> previewAudio = g_audio->CreateStream(preview_path);
-	if (previewAudio && previewAudio.GetData())
+	if (previewAudio && previewAudio.get())
 	{
 		m_previewPlayer.FadeTo(previewAudio, 0);
 	}

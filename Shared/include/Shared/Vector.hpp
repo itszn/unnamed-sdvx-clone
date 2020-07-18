@@ -18,7 +18,7 @@ public:
 	using std::vector<I>::push_back;
 	
 	// Adds a new element and returns it
-	I& Add(const I& obj = I()) { push_back(obj); return back(); };
+	I& Add(const I& obj = I()) { push_back(std::move(obj)); return back(); };
 	I& AddZeroed() { push_back(I()); memset(&back(), 0, sizeof(I)); return back(); };
 	void AddUnique(const I& obj)
 	{

@@ -93,7 +93,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			leftSide.size.x = realBorderSize;
 			leftSide.pos.x = leftCap.Left();
 
-			Rect sideUv = Rect(0.0f, textureBorder, textureBorder, invTextureBorder);
+			//Rect sideUv = Rect(0.0f, textureBorder, textureBorder, invTextureBorder);
 			Rect capUv = Rect(0.0f, 0.0f, invTextureBorder, textureBorder); // Cap at the top
 			Vector<MeshGenerators::SimpleVertex> leftVerts;
 			if(swapped)
@@ -134,7 +134,7 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 			rightSide.size.x = realBorderSize;
 			rightSide.pos.x = rightCenter.Right();
 
-			Rect sideUv = Rect(invTextureBorder, textureBorder, 1.0f, invTextureBorder);
+			//Rect sideUv = Rect(invTextureBorder, textureBorder, 1.0f, invTextureBorder);
 			Rect capUv = Rect(textureBorder, invTextureBorder, 1.0f, 1.0f); // Cap at the bottom
 			Vector<MeshGenerators::SimpleVertex> rightVerts;
 			if(swapped)

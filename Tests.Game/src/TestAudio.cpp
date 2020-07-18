@@ -21,7 +21,7 @@ Test("Audio.Playback")
 	TestEnsure(audio->Init(false));
 
 	Sample testSample = audio->CreateSample(testSamplePath);
-	TestEnsure(testSample.IsValid());
+	TestEnsure(testSample);
 
 	testSample->SetVolume(1.0f);
 

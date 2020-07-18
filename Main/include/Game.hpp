@@ -27,7 +27,7 @@ struct ScoreReplay
 {
 	int32 currentScore = 0;
 	int32 maxScore = 0;
-	int32 nextHitStat = 0;
+	size_t nextHitStat = 0;
 	Vector<SimpleHitStat> replay;
 };
 GameFlags operator|(const GameFlags& a, const GameFlags& b);

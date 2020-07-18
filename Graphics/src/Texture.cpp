@@ -80,14 +80,6 @@ namespace Graphics
 			glReadBuffer(GL_BACK);
 			glBindTexture(GL_TEXTURE_2D, m_texture);
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, pos.x, pos.y, m_size.x, m_size.y);
-			GLenum err;
-			bool errored = false;
-			while ((err = glGetError()) != GL_NO_ERROR)
-			{			
-				Logf("OpenGL Error: 0x%p", Logger::Severity::Error, err);
-				errored = true;
-			}
-			//assert(!errored);
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 

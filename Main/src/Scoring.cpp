@@ -248,7 +248,7 @@ float Scoring::GetLaserPosition(uint32 index, float pos)
 
 float Scoring::GetLaserRollOutput(uint32 index)
 {
-	assert(index >= 0 && index <= 1);
+	assert(index <= 1);
 	// Ignore slams that are the last segment since Camera handles slam behaviour
 	if (m_currentLaserSegments[index] && !(m_currentLaserSegments[index]->flags & LaserObjectState::flag_Instant &&
 			!m_currentLaserSegments[index]->next))
@@ -1083,7 +1083,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
 				auto currentTicks = m_ticks[6 + i];
-				if (currentSegment->flags & LaserObjectState::flag_Instant == 0 
+				if ((currentSegment->flags & LaserObjectState::flag_Instant) == 0 
 					|| currentTicks.empty() 
 					|| (LaserObjectState*)currentTicks.front()->object != currentSegment) // Don't null slam that hasn't been judged yet
 				{
@@ -1121,7 +1121,6 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 		m_laserInput[i] = autoplay ? 0.0f : m_input->GetInputLaserDir(i);
 
-		bool notAffectingGameplay = true;
 		if (currentSegment)
 		{
 			// Update laser gameplay
@@ -1153,7 +1152,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				{
 					laserPositions[i] = Math::Min(laserPositions[i] + input, laserTargetPositions[i]);
 				}
-				else if (laserDir < 0 && positionDelta > 0 || laserDir > 0 && positionDelta < 0)
+				else if ((laserDir < 0 && positionDelta > 0) || (laserDir > 0 && positionDelta < 0))
 				{
 					laserPositions[i] = laserPositions[i] + input;
 				}
@@ -1166,7 +1165,6 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				}
 
 
-				notAffectingGameplay = false;
 
 				float punishMult = 1.0f;
 				//if next segment is the opposite direction then allow for some extra wrong turning
@@ -1242,11 +1240,10 @@ void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 	}
 	else if (buttonCode > Input::Button::BT_S)
 	{
-		ObjectState* obj = nullptr;
 		if (buttonCode < Input::Button::LS_1Neg)
-			obj = m_ConsumeTick(6); // Laser L
+			m_ConsumeTick(6); // Laser L
 		else
-			obj = m_ConsumeTick(7); // Laser R
+			m_ConsumeTick(7); // Laser R
 	}
 }
 void Scoring::m_OnButtonReleased(Input::Button buttonCode)
@@ -1269,7 +1266,7 @@ void Scoring::m_OnButtonReleased(Input::Button buttonCode)
 
 MapTotals Scoring::CalculateMapTotals() const
 {
-	MapTotals ret = { 0 };
+	MapTotals ret = { 0, 0, 0 };
 	const Beatmap& map = m_playback->GetBeatmap();
 
 	Set<LaserObjectState*> processedLasers;

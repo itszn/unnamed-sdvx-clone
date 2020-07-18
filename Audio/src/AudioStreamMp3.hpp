@@ -7,7 +7,7 @@ extern "C"
 
 class AudioStreamMp3 : public AudioStreamBase
 {
-	mp3_decoder_t* m_decoder;
+	mp3_decoder_t* m_decoder = nullptr;
 	size_t m_mp3dataOffset = 0;
 	size_t m_mp3dataLength = 0;
 	int32 m_mp3samplePosition = 0;
@@ -23,8 +23,7 @@ class AudioStreamMp3 : public AudioStreamBase
 	int m_unsynchsafe(int in);
 	int m_toLittleEndian(int num);
 protected:
-	AudioStreamMp3() = default;
-	~AudioStreamMp3();
+
 	bool Init(Audio* audio, const String& path, bool preload) override;
 	void SetPosition_Internal(int32 pos) override;
 	int32 GetStreamPosition_Internal() override;
@@ -33,5 +32,7 @@ protected:
 	float* GetPCM_Internal() override;
 	int32 DecodeData_Internal() override;
 public:
+	AudioStreamMp3() = default;
+	~AudioStreamMp3();
 	static Ref<AudioStream> Create(Audio* audio, const String& path, bool preload);
 };

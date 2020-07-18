@@ -29,13 +29,20 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${AUDIO_SRC}" "${PCH_SRC}")
 
 add_library(Audio ${AUDIO_SRC} ${PCH_FILES})
-target_compile_features(Audio PUBLIC cxx_std_14)
+target_compile_features(Audio PUBLIC cxx_std_17)
 target_include_directories(Audio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Audio PRIVATE
     ${SRCROOT}
     ${INCROOT}
     ${PCHROOT}
 )
+
+if(UNIX AND NOT APPLE)
+    target_compile_options(Audio PUBLIC -Wall -Wextra -Werror -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-unused-value) 
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(Audio PUBLIC -Wno-maybe-uninitialized) 
+    endif(CMAKE_BUILD_TYPE STREQUAL "Release")
+endif(UNIX AND NOT APPLE)
 
 # Dependencies
 ## Local Dependencies

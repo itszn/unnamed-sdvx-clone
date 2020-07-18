@@ -291,7 +291,7 @@ namespace VectorMath
 	static T Dot(const VectorBase<T, Num>& lhs, const VectorBase<T, Num>& rhs) 
 	{
 		static_assert(sizeof(T) == 0, "Invalid vector types for dot product");
-	};
+	}
 	template<typename T>
 	static T Dot(const VectorBase<T, 2>& lhs, const VectorBase<T, 2>& rhs)
 	{
@@ -362,22 +362,22 @@ namespace VectorMath
 	static VectorBase<T, Num> Normalize(const VectorBase<T, Num>& lhs)
 	{
 		static_assert(sizeof(T) == 0, "Invalid vector type for normalize");
-	};
+	}
 	template<typename T>
 	static VectorBase<T, 4> Normalize(const VectorBase<T, 4>& lhs)
 	{
 		return lhs / lhs.Length();
-	};
+	}
 	template<typename T>
 	static VectorBase<T, 3> Normalize(const VectorBase<T, 3>& lhs)
 	{
 		return lhs / lhs.Length();
-	};
+	}
 	template<typename T>
 	static VectorBase<T, 2> Normalize(const VectorBase<T, 2>& lhs)
 	{
 		return lhs / lhs.Length();
-	};
+	}
 	// Member normalized function
 	template<typename T>
 	VectorBase<T,4> VectorBase<T, 4>::Normalized() const

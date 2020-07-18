@@ -41,5 +41,5 @@ namespace Graphics
 
 	typedef Ref<ShaderRes> Shader;
 
-	DEFINE_RESOURCE_TYPE(Shader, ShaderRes);
+	DEFINE_RESOURCE_TYPE(Shader, ShaderRes)
 }

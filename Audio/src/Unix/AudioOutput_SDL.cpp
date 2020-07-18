@@ -32,7 +32,7 @@ public:
 class AudioOutput_Impl
 {
 public:
-	SDL_AudioSpec m_audioSpec = { 0 };
+	SDL_AudioSpec m_audioSpec;
 	SDL_AudioDeviceID m_deviceId = 0;
 	IMixer* m_mixer = nullptr;
 	volatile bool m_running = false;
@@ -63,7 +63,9 @@ public:
 	{
 		CloseDevice();
 
-		SDL_AudioSpec desiredSpec = { 0 };
+		SDL_AudioSpec desiredSpec;
+		memset(&desiredSpec, 0, sizeof(SDL_AudioSpec));
+		memset(&m_audioSpec, 0, sizeof(SDL_AudioSpec));
 		desiredSpec.freq = 44100;
 		desiredSpec.format = AUDIO_F32;
 		desiredSpec.channels = 2;    /* 1 = mono, 2 = stereo */

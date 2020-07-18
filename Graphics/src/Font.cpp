@@ -177,13 +177,13 @@ namespace Graphics
 
 	class Font_Impl : public FontRes
 	{
+		OpenGL* m_gl;
 		FT_Face m_face;
 		Buffer m_data;
 
 		Map<uint32, FontSize*> m_sizes;
 		uint32 m_currentSize = 0;
 
-		OpenGL* m_gl;
 
 		friend class TextRes;
 	public:
@@ -199,7 +199,10 @@ namespace Graphics
 			}
 			m_sizes.clear();
 			if (m_face)
+			{
 				FT_Done_Face(m_face);
+				m_face = nullptr;
+			}
 		}
 		bool Init(const String& assetPath)
 		{
@@ -331,7 +334,7 @@ namespace Graphics
 			ret->mesh->SetData(vertices);
 			ret->mesh->SetPrimitiveType(PrimitiveType::TriangleList);
 
-			Text textObj = Ref<TextRes>(ret);
+			Text textObj = Utility::MakeRef(ret);
 			// Insert into cache
 			size->cache.AddText(str, textObj);
 			return textObj;
