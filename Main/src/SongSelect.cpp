@@ -1370,6 +1370,7 @@ private:
 	GameplaySettingsDialog m_settDiag;
 
 	bool m_hasCollDiag = false;
+	bool m_transitionedToGame = false;
 	int32 m_lastMapIndex = -1;
 
 	DBUpdateScreen *m_dbUpdateScreen = nullptr;
@@ -1638,7 +1639,7 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended())
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
 		{
 			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			FolderIndex *folder = m_selectionWheel->GetSelection();
@@ -1665,6 +1666,7 @@ public:
 
 				// Transition to game
 				g_transition->TransitionTo(game);
+				m_transitionedToGame = true;
 			}
 		}
 		else
@@ -2036,6 +2038,7 @@ public:
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;
 		m_hasRestored = true;
+		m_transitionedToGame = false;
 		m_previewPlayer.Restore();
 		m_selectionWheel->ResetLuaTables();
 		m_mapDatabase->ResumeSearching();
