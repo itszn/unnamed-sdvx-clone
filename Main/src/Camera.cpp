@@ -88,11 +88,12 @@ static Transform GetOriginTransform(float pitch, float offs, float roll)
 {
 	if (g_aspectRatio < 1.0f)
 	{
-		auto origin = Transform::Rotation({ 0, 0, roll });
+		auto origin = Transform::Rotation({ 0, 0, roll })
+			* Transform::Rotation({ 1, 0, 0 }); // Reduce rotation radius
 		auto anchor = Transform::Translation({ offs, -0.8f, 0 })
-			* Transform::Rotation({ 3.5f, 0, 0 });
+			* Transform::Rotation({ 1.5f, 0, 0 });
 		auto contnr = Transform::Translation({ 0, 0, -0.9f })
-			* Transform::Rotation({ -91 + pitch, 0, 0, });
+			* Transform::Rotation({ -90 + pitch, 0, 0, });
 		return origin * anchor * contnr;
 	}
 	else
