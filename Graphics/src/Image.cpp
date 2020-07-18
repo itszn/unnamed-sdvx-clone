@@ -139,7 +139,7 @@ namespace Graphics
 				PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 			png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * m_size.y);
-			for (size_t i = 0; i < m_size.y; ++i) {
+			for (int i = 0; i < m_size.y; ++i) {
 				row_pointers[m_size.y - i - 1] = (png_bytep)(m_pData + i * m_size.x);
 			}
 

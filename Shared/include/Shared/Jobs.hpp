@@ -46,7 +46,7 @@ public:
 
 	// Called when finished
 	//	called from main thread when JobSheduler::Update is called
-	Delegate<Ref<JobBase>> OnFinished;
+	Delegate<Ref<JobBase>&> OnFinished;
 
 	// Create job from lambda function
 	template<typename Lambda, typename... Args>

@@ -154,16 +154,16 @@ DefineEnum(GameConfigKeys,
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
-		   RandomizeChart);
+		   RandomizeChart)
 
 DefineEnum(GaugeTypes,
 		   Normal,
-		   Hard);
+		   Hard)
 
 DefineEnum(SpeedMods,
 		   XMod,
 		   MMod,
-		   CMod);
+		   CMod)
 
 DefineEnum(AbortMethod,
 		   None,
@@ -181,7 +181,7 @@ DefineEnum(ScoreDisplayModes,
 DefineEnum(AutoScoreScreenshotSettings,
 		   Off,
 		   Highscore,
-		   Always);
+		   Always)
 
 DefineEnum(ButtonComboModeSettings,
 		   Disabled,

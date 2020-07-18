@@ -51,5 +51,5 @@ namespace Graphics
 	typedef Ref<FontRes> Font;
 	typedef Ref<TextRes> Text;
 
-	DEFINE_RESOURCE_TYPE(Font, FontRes);
+	DEFINE_RESOURCE_TYPE(Font, FontRes)
 }
