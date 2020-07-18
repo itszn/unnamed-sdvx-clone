@@ -1915,10 +1915,12 @@ public:
 				return;
 			case SDL_SCANCODE_UP:
 			case SDL_SCANCODE_DOWN:
+			{
 				const MapTime increment = 2000 * (code == SDL_SCANCODE_UP ? 1 : -1);
 
 				JumpTo(Math::Clamp(m_lastMapTime + increment, 0, m_endTime));
 				return;
+			}
 			default:
 				break;
 			}
