@@ -1919,6 +1919,8 @@ public:
 
 				JumpTo(Math::Clamp(m_lastMapTime + increment, 0, m_endTime));
 				return;
+			default:
+				break;
 			}
 		}
 
@@ -2028,6 +2030,8 @@ public:
 					m_audioPlayback.TogglePause();
 					m_paused = m_audioPlayback.IsPaused();
 				}
+				break;
+			default:
 				break;
 			}
 
