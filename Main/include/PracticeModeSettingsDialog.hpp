@@ -35,9 +35,9 @@ private:
 	MapTime& m_lastMapTime;
 	int32& m_tempOffset;
 
+	Game::PlayOptions& m_playOptions;
 	// for ranges, use m_range instead of m_playOptions
 	MapTimeRange& m_range;
-	Game::PlayOptions& m_playOptions;
 
 	// Offset by 1
 	int m_startMeasure = 1;
