@@ -22,7 +22,7 @@ Scoring::~Scoring()
 
 ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 {
-	if (score.score >= MAX_SCORE) //Perfect
+	if (score.score >= static_cast<int32>(MAX_SCORE)) //Perfect
 		return ClearMark::Perfect;
 	if (score.miss == 0) //Full Combo
 		return ClearMark::FullCombo;

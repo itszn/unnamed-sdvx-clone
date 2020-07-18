@@ -47,7 +47,7 @@ private:
 	SettingData* m_setEndButton = nullptr;
 
 	// Fail conditions
-	int m_condScore = MAX_SCORE;
+	int m_condScore = static_cast<int>(MAX_SCORE);
 	GradeMark m_condGrade = GradeMark::PUC;
 	int m_condMiss = 0;
 	int m_condMissNear = 0;
