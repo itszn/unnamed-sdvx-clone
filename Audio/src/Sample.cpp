@@ -15,6 +15,7 @@
 class Sample_Impl : public SampleRes
 {
 public:
+	Buffer m_data;
 	Audio* m_audio;
 	float* m_pcm = nullptr;
 
@@ -92,7 +93,7 @@ public:
 	}
 	const Buffer& GetData() const
 	{
-		return Buffer();
+		return m_data;
 	}
 	uint32 GetBitsPerSample() const
 	{

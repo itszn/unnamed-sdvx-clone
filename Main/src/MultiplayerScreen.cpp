@@ -428,7 +428,7 @@ ChartIndex* MultiplayerScreen::m_getChartByHash(const String& hash, const String
 	{
 		ChartIndex* newChart = NULL;
 
-		for (int ind = 0; ind < folder.second->charts.size(); ind++)
+		for (size_t ind = 0; ind < folder.second->charts.size(); ind++)
 		{
 			ChartIndex* chart = folder.second->charts[ind];
 			if (chart->level == level)
@@ -468,7 +468,7 @@ ChartIndex* MultiplayerScreen::m_getChartByShortPath(const String& path, uint32*
 	{
 		ChartIndex* newChart = NULL;
 
-		for (int ind = 0; ind < folder.second->charts.size(); ind++)
+		for (size_t ind = 0; ind < folder.second->charts.size(); ind++)
 		{
 			ChartIndex* chart = folder.second->charts[ind];
 
@@ -564,7 +564,7 @@ void MultiplayerScreen::m_changeDifficulty(int offset)
 	FolderIndex* folder = m_mapDatabase->GetFolder(this->m_selectedMapId);
 	int oldDiff = this->m_selectedDiffIndex;
 	int newInd = this->m_selectedDiffIndex + offset;
-	if (newInd < 0 || newInd >= folder->charts.size())
+	if (newInd < 0 || newInd >= (int)folder->charts.size())
 	{
 		return;
 	}
@@ -595,7 +595,7 @@ void  MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInf
 	{
 		Logf("Couldn't find map at %s", Logger::Severity::Error, path);
 
-		info = { 0 };
+		info = { 0, 0, 0, 0 };
 		return;
 	}
 
@@ -606,14 +606,14 @@ void  MultiplayerScreen::GetMapBPMForSpeed(String path, struct MultiplayerBPMInf
 	{
 		Logf("Could not read path for beatmap: %s", Logger::Severity::Error, path);
 		delete newMap;
-		info = { 0 };
+		info = { 0, 0, 0, 0 };
 		return;
 	}
 	FileReader reader(mapFile);
 	if (!newMap->Load(reader))
 	{
 		delete newMap;
-		info = { 0 };
+		info = { 0, 0, 0, 0 };
 		return;
 	}
 
@@ -864,7 +864,7 @@ void MultiplayerScreen::Tick(float deltaTime)
 	else
 	{
 		if (m_lockMouse)
-			m_lockMouse.Release();
+			m_lockMouse.reset();
 		g_gameWindow->SetCursorVisible(true);
 	}
 
@@ -1352,7 +1352,7 @@ void MultiplayerScreen::OnSuspend()
 	m_mapDatabase->StopSearching();
 
 	if (m_lockMouse)
-		m_lockMouse.Release();
+		m_lockMouse.reset();
 }
 
 bool MultiplayerScreen::IsSyncing()
@@ -1488,7 +1488,7 @@ void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
 	if (newPreview)
 	{
 		Ref<AudioStream> previewAudio = g_audio->CreateStream(audioPath);
-		if (previewAudio && previewAudio.GetData())
+		if (previewAudio)
 		{
 			previewAudio->SetPosition(diff->preview_offset);
 

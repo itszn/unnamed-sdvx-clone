@@ -17,7 +17,7 @@ Beatmap LoadTestBeatmap(const String& mapPath = testBeatmapPath)
 	TestEnsure(file.OpenRead(mapPath));
 	FileReader reader(file);
 	TestEnsure(beatmap.Load(reader));
-	return std::move(beatmap);
+	return beatmap;
 }
 
 Test("Beatmap.v160")

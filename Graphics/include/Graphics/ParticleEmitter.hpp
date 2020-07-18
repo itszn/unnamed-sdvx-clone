@@ -12,6 +12,7 @@ namespace Graphics
 	class ParticleEmitter
 	{
 	public:
+		ParticleEmitter() = default;
 		~ParticleEmitter();
 
 		// Material used for the particle
@@ -36,8 +37,9 @@ namespace Graphics
 #define PARTICLE_PARAMETER(__name, __type)\
 	void Set##__name(const IParticleParameter<__type>& param)\
 	{\
-		if(m_param_##__name)\
-			delete m_param_##__name;\
+		IParticleParameter<__type>* p = static_cast<IParticleParameter<__type>*>(m_param_##__name);\
+		if(p)\
+			delete p;\
 		m_param_##__name = param.Duplicate();\
 	}
 #include <Graphics/ParticleParameters.hpp>

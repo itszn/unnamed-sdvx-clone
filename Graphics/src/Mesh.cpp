@@ -73,7 +73,7 @@ namespace Graphics
 						type = GL_DOUBLE;
 					#endif
 				}
-				assert(type != -1);
+				assert(type != (uint32)-1);
 				glVertexAttribPointer((int)index, (int)e.components, type, GL_TRUE, (int)totalVertexSize, (void*)offset);
 				glEnableVertexAttribArray((int)index);
 				offset += e.componentSize * e.components;

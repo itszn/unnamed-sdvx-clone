@@ -39,6 +39,8 @@ DSP* GameAudioEffect::CreateDSP(class AudioBase* audioTrack, AudioPlayback& play
 	{
 		// Don't set anthing for biquad Filters
 		BQFDSP* bqfDSP = new BQFDSP();
+
+
 		audioTrack->AddDSP(bqfDSP);
 		ret = bqfDSP;
 		break;
@@ -121,6 +123,8 @@ DSP* GameAudioEffect::CreateDSP(class AudioBase* audioTrack, AudioPlayback& play
 		ret = ps;
 		break;
 	}
+	default:
+	break;
 	}
 
 	if(!ret)
@@ -186,8 +190,7 @@ void GameAudioEffect::SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectSta
 	{
 		FlangerDSP* fl = (FlangerDSP*)dsp;
 		double delay = (noteDuration) / 1000.0;
-		fl->SetLength(object->effectParams[0]);
-		fl->SetDelayRange(10, 40);
+		fl->SetDelayRange(object->effectParams[1], object->effectParams[0]);
 		break;
 	}
 	case EffectType::PitchShift:
@@ -196,5 +199,7 @@ void GameAudioEffect::SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectSta
 		ps->amount = (float)object->effectParams[0];
 		break;
 	}
+	default:
+	break;
 	}
 }

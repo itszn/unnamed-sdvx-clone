@@ -17,7 +17,7 @@ struct Label
 	int size;
 	float scale;
 	FontRes::TextOptions opt;
-	Graphics::Font* font;
+	Graphics::Font font;
 	String content;
 };
 
@@ -55,7 +55,7 @@ struct GUIState
 	Map<lua_State*, int> nextPaintId;
 	Map<String, Graphics::Font> fontCahce;
 	Map<lua_State*, Set<int>> vgImages;
-	Graphics::Font* currentFont;
+	Graphics::Font currentFont;
 	Vector4 fillColor;
 	int textAlign;
 	int fontSize;
@@ -66,9 +66,10 @@ struct GUIState
 	NVGcolor imageTint;
 	Rect scissor;
 	Vector2i resolution;
-	Map<int, ImageAnimation*> animations;
+	Map<int, Ref<ImageAnimation>> animations;
 	int scissorOffset;
 	Vector<Transform> transformStack;
+	Vector<int> nvgFonts;
 };
 
 
@@ -82,13 +83,13 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 		Graphics::Font* cached = g_guiState.fontCahce.Find(name);
 		if (cached)
 		{
-			g_guiState.currentFont = cached;
+			g_guiState.currentFont = *cached;
 		}
 		else
 		{
 			String path = filename;
 			Graphics::Font newFont = FontRes::Create(g_gl, path);
-			if (!newFont.IsValid())
+			if (!newFont)
 			{
 				lua_Debug ar;
 				lua_getstack(L, 1, &ar);
@@ -102,7 +103,7 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 				return 0;
 			}
 			g_guiState.fontCahce.Add(name, newFont);
-			g_guiState.currentFont = g_guiState.fontCahce.Find(name);
+			g_guiState.currentFont = *g_guiState.fontCahce.Find(name);
 		}
 	}
 
@@ -112,8 +113,8 @@ static int LoadFont(const char* name, const char* filename, lua_State* L)
 			nvgFontFace(g_guiState.vg, name);
 			return 0;
 		}
-
-		nvgFontFaceId(g_guiState.vg, nvgCreateFont(g_guiState.vg, name, filename));
+		int fontId = nvgCreateFont(g_guiState.vg, name, filename);
+		nvgFontFaceId(g_guiState.vg, fontId);
 		nvgAddFallbackFont(g_guiState.vg, name, "fallback");
 	}
 	return 0;
@@ -127,7 +128,7 @@ static int lBeginPath(lua_State* L)
 }
 
 
-static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
+static void AnimationLoader(Vector<FileInfo> files, Ref<ImageAnimation> ia)
 {
 	ia->FrameCount = files.size();
 	files.Sort([](FileInfo& a, FileInfo& b) {
@@ -140,7 +141,7 @@ static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
 
 	if (ia->Compressed.load())
 	{
-		for (size_t i = 0; i < ia->FrameCount; i++)
+		for (int i = 0; i < ia->FrameCount; i++)
 		{
 			if (ia->Cancelled.load())
 				break;
@@ -155,7 +156,7 @@ static void AnimationLoader(Vector<FileInfo> files, ImageAnimation* ia)
 		ia->NextImage = ImageRes::Create(ia->FrameData[0]);
 	}
 	else {
-		for (size_t i = 0; i < ia->FrameCount; i++)
+		for (int i = 0; i < ia->FrameCount; i++)
 		{
 			if (ia->Cancelled.load())
 				break;
@@ -198,7 +199,7 @@ static int lTickAnimation(lua_State* L)
 	if (!g_guiState.animations.Contains(key))
 		return 0;
 
-	ImageAnimation* ia = g_guiState.animations.at(key);
+	Ref<ImageAnimation> ia = g_guiState.animations.at(key);
 	if (!ia->LoadComplete.load())
 		return 0;
 
@@ -242,7 +243,7 @@ static int LoadAnimation(lua_State* L, const char* path, float frametime, int lo
 		return -1;
 
 	int key = nvgCreateImage(g_guiState.vg, *files[0].fullPath, 0);
-	ImageAnimation* ia = new ImageAnimation();
+	Ref<ImageAnimation> ia = std::make_shared<ImageAnimation>();
 	ia->Compressed = compressed;
 	ia->TimesToLoop = loopcount;
 	ia->LoopCounter = 0;
@@ -251,7 +252,7 @@ static int LoadAnimation(lua_State* L, const char* path, float frametime, int lo
 	ia->Cancelled.store(false);
 	ia->State = L;
 	ia->JobThread = new Thread(AnimationLoader, files, ia);
-	g_guiState.animations[key] = ia;
+	g_guiState.animations.insert(std::make_pair(key, ia));
 
 	return key;
 }
@@ -260,7 +261,7 @@ static int lResetAnimation(lua_State* L)
 {
 	int key;
 	key = luaL_checkinteger(L, 1);
-	ImageAnimation* ia = g_guiState.animations[key];
+	Ref<ImageAnimation> ia = g_guiState.animations.at(key);
 	ia->CurrentFrame = 0;
 	ia->Timer = 0;
 	ia->LoopCounter = 0;
@@ -333,11 +334,6 @@ static int lText(lua_State* L /*const char* s, float x, float y*/)
 	//	params.SetParameter("color", g_guiState.fillColor);
 	//	g_guiState.rq->Draw(textTransform, te, g_application->GetFontMaterial(), params);
 	//}
-	return 0;
-}
-static int guiText(const char* s, float x, float y)
-{
-	nvgText(g_guiState.vg, x, y, s, 0);
 	return 0;
 }
 
@@ -429,8 +425,13 @@ static int lSetImageTint(lua_State* L /*int r, int g, int b*/)
 
 static int lImageRect(lua_State* L /*float x, float y, float w, float h, int image, float alpha, float angle*/)
 {
-	float x, y, w, h, alpha, angle;
-	int image;
+	float x = 0.f;
+	float y = 0.f;
+	float w = 0.f;
+	float h = 0.f;
+	float alpha = 1.f;
+	float angle = 0.f;
+	int image = -1;
 	x = luaL_checknumber(L, 1);
 	y = luaL_checknumber(L, 2);
 	w = luaL_checknumber(L, 3);
@@ -439,10 +440,10 @@ static int lImageRect(lua_State* L /*float x, float y, float w, float h, int ima
 	alpha = luaL_checknumber(L, 6);
 	angle = luaL_checknumber(L, 7);
 
-	int imgH, imgW;
+	int imgH = -1, imgW = -1;
 	nvgImageSize(g_guiState.vg, image, &imgW, &imgH);
-	float scaleX, scaleY;
-	float tr[6];
+	float scaleX = 1.f, scaleY = 1.f;
+	float tr[6] = {0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
 	nvgCurrentTransform(g_guiState.vg, tr);
 	scaleX = w / imgW;
 	scaleY = h / imgH;
@@ -503,7 +504,7 @@ static int lCreateLabel(lua_State* L /*const char* text, int size, bool monospac
 	int monospace = luaL_checkinteger(L, 3);
 
 	Label newLabel;
-	newLabel.text = (*g_guiState.currentFont)->CreateText(Utility::ConvertToWString(text), 
+	newLabel.text = g_guiState.currentFont->CreateText(Utility::ConvertToWString(text), 
 		size * g_guiState.t.GetScale().y,
 		(FontRes::TextOptions)monospace);
 	newLabel.scale = g_guiState.t.GetScale().y;
@@ -523,7 +524,7 @@ static int lUpdateLabel(lua_State* L /*int labelId, const char* text, int size*/
 	const char* text = luaL_checkstring(L, 2);
 	int size = luaL_checkinteger(L, 3);
 	Label updated;
-	updated.text = (*g_guiState.currentFont)->CreateText(Utility::ConvertToWString(text), size * g_guiState.t.GetScale().y);
+	updated.text = g_guiState.currentFont->CreateText(Utility::ConvertToWString(text), size * g_guiState.t.GetScale().y);
 	updated.size = size;
 	updated.scale = g_guiState.t.GetScale().y;
 	updated.content = text;
@@ -552,7 +553,7 @@ static int lDrawLabel(lua_State* L /*int labelId, float x, float y, float maxWid
 	if (fabsf(te.scale - g_guiState.t.GetScale().y) > 0.001)
 	{
 		te.scale = g_guiState.t.GetScale().y;
-		te.text = (*te.font)->CreateText(Utility::ConvertToWString(te.content), Math::Round((float)te.size * te.scale));
+		te.text = te.font->CreateText(Utility::ConvertToWString(te.content), Math::Round((float)te.size * te.scale));
 		g_guiState.textCache[L][labelId] = te;
 	}
 	float mwScale = 1.0f;
@@ -719,7 +720,7 @@ static int lFastText(lua_State* L /* String utf8string, float x, float y */)
 	y = luaL_checknumber(L, 3);
 
 	WString text = Utility::ConvertToWString(s);
-	Text te = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
+	Text te = g_guiState.currentFont->CreateText(text, g_guiState.fontSize);
 	Transform textTransform = g_guiState.t;
 	textTransform *= Transform::Translation(Vector2(x, y));
 
@@ -1015,7 +1016,7 @@ static int lFastTextSize(lua_State* L /* char* text */)
 	s = luaL_checkstring(L, 1);
 
 	WString text = Utility::ConvertToWString(s);
-	Text l = (*g_guiState.currentFont)->CreateText(text, g_guiState.fontSize);
+	Text l = g_guiState.currentFont->CreateText(text, g_guiState.fontSize);
 	lua_pushnumber(L, l->size.x);
 	lua_pushnumber(L, l->size.y);
 	return 2;
@@ -1055,11 +1056,11 @@ static int DisposeGUI(lua_State* state)
 			anim.second->JobThread->join();
 		anim.second->Frames.clear();
 		anim.second->FrameData.clear();
+		delete anim.second->JobThread;
 		nvgDeleteImage(g_guiState.vg, anim.first);
 	}
 	for (int k : keysToDelete)
 	{
-		delete g_guiState.animations[k];
 		g_guiState.animations.erase(k);
 	}
 

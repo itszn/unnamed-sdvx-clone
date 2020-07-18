@@ -208,6 +208,6 @@ namespace Graphics
 			break;
 		}
 		String msgString = String(message, message + length);
-		Logf("GLDebug: %s", Logger::Severity::Info, msgString);
+		Logf("GLDebug: %s", mySeverity, msgString);
 	}
 }

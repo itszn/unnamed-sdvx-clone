@@ -11,6 +11,7 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"
 
+
 AudioStreamMa::~AudioStreamMa()
 {
 	Deregister();
@@ -93,7 +94,7 @@ int32 AudioStreamMa::DecodeData_Internal()
 		int actualRead = 0;
 		for (size_t i = 0; i < samplesPerRead; i++)
 		{
-			if (m_playbackPointer >= m_samplesTotal)
+			if (m_playbackPointer >= (int64)m_samplesTotal)
 			{
 				m_currentBufferSize = samplesPerRead;
 				m_remainingBufferData = samplesPerRead;
@@ -114,7 +115,7 @@ int32 AudioStreamMa::DecodeData_Internal()
 		float decodeBuffer[256];
 
 		int totalRead = ma_decoder_read_pcm_frames(&m_decoder, decodeBuffer, samplesPerRead);
-		for (size_t i = 0; i < totalRead; i++)
+		for (int i = 0; i < totalRead; i++)
 		{
 			m_readBuffer[0][i] = decodeBuffer[i * 2];
 			m_readBuffer[1][i] = decodeBuffer[i * 2 + 1];
@@ -141,7 +142,6 @@ Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, b
 	{
 		delete impl;
 		impl = nullptr;
-		return Ref<AudioStream>();
 	}
-	return Ref<AudioStream>(impl);
+	return Utility::CastRef<AudioStreamMa, AudioStream>(Ref<AudioStreamMa>(impl));
 }

@@ -69,6 +69,6 @@ public:
 	String GetName() const { return m_name; }
 
 private:
-	TestManager* m_testManager;
 	String m_name;
+	TestManager* m_testManager;
 };

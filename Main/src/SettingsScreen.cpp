@@ -64,8 +64,7 @@ static void nk_sdl_text(nk_flags event)
 
 static int nk_get_property_state(struct nk_context *ctx, const char *name)
 {
-    if (!ctx || !ctx->current || !ctx->current->layout)
-        return NK_PROPERTY_DEFAULT;
+    if (!ctx || !ctx->current || !ctx->current->layout) return NK_PROPERTY_DEFAULT;
 	struct nk_window* win = ctx->current;
 	nk_hash hash = 0;
     if (name[0] == '#') {
@@ -443,22 +442,22 @@ public:
 			nk_sdl_font_stash_begin(&atlas);
 			struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize( Path::Absolute("fonts/settings/NotoSans-Regular.ttf")).c_str(), 24, 0);
 
-			struct nk_font_config cfg_kr = nk_font_config(24);
-			cfg_kr.merge_mode = nk_true;
-			cfg_kr.range = nk_font_korean_glyph_ranges();
+			// struct nk_font_config cfg_kr = nk_font_config(24);
+			// cfg_kr.merge_mode = nk_true;
+			// cfg_kr.range = nk_font_korean_glyph_ranges();
 
-			NK_STORAGE const nk_rune jp_ranges[] = {
-				0x0020, 0x00FF,
-				0x3000, 0x303f,
-				0x3040, 0x309f,
-				0x30a0, 0x30ff,
-				0x4e00, 0x9faf,
-				0xff00, 0xffef,
-				0
-			};
-			struct nk_font_config cfg_jp = nk_font_config(24);
-			cfg_jp.merge_mode = nk_true;
-			cfg_jp.range = jp_ranges;
+			// NK_STORAGE const nk_rune jp_ranges[] = {
+			// 	0x0020, 0x00FF,
+			// 	0x3000, 0x303f,
+			// 	0x3040, 0x309f,
+			// 	0x30a0, 0x30ff,
+			// 	0x4e00, 0x9faf,
+			// 	0xff00, 0xffef,
+			// 	0
+			// };
+			// struct nk_font_config cfg_jp = nk_font_config(24);
+			// cfg_jp.merge_mode = nk_true;
+			// cfg_jp.range = jp_ranges;
 
 			NK_STORAGE const nk_rune cjk_ranges[] = {
 				0x0020, 0x00FF,
@@ -962,7 +961,7 @@ public:
 		if (m_completed && m_gamepad)
 		{
 			m_gamepad->OnButtonPressed.RemoveAll(this);
-			m_gamepad.Release();
+			m_gamepad.reset();
 
 			g_application->RemoveTickable(this);
 		}
@@ -1192,7 +1191,7 @@ bool SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSe
 		selection = 0;
 	auto prevSelection = selection;
 	Vector<const char*> displayData;
-	for (size_t i = 0; i < setting.selectionSetting.numOptions; i++)
+	for (int i = 0; i < setting.selectionSetting.numOptions; i++)
 	{
 		displayData.Add(*setting.selectionSetting.options[i]);
 	}

@@ -23,6 +23,7 @@
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "ShadedMesh.hpp"
+
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
 #else
@@ -1099,7 +1100,13 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
-	Graphics::FontRes::FreeLibrary();
+	//clear fonts before freeing library
+	for (auto& f : g_guiState.fontCahce)
+	{
+		f.second.reset();
+	}
+	g_guiState.currentFont.reset();
+
 
 	Discord_Shutdown();
 
@@ -1109,6 +1116,7 @@ void Application::m_Cleanup()
 	nvgDeleteGL3(g_guiState.vg);
 #endif
 
+	Graphics::FontRes::FreeLibrary();
 	if (m_updateThread.joinable())
 		m_updateThread.join();
 
@@ -1129,6 +1137,9 @@ void Application::Shutdown()
 
 void Application::AddTickable(class IApplicationTickable *tickable, class IApplicationTickable *insertBefore)
 {
+	Log("Adding tickable", Logger::Severity::Debug);
+
+
 	TickableChange &change = g_tickableChanges.Add();
 	change.mode = TickableChange::Added;
 	change.tickable = tickable;
@@ -1136,6 +1147,8 @@ void Application::AddTickable(class IApplicationTickable *tickable, class IAppli
 }
 void Application::RemoveTickable(IApplicationTickable *tickable, bool noDelete)
 {
+	Logf("Removing tickable: %s", Logger::Severity::Debug, noDelete ? "NoDelete" : "Delete");
+
 	TickableChange &change = g_tickableChanges.Add();
 	if (noDelete)
 	{
@@ -2313,26 +2326,26 @@ bool JacketLoadingJob::Run()
 		b.resize(response.text.length());
 		memcpy(b.data(), response.text.c_str(), b.size());
 		loadedImage = ImageRes::Create(b);
-		if (loadedImage.IsValid())
+		if (loadedImage)
 		{
 			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
 			{
 				loadedImage->ReSize({w, h});
 			}
 		}
-		return loadedImage.IsValid();
+		return loadedImage.get() != nullptr;
 	}
 	else
 	{
 		loadedImage = ImageRes::Create(imagePath);
-		if (loadedImage.IsValid())
+		if (loadedImage)
 		{
 			if (loadedImage->GetSize().x > w || loadedImage->GetSize().y > h)
 			{
 				loadedImage->ReSize({w, h});
 			}
 		}
-		return loadedImage.IsValid();
+		return loadedImage.get() != nullptr;
 	}
 }
 void JacketLoadingJob::Finalize()

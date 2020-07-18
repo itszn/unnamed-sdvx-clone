@@ -50,5 +50,5 @@ namespace Graphics
 
 	typedef Ref<TextureRes> Texture;
 
-	DEFINE_RESOURCE_TYPE(Texture, TextureRes);
+	DEFINE_RESOURCE_TYPE(Texture, TextureRes)
 }

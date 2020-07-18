@@ -5,9 +5,9 @@
 */
 struct CameraShake
 {
+	float amplitude;
 	CameraShake() = default;
 	CameraShake(float amplitude);
-	float amplitude = 0.0f;
 };
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
