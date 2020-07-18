@@ -55,7 +55,7 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
     m_AdvanceSelection(knobAdvance0Trunc);
     m_knobAdvance[0] -= knobAdvance0Trunc;
 
-    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+    if (static_cast<size_t>(m_currentSetting) >= m_tabs[m_currentTab]->settings.size())
         return;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
@@ -140,7 +140,7 @@ bool BaseGameSettingsDialog::Init()
 
 bool BaseGameSettingsDialog::IsSelectionOnPressable()
 {
-    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+    if (static_cast<size_t>(m_currentSetting) >= m_tabs[m_currentTab]->settings.size())
         return false;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
@@ -333,7 +333,6 @@ void BaseGameSettingsDialog::m_OnButtonPressed(Input::Button button)
     case Input::Button::Back:
         Close();
         break;
-
     default:
         break;
     }
@@ -404,7 +403,7 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
     if (steps == 0)
         return;
 
-    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+    if (static_cast<size_t>(m_currentSetting) >= m_tabs[m_currentTab]->settings.size())
         return;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
@@ -427,6 +426,8 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
         AdvanceLooping(currentSetting->enumSetting.val, steps, size);
         String& newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
         break;
+    default:
+        break;
     }
 
     currentSetting->setter.Call(*currentSetting);
@@ -434,7 +435,7 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
 
 void BaseGameSettingsDialog::m_PressSetting()
 {
-    if (m_currentSetting >= m_tabs[m_currentTab]->settings.size())
+    if (static_cast<size_t>(m_currentSetting) >= m_tabs[m_currentTab]->settings.size())
         return;
 
     auto currentSetting = m_tabs[m_currentTab]->settings.at(m_currentSetting).get();
@@ -475,6 +476,8 @@ void BaseGameSettingsDialog::m_OnKeyPressed(SDL_Scancode code)
         break;
     case SDL_SCANCODE_DOWN:
         m_AdvanceSelection(1);
+        break;
+    default:
         break;
     }
 }
