@@ -422,10 +422,13 @@ void BaseGameSettingsDialog::m_ChangeStepSetting(int steps)
         currentSetting->boolSetting.val = !currentSetting->boolSetting.val;
         break;
     case SettingType::Enum:
+    {
         int size = currentSetting->enumSetting.options.size();
         AdvanceLooping(currentSetting->enumSetting.val, steps, size);
         String& newVal = currentSetting->enumSetting.options.at(currentSetting->enumSetting.val);
         break;
+    }
+    case SettingType::Floating:
     default:
         break;
     }
