@@ -84,6 +84,7 @@ private:
 	// If you who are reading this comment have a lot of free time, feel free to refactor Game_Impl. :)
 	bool m_isPracticeSetup = false;
 	bool m_isPracticeMode = false;
+	bool m_isPracticeSetupNavEnabled = false;
 	std::unique_ptr<PracticeModeSettingsDialog> m_practiceSetupDialog = nullptr;
 	bool m_playOnDialogClose = false; // Whether to unpause on dialog closing
 	unsigned int m_loopCount = 0;
@@ -685,7 +686,7 @@ public:
 			}
 		}
 
-		if (m_isPracticeSetup && !(m_practiceSetupDialog && m_practiceSetupDialog->IsActive()))
+		if (m_isPracticeSetup && m_isPracticeSetupNavEnabled && !(m_practiceSetupDialog && m_practiceSetupDialog->IsActive()))
 		{
 			float scroll = g_input.GetInputLaserDir(0) + g_input.GetInputLaserDir(1) * 5.0f;
 			if (scroll != 0)
@@ -1365,6 +1366,22 @@ public:
 	{
 		++m_loopCount;
 		if (success) ++m_loopSuccess;
+
+		if (!m_isPracticeMode) return;
+
+		lua_getglobal(m_lua, "practice_end_run");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushinteger(m_lua, m_loopCount);
+			lua_pushinteger(m_lua, m_loopSuccess);
+			lua_pushboolean(m_lua, success);
+
+			if (lua_pcall(m_lua, 3, 0, 0) != 0)
+			{
+				Logf("Lua error on calling laser_alert: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 	}
 
 	// Called when game is finished and the score screen should show up
@@ -1891,7 +1908,7 @@ public:
 			if (code != SDL_SCANCODE_F8) return;
 		}
 
-		if (m_isPracticeSetup)
+		if (m_isPracticeSetup && m_isPracticeSetupNavEnabled)
 		{
 			assert(!IsMultiplayerGame());
 
@@ -1988,6 +2005,9 @@ public:
 
 		if (m_isPracticeSetup)
 		{
+			if (buttonCode != Input::Button::Back && !m_isPracticeSetupNavEnabled)
+				return;
+
 			switch (buttonCode)
 			{
 			case Input::Button::Back:
@@ -2135,6 +2155,8 @@ public:
 		m_isPracticeSetup = true;
 		m_isPracticeMode = true;
 
+		m_isPracticeSetupNavEnabled = g_gameConfig.GetBool(GameConfigKeys::PracticeSetupNavEnabled);
+
 		m_scoring.autoplay = true;
 
 		m_practiceSetupRange = m_playOptions.range;
@@ -2167,6 +2189,10 @@ public:
 			{
 				JumpTo(m_lastMapTime);
 			}
+
+			m_isPracticeSetupNavEnabled = g_gameConfig.GetBool(GameConfigKeys::PracticeSetupNavEnabled);
+			if (!m_isPracticeSetupNavEnabled)
+				m_playOnDialogClose = true;
 		});
 		m_practiceSetupDialog->onPressStart.Add(this, &Game_Impl::StartPractice);
 		m_practiceSetupDialog->onPressExit.Add(this, &Game_Impl::TriggerManualExit);
@@ -2186,6 +2212,18 @@ public:
 
 		m_audioPlayback.Pause();
 		m_paused = true;
+
+		lua_getglobal(m_lua, "practice_end");
+		if (lua_isfunction(m_lua, -1))
+		{
+			lua_pushinteger(m_lua, m_loopCount);
+			lua_pushinteger(m_lua, m_loopSuccess);
+			if (lua_pcall(m_lua, 2, 0, 0) != 0)
+			{
+				Logf("Lua error on calling practice_end: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 
 		JumpTo(m_lastMapTime);
 		
@@ -2210,6 +2248,16 @@ public:
 
 		m_loopCount = 0;
 		m_loopSuccess = 0;
+
+		lua_getglobal(m_lua, "practice_start");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on calling practice_start: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			}
+		}
+		lua_settop(m_lua, 0);
 
 		Restart();
 	}
@@ -2324,6 +2372,14 @@ public:
 		lua_pushstring(L, "autoplay");
 		lua_pushboolean(L, m_scoring.autoplay);
 		lua_settable(L, -3);
+
+		if (m_isPracticeMode)
+		{
+			// Existence of this field implies that the game's in the practice mode.
+			lua_pushstring(L, "practice_setup");
+			lua_pushboolean(L, m_isPracticeSetup);
+			lua_settable(L, -3);
+		}
 
 		// Update score replays
 		lua_getfield(L, -1, "scoreReplays");

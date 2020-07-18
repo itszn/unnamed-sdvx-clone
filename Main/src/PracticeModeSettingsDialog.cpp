@@ -2,6 +2,7 @@
 #include "PracticeModeSettingsDialog.hpp"
 #include "Beatmap/MapDatabase.hpp"
 
+
 PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& lastMapTime,
     int32& tempOffset, Game::PlayOptions& playOptions, MapTimeRange& range)
     : m_chartIndex(game.GetChartIndex()), m_beatmap(game.GetBeatmap()),
@@ -45,6 +46,14 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
     Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
     mainSettingTab->settings.emplace_back(std::move(loopOnFail));
 
+    Setting enableNavSetting = CreateBoolSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the setup");
+    enableNavSetting->setter.Clear();
+    enableNavSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::PracticeSetupNavEnabled, data.boolSetting.val);
+        onSettingChange.Call();
+    });
+    mainSettingTab->settings.emplace_back(std::move(enableNavSetting));
+
     Setting speedSetting = std::make_unique<SettingData>("Playback speed (%)", SettingType::Integer);
     speedSetting->intSetting.min = 25;
     speedSetting->intSetting.max = 100;
@@ -54,7 +63,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
     mainSettingTab->settings.emplace_back(std::move(speedSetting));
 
     mainSettingTab->settings.emplace_back(CreateButton("Start practice", [this](const auto&) { onPressStart.Call(); }));
-    mainSettingTab->settings.emplace_back(CreateButton("Exit to song selection", [this](const auto&) { onPressExit.Call(); }));
+    mainSettingTab->settings.emplace_back(CreateButton("Exit", [this](const auto&) { onPressExit.Call(); }));
 
     return mainSettingTab;
 }
@@ -238,20 +247,30 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
     offSetSettingTab->name = "Offset";
 
     Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
-    globalOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
+    globalOffsetSetting->setter.Clear();
+    globalOffsetSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::GlobalOffset, data.intSetting.val);
+        onSettingChange.Call();
+    });
     offSetSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
 
     if (m_chartIndex)
     {
         Setting chartOffsetSetting = CreateIntSetting("Chart offset", m_chartIndex->custom_offset, { -200, 200 });
+        chartOffsetSetting->setter.Clear();
         chartOffsetSetting->setter.AddLambda([this](const SettingData& data) {
+            m_chartIndex->custom_offset = data.intSetting.val;
             onSettingChange.Call();
-            });
+        });
         offSetSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
     }
 
     Setting tempOffsetSetting = CreateIntSetting("Temporary offset", m_tempOffset, { -200, 200 });
-    tempOffsetSetting->setter.AddLambda([this](const SettingData&) { onSettingChange.Call(); });
+    tempOffsetSetting->setter.Clear();
+    tempOffsetSetting->setter.AddLambda([this](const SettingData& data) {
+        m_tempOffset = data.intSetting.val;
+        onSettingChange.Call();
+    });
     offSetSettingTab->settings.emplace_back(std::move(tempOffsetSetting));
 
     return offSetSettingTab;
