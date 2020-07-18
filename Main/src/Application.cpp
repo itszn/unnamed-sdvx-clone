@@ -1030,8 +1030,8 @@ void Application::m_Tick()
 
 	if (m_needSkinReload)
 	{
-		ReloadSkin();
 		m_needSkinReload = false;
+		ReloadSkin();
 	}
 }
 
@@ -1362,6 +1362,15 @@ void Application::ReloadScript(const String &name, lua_State *L)
 
 void Application::ReloadSkin()
 {
+	//remove all tickables
+	for (auto* t : g_tickables)
+	{
+		t->m_Suspend();
+		delete t;
+	}
+	g_tickables.clear();
+	g_tickableChanges.clear();
+
 	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
 	if (g_skinConfig)
 	{
@@ -1387,37 +1396,32 @@ void Application::ReloadSkin()
 		g_transition = TransitionScreen::Create();
 	}
 
-	//remove all tickables
-	for (auto *t : g_tickables)
-	{
-		RemoveTickable(t);
-	}
+//#ifdef EMBEDDED
+//	nvgDeleteGLES2(g_guiState.vg);
+//#else
+//	nvgDeleteGL3(g_guiState.vg);
+//#endif
+//
+//#ifdef EMBEDDED
+//#ifdef _DEBUG
+//	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+//#else
+//	g_guiState.vg = nvgCreateGLES2(0);
+//#endif
+//#else
+//#ifdef _DEBUG
+//	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+//#else
+//	g_guiState.vg = nvgCreateGL3(0);
+//#endif
+//#endif
+
+	//nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
+
 
 	//push new titlescreen
-	TitleScreen *t = TitleScreen::Create();
+	TitleScreen* t = TitleScreen::Create();
 	AddTickable(t);
-
-#ifdef EMBEDDED
-	nvgDeleteGLES2(g_guiState.vg);
-#else
-	nvgDeleteGL3(g_guiState.vg);
-#endif
-
-#ifdef EMBEDDED
-#ifdef _DEBUG
-	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
-#else
-	g_guiState.vg = nvgCreateGLES2(0);
-#endif
-#else
-#ifdef _DEBUG
-	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
-#else
-	g_guiState.vg = nvgCreateGL3(0);
-#endif
-#endif
-
-	nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 }
 void Application::DisposeLua(lua_State *state)
 {
