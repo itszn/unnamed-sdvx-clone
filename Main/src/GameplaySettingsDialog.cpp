@@ -164,6 +164,8 @@ bool GameplaySettingsDialog::Init()
     g_input.OnButtonReleased.Add(this, &GameplaySettingsDialog::m_OnButtonReleased);
     g_gameWindow->OnKeyPressed.Add(this, &GameplaySettingsDialog::m_OnKeyPressed);
 
+    m_currentTab = g_gameConfig.GetInt(GameConfigKeys::GameplaySettingsDialogLastTab);
+
     m_isInitialized = true;
 
     return true;
@@ -436,6 +438,7 @@ void GameplaySettingsDialog::m_AdvanceTab(int steps)
 
     m_currentSetting = 0;
     AdvanceLooping(m_currentTab, steps, m_tabs.size());
+    g_gameConfig.Set(GameConfigKeys::GameplaySettingsDialogLastTab, m_currentTab);
 }
 
 void GameplaySettingsDialog::m_ChangeStepSetting(int steps)

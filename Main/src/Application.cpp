@@ -645,6 +645,14 @@ bool Application::m_Init()
 		}
 	}
 
+	// Set the locale so that functions such as `fopen` use UTF-8.
+	{
+		String prevLocale = setlocale(LC_CTYPE, nullptr);
+		setlocale(LC_CTYPE, ".UTF-8");
+
+		Logf("The locale was changed from %s to %s", Logger::Severity::Info, prevLocale.c_str(), setlocale(LC_CTYPE, nullptr));
+	}
+
 	// Load config
 	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Severity::Warning);
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
@@ -1752,7 +1760,7 @@ void Application::m_OnFocusChanged(bool focused)
 	}
 }
 
-int Application::FastText(String inputText, float x, float y, int size, int align)
+int Application::FastText(String inputText, float x, float y, int size, int align, const Color& color /* = Color::White */)
 {
 	WString text = Utility::ConvertToWString(inputText);
 	String fontpath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));
@@ -1781,7 +1789,7 @@ int Application::FastText(String inputText, float x, float y, int size, int alig
 	}
 
 	MaterialParameterSet params;
-	params.SetParameter("color", Vector4(1.f, 1.f, 1.f, 1.f));
+	params.SetParameter("color", color);
 	g_application->GetRenderQueueBase()->Draw(textTransform, te, g_application->GetFontMaterial(), params);
 	return 0;
 }

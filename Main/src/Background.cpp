@@ -103,6 +103,12 @@ public:
 			lua_pop(lua, 1);
 		};
 
+
+		auto errorOnLib = [this](char* name)
+		{
+			luaL_dostring(lua, (String(name) + " = {}; setmetatable(" + String(name) + ", {__index = function() error(\"Song background cannot access the '" + name + "' library\") end})").c_str());
+		};
+
 		//open libs
 		//TODO: not sure which should be included
 		openLib("_G", luaopen_base);
@@ -111,8 +117,38 @@ public:
 		openLib(LUA_STRLIBNAME, luaopen_string);
 		openLib(LUA_MATHLIBNAME, luaopen_math);
 
+		// Add error messages to libs which are not allowed
+		errorOnLib(LUA_COLIBNAME);
+		errorOnLib(LUA_IOLIBNAME);
+		errorOnLib(LUA_OSLIBNAME);
+		errorOnLib(LUA_UTF8LIBNAME);
+		errorOnLib(LUA_DBLIBNAME);
+
+		// Clean up the 'package' library so we can't load dlls
+		lua_getglobal(lua, "package");
+
+		// Remove C searchers so we can't load dlls
+		lua_getfield(lua, -1, "searchers"); // Get the searcher list (-1)
+		lua_pushnil(lua);
+		lua_rawseti(lua, -2, 4); // C root
+		lua_pushnil(lua);
+		lua_rawseti(lua, -2, 3); // C path
+		lua_pop(lua, 1);  /* remove searchers */
+
+		// Remove loadlib so we can't load dlls
+		lua_pushnil(lua);
+		lua_setfield(lua, -2, "loadlib");
+
+		// Remove cpath so we won't try and load anything from it
+		lua_pushstring(lua, "");
+		lua_setfield(lua, -2, "cpath");
+
+		lua_pop(lua, 1);  /* remove package */
+
 		g_application->SetLuaBindings(lua);
 		game->SetInitialGameplayLua(lua);
+		// We have to do this seperately bc package is already defined
+		luaL_dostring(lua, "setmetatable(package, {__index = function() error(\"Song background cannot access the 'package' library\") end})");
 
 		String bindName = foreground ? "foreground" : "background";
 

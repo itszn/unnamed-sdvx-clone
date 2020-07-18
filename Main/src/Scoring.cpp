@@ -194,8 +194,15 @@ void Scoring::Reset()
 	}
 
 	m_heldObjects.clear();
+	
 	memset(m_holdObjects, 0, sizeof(m_holdObjects));
+	memset(m_prevHoldHit, 0, sizeof(m_prevHoldHit));
 	memset(m_currentLaserSegments, 0, sizeof(m_currentLaserSegments));
+
+	memset(m_buttonHitTime, 0, sizeof(m_buttonHitTime));
+	memset(m_buttonReleaseTime, 0, sizeof(m_buttonReleaseTime));
+	memset(m_buttonGuardTime, 0, sizeof(m_buttonGuardTime));
+
 	m_CleanupHitStats();
 	m_CleanupTicks();
 
@@ -216,7 +223,7 @@ void Scoring::Tick(float deltaTime)
 {
 	m_UpdateLasers(deltaTime);
 	m_UpdateTicks();
-	if (autoplay | autoplayButtons)
+	if (autoplay || autoplayButtons)
 	{
 		for (size_t i = 0; i < 6; i++)
 		{
@@ -281,7 +288,7 @@ float Scoring::GetLaserOutput()
 	float f = Math::Min(1.0f, m_timeSinceOutputSet / laserOutputInterpolationDuration);
 	return m_laserOutputSource + (m_laserOutputTarget - m_laserOutputSource) * f;
 }
-float Scoring::GetMeanHitDelta()
+float Scoring::GetMeanHitDelta(bool absolute)
 {
 	float sum = 0;
 	uint32 count = 0;
@@ -289,21 +296,21 @@ float Scoring::GetMeanHitDelta()
 	{
 		if (hit->object->type != ObjectType::Single || hit->rating == ScoreHitRating::Miss)
 			continue;
-		sum += hit->delta;
+		sum += absolute ? abs(hit->delta) : hit->delta;
 		count++;
 	}
 	if (count == 0)
 		return 0.0f;
 	return sum / count;
 }
-int16 Scoring::GetMedianHitDelta()
+int16 Scoring::GetMedianHitDelta(bool absolute)
 {
 	Vector<MapTime> deltas;
 	for (auto hit : hitStats)
 	{
 		if (hit->object->type != ObjectType::Single || hit->rating == ScoreHitRating::Miss)
 			continue;
-		deltas.Add(hit->delta);
+		deltas.Add(absolute ? abs(hit->delta) : hit->delta);
 	}
 	if (deltas.size() == 0)
 		return 0;
@@ -643,12 +650,12 @@ void Scoring::m_OnObjectLeaved(ObjectState* obj)
 
 void Scoring::m_UpdateTicks()
 {
-	MapTime currentTime = m_playback->GetLastTime();
+	const MapTime currentTime = m_playback->GetLastTime();
 
 	// This loop checks for ticks that are missed
 	for (uint32 buttonCode = 0; buttonCode < 8; buttonCode++)
 	{
-		Input::Button button = (Input::Button)buttonCode;
+		Input::Button button = (Input::Button) buttonCode;
 
 		// List of ticks for the current button code
 		auto& ticks = m_ticks[buttonCode];
@@ -668,19 +675,24 @@ void Scoring::m_UpdateTicks()
 
 				if (tick->HasFlag(TickFlags::Hold))
 				{
-					HoldObjectState* hos = (HoldObjectState*)tick->object;
-					MapTime holdStart = hos->GetRoot()->time;
-
-					// Check buttons here for holds
-					if ((m_input && m_input->GetButton(button) && holdStart - holdHitTime < m_buttonHitTime[(uint8)button]) || autoplay || autoplayButtons)
+					assert(buttonCode < 6);
+					if (m_IsBeingHold(tick) || autoplay || autoplayButtons)
 					{
 						m_TickHit(tick, buttonCode);
 						HitStat* stat = new HitStat(tick->object);
 						stat->time = currentTime;
 						stat->rating = ScoreHitRating::Perfect;
 						hitStats.Add(stat);
-						processed = true;
+
+						m_prevHoldHit[buttonCode] = true;
 					}
+					else
+					{
+						m_TickMiss(tick, buttonCode, 0);
+
+						m_prevHoldHit[buttonCode] = false;
+					}
+					processed = true;
 				}
 				else if (tick->HasFlag(TickFlags::Laser))
 				{
@@ -768,14 +780,14 @@ void Scoring::m_UpdateTicks()
 }
 ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 {
-	MapTime currentTime = m_playback->GetLastTime();
-
+	const MapTime currentTime = m_playback->GetLastTime() + m_inputOffset;
 	assert(buttonCode < 8);
 
 	if (m_ticks[buttonCode].size() > 0)
 	{
 		ScoreTick* tick = m_ticks[buttonCode].front();
-		MapTime delta = currentTime - tick->time + m_inputOffset;
+
+		const MapTime delta = currentTime - tick->time;
 		ObjectState* hitObject = tick->object;
 		if (tick->HasFlag(TickFlags::Laser))
 		{
@@ -786,7 +798,7 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
-			if (hos->time - Scoring::goodHitTime <= currentTime + (MapTime)m_inputOffset)
+			if (hos->time - Scoring::holdHitTime <= currentTime)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
@@ -973,9 +985,49 @@ void Scoring::m_ReleaseHoldObject(ObjectState* obj)
 		}
 	}
 }
+
 void Scoring::m_ReleaseHoldObject(uint32 index)
 {
 	m_ReleaseHoldObject(m_holdObjects[index]);
+}
+
+bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
+{
+	// NOTE: all these are just heuristics. If there's a better heuristic, change this.
+	// See issue #355 for more detail.
+
+	const HoldObjectState* obj = (HoldObjectState*) tick->object;
+	const uint32 index = obj->index;
+	assert(0 <= index && index < 6);
+	
+	// Button needs to be hold at this moment.
+	// (Unless `tick` is the end of a long note; see below)
+	if (m_input && m_input->GetButton((Input::Button) index))
+	{
+		// The object currently being held must be the given hold object.
+		const ObjectState* heldObject = m_holdObjects[index];
+		if (!heldObject || heldObject->type != ObjectType::Hold) return false;
+
+		while (obj)
+		{
+			if (obj == (const HoldObjectState*)heldObject) return true;
+			obj = obj->prev;
+		}
+
+		return false;
+	}
+
+	// If this is the end of an hold but the button is not being held,
+	// it will still be counted as a hit hit as long as following two conditions are met.
+
+	// a) The previous tick for this hold object was hit.
+	if (tick->HasFlag(TickFlags::Start) || !tick->HasFlag(TickFlags::End)) return false;
+	if (!m_prevHoldHit[index]) return false;
+
+	// b) The last button release happened inside the 'near window' for the end of this hold object.
+	if (obj->time + obj->duration - m_buttonReleaseTime[index] - m_inputOffset > Scoring::holdHitTime) return false;
+
+	return true;
 }
 
 void Scoring::m_UpdateLasers(float deltaTime)
@@ -1204,6 +1256,7 @@ void Scoring::m_OnButtonReleased(Input::Button buttonCode)
 			//Logf("Button %d release bounce guard hit at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 			return;
 		}
+		m_buttonReleaseTime[(uint32)buttonCode] = m_playback->GetLastTime();
 		m_buttonGuardTime[(uint32)buttonCode] = m_playback->GetLastTime();
 	}
 

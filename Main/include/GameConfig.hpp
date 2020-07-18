@@ -143,6 +143,9 @@ DefineEnum(GameConfigKeys,
 
 		   EnableFancyHighwayRoll,
 
+		   GameplaySettingsDialogLastTab,
+		   TransferScoresOnChartUpdate,
+
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,

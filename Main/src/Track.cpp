@@ -461,11 +461,11 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 			xposition = buttonTrackWidth * -0.5f + fxbuttonWidth *(mobj->button.index - 4);
 			if (mobj->button.index < 5)
 			{
-				xposition -= 0.5 * centerSplit * buttonWidth;
+				xposition -= 0.5f * centerSplit * buttonWidth;
 			}
 			else
 			{
-				xposition += 0.5 * centerSplit * buttonWidth;
+				xposition += 0.5f * centerSplit * buttonWidth;
 			}
 			length = fxbuttonLength;
 			params.SetParameter("hasSample", mobj->button.hasSample);

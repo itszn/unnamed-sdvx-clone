@@ -764,6 +764,8 @@ public:
 				}
 			}
 
+			ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
+
 			RenderSettingsLaserColor();
 
 			nk_tree_pop(m_nctx);

@@ -863,18 +863,9 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 					ZoomControlPoint *point = new ZoomControlPoint();
 					point->time = mapTime;
 					point->index = 3;
-					point->zoom = atof(*p.second) / -(360.0 / 10.0);
+					point->zoom = atof(*p.second) * -(10.0 / 360.0);
 					point->instant = lastManualTiltPoint ? lastManualTiltPoint->time == point->time : false;
-
-					if (fabsf(point->zoom) > 10 / 360.f)
-					{
-						// Convert KSM manual tilt values above 100 to a scale such that
-						// 150 = 17.5 and 200 = 25 degrees (corresponding to BIGGER and BIGGEST)
-						// Should only be applied to .ksh charts
-						float angle = fabsf(point->zoom) * 36.f; // Angle but divided by ten for easier calculation
-						point->zoom = Math::Sign(point->zoom) * ((((angle - 1) * 0.5f) + angle) / 36.f);
-					}
-
+					
 					lastManualTiltPoint = m_zoomControlPoints.Add(point);
 					CHECK_FIRST;
 
