@@ -104,7 +104,7 @@ public:
 		};
 
 
-		auto errorOnLib = [this](char* name)
+		auto errorOnLib = [this](const char* name)
 		{
 			luaL_dostring(lua, (String(name) + " = {}; setmetatable(" + String(name) + ", {__index = function() error(\"Song background cannot access the '" + name + "' library\") end})").c_str());
 		};
