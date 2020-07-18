@@ -5,7 +5,7 @@
 */
 struct CameraShake
 {
-	float amplitude;
+	float amplitude = 0;
 	CameraShake() = default;
 	CameraShake(float amplitude);
 };
