@@ -18,6 +18,7 @@ public:
 	// Updates the camera's shake effects, movement, etc.
 	void Tick(float deltaTime, class BeatmapPlayback& playback);
 
+	// Will ignore consecutive shakes if less than 1 / 60 of a second apart
 	void AddCameraShake(float camerShake);
 	void AddRollImpulse(float dir, float strength);
 
@@ -164,8 +165,8 @@ private:
 	RenderState m_rsLast;
 
 	float m_shakeEffectAmplitude = 0;
-	// Prevent slams from cancelling each other out if applied on the same frame
-	bool m_shakeEffectGuard = false;
+	// Prevent slams from cancelling each other out if applied in a short time
+	float m_shakeEffectGuard = 0;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
 };

@@ -226,7 +226,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
 		m_shakeEffectAmplitude = Math::Max(fabsf(m_shakeEffectAmplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffectAmplitude);
 	}
-	m_shakeEffectGuard = false;
+	m_shakeEffectGuard = Math::Max(m_shakeEffectGuard - deltaTime, 0.f);
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -252,13 +252,11 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 }
 void Camera::AddCameraShake(float cameraShake)
 {
-	float shakeAmpltidue = -cameraShake * SHAKE_AMOUNT;
 	if (!m_shakeEffectGuard)
-		m_shakeEffectAmplitude += shakeAmpltidue;
-	else
-		// Apply red laser slam shake if both lasers are hit simultaneously
-		m_shakeEffectAmplitude = shakeAmpltidue;
-	m_shakeEffectGuard = true;
+	{
+		m_shakeEffectAmplitude += -cameraShake * SHAKE_AMOUNT;
+		m_shakeEffectGuard = 1 / 60.f;
+	}
 }
 void Camera::AddRollImpulse(float dir, float strength)
 {
