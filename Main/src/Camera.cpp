@@ -220,6 +220,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
+	// Ensures the red laser's slam shake is prioritised
+	if (m_shakeEffectToBeAdded)
+	{
+		m_shakeEffectAmplitude += m_shakeEffectToBeAdded;
+		m_shakeEffectToBeAdded = 0;
+		m_shakeEffectGuard = 1 / 60.f;
+	}
 	m_shakeOffset = m_shakeEffectAmplitude;
 	if (fabsf(m_shakeEffectAmplitude) > 0)
 	{
@@ -252,11 +259,10 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 }
 void Camera::AddCameraShake(float cameraShake)
 {
+	// Ensures the red laser's slam shake is prioritised
+	// Shake guard is set after this function is called
 	if (!m_shakeEffectGuard)
-	{
-		m_shakeEffectAmplitude += -cameraShake * SHAKE_AMOUNT;
-		m_shakeEffectGuard = 1 / 60.f;
-	}
+		m_shakeEffectToBeAdded = -cameraShake * SHAKE_AMOUNT;
 }
 void Camera::AddRollImpulse(float dir, float strength)
 {
