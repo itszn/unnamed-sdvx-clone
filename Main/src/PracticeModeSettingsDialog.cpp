@@ -18,7 +18,7 @@ void PracticeModeSettingsDialog::InitTabs()
     AddTab(std::move(m_CreateMainSettingTab()));
     AddTab(std::move(m_CreateLoopingTab()));
     AddTab(std::move(m_CreateFailConditionTab()));
-    AddTab(std::move(m_CreateOffsetTab()));
+    AddTab(std::move(m_CreateGameSettingTab()));
 
     SetCurrentTab(0);
 }
@@ -241,10 +241,10 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditio
     return conditionTab;
 }
 
-PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingTab()
 {
-    Tab offSetSettingTab = std::make_unique<TabData>();
-    offSetSettingTab->name = "Offset";
+    Tab gameSettingTab = std::make_unique<TabData>();
+    gameSettingTab->name = "Game";
 
     Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
     globalOffsetSetting->setter.Clear();
@@ -252,7 +252,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
         g_gameConfig.Set(GameConfigKeys::GlobalOffset, data.intSetting.val);
         onSettingChange.Call();
     });
-    offSetSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
+    gameSettingTab->settings.emplace_back(std::move(globalOffsetSetting));
 
     if (m_chartIndex)
     {
@@ -262,7 +262,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
             m_chartIndex->custom_offset = data.intSetting.val;
             onSettingChange.Call();
         });
-        offSetSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
+        gameSettingTab->settings.emplace_back(std::move(chartOffsetSetting));
     }
 
     Setting tempOffsetSetting = CreateIntSetting("Temporary offset", m_tempOffset, { -200, 200 });
@@ -271,7 +271,25 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateOffsetTab()
         m_tempOffset = data.intSetting.val;
         onSettingChange.Call();
     });
-    offSetSettingTab->settings.emplace_back(std::move(tempOffsetSetting));
+    gameSettingTab->settings.emplace_back(std::move(tempOffsetSetting));
 
-    return offSetSettingTab;
+    Setting leadInTimeSetting = CreateIntSetting(GameConfigKeys::PracticeLeadInTime, "Lead-in time for practices (ms)", { 250, 10000 }, 250);
+    leadInTimeSetting->setter.Clear();
+    leadInTimeSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::PracticeLeadInTime, data.intSetting.val);
+        onSettingChange.Call();
+    });
+    gameSettingTab->settings.emplace_back(std::move(leadInTimeSetting));
+
+    Setting enableNavSetting = CreateBoolSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the setup");
+    enableNavSetting->setter.Clear();
+    enableNavSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::PracticeSetupNavEnabled, data.boolSetting.val);
+        onSettingChange.Call();
+    });
+    gameSettingTab->settings.emplace_back(std::move(enableNavSetting));
+
+
+
+    return gameSettingTab;
 }

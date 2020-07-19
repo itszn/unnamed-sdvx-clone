@@ -21,7 +21,7 @@ private:
 	Tab m_CreateMainSettingTab();
 	Tab m_CreateLoopingTab();
 	Tab m_CreateFailConditionTab();
-	Tab m_CreateOffsetTab();
+	Tab m_CreateGameSettingTab();
 
 	inline MapTime m_MeasureToTime(int measure) const { return m_beatmap->GetMapTimeFromMeasureInd(measure-1); }
 	inline int m_TimeToMeasure(MapTime time) const { return m_beatmap->GetMeasureIndFromMapTime(time)+1; }

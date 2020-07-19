@@ -92,7 +92,7 @@ protected:
     virtual void OnAdvanceTab() {};
 
     Setting CreateBoolSetting(GameConfigKeys key, String name);
-    Setting CreateIntSetting(GameConfigKeys key, String name, Vector2i range);
+    Setting CreateIntSetting(GameConfigKeys key, String name, Vector2i range, int step = 1);
     Setting CreateFloatSetting(GameConfigKeys key, String name, Vector2 range, float mult = 1.0f);
 
     Setting CreateBoolSetting(String label, bool& val);

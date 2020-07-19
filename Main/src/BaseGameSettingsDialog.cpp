@@ -218,7 +218,7 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateButton(String labe
     return s;
 }
 
-BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameConfigKeys key, String name, Vector2i range)
+BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameConfigKeys key, String name, Vector2i range, int step)
 {
     Setting s = std::make_unique<SettingData>(name, SettingType::Integer);
 
@@ -233,7 +233,7 @@ BaseGameSettingsDialog::Setting BaseGameSettingsDialog::CreateIntSetting(GameCon
     s->intSetting.val = g_gameConfig.GetInt(key);
     s->intSetting.min = range.x;
     s->intSetting.max = range.y;
-    s->intSetting.step = 1;
+    s->intSetting.step = step;
     s->setter.AddLambda(std::move(setter));
     s->getter.AddLambda(std::move(getter));
     return s;

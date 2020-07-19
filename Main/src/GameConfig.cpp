@@ -92,7 +92,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::BTOverFXScale, 0.8f);
 	Set(GameConfigKeys::DisableBackgrounds, false);
 	Set(GameConfigKeys::LeadInTime, 3000);
-	Set(GameConfigKeys::PracticeLeadInTime, 1000);
+	Set(GameConfigKeys::PracticeLeadInTime, 1500);
 	Set(GameConfigKeys::PracticeSetupNavEnabled, true);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
