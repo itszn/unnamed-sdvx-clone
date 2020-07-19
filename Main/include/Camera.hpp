@@ -1,5 +1,17 @@
 #pragma once
 
+/*
+	Camera shake effect
+*/
+struct CameraShake
+{
+	float amplitude = 0;
+	float amplitudeToBeAdded = 0;
+	// Prevent slams from cancelling each other out if applied in a short time
+	float guard = 0;
+	CameraShake() = default;
+};
+
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // If this is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
@@ -164,10 +176,7 @@ private:
 
 	RenderState m_rsLast;
 
-	float m_shakeAmplitude = 0;
-	float m_shakeAmplitudeToBeAdded = 0;
-	// Prevent slams from cancelling each other out if applied in a short time
-	float m_shakeGuard = 0;
+	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
 };
