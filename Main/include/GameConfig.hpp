@@ -57,6 +57,7 @@ DefineEnum(GameConfigKeys,
 		   LeadInTime,
 		   PracticeLeadInTime,
 		   PracticeSetupNavEnabled,
+		   RevertToSetupAfterScoreScreen,
 
 		   // Input device setting per element
 		   LaserInputDevice,

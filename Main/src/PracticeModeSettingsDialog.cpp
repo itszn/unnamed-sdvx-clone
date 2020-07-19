@@ -289,7 +289,13 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingT
     });
     gameSettingTab->settings.emplace_back(std::move(enableNavSetting));
 
-
+    Setting revertToSetupSetting = CreateBoolSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the setup after the result is shown");
+    revertToSetupSetting->setter.Clear();
+    revertToSetupSetting->setter.AddLambda([this](const SettingData& data) {
+        g_gameConfig.Set(GameConfigKeys::RevertToSetupAfterScoreScreen, data.boolSetting.val);
+        onSettingChange.Call();
+    });
+    gameSettingTab->settings.emplace_back(std::move(revertToSetupSetting));
 
     return gameSettingTab;
 }

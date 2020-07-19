@@ -94,6 +94,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LeadInTime, 3000);
 	Set(GameConfigKeys::PracticeLeadInTime, 1500);
 	Set(GameConfigKeys::PracticeSetupNavEnabled, true);
+	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
