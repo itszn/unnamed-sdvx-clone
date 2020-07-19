@@ -1,15 +1,5 @@
 #pragma once
 
-/*
-	Camera shake effect 
-*/
-struct CameraShake
-{
-	float amplitude = 0;
-	CameraShake() = default;
-	CameraShake(float amplitude);
-};
-
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
 // If this is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
@@ -28,7 +18,7 @@ public:
 	// Updates the camera's shake effects, movement, etc.
 	void Tick(float deltaTime, class BeatmapPlayback& playback);
 
-	void AddCameraShake(CameraShake camerShake);
+	void AddCameraShake(float camerShake);
 	void AddRollImpulse(float dir, float strength);
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
@@ -173,7 +163,9 @@ private:
 
 	RenderState m_rsLast;
 
-	CameraShake m_shakeEffect;
+	float m_shakeEffectAmplitude = 0;
+	// Prevent slams from cancelling each other out if applied on the same frame
+	bool m_shakeEffectGuard = false;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
 };

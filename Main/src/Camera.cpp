@@ -220,12 +220,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	m_shakeOffset = m_shakeEffect.amplitude;
-	if (fabsf(m_shakeEffect.amplitude) > 0)
+	m_shakeOffset = m_shakeEffectAmplitude;
+	if (fabsf(m_shakeEffectAmplitude) > 0)
 	{
 		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
-		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
+		m_shakeEffectAmplitude = Math::Max(fabsf(m_shakeEffectAmplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffectAmplitude);
 	}
+	m_shakeEffectGuard = false;
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -249,9 +250,15 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	critOrigin = GetZoomedTransform(GetOriginTransform(lanePitch, m_totalOffset, m_actualRoll * 360.0f + sin(m_spinRoll * Math::pi * 2) * 20));
 }
-void Camera::AddCameraShake(CameraShake cameraShake)
+void Camera::AddCameraShake(float cameraShake)
 {
-	m_shakeEffect = cameraShake;
+	float shakeAmpltidue = -cameraShake * SHAKE_AMOUNT;
+	if (!m_shakeEffectGuard)
+		m_shakeEffectAmplitude += shakeAmpltidue;
+	else
+		// Apply red laser slam shake if both lasers are hit simultaneously
+		m_shakeEffectAmplitude = shakeAmpltidue;
+	m_shakeEffectGuard = true;
 }
 void Camera::AddRollImpulse(float dir, float strength)
 {
@@ -478,8 +485,4 @@ float Camera::m_ClampRoll(float in) const
 		// Keep sign and modulo
 		return sign * fmodf(ain, 1.0f);
 	}
-}
-
-CameraShake::CameraShake(float amplitude) : amplitude(-amplitude * SHAKE_AMOUNT)
-{
 }
