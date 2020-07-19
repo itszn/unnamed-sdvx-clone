@@ -226,6 +226,8 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_shakeEffectAmplitude += m_shakeEffectToBeAdded;
 		m_shakeEffectToBeAdded = 0;
 		m_shakeEffectGuard = 1 / 60.f;
+	}
+	else
 	{
 		m_shakeEffectGuard = Math::Max(m_shakeEffectGuard - deltaTime, 0.f);
 	}
