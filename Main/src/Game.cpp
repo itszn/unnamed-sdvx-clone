@@ -615,6 +615,8 @@ public:
 
 	virtual void Tick(float deltaTime) override
 	{
+		if (m_ended && IsSuspended()) return;
+
 		// Lock mouse to screen when playing
 		if(g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
 		{
@@ -707,6 +709,8 @@ public:
 	}
 	virtual void Render(float deltaTime) override
 	{
+		if (m_ended && IsSuspended()) return;
+
 		// 8 beats (2 measures) in view at 1x hi-speed
 		if (m_speedMod == SpeedMods::CMod)
 			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
@@ -997,6 +1001,18 @@ public:
 			m_practiceSetupDialog->Render(deltaTime);
 	}
 
+	virtual void OnSuspend() override
+	{
+	}
+
+	virtual void OnRestore() override
+	{
+		if (m_ended && m_isPracticeMode)
+		{
+			RevertToPracticeSetup();
+		}
+	}
+
 	// Initialize HUD elements/layout
 	bool InitHUD()
 	{
@@ -1285,6 +1301,7 @@ public:
 	{
 		g_transition->OnLoadingComplete.RemoveAll(this);
 		g_transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
+
 		if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
 			(m_manualExit && m_demo))
 		{
@@ -1398,7 +1415,7 @@ public:
 	void OnScoreScreenLoaded(IAsyncLoadableApplicationTickable* tickable)
 	{
 		//if demo and tickable failed, try another diff
-		if (!tickable && m_demo)
+		if (m_demo && !tickable)
 		{
 			Game* game = nullptr;
 			while (!game) // ensure a working game
@@ -1413,12 +1430,16 @@ public:
 			// Transition to game
 			g_transition->TransitionTo(game);
 			m_transitioning = true;
+			return;
 		}
-		else
+
+		if (m_isPracticeMode && g_gameConfig.GetBool(GameConfigKeys::RevertToSetupAfterScoreScreen))
 		{
-			// Remove self
-			g_application->RemoveTickable(this);
+			return;
 		}
+		
+		// Remove self
+		g_application->RemoveTickable(this);
 	}
 
 	void RenderParticles(const RenderState& rs, float deltaTime)
@@ -2219,6 +2240,8 @@ public:
 
 		m_audioPlayback.Pause();
 		m_paused = true;
+		m_ended = false;
+		m_outroCompleted = false;
 
 		lua_getglobal(m_lua, "practice_end");
 		if (lua_isfunction(m_lua, -1))

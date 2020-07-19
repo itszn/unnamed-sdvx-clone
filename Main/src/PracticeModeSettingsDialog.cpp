@@ -10,7 +10,7 @@ PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& last
     m_tempOffset(tempOffset), m_playOptions(playOptions), m_range(range)
 {
     m_pos = { 0.75f, 0.75f };
-    m_message = "Press the back key when this dialog is closed to exit.";
+    m_message = "The buttons can be pressed with the Start key.";
 }
 
 void PracticeModeSettingsDialog::InitTabs()
