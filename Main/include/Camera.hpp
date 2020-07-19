@@ -164,10 +164,10 @@ private:
 
 	RenderState m_rsLast;
 
-	float m_shakeEffectAmplitude = 0;
-	float m_shakeEffectToBeAdded = 0;
+	float m_shakeAmplitude = 0;
+	float m_shakeAmplitudeToBeAdded = 0;
 	// Prevent slams from cancelling each other out if applied in a short time
-	float m_shakeEffectGuard = 0;
+	float m_shakeGuard = 0;
 	// Base position with shake effects applied after a frame
 	float m_shakeOffset = 0.f;
 };
