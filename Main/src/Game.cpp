@@ -1545,6 +1545,7 @@ public:
 		//RenderQueue& debugRq = g_guiRenderer->Begin();
 		auto RenderText = [&](const String& text, const Vector2& pos, const Color& color = {1.0f, 1.0f, 0.5f, 1.0f})
 		{
+			g_application->FastText(text, pos.x + 1, pos.y + 1, 12, 0, Color::Black);
 			g_application->FastText(text, pos.x, pos.y, 12, 0, color);
 			return Vector2(0, 12);
 		};
