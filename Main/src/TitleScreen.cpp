@@ -45,7 +45,6 @@ private:
 		TransitionScreen* transition = TransitionScreen::Create();
 		transition->SetWindowIndex(GetWindowIndex());
 		transition->TransitionTo(SongSelect::Create());
-		g_application->AddTickable(transition);
 #endif
 	}
 
@@ -70,7 +69,6 @@ private:
 		auto multiTransition = TransitionScreen::Create();
 		multiTransition->SetWindowIndex(GetWindowIndex());
 		multiTransition->TransitionTo(multiScreen);
-		g_application->AddTickable(multiTransition);
 #endif
 		return 0;
 	}

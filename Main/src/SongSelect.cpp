@@ -1665,7 +1665,13 @@ public:
 				game->GetScoring().autoplay = autoplay;
 
 				// Transition to game
+#ifndef PLAYBACK
 				g_transition->TransitionTo(game);
+#else
+				TransitionScreen* trans = TransitionScreen::Create();
+				trans->SetWindowIndex(this->GetWindowIndex());
+				trans->TransitionTo(game);
+#endif
 				m_transitionedToGame = true;
 			}
 		}
@@ -1875,7 +1881,13 @@ public:
 				m_suspended = true;
 
 				// Transition to game
+#ifndef PLAYBACK
 				g_transition->TransitionTo(game);
+#else
+				TransitionScreen* trans = TransitionScreen::Create();
+				trans->SetWindowIndex(this->GetWindowIndex());
+				trans->TransitionTo(game);
+#endif
 			}
 			else if (code == SDL_SCANCODE_F9)
 			{

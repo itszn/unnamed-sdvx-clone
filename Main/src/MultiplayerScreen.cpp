@@ -255,6 +255,13 @@ bool MultiplayerScreen::m_handleJoinRoom(nlohmann::json& packet)
 	lua_setglobal(m_lua, "screenState");
 	packet["room"]["id"].get_to(m_roomId);
 	packet["room"]["join_token"].get_to(m_joinToken);
+	for (char c : m_joinToken) {
+		if (String("0123456789ABCDEFabcdef").find(c) == std::string::npos) {
+			// If invalid char in join token, wipe it
+			m_joinToken = "";
+			break;
+		}
+	}
 	g_application->DiscordPresenceMulti(m_joinToken, 1, 8, "test");
 
 	String roomname;
@@ -306,7 +313,9 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 	if (g_isPlayback) {
 		// We take the name of our replay user
 		m_userName = packet.value("replay_name", "");
+		m_replayId = packet.value("replay_id", "");
 	}
+	m_startingSoon = packet.value("start_soon", false);
 	return true;
 }
 bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
@@ -372,8 +381,10 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	if (!this->m_hasSelectedMap)
 		return false;
 
+
 	m_inGame = true;
 	m_failed = false;
+	m_startingSoon = false;
 	m_syncState = SyncState::LOADING;
 	m_finalStats.clear();
 
@@ -420,7 +431,6 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	TransitionScreen* transition = TransitionScreen::Create();
 	transition->SetWindowIndex(GetWindowIndex());
 	transition->TransitionTo(game);
-	g_application->AddTickable(transition);
 #endif
 	return false;
 }
@@ -1114,6 +1124,13 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 			lSaveUsername(NULL);
 		}
 	}
+	else if (code == SDL_SCANCODE_F10 && m_screenState == MultiplayerScreenState::IN_ROOM)
+	{
+		//m_joinToken
+		String path = Path::Absolute("./usc-game.exe");
+		String param = Utility::Sprintf("-playback %s", m_joinToken.c_str());
+		Path::Run(path, param.GetData());
+	}
 }
 
 
@@ -1212,7 +1229,6 @@ int MultiplayerScreen::lSongSelect(lua_State* L)
 	TransitionScreen* trans = TransitionScreen::Create();
 	trans->SetWindowIndex(this->GetWindowIndex());
 	trans->TransitionTo(SongSelect::Create(this));
-	g_application->AddTickable(trans);
 #endif
 	return 0;
 }
@@ -1252,6 +1268,10 @@ void MultiplayerScreen::OnRestore()
 		nlohmann::json packet;
 		packet["topic"] = "room.update.get";
 		m_tcp.SendJSON(packet);
+	}
+
+	if (g_isPlayback) {
+		g_visibleWindows = 1; 
 	}
 }
 
@@ -1666,6 +1686,10 @@ int MultiplayerScreen::lNewRoomStep(lua_State* L)
 // This is basically copied from song-select
 void MultiplayerScreen::m_updatePreview(ChartIndex* diff, bool mapChanged)
 {
+	// Only play one at a time
+	if (g_isPlayback && this->GetWindowIndex() != 0)
+		return;
+
 	String mapRootPath = diff->path.substr(0, diff->path.find_last_of(Path::sep));
 
 	// Set current preview audio

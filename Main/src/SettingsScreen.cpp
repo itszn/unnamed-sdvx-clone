@@ -682,7 +682,13 @@ public:
 			
 			if (nk_button_label(m_nctx, "Calibrate offsets")) {
 				CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
+#ifndef PLAYBACK
 				g_transition->TransitionTo(cscreen);
+#else
+				TransitionScreen* trans = TransitionScreen::Create();
+				trans->SetWindowIndex(trans->GetWindowIndex());
+				trans->TransitionTo(cscreen);
+#endif
 			}
 			
 			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier", 0.0f, 20.0f, 0.1f);

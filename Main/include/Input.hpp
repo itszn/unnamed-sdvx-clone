@@ -80,11 +80,9 @@ private:
 	InputDevice m_laserDevice;
 	InputDevice m_buttonDevice;
 
-	bool m_buttonStates[(size_t)Button::Length];
 	bool m_backComboHold = false;
 	bool m_backComboInstant = false;
 	bool m_backSent = false;
-	float m_laserStates[2] = { 0.0f };
 	float m_rawLaserStates[2] = { 0.0f };
 	float m_rawKeyLaserStates[2] = { 0.0f };
 	float m_prevLaserStates[2] = { 0.0f };

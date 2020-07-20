@@ -155,11 +155,6 @@ public:
 		return m_userId;
 	}
 
-	String GetUserName()
-	{
-		return m_userName;
-	}
-
 	bool IsSynced() {
 		return m_syncState == SyncState::SYNCED;
 	}
@@ -187,6 +182,16 @@ public:
 		return m_userName;
 	}
 	FakeInput PlaybackInput;
+
+	bool IsStartingSoon()
+	{
+		return m_startingSoon;
+	}
+
+	String& getReplayId()
+	{
+		return m_replayId;
+	}
 
 private:
 	void m_OnButtonPressed(Input::Button buttonCode);
@@ -334,4 +339,7 @@ private:
 	float m_oldLaserStates[2] = { 0.0f };
 
 	uint32_t m_hitstatIndex = 0;
+	bool m_startingSoon = false;
+
+	String m_replayId = "";
 };

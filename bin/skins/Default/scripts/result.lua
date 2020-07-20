@@ -13,6 +13,11 @@ if resx / resy > 1 then
 else
     moveY = resy / (2*scale) - 400
 end
+
+if game.isPlayback then
+    moveX = 0;
+end
+
 local diffNames = {"NOV", "ADV", "EXH", "INF"}
 local backgroundImage = gfx.CreateSkinImage("bg.png", 1);
 game.LoadSkinSample("applause")
@@ -295,7 +300,10 @@ render = function(deltaTime, showStats)
     staty = draw_stat(10,staty,470,25,"MEAN DELTA", result.meanHitDelta, "%.1fms")
 
 
-    draw_highscores()
+    if game.isPlayback then
+    else
+        draw_highscores()
+    end
     
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     shotTimer = math.max(shotTimer - deltaTime, 0)

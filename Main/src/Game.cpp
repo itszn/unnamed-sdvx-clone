@@ -402,10 +402,10 @@ public:
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
-		#ifdef EMBEDDED
+#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
 		particleMaterial = Ref<MaterialRes>();
-		#else
+#else
 		// Load particle textures
 		basicParticleTexture = g_application->LoadTexture("particle_flare.png");
 		particleMaterial = g_application->LoadMaterial("particle");
@@ -414,7 +414,7 @@ public:
 			particleMaterial->blendMode = MaterialBlendMode::Additive;
 			particleMaterial->opaque = false;
 		}
-		#endif
+#endif
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 		int64 startTime = Shared::Time::Now().Data();
@@ -427,8 +427,13 @@ public:
 		SetInitialGameplayLua(m_lua);
 
 		// For multiplayer we also bind the TCP in
-		if (m_multiplayer != nullptr)
+		if (m_multiplayer != nullptr) {
 			m_multiplayer->GetTCP().PushFunctions(m_lua);
+
+			if (g_isPlayback) {
+				g_visibleWindows = g_numWindows;
+			}
+		}
 
 		// Background 
 		/// TODO: Load this async
@@ -1229,7 +1234,6 @@ public:
 						this, m_multiplayer->GetUserId(), 
                         m_multiplayer->GetFinalStats(), m_multiplayer));
 					trans->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
-					g_application->AddTickable(trans);
 #endif
 				}
 				else
@@ -1241,7 +1245,6 @@ public:
 					trans->SetWindowIndex(this->GetWindowIndex());
 					trans->TransitionTo(ScoreScreen::Create(this));
 					trans->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
-					g_application->AddTickable(trans);
 #endif
 				}
 				m_transitioning = true;
@@ -2041,15 +2044,15 @@ public:
 
 		if (g_isPlayback)
 		{
-			lua_pushnumber(m_lua, replayCounter);
+			lua_pushnumber(L, replayCounter);
 
-			lua_newtable(m_lua);
-			lua_pushstring(m_lua, "currentScore");
+			lua_newtable(L);
+			lua_pushstring(L, "currentScore");
 			// TODO only works on two atm
-			lua_pushnumber(m_lua, g_playbackScores[this->GetWindowIndex()^1]);
-			lua_settable(m_lua, -3);
+			lua_pushnumber(L, g_playbackScores[this->GetWindowIndex()^1]);
+			lua_settable(L, -3);
 
-			lua_settable(m_lua, -3);
+			lua_settable(L, -3);
 			replayCounter++;
 		}
 		else
@@ -2290,15 +2293,15 @@ public:
 		pushFloatToTable("hiddenCutoff", m_track->hiddenCutoff);
 		pushFloatToTable("suddenFade", m_track->suddenFadewindow);
 		pushFloatToTable("suddenCutoff", m_track->suddenCutoff);
-
-		lua_pushstring(m_lua, "isPlayback");
-		lua_pushboolean(m_lua, g_isPlayback);
-		lua_settable(m_lua, -3);
-		lua_pushstring(m_lua, "windowIndex");
-		lua_pushinteger(m_lua, this->GetWindowIndex());
-		lua_settable(m_lua, -3);
-
 		m_setLuaHolds(L);
+
+		lua_pushstring(L, "isPlayback");
+		lua_pushboolean(L, g_isPlayback);
+		lua_settable(L, -3);
+		lua_pushstring(L, "windowIndex");
+		lua_pushinteger(L, this->GetWindowIndex());
+		lua_settable(L, -3);
+
 		lua_setglobal(L, "gameplay");
 	}
 };

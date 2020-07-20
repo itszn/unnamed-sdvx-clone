@@ -409,11 +409,11 @@ void TCPSocket::ProcessSocket()
 					// We don't have enough data for a packet yet, so continue
 					break;
 
-				Logf("Got %u bytes from socket", Logger::Info, m_lengthPrefix);
+				Logf("Got %u bytes from socket", Logger::Severity::Info, m_lengthPrefix);
 				// TODO do something with packet
 				if (m_rawDataHandler != nullptr)
 				{
-					Logf("Calling handler", Logger::Info);
+					Logf("Calling handler", Logger::Severity::Info);
 					IFunctionBinding<bool, char*, uint32_t>* f = m_rawDataHandler;
 					f->Call(&m_dataBuff[4], m_lengthPrefix);
 				}

@@ -65,6 +65,8 @@ private:
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
+	float m_timeOnScreen = 0;
+
 	void m_PushStringToTable(const char* name, String data)
 	{
 		lua_pushstring(m_lua, name);
@@ -178,7 +180,7 @@ public:
 		if (m_displayIndex >= (int)m_stats->size())
 			return;
 
-		const nlohmann::json& data= (*m_stats)[m_displayIndex];
+		const nlohmann::json& data = (*m_stats)[m_displayIndex];
 
 		m_score = data["score"];
 		m_maxCombo = data["combo"];
@@ -203,7 +205,7 @@ public:
 		m_meanHitDelta[0] = data["mean_delta"];
 		m_medianHitDelta[0] = data["median_delta"];
 
-		m_playerName = static_cast<String>(data.value("name",""));
+		m_playerName = static_cast<String>(data.value("name", ""));
 
 		auto samples = data["graph"];
 
@@ -220,8 +222,8 @@ public:
 		m_graphTex->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
 
 		m_numPlayersSeen = m_stats->size();
-		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid",""));
 
+		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid", ""));
 	}
 
 	ScoreScreen_Impl(class Game* game, MultiplayerScreen* multiplayer,
@@ -246,7 +248,10 @@ public:
 		if (m_multiplayer && multistats != nullptr)
 		{
 			m_stats = multistats;
-			m_playerId = uid;
+			if (g_isPlayback)
+				m_playerId = m_multiplayer->getReplayId();
+			else
+				m_playerId = uid;
 
 			// Show the player's score first
 			for (size_t i=0; i<m_stats->size(); i++)
@@ -384,6 +389,11 @@ public:
 	void updateLuaData()
 	{
 		lua_newtable(m_lua);
+
+		lua_pushstring(m_lua, "isPlayback");
+		lua_pushboolean(m_lua, g_isPlayback);
+		lua_settable(m_lua, -3);
+
 		m_PushIntToTable("score", m_score);
 		m_PushIntToTable("flags", (int)m_flags);
 		m_PushFloatToTable("gauge", m_finalGaugeValue);
@@ -575,6 +585,8 @@ public:
 	}
 	virtual void Tick(float deltaTime) override
 	{
+		m_timeOnScreen += deltaTime;
+
 		if (!m_hasScreenshot && m_hasRendered && !IsSuspended())
 		{
 			AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
@@ -615,7 +627,16 @@ public:
 		}
 
 		if (m_multiplayer)
+		{
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
+			if (m_multiplayer->IsStartingSoon() || (g_isPlayback && m_timeOnScreen > 30))
+			{
+				// Exit score screen after 30 seconds
+				g_application->RemoveTickable(this);
+				m_removed = true;
+			}
+		}
+
 	}
 
 	virtual void OnSuspend()

@@ -187,7 +187,7 @@ public:
 
 	virtual void TransitionTo(Game* next, IApplicationTickable* before)
 	{
-		game->SetWindowIndex(this->GetWindowIndex());
+		next->SetWindowIndex(this->GetWindowIndex());
 		m_isGame = true;
 		m_canCancel = true;
 		m_InitTransition(next);

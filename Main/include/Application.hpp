@@ -22,6 +22,7 @@ extern class TransitionScreen* g_transition;
 #else
 
 extern int g_numWindows;
+extern int g_visibleWindows;
 extern bool g_isPlayback;
 #define MAX_WINDOWS 4
 

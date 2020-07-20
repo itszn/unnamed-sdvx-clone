@@ -49,6 +49,7 @@ TransitionScreen *g_transition = nullptr;
 Input g_input;
 
 int g_numWindows = 1;
+int g_visibleWindows = 1;
 bool g_isPlayback = false;
 
 // Tickable queue
@@ -168,18 +169,33 @@ int32 Application::Run()
 			}
 			else // Start regular game, goto title screen
 			{
-				if (m_commandLine.Contains("-playback")) {
+				if (m_commandLine.size() > 2 && m_commandLine[1] == "-playback")
+				{
 					g_numWindows = 2;
+					g_visibleWindows = 1;
 					g_isPlayback = true;
+
 					for (int i = 0; i < g_numWindows; i++)
 					{
-						TitleScreen* screen = TitleScreen::Create();
-						screen->SetWindowIndex(i);
-						AddTickable(screen);
+						String *token = new String(m_commandLine[2]);
+						MultiplayerScreen *mpScreen = new MultiplayerScreen();
+						mpScreen->SetWindowIndex(i);
+						auto tokenInput = [=](void *screen) {
+							MultiplayerScreen *mpScreen = (MultiplayerScreen *)screen;
+							mpScreen->JoinRoomWithToken(*token);
+							delete token;
+						};
+
+						TransitionScreen* transition = TransitionScreen::Create();
+						transition->SetWindowIndex(i);
+						auto handle = transition->OnLoadingComplete.AddLambda(std::move(tokenInput));
+						transition->RemoveOnComplete(handle);
+						transition->TransitionTo(mpScreen);
 					}
 				}
 				else {
 					g_numWindows = 1;
+					g_visibleWindows = 1;
 					TitleScreen* second = TitleScreen::Create();
 					second->SetWindowIndex(0);
 					AddTickable(second);
@@ -956,6 +972,7 @@ void Application::m_MainLoop()
 				if (ch.mode == TickableChange::Removed)
 					delete ch.tickable;
 #else
+				assert(ch.tickable->GetWindowIndex() < g_numWindows);
 				auto& windowTickables = g_tickables[ch.tickable->GetWindowIndex()];
 
 				assert(!windowTickables.empty());
@@ -963,7 +980,8 @@ void Application::m_MainLoop()
 					restoreWindows.insert(ch.tickable->GetWindowIndex());
 
 				windowTickables.Remove(ch.tickable);
-				delete ch.tickable;
+				if (ch.mode == TickableChange::Removed)
+					delete ch.tickable;
 #endif
 			}
 		}
@@ -1125,10 +1143,10 @@ void Application::m_Tick()
 #else
 		auto realRes = g_resolution;
 
-		for (int windowIndex = 0; windowIndex < 2; windowIndex++) {
+		for (int windowIndex = 0; windowIndex < g_numWindows; windowIndex++) {
 			// Reset viewport
 
-			g_resolution = Vector2i(realRes.x/g_numWindows, realRes.y);
+			g_resolution = Vector2i(realRes.x/g_visibleWindows, realRes.y);
 			g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, g_resolution.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, g_resolution.y);
@@ -1313,6 +1331,7 @@ void Application::Shutdown()
 
 void Application::AddTickable(class IApplicationTickable *tickable, class IApplicationTickable *insertBefore)
 {
+	assert(tickable->GetWindowIndex() < g_numWindows);
 	Log("Adding tickable", Logger::Severity::Debug);
 
 
@@ -1731,7 +1750,6 @@ void Application::JoinMultiFromInvite(String secret)
 	}
 #else
 	transition->TransitionTo(mpScreen);
-	AddTickable(transition);
 	for (int window = 0; window < g_numWindows; window++) {
 		for (IApplicationTickable* tickable : g_tickables[window])
 		{
@@ -2523,6 +2541,10 @@ void Application::SetLuaBindings(lua_State *state)
 		pushIntToTable("BUTTON_FXR", (int)Input::Button::FX_1);
 		pushIntToTable("BUTTON_STA", (int)Input::Button::BT_S);
 		pushIntToTable("BUTTON_BCK", (int)Input::Button::Back);
+
+		lua_pushstring(state, "isPlayback");
+		lua_pushboolean(state, g_isPlayback);
+		lua_settable(state, -3);
 
 		lua_setglobal(state, "game");
 	}

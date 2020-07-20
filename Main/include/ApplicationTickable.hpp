@@ -25,8 +25,8 @@ public:
 	bool IsSuspended() const { return m_suspended; }
 	bool IsSuccessfullyInitialized() const { return m_successfullyInitialized; }
 
-	void SetWindowIndex(const int index) { windowIndex = index; }
-	int GetWindowIndex() { return windowIndex; }
+	void SetWindowIndex(const size_t index) { windowIndex = index; }
+	size_t GetWindowIndex() { return windowIndex; }
 
 private:
 	void m_Suspend();
@@ -35,6 +35,6 @@ private:
 	bool m_successfullyInitialized = false;
 	bool m_initialized = false;
 	bool m_suspended = true;
-	int windowIndex = 0;
+	size_t windowIndex = 0;
 	friend class Application;
 };
