@@ -55,6 +55,10 @@ private:
 	Vector<nlohmann::json> const* m_stats;
 	int m_numPlayersSeen = 0;
 
+	String m_mission = "";
+	int m_retryCount = 0;
+	float m_playbackSpeed = 1.0f;
+
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
 
@@ -65,7 +69,7 @@ private:
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
-	void m_PushStringToTable(const char* name, String data)
+	void m_PushStringToTable(const char* name, const String& data)
 	{
 		lua_pushstring(m_lua, name);
 		lua_pushstring(m_lua, data.c_str());
@@ -155,6 +159,11 @@ public:
 		{
 			m_badge = Scoring::CalculateBadge(m_scoredata);
 		}
+
+		m_playbackSpeed = game->GetPlaybackSpeed();
+
+		m_retryCount = game->GetRetryCount();
+		m_mission = game->GetMissionStr();
 
 		m_meanHitDelta[0] = scoring.GetMeanHitDelta();
 		m_medianHitDelta[0] = scoring.GetMedianHitDelta();
@@ -423,6 +432,14 @@ public:
 		lua_pushstring(m_lua, "autoplay");
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
+
+		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
+
+		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInResult))
+		{
+			m_PushStringToTable("mission", m_mission);
+			m_PushIntToTable("retryCount", m_retryCount);
+		}
 
 		//Push gauge samples
 		lua_pushstring(m_lua, "gaugeSamples");

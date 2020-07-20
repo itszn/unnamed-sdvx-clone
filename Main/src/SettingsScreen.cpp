@@ -787,6 +787,9 @@ public:
 
 			RenderSettingsLaserColor();
 
+			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice info during gameplay");
+			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInResult, "Show practice info on the result");
+
 			nk_tree_pop(m_nctx);
 		}
 	}

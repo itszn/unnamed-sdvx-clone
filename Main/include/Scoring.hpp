@@ -127,6 +127,12 @@ public:
 	// The score based on the current pace
 	uint32 CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const;
 
+	inline uint32 GetMisses() const { return categorizedHits[0]; }
+	inline uint32 GetGoods() const { return categorizedHits[1]; }
+	inline uint32 GetPerfects() const { return categorizedHits[2]; }
+	inline bool IsPerfect() const { return GetMisses() == 0 && GetGoods() == 0; }
+	inline bool IsFullCombo() const { return GetMisses() == 0; }
+
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))
 	Delegate<Input::Button, ScoreHitRating, ObjectState*, MapTime> OnButtonHit;

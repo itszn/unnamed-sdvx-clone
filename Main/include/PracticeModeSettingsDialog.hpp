@@ -28,6 +28,8 @@ private:
 
 	void m_SetStartTime(MapTime time, int measure = -1);
 	void m_SetEndTime(MapTime time, int measure = -1);
+	
+	std::unique_ptr<GameFailCondition> m_CreateGameFailCondition(GameFailCondition::Type type);
 
 	ChartIndex* m_chartIndex;
 	Ref<Beatmap> m_beatmap;
@@ -51,5 +53,6 @@ private:
 	GradeMark m_condGrade = GradeMark::PUC;
 	int m_condMiss = 0;
 	int m_condMissNear = 0;
+	int m_condGauge = 0;
 };
 

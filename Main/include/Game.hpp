@@ -110,4 +110,7 @@ public:
 	virtual const String& GetChartPath() const = 0;
 	// Is this a multiplayer game
 	virtual bool IsMultiplayerGame() const = 0;
+
+	virtual int GetRetryCount() const = 0;
+	virtual String GetMissionStr() const = 0;
 };

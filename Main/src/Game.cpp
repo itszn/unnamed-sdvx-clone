@@ -1384,19 +1384,56 @@ public:
 
 		if (!m_isPracticeMode) return;
 
-		lua_getglobal(m_lua, "practice_end_run");
-		if (lua_isfunction(m_lua, -1))
+		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{
-			lua_pushinteger(m_lua, m_loopCount);
-			lua_pushinteger(m_lua, m_loopSuccess);
-			lua_pushboolean(m_lua, success);
-
-			if (lua_pcall(m_lua, 3, 0, 0) != 0)
+			lua_getglobal(m_lua, "practice_end_run");
+			if (lua_isfunction(m_lua, -1))
 			{
-				Logf("Lua error on calling laser_alert: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				lua_pushinteger(m_lua, m_loopCount);
+				lua_pushinteger(m_lua, m_loopSuccess);
+				lua_pushboolean(m_lua, success);
+
+				lua_newtable(m_lua);
+
+				lua_pushstring(m_lua, "score");
+				lua_pushinteger(m_lua, m_scoring.CalculateCurrentDisplayScore());
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "perfects");
+				lua_pushinteger(m_lua, m_scoring.GetPerfects());
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "goods");
+				lua_pushinteger(m_lua, m_scoring.GetGoods());
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "misses");
+				lua_pushinteger(m_lua, m_scoring.GetMisses());
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "medianHitDelta");
+				lua_pushinteger(m_lua, m_scoring.GetMedianHitDelta(false));
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "meanHitDelta");
+				lua_pushinteger(m_lua, m_scoring.GetMeanHitDelta(false));
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "medianHitDeltaAbs");
+				lua_pushinteger(m_lua, m_scoring.GetMedianHitDelta(true));
+				lua_settable(m_lua, -3);
+
+				lua_pushstring(m_lua, "meanHitDeltaAbs");
+				lua_pushinteger(m_lua, m_scoring.GetMeanHitDelta(true));
+				lua_settable(m_lua, -3);
+
+				if (lua_pcall(m_lua, 4, 0, 0) != 0)
+				{
+					Logf("Lua error on calling laser_alert: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				}
 			}
+			lua_settop(m_lua, 0);
 		}
-		lua_settop(m_lua, 0);
 	}
 
 	// Called when game is finished and the score screen should show up
@@ -2094,6 +2131,9 @@ public:
 		if (m_manualExit)
 			return ClearMark::NotPlayed;
 
+		if (m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
+			return ClearMark::Played;
+
 		ScoreIndex scoreData;
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
@@ -2191,6 +2231,9 @@ public:
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
 
+		m_playOptions.loopOnSuccess = false;
+		m_playOptions.loopOnFail = true;
+
 		m_playOnDialogClose = true;
 		m_triggerPause = true;
 	}
@@ -2244,17 +2287,20 @@ public:
 		m_ended = false;
 		m_outroCompleted = false;
 
-		lua_getglobal(m_lua, "practice_end");
-		if (lua_isfunction(m_lua, -1))
+		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{
-			lua_pushinteger(m_lua, m_loopCount);
-			lua_pushinteger(m_lua, m_loopSuccess);
-			if (lua_pcall(m_lua, 2, 0, 0) != 0)
+			lua_getglobal(m_lua, "practice_end");
+			if (lua_isfunction(m_lua, -1))
 			{
-				Logf("Lua error on calling practice_end: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				lua_pushinteger(m_lua, m_loopCount);
+				lua_pushinteger(m_lua, m_loopSuccess);
+				if (lua_pcall(m_lua, 2, 0, 0) != 0)
+				{
+					Logf("Lua error on calling practice_end: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				}
 			}
+			lua_settop(m_lua, 0);
 		}
-		lua_settop(m_lua, 0);
 
 		JumpTo(m_lastMapTime);
 		
@@ -2280,15 +2326,30 @@ public:
 		m_loopCount = 0;
 		m_loopSuccess = 0;
 
-		lua_getglobal(m_lua, "practice_start");
-		if (lua_isfunction(m_lua, -1))
+		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{
-			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			lua_getglobal(m_lua, "practice_start");
+			if (lua_isfunction(m_lua, -1))
 			{
-				Logf("Lua error on calling practice_start: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				if (const auto& failCondition = m_playOptions.failCondition)
+				{
+					lua_pushstring(m_lua, failCondition->GetName());
+					lua_pushinteger(m_lua, failCondition->GetThreshold());
+					lua_pushstring(m_lua, failCondition->GetDescription().c_str());
+				}
+				else
+				{
+					lua_pushstring(m_lua, "None");
+					lua_pushinteger(m_lua, 0);
+					lua_pushstring(m_lua, "None");
+				}
+				if (lua_pcall(m_lua, 3, 0, 0) != 0)
+				{
+					Logf("Lua error on calling practice_start: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				}
 			}
+			lua_settop(m_lua, 0);
 		}
-		lua_settop(m_lua, 0);
 
 		Restart();
 	}
@@ -2367,6 +2428,14 @@ public:
 	virtual float GetPlaybackSpeed() override
 	{
 		return m_audioPlayback.GetPlaybackSpeed();
+	}
+	virtual int GetRetryCount() const override
+	{
+		return m_loopCount;
+	}
+	virtual String GetMissionStr() const override
+	{
+		return m_playOptions.failCondition ? m_playOptions.failCondition->GetDescription() : "";
 	}
 	virtual const String& GetChartRootPath() const
 	{
@@ -2638,6 +2707,14 @@ public:
 		lua_pushstring(L, "autoplay");
 		lua_pushboolean(L, m_scoring.autoplay);
 		lua_settable(L, -3);
+
+		if (m_isPracticeMode)
+		{
+			// Existence of this field implies that the game's in the practice mode.
+			lua_pushstring(L, "practice_setup");
+			lua_pushboolean(L, m_isPracticeSetup);
+			lua_settable(L, -3);
+		}
 
 		//set hidden/sudden
 		pushFloatToTable("hiddenFade", m_track->hiddenFadewindow);

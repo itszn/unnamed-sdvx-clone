@@ -2,7 +2,6 @@
 #include "PracticeModeSettingsDialog.hpp"
 #include "Beatmap/MapDatabase.hpp"
 
-
 PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& lastMapTime,
     int32& tempOffset, Game::PlayOptions& playOptions, MapTimeRange& range)
     : m_chartIndex(game.GetChartIndex()), m_beatmap(game.GetBeatmap()),
@@ -10,7 +9,6 @@ PracticeModeSettingsDialog::PracticeModeSettingsDialog(Game& game, MapTime& last
     m_tempOffset(tempOffset), m_playOptions(playOptions), m_range(range)
 {
     m_pos = { 0.75f, 0.75f };
-    m_message = "The buttons can be pressed with the Start key.";
 }
 
 void PracticeModeSettingsDialog::InitTabs()
@@ -150,33 +148,15 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
     return playbackTab;
 }
 
-enum class GameFailConditionType
-{
-    None, Score, Grade, Miss, MissAndNear
-};
-
-const char* GAME_FAIL_CONDITION_TYPE_STR[5] = { "None", "Score", "Grade", "Miss", "MissNear" };
-
-static inline GameFailConditionType GetGameFailConditionType(const GameFailCondition* failCondition)
-{
-    if (!failCondition) return GameFailConditionType::None;
-
-    if (dynamic_cast<const GameFailCondition::Score*>(failCondition)) return GameFailConditionType::Score;
-    if (dynamic_cast<const GameFailCondition::Grade*>(failCondition)) return GameFailConditionType::Grade;
-    if (dynamic_cast<const GameFailCondition::MissCount*>(failCondition)) return GameFailConditionType::Miss;
-    if (dynamic_cast<const GameFailCondition::MissAndNearCount*>(failCondition)) return GameFailConditionType::MissAndNear;
-
-    return GameFailConditionType::None;
-}
-
-static inline std::unique_ptr<GameFailCondition> CreateGameFailCondition(GameFailConditionType type)
+std::unique_ptr<GameFailCondition> PracticeModeSettingsDialog::m_CreateGameFailCondition(GameFailCondition::Type type)
 {
     switch (type)
     {
-    case GameFailConditionType::Score: return std::make_unique<GameFailCondition::Score>(10000000);
-    case GameFailConditionType::Grade: return std::make_unique<GameFailCondition::Grade>(GradeMark::PUC);
-    case GameFailConditionType::Miss: return std::make_unique<GameFailCondition::MissCount>(0);
-    case GameFailConditionType::MissAndNear: return std::make_unique<GameFailCondition::MissAndNearCount>(0);
+    case GameFailCondition::Type::Score: return std::make_unique<GameFailCondition::Score>(m_condScore);
+    case GameFailCondition::Type::Grade: return std::make_unique<GameFailCondition::Grade>(m_condGrade);
+    case GameFailCondition::Type::Miss: return std::make_unique<GameFailCondition::MissCount>(m_condMiss);
+    case GameFailCondition::Type::MissAndNear: return std::make_unique<GameFailCondition::MissAndNearCount>(m_condMissNear);
+    case GameFailCondition::Type::Gauge: return std::make_unique<GameFailCondition::Gauge>(m_condGauge);
     default: return nullptr;
     }
 }
@@ -184,17 +164,18 @@ static inline std::unique_ptr<GameFailCondition> CreateGameFailCondition(GameFai
 PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditionTab()
 {
     Tab conditionTab = std::make_unique<TabData>();
-    conditionTab->name = "Failing";
+    conditionTab->name = "Mission";
 
     Setting conditionType = std::make_unique<SettingData>("Fail condition", SettingType::Enum);
-    for (const char* str : GAME_FAIL_CONDITION_TYPE_STR)
+    for (const char* str : GameFailCondition::TYPE_STR)
         conditionType->enumSetting.options.Add(str);
-    conditionType->enumSetting.val = static_cast<int>(GameFailConditionType::None);
+    conditionType->enumSetting.val = static_cast<int>(GameFailCondition::Type::None);
     conditionType->getter.AddLambda([this](SettingData& data) {
-        data.enumSetting.val = static_cast<int>(GetGameFailConditionType(m_playOptions.failCondition.get()));
+        GameFailCondition::Type type = m_playOptions.failCondition ? m_playOptions.failCondition.get()->GetType() : GameFailCondition::Type::None;
+        data.enumSetting.val = static_cast<int>(type);
     });
     conditionType->setter.AddLambda([this](const SettingData& data) {
-        m_playOptions.failCondition = CreateGameFailCondition(static_cast<GameFailConditionType>(data.enumSetting.val));
+        m_playOptions.failCondition = m_CreateGameFailCondition(static_cast<GameFailCondition::Type>(data.enumSetting.val));
     });
     conditionTab->settings.emplace_back(std::move(conditionType));
 
@@ -238,13 +219,22 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditio
     });
     conditionTab->settings.emplace_back(std::move(missNearCondition));
 
+    Setting gaugeCondition = CreateIntSetting("Gauge less than", m_condGauge, { 0, 100 });
+    gaugeCondition->getter.AddLambda([this](SettingData& data) {
+        data.intSetting.val = m_condGauge;
+    });
+    gaugeCondition->setter.AddLambda([this](const SettingData& data) {
+        m_playOptions.failCondition = std::make_unique<GameFailCondition::Gauge>(data.intSetting.val);
+    });
+    conditionTab->settings.emplace_back(std::move(gaugeCondition));
+
     return conditionTab;
 }
 
 PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateGameSettingTab()
 {
     Tab gameSettingTab = std::make_unique<TabData>();
-    gameSettingTab->name = "Game";
+    gameSettingTab->name = "Settings";
 
     Setting globalOffsetSetting = CreateIntSetting(GameConfigKeys::GlobalOffset, "Global offset", { -200, 200 });
     globalOffsetSetting->setter.Clear();

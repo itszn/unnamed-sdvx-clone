@@ -234,6 +234,7 @@ local song_info = {}
 local gauge_info = {}
 local crit_base_info = {}
 local combo_info = {}
+local practice_info = {}
 -- -------------------------------------------------------------------------- --
 -- ResetLayoutInformation:                                                    --
 -- Resets the layout values used by the skin.                                 --
@@ -308,6 +309,10 @@ function ResetLayoutInformation()
         if portrait then combo_info.posy = desh * critLinePos[2] - 150 end
     end
 
+    do-- update practice_info
+        practice_info.posy = 120
+        practice_info.posx = 10
+    end
 end
 -- -------------------------------------------------------------------------- --
 -- render:                                                                    --
@@ -337,13 +342,21 @@ function render(deltaTime)
 	end
     draw_combo(deltaTime)
     draw_alerts(deltaTime)
+    
+    if gameplay.practice_setup ~= nil then
+        draw_practice(deltaTime);
+    end
 	
-	if gameplay.autoplay then
+	if gameplay.autoplay or gameplay.practice_setup then
 		gfx.LoadSkinFont("NotoSans-Regular.ttf")
 		gfx.FontSize(30)
 		gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_CENTER)
 		gfx.FillColor(255,255,255)
-		gfx.Text("Autoplay", desw/2, yshift)
+        local play_mode = ""
+        if gameplay.practice_setup then play_mode = "Practice Setup"
+        elseif gameplay.autoplay then play_mode = "Autoplay"
+        else play_mode = "UNKNOWN" end
+		gfx.Text(play_mode, desw/2, yshift)
 	end
 end
 -- -------------------------------------------------------------------------- --
@@ -1111,5 +1124,55 @@ function draw_users(detaTime)
         yoff = ymax_big + 15
     end
 
+    gfx.Restore()
+end
+
+-- ======================== Start practice mode ========================
+local is_playing_practice = false
+local mission_str = ""
+
+local count_play = 0
+local count_success = 0
+
+-- Called when the practice starts
+function practice_start(mission_type, mission_threshold, mission_description)
+    is_playing_practice = true
+    
+    mission_str = string.format("Mission: %s", mission_description)
+end
+
+-- Called when a run for the practice is finished
+function practice_end_run(playCount, successCount, isSuccessful, scoring)
+    count_play = playCount
+    count_success = successCount
+end
+
+-- Called when user enters the setup again
+function practice_end(playCount, successCount)
+    is_playing_practice = false
+    
+    count_play = playCount
+    count_success = successCount
+end
+
+function draw_practice(deltaTime)
+    if not is_playing_practice then
+        return
+    end
+    
+    gfx.Save()
+    gfx.Translate(practice_info.posx, practice_info.posy)
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+    gfx.FillColor(255, 255, 255)
+    
+    gfx.FontSize(25)
+    gfx.Text(mission_str, 0, 0)
+    
+    if count_play > 0 then
+        local play_stat = string.format("Clear rate: %d/%d (%.1f%%)", count_success, count_play, (100.0 * count_success / count_play))
+        gfx.Text(play_stat, 0, 30)
+    end
+    
     gfx.Restore()
 end

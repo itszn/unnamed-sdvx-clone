@@ -3,7 +3,6 @@
 
 GameplaySettingsDialog::GameplaySettingsDialog()
 {
-    m_message = "Press both FX keys to open/close.";
 }
 
 void GameplaySettingsDialog::InitTabs()
