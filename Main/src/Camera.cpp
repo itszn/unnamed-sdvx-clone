@@ -227,16 +227,13 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		m_shakeEffect.amplitudeToBeAdded = 0;
 		m_shakeEffect.guard = 1 / 60.f;
 	}
-	else
-	{
-		m_shakeEffect.guard = Math::Max(m_shakeEffect.guard - deltaTime, 0.f);
-	}
 	m_shakeOffset = m_shakeEffect.amplitude;
 	if (fabsf(m_shakeEffect.amplitude) > 0)
 	{
 		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
 		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
 	}
+	m_shakeEffect.guard = Math::Max(m_shakeEffect.guard - deltaTime, 0.f);
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
