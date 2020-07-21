@@ -35,6 +35,7 @@ public:
 	float* m_sampleBuffer = nullptr;
 	uint32 m_sampleBufferLength = 384;
 	uint32 m_remainingSamples = 0;
+	bool m_isMuted = false;
 
 	thread audioThread;
 	bool runAudioThread = false;

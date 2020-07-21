@@ -1051,7 +1051,7 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 
 	const HoldObjectState* obj = (HoldObjectState*) tick->object;
 	const uint32 index = obj->index;
-	assert(0 <= index && index < 6);
+	assert(index < 6);
 	
 	// Button needs to be hold at this moment.
 	// (Unless `tick` is the end of a long note; see below)

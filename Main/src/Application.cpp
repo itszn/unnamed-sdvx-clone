@@ -48,8 +48,8 @@ TransitionScreen *g_transition = nullptr;
 #endif
 Input g_input;
 
-int g_numWindows = 1;
-int g_visibleWindows = 1;
+unsigned int g_numWindows = 1;
+unsigned int g_visibleWindows = 1;
 bool g_isPlayback = false;
 
 // Tickable queue
@@ -175,7 +175,7 @@ int32 Application::Run()
 					g_visibleWindows = 1;
 					g_isPlayback = true;
 
-					for (int i = 0; i < g_numWindows; i++)
+					for (unsigned int i = 0; i < g_numWindows; i++)
 					{
 						String *token = new String(m_commandLine[2]);
 						MultiplayerScreen *mpScreen = new MultiplayerScreen();
@@ -1005,7 +1005,7 @@ void Application::m_MainLoop()
 
 		// Application should end, no more active screens
 		bool has_tickable = false;
-		for (int window = 0; window < g_numWindows; window++) {
+		for (unsigned int window = 0; window < g_numWindows; window++) {
 			if (g_tickables[window].empty())
 				continue;
 			has_tickable = true;
@@ -1036,7 +1036,7 @@ void Application::m_MainLoop()
 			}
 		}
 #else
-		for (int window = 0; window < g_numWindows; window++) {
+		for (unsigned int window = 0; window < g_numWindows; window++) {
 			for (auto tickable : g_tickables[window])
 			{
 				int32 tempTarget = 0;
@@ -1105,7 +1105,7 @@ void Application::m_Tick()
 		tickable->Tick(m_deltaTime);
 	}
 #else
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (auto& tickable : g_tickables[window])
 		{
 			tickable->Tick(m_deltaTime);
@@ -1143,7 +1143,7 @@ void Application::m_Tick()
 #else
 		auto realRes = g_resolution;
 
-		for (int windowIndex = 0; windowIndex < g_numWindows; windowIndex++) {
+		for (unsigned int windowIndex = 0; windowIndex < g_numWindows; windowIndex++) {
 			// Reset viewport
 
 			g_resolution = Vector2i(realRes.x/g_visibleWindows, realRes.y);
@@ -1176,7 +1176,7 @@ void Application::m_Tick()
 			g_guiState.scissor = Rect(0, 0, -1, -1);
 			g_guiState.imageTint = nvgRGB(255, 255, 255);
 			// Render all items
-			for (int window = 0; window < g_numWindows; window++) {
+			for (unsigned int window = 0; window < g_numWindows; window++) {
 				for (auto& tickable : g_tickables[window])
 				{
 					Logf("Checking %p with index %u", Logger::Severity::Info, tickable, tickable->GetWindowIndex());
@@ -1226,7 +1226,7 @@ void Application::m_Cleanup()
 		delete it;
 	}
 #else
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (auto it : g_tickables[window])
 		{
 			delete it;
@@ -1559,7 +1559,7 @@ void Application::ReloadSkin()
 {
 #ifdef PLAYBACK
 	//remove all tickables
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (auto* t: g_tickables[window])
 		{
 			t->m_Suspend();
@@ -1750,7 +1750,7 @@ void Application::JoinMultiFromInvite(String secret)
 	}
 #else
 	transition->TransitionTo(mpScreen);
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (IApplicationTickable* tickable : g_tickables[window])
 		{
 			RemoveTickable(tickable);
@@ -1911,7 +1911,7 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 		break;
 	}
 #else
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
 		{
 			(*it)->OnKeyPressed(code);
@@ -1929,7 +1929,7 @@ void Application::m_OnKeyReleased(SDL_Scancode code)
 		break;
 	}
 #else
-	for (int window = 0; window < g_numWindows; window++) {
+	for (unsigned int window = 0; window < g_numWindows; window++) {
 		for (auto it = g_tickables[window].rbegin(); it != g_tickables[window].rend();)
 		{
 			(*it)->OnKeyReleased(code);

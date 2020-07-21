@@ -67,11 +67,14 @@ namespace Utility
 	template<int N, typename... Args>
 	void BufferSprintf(char (&buffer)[N], const char* fmt, Args... args)
 	{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
 #ifdef _WIN32
 		sprintf_s(buffer, N, fmt, SprintfArgFilter(args)...);
 #else
 		snprintf(buffer, N-1, fmt, SprintfArgFilter(args)...);
 #endif
+#pragma GCC diagnostic pop
 	}
 
 	// Helper function that performs the c standard sprintf but returns a managed object instead

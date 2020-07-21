@@ -1130,6 +1130,8 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 		String path = Path::Absolute("./usc-game.exe");
 		String param = Utility::Sprintf("-playback %s", m_joinToken.c_str());
 		Path::Run(path, param.GetData());
+		// Mute the audio for the ref client
+		g_audio->Mute();
 	}
 }
 
@@ -1317,7 +1319,7 @@ void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring)
 		{
 			// Drop input before start of map, NOP
 		}
-		else if (cur->t.timed.time > time)
+		else if (cur->t.timed.time > (uint32_t)time)
 		{
 			// Stop processing packets
 			break;
@@ -1365,7 +1367,7 @@ void MultiplayerScreen::PerformFrameTick(MapTime time, Scoring& scoring)
 	m_multiplayerFrame.push_back(score_packet);
 
 	MultiplayerData* data = new MultiplayerData[m_multiplayerFrame.size()];
-	for (int i = 0; i < m_multiplayerFrame.size(); i++) {
+	for (unsigned int i = 0; i < m_multiplayerFrame.size(); i++) {
 		data[i] = m_multiplayerFrame[i];
 	}
 
@@ -1431,7 +1433,7 @@ bool MultiplayerScreen::ConsumePlaybackForTick(ScoreTick* tick, MultiplayerData&
 	for (auto it = m_hitstatData.begin(); it != m_hitstatData.end(); ++it)
 	{
 		MultiplayerData& data = *it;
-		if (data.t.hitstat.time != obj->time)
+		if (data.t.hitstat.time != (uint32_t)obj->time)
 			continue;
 
 		if (data.t.hitstat.index != index)
@@ -1542,6 +1544,9 @@ bool MultiplayerScreen::AsyncFinalize()
 	// Start the map database
 	m_mapDatabase->OnSearchStatusUpdated.Add(this, &MultiplayerScreen::OnSearchStatusUpdated);
 	m_mapDatabase->StartSearching();
+
+	/// TODO: Check if debugmute is enabled
+	g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
 
 	m_userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 	if (m_userName == "")

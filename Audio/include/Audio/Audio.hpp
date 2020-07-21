@@ -30,6 +30,8 @@ public:
 	// Private
 	class Audio_Impl* GetImpl();
 
+	void Mute();
+
 	// Calculated audio latency by the audio driver (currently unused)
 	int64 audioLatency;
 

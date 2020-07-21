@@ -201,7 +201,15 @@ bool Audio::Init(bool exclusive)
 }
 void Audio::SetGlobalVolume(float vol)
 {
+	// Don't unmute!
+	if (impl.m_isMuted)
+		return;
 	impl.globalVolume = vol;
+}
+void Audio::Mute()
+{
+	impl.m_isMuted = true;
+	impl.globalVolume = 0.0;
 }
 uint32 Audio::GetSampleRate() const
 {

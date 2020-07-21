@@ -21,12 +21,14 @@ extern class SkinConfig* g_skinConfig;
 extern class TransitionScreen* g_transition;
 #else
 
-extern int g_numWindows;
-extern int g_visibleWindows;
+extern unsigned int g_numWindows;
+extern unsigned int g_visibleWindows;
 extern bool g_isPlayback;
 #define MAX_WINDOWS 4
+#endif
 
 
+#ifndef VERSION_MAJOR
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 3
 #define VERSION_PATCH 1

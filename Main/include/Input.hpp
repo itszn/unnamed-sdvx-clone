@@ -116,7 +116,7 @@ private:
 class FakeInput : public Input {
 
 public:
-	FakeInput::FakeInput() {
+	FakeInput() {
 		memset(m_buttonStates, 0, sizeof(m_buttonStates));
 	}
 	void UpdateButton(uint32_t b, bool pressed);
