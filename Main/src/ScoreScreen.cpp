@@ -691,8 +691,15 @@ public:
 		Vector2i size(w, h);
 		Image screenshot = ImageRes::Screenshot(g_gl, size, { x,y });
 		String screenshotPath = "screenshots/" + Shared::Time::Now().ToString() + ".png";
-		screenshot->SavePNG(screenshotPath);
-		screenshot.reset();
+		if (screenshot.get() != nullptr)
+		{
+			screenshot->SavePNG(screenshotPath);
+			screenshot.reset();
+		}
+		else 
+		{
+			screenshotPath = "Failed to capture screenshot";
+		}
 
 		lua_getglobal(m_lua, "screenshot_captured");
 		if (lua_isfunction(m_lua, -1))
