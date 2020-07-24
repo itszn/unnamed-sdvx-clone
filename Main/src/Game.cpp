@@ -2532,27 +2532,31 @@ public:
 		}
 		lua_setfield(L, -1, "scoreReplays");
 
-		//progress
+		// progress
 		m_LuaUpdateProgress(L);
 
-		//hispeed
+		// hispeed
 		lua_pushstring(L, "hispeed");
 		lua_pushnumber(L, m_hispeed);
 		lua_settable(L, -3);
-		//bpm
+		// playback speed
+		lua_pushstring(L, "playbackSpeed");
+		lua_pushnumber(L, m_playOptions.playbackSpeed);
+		lua_settable(L, -3);
+		// bpm
 		lua_pushstring(L, "bpm");
 		lua_pushnumber(L, m_currentTiming->GetBPM());
 		lua_settable(L, -3);
-		//gauge
+		// gauge
 		lua_pushstring(L, "gauge");
 		lua_pushnumber(L, m_scoring.currentGauge);
 		lua_settable(L, -3);
-		//combo state
+		// combo state
 		lua_pushstring(L, "comboState");
 		lua_pushnumber(L, m_scoring.comboState);
 		lua_settable(L, -3);
 
-		//hidden/sudden
+		// hidden/sudden
 		lua_pushstring(L, "hiddenFade");
 		lua_pushnumber(L, m_track->hiddenFadewindow);
 		lua_settable(L, -3);

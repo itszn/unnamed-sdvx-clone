@@ -347,15 +347,21 @@ function render(deltaTime)
         draw_practice(deltaTime);
     end
 	
-	if gameplay.autoplay or gameplay.practice_setup then
+    local play_mode = ""
+    
+    if gameplay.practice_setup
+        then play_mode = "Practice Setup"
+    elseif gameplay.autoplay
+        then play_mode = "Autoplay"
+    elseif gameplay.playbackSpeed ~= nil and gameplay.playbackSpeed < 1
+        then play_mode = string.format("Speed: x%.2f", gameplay.playbackSpeed)
+    end
+    
+	if play_mode ~= "" then
 		gfx.LoadSkinFont("NotoSans-Regular.ttf")
 		gfx.FontSize(30)
 		gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_CENTER)
 		gfx.FillColor(255,255,255)
-        local play_mode = ""
-        if gameplay.practice_setup then play_mode = "Practice Setup"
-        elseif gameplay.autoplay then play_mode = "Autoplay"
-        else play_mode = "UNKNOWN" end
 		gfx.Text(play_mode, desw/2, yshift)
 	end
 end
@@ -1133,6 +1139,8 @@ local mission_str = ""
 
 local count_play = 0
 local count_success = 0
+local last_run = ""
+local last_timing = ""
 
 -- Called when the practice starts
 function practice_start(mission_type, mission_threshold, mission_description)
@@ -1145,6 +1153,8 @@ end
 function practice_end_run(playCount, successCount, isSuccessful, scoring)
     count_play = playCount
     count_success = successCount
+    last_run = string.format("Last run: %d (%d-%d)", scoring.score, scoring.goods, scoring.misses)
+    last_timing = string.format("Hit delta: %d±%dms", scoring.meanHitDelta, scoring.meanHitDeltaAbs)
 end
 
 -- Called when user enters the setup again
@@ -1172,6 +1182,10 @@ function draw_practice(deltaTime)
     if count_play > 0 then
         local play_stat = string.format("Clear rate: %d/%d (%.1f%%)", count_success, count_play, (100.0 * count_success / count_play))
         gfx.Text(play_stat, 0, 30)
+        
+        gfx.FontSize(20)
+        gfx.Text(last_run, 0, 55)
+        gfx.Text(last_timing, 0, 75)
     end
     
     gfx.Restore()
