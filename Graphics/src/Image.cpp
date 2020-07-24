@@ -70,6 +70,12 @@ namespace Graphics
 		bool Screenshot(OpenGL* gl,Vector2i pos)
 		{
 			GLuint texture;
+			GLenum err;
+			while ((err = glGetError()) != GL_NO_ERROR) //Clear out preexisting errors
+			{
+				Logf("OpenGL Error: 0x%p", Logger::Severity::Debug, err);
+			}
+
 			//Create texture
 			glGenTextures(1, &texture);
 			glBindTexture(GL_TEXTURE_2D, texture);
@@ -77,7 +83,6 @@ namespace Graphics
 			glBindTexture(GL_TEXTURE_2D, 0);
 			glFinish();
 
-			GLenum err;
 			while ((err = glGetError()) != GL_NO_ERROR)
 			{
 				Logf("OpenGL Error: 0x%p", Logger::Severity::Error, err);
