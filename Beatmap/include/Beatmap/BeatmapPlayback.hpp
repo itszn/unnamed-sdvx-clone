@@ -21,8 +21,6 @@ public:
 	// if it is a new timing point, this is used for the new BPM
 	void Update(MapTime newTime);
 
-	// Modifyable array of all hittable objects, within -+'hittableObjectTreshold' of current time
-	Vector<ObjectState*>& GetHittableObjects();
 	MapTime hittableObjectEnter = 500;
 	MapTime hittableLaserEnter = 1000;
 	MapTime hittableObjectLeave = 500;

@@ -312,14 +312,6 @@ void BeatmapPlayback::Update(MapTime newTime)
 	}
 }
 
-Vector<ObjectState*>& BeatmapPlayback::GetHittableObjects()
-{
-	if (m_isCalibration) {
-		return m_calibrationObjects;
-	}
-	return m_hittableObjects;
-}
-
 void BeatmapPlayback::MakeCalibrationPlayback()
 {
 	m_isCalibration = true;

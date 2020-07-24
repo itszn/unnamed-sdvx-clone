@@ -72,6 +72,7 @@ private:
 	bool m_outroCompleted = false;
 	bool m_paused = false;
 	bool m_triggerPause = false; // Whether to trigger a pause on next first gameplay tick
+	bool m_triggerEnd = false; // Whether the end of the chart is reached
 	bool m_ended = false;
 	bool m_transitioning = false;
 	bool m_saveSpeed = false;
@@ -542,6 +543,9 @@ public:
 
 	void JumpTo(MapTime newTime)
 	{
+		Logf("Game::JumpTo(%d)", Logger::Severity::Debug, newTime);
+
+		m_triggerEnd = false;
 		m_triggerPause = m_paused;
 
 		if (m_endTime < newTime)
@@ -560,6 +564,7 @@ public:
 		// Audio leadin
 		m_audioPlayback.SetEffectEnabled(0, false);
 		m_audioPlayback.SetEffectEnabled(1, false);
+
 
 		m_lastMapTime = newTime;
 		InitPlaybacks(newTime);
@@ -605,7 +610,6 @@ public:
 			replay.nextHitStat = 0;
 		}
 
-		m_track->ClearEffects();
 		m_particleSystem->Reset();
 		m_audioPlayback.SetVolume(1.0f);
 
@@ -1214,10 +1218,10 @@ public:
 		const BeatmapSettings& beatmapSettings = m_beatmap->GetMapSettings();
 
 		// Update beatmap playback
-		MapTime playbackPositionMs = m_audioPlayback.GetPosition() - GetAudioOffset();
+		const MapTime playbackPositionMs = m_audioPlayback.GetPosition() - GetAudioOffset();
 		m_playback.Update(playbackPositionMs);
 
-		MapTime delta = playbackPositionMs - m_lastMapTime;
+		const MapTime delta = playbackPositionMs - m_lastMapTime;
 		int32 beatStart = 0;
 		uint32 numBeats = m_playback.CountBeats(m_lastMapTime, delta, beatStart, 1);
 		if(numBeats > 0)
@@ -1264,11 +1268,15 @@ public:
 		if (!m_ended)
 		{
 			m_scoring.Tick(deltaTime);
+
 			// Update scoring gauge
-			int32 gaugeSampleSlot = playbackPositionMs;
-			gaugeSampleSlot /= m_gaugeSampleRate;
-			gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
-			m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
+			if (delta >= 0)
+			{
+				int32 gaugeSampleSlot = playbackPositionMs;
+				gaugeSampleSlot /= m_gaugeSampleRate;
+				gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
+				m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
+			}
 		}
 
 		// Get the current timing point
@@ -1280,10 +1288,14 @@ public:
 		if (m_multiplayer != nullptr)
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
 
-		m_lastMapTime = playbackPositionMs;
+		if (delta >= 0)
+		{
+			m_lastMapTime = playbackPositionMs;
+		}
+
 		SetGameplayLua(m_lua);
 		
-		if(m_audioPlayback.HasEnded())
+		if(m_triggerEnd || m_audioPlayback.HasEnded())
 		{
 			EndCurrentRun();
 		}
@@ -1344,6 +1356,8 @@ public:
 	// Called when the end is reached
 	void EndCurrentRun()
 	{
+		m_triggerEnd = false;
+
 		if (m_isPracticeSetup)
 		{
 			m_audioPlayback.Pause();
@@ -1627,11 +1641,11 @@ public:
 		{
 			if (m_isPracticeSetup)
 			{
-				textPos.y += RenderText("Practice setup", textPos, Color::Blue).y;
+				textPos.y += RenderText("Practice setup", textPos, Color::Magenta).y;
 			}
 			else
 			{
-				textPos.y += RenderText("Autoplay enabled", textPos, Color::Blue).y;
+				textPos.y += RenderText("Autoplay enabled", textPos, Color::Magenta).y;
 			}
 		}
 
@@ -1921,7 +1935,9 @@ public:
 		}
 		else if (key == EventKey::ChartEnd)
 		{
-			EndCurrentRun();
+			// Don't call EndCurrentRun here
+			// (Modifying BeatmapPlayback on OnEventChanged may cause crash, as it will invalidate the iterator.)
+			m_triggerEnd = true;
 		}
 	}
 
