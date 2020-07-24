@@ -90,6 +90,7 @@ private:
 	bool m_playOnDialogClose = false; // Whether to unpause on dialog closing
 	unsigned int m_loopCount = 0;
 	unsigned int m_loopSuccess = 0;
+	unsigned int m_loopStreak = 0;
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
@@ -1368,7 +1369,7 @@ public:
 
 		if (!IsMultiplayerGame() && m_playOptions.loopOnSuccess)
 		{
-			m_CreateCurrentRunReport(true);
+			m_OnEndRun(true);
 			Restart();
 		}
 		else
@@ -1382,7 +1383,7 @@ public:
 	{
 		if (!IsMultiplayerGame() && m_playOptions.loopOnFail)
 		{
-			m_CreateCurrentRunReport(false);
+			m_OnEndRun(false);
 			Restart();
 		}
 		else
@@ -1391,12 +1392,39 @@ public:
 		}
 	}
 
-	void m_CreateCurrentRunReport(bool success)
+	void m_OnEndRun(bool success)
 	{
 		++m_loopCount;
-		if (success) ++m_loopSuccess;
+		if (success)
+		{
+			++m_loopSuccess;
+			++m_loopStreak;
+		}
+		else
+		{
+			m_loopStreak = 0;
+		}
 
 		if (!m_isPracticeMode) return;
+
+		if (m_playOptions.incSpeedOnSuccess && m_loopStreak >= m_playOptions.incStreak)
+		{
+			m_loopStreak = 0;
+
+			int speedPercentage = Math::RoundToInt(100 * (m_playOptions.playbackSpeed + m_playOptions.incSpeedAmount));
+
+			m_playOptions.playbackSpeed = speedPercentage >= 100 ? 1.0f : speedPercentage / 100.0f;
+		}
+		
+		if (m_playOptions.decSpeedOnFail && !success)
+		{
+			int minSpeedPercentage = Math::RoundToInt(100 * m_playOptions.minPlaybackSpeed);
+			int speedPercentage = Math::RoundToInt(100 * (m_playOptions.playbackSpeed - m_playOptions.decSpeedAmount));
+			if (speedPercentage < minSpeedPercentage) speedPercentage = minSpeedPercentage;
+			if (speedPercentage <= 10) speedPercentage = 10;
+
+			m_playOptions.playbackSpeed = speedPercentage / 100.0f;
+		}
 
 		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{
@@ -2335,12 +2363,14 @@ public:
 		m_triggerPause = false;
 
 		m_playOptions.range = m_practiceSetupRange;
+		m_playOptions.minPlaybackSpeed = m_playOptions.playbackSpeed;
 		
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			m_practiceSetupDialog->Close();
 
 		m_loopCount = 0;
 		m_loopSuccess = 0;
+		m_loopStreak = 0;
 
 		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{

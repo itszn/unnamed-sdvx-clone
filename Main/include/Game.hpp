@@ -70,6 +70,14 @@ public:
 
 		float playbackSpeed = 1.0f;
 
+		bool incSpeedOnSuccess = false;
+		float incSpeedAmount = 0.02f;
+		int incStreak = 1;
+
+		bool decSpeedOnFail = false;
+		float decSpeedAmount = 0.02f;
+		float minPlaybackSpeed = 1.0f;
+
 		std::unique_ptr<GameFailCondition> failCondition = nullptr;
 	};
 
