@@ -57,7 +57,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
     speedSetting->intSetting.max = 100;
     speedSetting->intSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100);
     speedSetting->setter.AddLambda([this](const SettingData& data) { onSpeedChange.Call(data.intSetting.val == 100 ? 1.0f : data.intSetting.val / 100.0f); });
-    speedSetting->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100); });
+    speedSetting->getter.AddLambda([this](SettingData& data) { data.intSetting.val = Math::RoundToInt(m_playOptions.playbackSpeed * 100); });
     mainSettingTab->settings.emplace_back(std::move(speedSetting));
 
     mainSettingTab->settings.emplace_back(CreateButton("Start practice", [this](const auto&) { onPressStart.Call(); }));
