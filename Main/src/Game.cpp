@@ -167,6 +167,7 @@ private:
 	MapTime m_exitTriggerTime = 0;
 	bool m_exitTriggerTimeSet = false;
 
+
 public:
 	Game_Impl(const String& mapPath, GameFlags flags)
 	{
@@ -178,7 +179,10 @@ public:
 		m_multiplayer = nullptr;
 
 		m_hispeed = g_gameConfig.GetFloat(GameConfigKeys::HiSpeed);
-		m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+		if (g_isPlayback)
+			m_speedMod = SpeedMods::XMod;
+		else
+			m_speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 		m_modSpeed = g_gameConfig.GetFloat(GameConfigKeys::ModSpeed);
 	}
 
@@ -1168,11 +1172,11 @@ public:
 			m_multiplayer->PerformScoreTick(m_scoring, m_lastMapTime);
 			if (g_isPlayback)
 			{
-				m_multiplayer->CheckPlaybackInput(m_lastMapTime, m_scoring);
+				m_multiplayer->CheckPlaybackInput(m_lastMapTime, m_scoring, &m_hispeed);
 			}
 			else
 			{
-				m_multiplayer->PerformFrameTick(m_lastMapTime, m_scoring);
+				m_multiplayer->PerformFrameTick(m_lastMapTime, m_scoring, m_hispeed);
 				m_multiplayer->AddLaserFrame(m_lastMapTime, 0, g_input.GetInputLaserDir(0));
 				m_multiplayer->AddLaserFrame(m_lastMapTime, 1, g_input.GetInputLaserDir(1));
 			}

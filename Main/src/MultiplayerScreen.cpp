@@ -183,6 +183,7 @@ void MultiplayerScreen::m_authenticate()
 	packet["name"] = m_userName;
 	packet["version"] = MULTIPLAYER_VERSION;
 	packet["playback"] = g_isPlayback;
+	packet["eventclient"] = true;
 	m_tcp.SendJSON(packet);
 }
 
@@ -315,7 +316,23 @@ bool MultiplayerScreen::m_handleRoomUpdate(nlohmann::json& packet)
 		m_userName = packet.value("replay_name", "");
 		m_replayId = packet.value("replay_id", "");
 	}
-	m_startingSoon = packet.value("start_soon", false);
+	bool willStart = packet.value("start_soon", false);
+	if (!g_isPlayback && !m_startingSoon && willStart)
+	{
+		FolderIndex* folder = m_mapDatabase->GetFolder(m_selectedMapId);
+
+		ChartIndex* chart = folder->charts[m_selectedDiffIndex];
+
+		MultiplayerData offset_packet = { 0 };
+		offset_packet.t.offset.type = MultiplayerDataSyncType::OFFSET;
+		offset_packet.t.offset.globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
+		offset_packet.t.offset.inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
+		// TODO if the user changes diff after starting this might be wrong
+		offset_packet.t.offset.chartOffset = (int16_t)chart->custom_offset;
+
+		m_tcp.SendLengthPrefix((char*)&offset_packet, sizeof(MultiplayerData));
+	}
+	m_startingSoon = willStart;
 	return true;
 }
 bool MultiplayerScreen::m_handleSongChange(nlohmann::json& packet)
@@ -390,7 +407,22 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 
 	// Grab the map from the database
 	FolderIndex* folder = m_mapDatabase->GetFolder(m_selectedMapId);
+
 	ChartIndex* chart = folder->charts[m_selectedDiffIndex];
+
+	if (g_isPlayback && packet.contains("replay_level"))
+	{
+		// Make sure we match up on the correct level of play
+		int replay_level = packet["replay_level"];
+		for (ChartIndex* some_chart : folder->charts)
+		{
+			if (some_chart->level != replay_level)
+				continue;
+			chart = some_chart;
+			break;
+		}
+		chart->custom_offset = m_chartCustomOff;
+	}
 
 	// Reset score time before playing
 	m_lastScoreSent = 0;
@@ -422,6 +454,9 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	m_multiplayerFrame.clear();
 	m_hitstatIndex = 0;
 	m_lastFrameIndex = 0;
+
+	if (m_chatOverlay->IsOpen())
+		m_chatOverlay->CloseChat();
 
 	// Switch to the new tickable
 #ifndef PLAYBACK
@@ -1127,6 +1162,10 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 	else if (code == SDL_SCANCODE_F10 && m_screenState == MultiplayerScreenState::IN_ROOM)
 	{
 		//m_joinToken
+		//String c_path = Path::Absolute("./usc-game.exe");
+		//String c_path2 = Path::Absolute("./usc-game-playback.exe");
+		//Path::Copy(c_path, c_path2);
+
 		String path = Path::Absolute("./usc-game.exe");
 		String param = Utility::Sprintf("-playback %s", m_joinToken.c_str());
 		Path::Run(path, param.GetData());
@@ -1274,6 +1313,8 @@ void MultiplayerScreen::OnRestore()
 
 	if (g_isPlayback) {
 		g_visibleWindows = 1; 
+		if (this->GetWindowIndex() == 0)
+			m_chatOverlay->OpenChat();
 	}
 }
 
@@ -1283,15 +1324,25 @@ bool MultiplayerScreen::m_handleFrameData(char* data, uint32_t length)
 	Logf("Processing %u bytes for %u actions", Logger::Severity::Info, length, amount);
 	MultiplayerData* ptr = (MultiplayerData*)data;
 	for (int i = 0; i < amount; i++) {
-		if (ptr[i].t.timed.type == MultiplayerDataSyncType::HITSTAT)
+		if (ptr[i].t.timed.type == MultiplayerDataSyncType::OFFSET)
+		{
+			g_gameConfig.Set(GameConfigKeys::GlobalOffset, ptr[i].t.offset.globalOffset);
+			g_gameConfig.Set(GameConfigKeys::InputOffset, ptr[i].t.offset.inputOffset);
+			m_chartCustomOff = (int32_t)ptr[i].t.offset.chartOffset;
+		}
+		else if (ptr[i].t.timed.type == MultiplayerDataSyncType::HITSTAT)
+		{
 			m_hitstatData.push_back(ptr[i]);
+		}
 		else
+		{
 			m_playbackData.push(ptr[i]);
+		}
 	}
 	return true;
 }
 
-void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring)
+void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring, float* hispeed)
 {
 	if (scoring.multiplayer == nullptr)
 	{
@@ -1339,17 +1390,31 @@ void MultiplayerScreen::CheckPlaybackInput(MapTime time, Scoring& scoring)
 			//Logf("Laser %u %f", Logger::Info, cur->t.laser.index, cur->t.laser.val);
 			PlaybackInput.SetLaserValue(cur->t.laser.index & 1, cur->t.laser.val);
 		}
-		
+		else if (cur->t.timed.type == MultiplayerDataSyncType::SPEED)
+		{
+			Logf("Got speed packet %f", Logger::Severity::Info, cur->t.speed.hispeed);
+			*hispeed = cur->t.speed.hispeed;
+		}
 
 		m_playbackData.pop();
 	}
 	
 }
 
-void MultiplayerScreen::PerformFrameTick(MapTime time, Scoring& scoring)
+void MultiplayerScreen::PerformFrameTick(MapTime time, Scoring& scoring, float hispeed)
 {
 	if (time < 0)
 		return;
+
+	if (hispeed != m_oldHispeed) {
+		Logf("Sending speed packet %f", Logger::Severity::Info, hispeed);
+		MultiplayerData speed_packet = { 0 };
+		speed_packet.t.timed.type = MultiplayerDataSyncType::SPEED;
+		speed_packet.t.speed.hispeed = hispeed;
+		speed_packet.t.speed.time = time;
+		m_multiplayerFrame.push_back(speed_packet);
+		m_oldHispeed = hispeed;
+	}
 
 	int32_t frameIndex = time / m_frameInterval;
 
@@ -1564,6 +1629,9 @@ bool MultiplayerScreen::AsyncFinalize()
 
 	m_chatOverlay = new ChatOverlay(this);
 	m_chatOverlay->Init();
+
+	if (g_isPlayback && this->GetWindowIndex() == 0)
+		m_chatOverlay->OpenChat();
 
 	return true;
 }

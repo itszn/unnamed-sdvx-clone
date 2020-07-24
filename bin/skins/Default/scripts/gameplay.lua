@@ -740,7 +740,7 @@ function draw_song_info(deltaTime)
 
     -- When the player is holding Start, the hispeed can be changed
     -- Shows the current hispeed values
-    if game.GetButton(game.BUTTON_STA) then
+    if game.GetButton(game.BUTTON_STA) or game.isPlayback then
 		gfx.FillColor(20, 20, 20, 200);
 		gfx.DrawRect(RECT_FILL, 100, 100, song_info.songInfoWidth - 100, 20)
 		gfx.FillColor(255, 255, 255)

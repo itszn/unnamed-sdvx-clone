@@ -737,6 +737,10 @@ bool Application::m_Init()
 			{
 				startFullscreen = true;
 			}
+			else if (cl == "-playback")
+			{
+				g_isPlayback = true;
+			}
 		}
 	}
 
@@ -773,11 +777,19 @@ bool Application::m_Init()
 	m_unpackSkins();
 
 	// Set skin variable
-	m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+	if (g_isPlayback)
+		m_skin = g_gameConfig.GetString(GameConfigKeys::PlaybackSkin);
+	else
+		m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
 
 	// Fallback to default if not found
 	if (!Path::FileExists(Path::Absolute("skins/" + m_skin)))
 	{
+		if (g_isPlayback)
+		{
+			g_gameWindow->ShowMessageBox("Playback Error", Utility::Sprintf("Could not find playback skin directory '%s', make sure you copied it into the 'skins' directory", m_skin), 0);
+			return false;
+		}
 		m_skin = "Default";
 	}
 
@@ -1313,7 +1325,8 @@ void Application::m_Cleanup()
 		m_updateThread.join();
 
 	// Finally, save config
-	m_SaveConfig();
+	if (!g_isPlayback)
+		m_SaveConfig();
 }
 
 class Game *Application::LaunchMap(const String &mapPath)

@@ -79,6 +79,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AutoSaveSpeed, true);
 	Set(GameConfigKeys::SongFolder, "songs");
 	Set(GameConfigKeys::Skin, "Default");
+	Set(GameConfigKeys::PlaybackSkin, "PlaybackDefault");
 	Set(GameConfigKeys::Laser0Color, 200.0f);
 	Set(GameConfigKeys::Laser1Color, 330.0f);
 	Set(GameConfigKeys::SongSelSensMult, 1.0f);

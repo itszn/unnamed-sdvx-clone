@@ -36,6 +36,8 @@ enum MultiplayerDataSyncType {
 	LASER_MOVE,
 	HITSTAT,
 	SCORE,
+	SPEED,
+	OFFSET,
 };
 
 struct MultiplayerData {
@@ -69,12 +71,24 @@ struct MultiplayerData {
 			uint32_t delta;
 		} hitstat;
 		struct {
+			uint8_t type;
+			uint8_t padding[3];
+			uint32_t time;
+			float hispeed;
+		} speed;
+		struct {
 			uint32_t type : 8;
 			uint32_t score : 24;
 			uint16_t combo;
 			uint16_t max_combo;
 			float gauge;
 		} score;
+		struct {
+			uint32_t type : 8;
+			int32_t chartOffset : 24;
+			int32_t globalOffset;
+			int32_t inputOffset;
+		} offset;
 	} t;
 };
 
@@ -130,7 +144,7 @@ public:
 	{
 		return &m_finalStats;
 	}
-	void PerformFrameTick(MapTime time, Scoring& scoring);
+	void PerformFrameTick(MapTime time, Scoring& scoring, float hispeed);
 
 	void AddButtonFrame(MultiplayerDataSyncType type, uint32_t time, uint32_t data);
 	void AddLaserFrame(uint32_t time, int ind, float val);
@@ -138,7 +152,7 @@ public:
 
 	bool ConsumePlaybackForTick(ScoreTick* tick, MultiplayerData& out);
 
-	void CheckPlaybackInput(MapTime time, Scoring&);
+	void CheckPlaybackInput(MapTime time, Scoring&, float* hispeed);
 
 	TCPSocket& GetTCP()
 	{
@@ -342,4 +356,6 @@ private:
 	bool m_startingSoon = false;
 
 	String m_replayId = "";
+	float m_oldHispeed = 0.0;
+	int32_t m_chartCustomOff = 0;
 };

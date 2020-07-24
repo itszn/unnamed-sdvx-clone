@@ -147,7 +147,7 @@ nk_edit_isfocused(struct nk_context *ctx)
 void ChatOverlay::m_drawChatAlert()
 {
 	// Don't add alert if we can't open chat
-	if (!m_canOpen)
+	if (!m_canOpen || g_isPlayback)
 		return;
 
 	const int windowFlag = NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR;
@@ -186,8 +186,11 @@ void ChatOverlay::m_drawWindow()
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 	float x = g_resolution.x / 2 - w / 2;
 
+	int height = 400;
+	if (g_isPlayback)
+		height = 250;
 
-	if (!nk_begin(m_nctx, "Multiplayer Chat", nk_rect(0, g_resolution.y - 400, g_resolution.x, 400), windowFlag))
+	if (!nk_begin(m_nctx, "Multiplayer Chat", nk_rect(0, g_resolution.y - height, g_resolution.x, height), windowFlag))
 	{
 		return;
 	}
@@ -197,6 +200,12 @@ void ChatOverlay::m_drawWindow()
 	nk_layout_set_min_row_height(m_nctx, 20);
 	float chat_box_height = nk_window_get_height(m_nctx) - 110;
 	float chat_box_width = nk_window_get_width(m_nctx) - 60;
+
+	if (g_isPlayback)
+	{
+		chat_box_height += 40;
+
+	}
 
 	nk_layout_row_dynamic(m_nctx, chat_box_height, 1);
 
@@ -255,6 +264,13 @@ void ChatOverlay::m_drawWindow()
 
 
 	nk_layout_row_dynamic(m_nctx, 40, 1);
+
+	if (g_isPlayback)
+	{
+		// Cut off bottom
+		nk_end(m_nctx);
+		return;
+	}
 
 	bool res = nk_input_is_key_pressed(&m_nctx->input, NK_KEY_TEXT_SELECT_ALL);
 
