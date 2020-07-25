@@ -76,7 +76,7 @@ public:
 
 		bool decSpeedOnFail = false;
 		float decSpeedAmount = 0.02f;
-		float minPlaybackSpeed = 1.0f;
+		float minPlaybackSpeed = 0.50f;
 
 		bool enableMaxRewind = false;
 		int maxRewindMeasure = 1;

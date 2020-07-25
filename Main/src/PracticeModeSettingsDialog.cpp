@@ -195,6 +195,16 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlT
         });
         decSpeedAmount->getter.AddLambda([this](SettingData& data) { data.intSetting.val = Math::RoundToInt(m_playOptions.decSpeedAmount * 100); });
         loopControlTab->settings.emplace_back(std::move(decSpeedAmount));
+
+        Setting minSpeed = std::make_unique<SettingData>("- minimum speed (%)", SettingType::Integer);
+        minSpeed->intSetting.min = 1;
+        minSpeed->intSetting.max = 10;
+        minSpeed->intSetting.val = Math::RoundToInt(m_playOptions.minPlaybackSpeed * 100);
+        minSpeed->setter.AddLambda([this](const SettingData& data) {
+            m_playOptions.minPlaybackSpeed = data.intSetting.val / 100.0f;
+        });
+        minSpeed->getter.AddLambda([this](SettingData& data) { data.intSetting.val = Math::RoundToInt(m_playOptions.minPlaybackSpeed * 100); });
+        loopControlTab->settings.emplace_back(std::move(minSpeed));
     }
 
     {

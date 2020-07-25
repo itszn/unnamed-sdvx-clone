@@ -1418,7 +1418,7 @@ public:
 		
 		if (m_playOptions.decSpeedOnFail && !success)
 		{
-			int minSpeedPercentage = Math::RoundToInt(100 * m_playOptions.minPlaybackSpeed);
+			const int minSpeedPercentage = Math::RoundToInt(100 * m_playOptions.minPlaybackSpeed);
 			int speedPercentage = Math::RoundToInt(100 * (m_playOptions.playbackSpeed - m_playOptions.decSpeedAmount));
 			if (speedPercentage < minSpeedPercentage) speedPercentage = minSpeedPercentage;
 			if (speedPercentage <= 10) speedPercentage = 10;
@@ -2376,7 +2376,6 @@ public:
 		m_triggerPause = false;
 
 		m_playOptions.range = m_practiceSetupRange;
-		m_playOptions.minPlaybackSpeed = m_playOptions.playbackSpeed;
 		
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			m_practiceSetupDialog->Close();
