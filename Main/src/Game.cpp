@@ -1407,7 +1407,7 @@ public:
 
 		if (!m_isPracticeMode) return;
 
-		if (m_playOptions.incSpeedOnSuccess && m_loopStreak >= m_playOptions.incStreak)
+		if (m_playOptions.incSpeedOnSuccess && m_loopStreak >= static_cast<unsigned int>(m_playOptions.incStreak))
 		{
 			m_loopStreak = 0;
 
