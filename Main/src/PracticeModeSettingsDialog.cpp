@@ -15,6 +15,7 @@ void PracticeModeSettingsDialog::InitTabs()
 {
     AddTab(std::move(m_CreateMainSettingTab()));
     AddTab(std::move(m_CreateLoopingTab()));
+    AddTab(std::move(m_CreateLoopControlTab()));
     AddTab(std::move(m_CreateFailConditionTab()));
     AddTab(std::move(m_CreateGameSettingTab()));
 
@@ -96,7 +97,12 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
 
     // Loop begin
     {
-        Setting loopBeginMeasureSetting = CreateIntSetting("Start point (measure #)", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
+        Setting loopBeginButton = CreateButton("Set the start point at here", [this](const auto&) {
+            m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
+            });
+        loopingTab->settings.emplace_back(std::move(loopBeginButton));
+
+        Setting loopBeginMeasureSetting = CreateIntSetting("- in measure no.", m_startMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopBeginMeasureSetting->setter.AddLambda([this](const SettingData& data) {
             m_SetStartTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
         });
@@ -108,15 +114,16 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
         });
         loopingTab->settings.emplace_back(std::move(loopBeginMSSetting));
 
-        Setting loopBeginButton = CreateButton("Set to here", [this](const auto&) {
-            m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
-        });
-        loopingTab->settings.emplace_back(std::move(loopBeginButton));
     }
 
     // Loop end
     {
-        Setting loopEndMeasureSetting = CreateIntSetting("End point (measure #)", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
+        Setting loopEndButton = CreateButton("Set the end point at here", [this](const auto&) {
+            m_SetEndTime(m_lastMapTime);
+            });
+        loopingTab->settings.emplace_back(std::move(loopEndButton));
+
+        Setting loopEndMeasureSetting = CreateIntSetting("- in measure no.", m_endMeasure, {1, m_TimeToMeasure(m_endTime)});
         loopEndMeasureSetting->setter.AddLambda([this](const SettingData& data) {
             m_SetEndTime(m_MeasureToTime(data.intSetting.val), data.intSetting.val);
         });
@@ -128,24 +135,78 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
         });
         loopingTab->settings.emplace_back(std::move(loopEndMSSetting));
 
-        Setting loopEndClearButton = CreateButton("Clear", [this](const auto&) {
+        Setting loopEndClearButton = CreateButton("Clear the end point", [this](const auto&) {
             m_SetEndTime(0);
         });
         loopingTab->settings.emplace_back(std::move(loopEndClearButton));
 
-        Setting loopEndButton = CreateButton("Set to here", [this](const auto&) {
-            m_SetEndTime(m_lastMapTime);
-        });
-        loopingTab->settings.emplace_back(std::move(loopEndButton));
     }
 
-    Setting loopOnSuccess = CreateBoolSetting("Loop on success", m_playOptions.loopOnSuccess);
-    loopingTab->settings.emplace_back(std::move(loopOnSuccess));
-
-    Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
-    loopingTab->settings.emplace_back(std::move(loopOnFail));
-
     return loopingTab;
+}
+
+PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopControlTab()
+{
+    Tab loopControlTab = std::make_unique<TabData>();
+    loopControlTab->name = "LoopControl";
+
+    {
+        Setting loopOnSuccess = CreateBoolSetting("Loop on success", m_playOptions.loopOnSuccess);
+        loopControlTab->settings.emplace_back(std::move(loopOnSuccess));
+
+        Setting loopOnFail = CreateBoolSetting("Loop on fail", m_playOptions.loopOnFail);
+        loopControlTab->settings.emplace_back(std::move(loopOnFail));
+    }
+
+    {
+        Setting incSpeedOnSuccess = CreateBoolSetting("Increase speed on success", m_playOptions.incSpeedOnSuccess);
+        incSpeedOnSuccess->setter.AddLambda([this](const SettingData& data) { if(data.boolSetting.val) m_playOptions.loopOnSuccess = true; });
+        loopControlTab->settings.emplace_back(std::move(incSpeedOnSuccess));
+
+        Setting incSpeedAmount = std::make_unique<SettingData>("- increment (%p)", SettingType::Integer);
+        incSpeedAmount->intSetting.min = 1;
+        incSpeedAmount->intSetting.max = 10;
+        incSpeedAmount->intSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100);
+        incSpeedAmount->setter.AddLambda([this](const SettingData& data) {
+            m_playOptions.incSpeedOnSuccess = m_playOptions.loopOnSuccess = true;
+            m_playOptions.incSpeedAmount = data.intSetting.val / 100.0f;
+        });
+        incSpeedAmount->getter.AddLambda([this](SettingData& data) {data.intSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100); });
+        loopControlTab->settings.emplace_back(std::move(incSpeedAmount));
+
+        Setting incStreak = CreateIntSetting("- required streakes", m_playOptions.incStreak, { 1, 10 });
+        incStreak->setter.AddLambda([this](const SettingData&) { m_playOptions.incSpeedOnSuccess = m_playOptions.loopOnSuccess = true; });
+        loopControlTab->settings.emplace_back(std::move(incStreak));
+    }
+
+    {
+        Setting decSpeedOnFail = CreateBoolSetting("Decrease speed on fail", m_playOptions.decSpeedOnFail);
+        decSpeedOnFail->setter.AddLambda([this](const SettingData& data) { if (data.boolSetting.val) m_playOptions.loopOnFail = true; });
+        loopControlTab->settings.emplace_back(std::move(decSpeedOnFail));
+
+        Setting decSpeedAmount = std::make_unique<SettingData>("- decrement (%p)", SettingType::Integer);
+        decSpeedAmount->intSetting.min = 1;
+        decSpeedAmount->intSetting.max = 10;
+        decSpeedAmount->intSetting.val = Math::RoundToInt(m_playOptions.decSpeedAmount * 100);
+        decSpeedAmount->setter.AddLambda([this](const SettingData& data) {
+            m_playOptions.decSpeedOnFail = true;
+            m_playOptions.loopOnFail = true;
+            m_playOptions.decSpeedAmount = data.intSetting.val / 100.0f;
+        });
+        decSpeedAmount->getter.AddLambda([this](SettingData& data) { data.intSetting.val = Math::RoundToInt(m_playOptions.decSpeedAmount * 100); });
+        loopControlTab->settings.emplace_back(std::move(decSpeedAmount));
+    }
+
+    {
+        Setting maxRewindMeasure = CreateBoolSetting("Set maximum amount of rewinding on fail", m_playOptions.enableMaxRewind);
+        maxRewindMeasure->setter.AddLambda([this](const SettingData& data) { if (data.boolSetting.val) m_playOptions.loopOnFail = true; });
+        loopControlTab->settings.emplace_back(std::move(maxRewindMeasure));
+
+        Setting rewindMeasure = CreateIntSetting("- amount in # of measures", m_playOptions.maxRewindMeasure, { 0, 20 });
+        loopControlTab->settings.emplace_back(std::move(rewindMeasure));
+    }
+
+    return loopControlTab;
 }
 
 std::unique_ptr<GameFailCondition> PracticeModeSettingsDialog::m_CreateGameFailCondition(GameFailCondition::Type type)
@@ -227,22 +288,6 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateFailConditio
         m_playOptions.failCondition = std::make_unique<GameFailCondition::Gauge>(data.intSetting.val);
     });
     conditionTab->settings.emplace_back(std::move(gaugeCondition));
-
-    {
-        Setting incSpeedOnSuccess = CreateBoolSetting("Increase speed on success", m_playOptions.incSpeedOnSuccess);
-        conditionTab->settings.emplace_back(std::move(incSpeedOnSuccess));
-
-        Setting incSpeedAmount = std::make_unique<SettingData>("Increase speed by (%)", SettingType::Integer);
-        incSpeedAmount->intSetting.min = 1;
-        incSpeedAmount->intSetting.max = 10;
-        incSpeedAmount->intSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100);
-        incSpeedAmount->setter.AddLambda([this](const SettingData& data) { m_playOptions.incSpeedAmount = data.intSetting.val / 100.0f; });
-        incSpeedAmount->getter.AddLambda([this](SettingData& data) { data.enumSetting.val = Math::RoundToInt(m_playOptions.incSpeedAmount * 100); });
-        conditionTab->settings.emplace_back(std::move(incSpeedAmount));
-
-        Setting incStreak = CreateIntSetting("Required streaks", m_playOptions.incStreak, { 1, 10 });
-        conditionTab->settings.emplace_back(std::move(incStreak));
-    }
 
     return conditionTab;
 }

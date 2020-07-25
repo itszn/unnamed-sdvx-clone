@@ -1426,6 +1426,21 @@ public:
 			m_playOptions.playbackSpeed = speedPercentage / 100.0f;
 		}
 
+		if (m_playOptions.maxRewindMeasure)
+		{
+			if (success)
+			{
+				m_playOptions.range.begin = m_practiceSetupRange.begin;
+			}
+			else
+			{
+				const int measureInd = m_beatmap->GetMeasureIndFromMapTime(m_lastMapTime) - m_playOptions.maxRewindMeasure;
+				MapTime maxRewind = m_beatmap->GetMapTimeFromMeasureInd(measureInd);
+
+				if (m_playOptions.range.begin < maxRewind) m_playOptions.range.begin = maxRewind;
+			}
+		}
+
 		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInGame))
 		{
 			lua_getglobal(m_lua, "practice_end_run");
@@ -2321,9 +2336,7 @@ public:
 		m_isPracticeSetup = true;
 		m_scoring.autoplay = true;
 
-		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
-
 		m_playOnDialogClose = true;
 
 		m_audioPlayback.Pause();

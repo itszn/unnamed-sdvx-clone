@@ -20,6 +20,7 @@ public:
 private:
 	Tab m_CreateMainSettingTab();
 	Tab m_CreateLoopingTab();
+	Tab m_CreateLoopControlTab();
 	Tab m_CreateFailConditionTab();
 	Tab m_CreateGameSettingTab();
 

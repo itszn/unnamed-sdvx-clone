@@ -78,6 +78,9 @@ public:
 		float decSpeedAmount = 0.02f;
 		float minPlaybackSpeed = 1.0f;
 
+		bool enableMaxRewind = false;
+		int maxRewindMeasure = 1;
+
 		std::unique_ptr<GameFailCondition> failCondition = nullptr;
 	};
 
