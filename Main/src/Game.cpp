@@ -1426,7 +1426,7 @@ public:
 			m_playOptions.playbackSpeed = speedPercentage / 100.0f;
 		}
 
-		if (m_playOptions.maxRewindMeasure)
+		if (m_playOptions.enableMaxRewind)
 		{
 			if (success)
 			{
