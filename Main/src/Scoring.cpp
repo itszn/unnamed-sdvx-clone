@@ -91,8 +91,22 @@ void Scoring::m_CleanupInput()
 	}
 }
 
-void Scoring::Reset()
+void Scoring::Reset(MapTimeRange range)
 {
+	{
+		MapTime begin = range.begin;
+		MapTime end = range.end;
+
+		// Ensure that nothing could go wrong when the start is 0
+		if (begin <= 0)
+		{
+			begin = std::numeric_limits<decltype(begin)>::min();
+			if (!range.HasEnd()) end = begin;
+		}
+
+		m_range = { begin, end };
+	}
+
 	// Reset score/combo counters
 	currentMaxScore = 0;
 	currentHitScore = 0;
@@ -127,7 +141,6 @@ void Scoring::Reset()
 	mapTotals = CalculateMapTotals();
 
 	// Recalculate gauge gain
-
 	currentGauge = 0.0f;
 	float total = 2.10f + 0.001f; //Add a little in case floats go under
 	bool manualTotal = m_playback->GetBeatmap().GetMapSettings().total > 99;
@@ -237,7 +250,7 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	{
 		for (auto l : m_laserSegmentQueue)
 		{
-			if (l->index == index && !l->prev)
+			if (l->index == index && m_IsRoot(l))
 			{
 				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
 				{
@@ -456,7 +469,7 @@ void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks
 	double tickInterval = m_CalculateTicks(tp);
 
 	double tickpos = hold->time;
-	if (!hold->prev) // no tick at the very start of a hold
+	if (m_IsRoot(hold)) // no tick at the very start of a hold
 	{
 		tickpos += tickInterval;
 	}
@@ -472,7 +485,7 @@ void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks
 }
 void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTick>& ticks) const
 {
-	assert(laserRoot->prev == nullptr);
+	assert(m_IsRoot(laserRoot));
 	const TimingPoint* tp = m_playback->GetTimingPointAt(laserRoot->time);
 
 	// Tick rate based on BPM
@@ -516,7 +529,7 @@ void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTic
 			ScoreTick& t = ticks.Add(ScoreTick(*it));
 			t.time = it->time;
 			t.flags = TickFlags::Laser | TickFlags::Slam;
-			if (!it->prev)
+			if (m_IsRoot(it))
 				t.SetFlag(TickFlags::Start);
 			lastSlam = it;
 			if (it->next)
@@ -568,7 +581,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 		{
 			ScoreTick* t = m_ticks[hold->index].Add(new ScoreTick(obj));
 			t->SetFlag(TickFlags::Hold);
-			if (i == 0 && !hold->prev)
+			if (i == 0 && m_IsRoot(hold))
 				t->SetFlag(TickFlags::Start);
 			if (i == holdTicks.size() - 1 && !hold->next)
 				t->SetFlag(TickFlags::End);
@@ -578,7 +591,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 	else if (obj->type == ObjectType::Laser)
 	{
 		LaserObjectState* laser = (LaserObjectState*)obj;
-		if (!laser->prev) // Only register root laser objects
+		if (m_IsRoot(laser)) // Only register root laser objects
 		{
 			// Can cause problems if the previous laser segment hasnt ended yet for whatever reason
 			if (!m_currentLaserSegments[laser->index])
@@ -1011,6 +1024,18 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	return true;
 }
 
+bool Scoring::m_IsRoot(const LaserObjectState* laser) const
+{
+	if (!laser->prev) return true;
+	return !m_range.Includes(laser->prev->time);
+}
+
+bool Scoring::m_IsRoot(const HoldObjectState* hold) const
+{
+	if (!hold->prev) return true;
+	return !m_range.Includes(hold->prev->time);
+}
+
 void Scoring::m_UpdateLasers(float deltaTime)
 {
 	/// TODO: Change to only re-calculate on bpm change
@@ -1112,7 +1137,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			float inputDir = Math::Sign(input);
 
 			// Always snap laser to start sections if they are completely vertical
-			if (laserDir == 0.0f && currentSegment->prev == nullptr)
+			if (laserDir == 0.0f && m_IsRoot(currentSegment))
 			{
 				laserPositions[i] = laserTargetPositions[i];
 				m_autoLaserTime[i] = m_assistTime;

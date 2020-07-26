@@ -80,7 +80,7 @@ public:
 
 	// Resets/Initializes the scoring system
 	// Called after SetPlayback
-	void Reset();
+	void Reset(MapTimeRange range = {});
 
 	void FinishGame();
 
@@ -262,6 +262,10 @@ private:
 	void m_ReleaseHoldObject(uint32 index);
 	bool m_IsBeingHold(const ScoreTick* tick) const;
 
+	// Check whether the laser segment is the beginning
+	bool m_IsRoot(const LaserObjectState* laser) const;
+	bool m_IsRoot(const HoldObjectState* hold) const;
+
 	// Updates the target laser positions and currently tracked laser segments for those
 	//  also updates laser input and returns lasers back to idle position when not used
 	void m_UpdateLasers(float deltaTime);
@@ -328,5 +332,6 @@ private:
 	bool m_prevHoldHit[6];
 
 	GameFlags m_flags;
+	MapTimeRange m_range;
 };
 

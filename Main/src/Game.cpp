@@ -446,7 +446,7 @@ public:
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
-		m_scoring.Reset(); // Initialize
+		m_scoring.Reset(m_playOptions.range);
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
@@ -581,7 +581,7 @@ public:
 		m_ended = false;
 		m_hideLane = false;
 		m_transitioning = false;
-		m_scoring.Reset();
+		m_scoring.Reset(m_playOptions.range);
 		m_scoring.SetInput(&g_input);
 		m_camera.pLaneZoom = m_playback.GetZoom(0);
 		m_camera.pLanePitch = m_playback.GetZoom(1);
