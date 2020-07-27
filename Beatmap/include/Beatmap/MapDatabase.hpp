@@ -93,6 +93,35 @@ struct FolderIndex
 	Vector<ChartIndex*> charts;
 };
 
+struct PracticeSetupIndex
+{
+	int32 id = -1;
+	// ID of the chart
+	int32 chartId;
+	// Name of this setup (currently not used)
+	String setupTitle;
+
+	// Setup options
+	int32 loopSuccess;
+	int32 loopFail;
+	int32 rangeBegin;
+	int32 rangeEnd;
+	int32 failCondType;
+	int32 failCondValue;
+	double playbackSpeed;
+
+	int32 incSpeedOnSuccess;
+	double incSpeed;
+	int32 incStreak;
+
+	int32 decSpeedOnFail;
+	double decSpeed;
+	double minPlaybackSpeed;
+
+	int32 maxRewind;
+	int32 maxRewindMeasure;
+};
+
 class MapDatabase : public Unique
 {
 public:
@@ -113,8 +142,6 @@ public:
 	void ResumeSearching();
 	void StopSearching();
 
-	// Grab all the maps, with their id's
-	Map<int32, FolderIndex*> GetMaps();
 	// Finds maps using the search query provided
 	// search artist/title/tags for maps for any space separated terms
 	Map<int32, FolderIndex*> FindFolders(const String& search);
@@ -125,6 +152,7 @@ public:
 	FolderIndex* GetFolder(int32 idx);
 	Vector<String> GetCollections();
 	Vector<String> GetCollectionsForMap(int32 mapid);
+	Vector<PracticeSetupIndex*> GetPracticeSetups(int32 chartId);
 
 	// Get a random chart
 	ChartIndex* GetRandomChart();
@@ -133,6 +161,10 @@ public:
 	void AddOrRemoveToCollection(const String& name, int32 mapid);
 	void AddSearchPath(const String& path);
 	void AddScore(ScoreIndex* score);
+
+	// Either new index with id=-1, or existing index with updated info
+	void AddPracticeSetup(PracticeSetupIndex* practiceSetup);
+	
 	void RemoveSearchPath(const String& path);
 	void UpdateChartOffset(const ChartIndex* chart);
 
