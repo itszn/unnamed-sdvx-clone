@@ -661,16 +661,12 @@ public:
 
 		// Get render state from the camera
 		// Get roll when there's no laser slam roll and roll ignore being applied
-		float rollL = m_camera.GetRollIgnoreTimer(0) == 0 ? m_scoring.GetLaserRollOutput(0) : 0.f;
-		float rollR = m_camera.GetRollIgnoreTimer(1) == 0 ? m_scoring.GetLaserRollOutput(1) : 0.f;
-		float slamL = m_camera.GetSlamAmount(0);
-		float slamR = m_camera.GetSlamAmount(1);
-
 		// This could be simplified but is necessary to have SDVX II-like roll keep and laser slams
-		// slowTilt = true when lasers are at 0/0 or -1/1
-		bool slowTilt = (((rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0 && !(slamL || slamR))) ||
-					((rollL == -1 && slamR == 1) || (rollR == 1 && slamL == -1)));
-		
+		float rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : m_camera.GetSlamAmount(0);
+		float rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : m_camera.GetSlamAmount(1);
+		bool slowTilt = (rollL == -1 && rollR == 1) || (rollL == 0 && rollR == 0);
+		rollL = m_camera.GetRollIgnoreTimer(0) <= 0 ? m_scoring.GetLaserRollOutput(0) : 0;
+		rollR = m_camera.GetRollIgnoreTimer(1) <= 0 ? m_scoring.GetLaserRollOutput(1) : 0;
 		m_camera.SetTargetRoll(rollL + rollR);
 		m_camera.SetSlowTilt(slowTilt);
 
