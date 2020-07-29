@@ -1166,7 +1166,12 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 		//String c_path2 = Path::Absolute("./usc-game-playback.exe");
 		//Path::Copy(c_path, c_path2);
 
-		String path = Path::Absolute("./usc-game.exe");
+
+		String path = Path::Absolute("./usc-event.exe");
+		if (!Path::FileExists(path)) {
+			g_gameWindow->ShowMessageBox("Playback Error", Utility::Sprintf("Could not find usc-event.exe at '%s'", path), 0);
+			return;
+		}
 		String param = Utility::Sprintf("-playback %s", m_joinToken.c_str());
 		Path::Run(path, param.GetData());
 		// Mute the audio for the ref client

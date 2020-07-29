@@ -34,7 +34,7 @@ jobs:
             - name: Tests
               run: rm ./bin/Tests.*
             - name: Post Build Stuff
-              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll
+              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll; cp ./bin/usc-game.exe ./bin/usc-event.exe
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
