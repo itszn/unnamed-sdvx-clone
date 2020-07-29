@@ -1128,6 +1128,14 @@ void Application::m_Tick()
 	// Not minimized / Valid resolution
 	if (g_resolution.x > 0 && g_resolution.y > 0)
 	{
+		//Clear out opengl errors
+		GLenum glErr = glGetError();
+		while (glErr != GL_NO_ERROR)
+		{
+			Logf("OpenGL Error: %p", Logger::Severity::Debug, glErr);
+			glErr = glGetError();
+		}
+
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
