@@ -27,13 +27,13 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateMainSettingT
     Tab mainSettingTab = std::make_unique<TabData>();
     mainSettingTab->name = "Main";
 
-    Setting loopBeginButton = CreateButton("Set start point to here (0ms)", [this](const auto&) {
+    Setting loopBeginButton = CreateButton("Set start point (0ms) to here", [this](const auto&) {
         m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
     });
     m_setStartButton = loopBeginButton.get();
     mainSettingTab->settings.emplace_back(std::move(loopBeginButton));
 
-    Setting loopEndButton = CreateButton("Set end point to here (0ms)", [this](const auto&) {
+    Setting loopEndButton = CreateButton("Set end point (0ms) to here", [this](const auto&) {
         m_SetEndTime(m_lastMapTime);
     });
     m_setEndButton = loopEndButton.get();
@@ -71,7 +71,7 @@ void PracticeModeSettingsDialog::m_SetStartTime(MapTime time, int measure)
 {
     m_range.begin = time;
     m_startMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
-    m_setStartButton->name = Utility::Sprintf("Set start point to here (%dms)", time);
+    m_setStartButton->name = Utility::Sprintf("Set start point (%dms) to here", time);
     onSetMapTime.Call(time);
     if (m_range.end < time)
     {
@@ -84,7 +84,7 @@ void PracticeModeSettingsDialog::m_SetEndTime(MapTime time, int measure)
 {
     m_range.end = time;
     m_endMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
-    m_setEndButton->name = Utility::Sprintf("Set end point to here (%dms)", time);
+    m_setEndButton->name = Utility::Sprintf("Set end point (%dms) to here", time);
 
     if(time != 0) onSetMapTime.Call(time);
 }
@@ -97,6 +97,8 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
 
     // Loop begin
     {
+        m_startMeasure = m_TimeToMeasure(m_range.begin);
+
         Setting loopBeginButton = CreateButton("Set the start point at here", [this](const auto&) {
             m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
             });
@@ -113,11 +115,12 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetStartTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopBeginMSSetting));
-
     }
 
     // Loop end
     {
+        m_endMeasure = m_TimeToMeasure(m_range.end);
+
         Setting loopEndButton = CreateButton("Set the end point at here", [this](const auto&) {
             m_SetEndTime(m_lastMapTime);
             });
@@ -139,7 +142,6 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetEndTime(0);
         });
         loopingTab->settings.emplace_back(std::move(loopEndClearButton));
-
     }
 
     return loopingTab;
