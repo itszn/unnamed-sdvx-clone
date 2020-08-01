@@ -983,7 +983,7 @@ public:
 				DBStatement rowidStatement = m_database.Query("SELECT last_insert_rowid()");
 				if (rowidStatement.StepRow())
 				{
-					practiceSetup->id = statement.IntColumn(0);
+					practiceSetup->id = rowidStatement.IntColumn(0);
 					assert(!m_practiceSetups.Contains(practiceSetup->id));
 
 					m_practiceSetups.Add(practiceSetup->id, practiceSetup);
