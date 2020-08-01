@@ -21,6 +21,7 @@ public:
 	const char* GetName() const { return TYPE_STR[static_cast<unsigned int>(GetType())]; }
 
 public:
+	static std::unique_ptr<GameFailCondition> CreateGameFailCondition(uint32 type, uint32 threshold);
 
 	// Fails when the max possible score is lower than the given value
 	class Score;

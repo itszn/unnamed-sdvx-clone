@@ -520,7 +520,7 @@ public:
 		return res;
 	}
 
-	Vector<PracticeSetupIndex*> GetPracticeSetups(int32 chartId)
+	Vector<PracticeSetupIndex*> GetOrAddPracticeSetups(int32 chartId)
 	{
 		Vector<PracticeSetupIndex*> res;
 
@@ -528,6 +528,36 @@ public:
 		for (auto it1 = it.first; it1 != it.second; ++it1)
 		{
 			res.Add(it1->second);
+		}
+
+		if (res.empty())
+		{
+			PracticeSetupIndex* practiceSetup = new PracticeSetupIndex();
+			practiceSetup->id = -1;
+			practiceSetup->chartId = chartId;
+
+			practiceSetup->setupTitle = "";
+			practiceSetup->loopSuccess = 0;
+			practiceSetup->loopFail = 1;
+			practiceSetup->rangeBegin = 0;
+			practiceSetup->rangeEnd = 0;
+			practiceSetup->failCondType = 0;
+			practiceSetup->failCondValue = 0;
+			practiceSetup->playbackSpeed = 1.0;
+
+			practiceSetup->incSpeedOnSuccess = 0;
+			practiceSetup->incSpeed = 0.0;
+			practiceSetup->incStreak = 1;
+
+			practiceSetup->decSpeedOnFail = 0;
+			practiceSetup->decSpeed = 0.0;
+			practiceSetup->minPlaybackSpeed = 0.1;
+
+			practiceSetup->maxRewind = 0;
+			practiceSetup->maxRewindMeasure = 1;
+
+			UpdateOrAddPracticeSetup(practiceSetup);
+			res.emplace_back(practiceSetup);
 		}
 
 		return res;
@@ -895,15 +925,21 @@ public:
 		m_database.Exec("END");
 	}
 
-	void AddPracticeSetup(PracticeSetupIndex* practiceSetup)
+	void UpdateOrAddPracticeSetup(PracticeSetupIndex* practiceSetup)
 	{
 		if (!m_charts.Contains(practiceSetup->chartId))
+		{
+			Logf("UpdateOrAddPracticeSetup called for invalid chart %d", Logger::Severity::Warning, practiceSetup->chartId);
 			return;
+		}
 
 		const bool isUpdate = practiceSetup->id >= 0;
 		
 		if (isUpdate && !m_practiceSetups.Contains(practiceSetup->id))
+		{
+			Logf("UpdateOrAddPracticeSetup called for invalid index %d", Logger::Severity::Warning, practiceSetup->id);
 			return;
+		}
 
 		constexpr char* addQuery = "INSERT INTO PracticeSetups("
 			"chart_id, setup_title, loop_success, loop_fail, range_begin, range_end, fail_cond_type, fail_cond_value, "
@@ -940,17 +976,30 @@ public:
 		if (isUpdate)
 			statement.BindInt(18, practiceSetup->id);
 
-
 		if (statement.Step())
 		{
-			if(!isUpdate) practiceSetup->id = statement.IntColumn(0);
-			assert(isUpdate == m_practiceSetups.Contains(practiceSetup->id));
-
 			if (!isUpdate)
 			{
-				m_practiceSetups.Add(practiceSetup->id, practiceSetup);
-				m_practiceSetupsByChartId.Add(practiceSetup->chartId, practiceSetup);
+				DBStatement rowidStatement = m_database.Query("SELECT last_insert_rowid()");
+				if (rowidStatement.StepRow())
+				{
+					practiceSetup->id = statement.IntColumn(0);
+					assert(!m_practiceSetups.Contains(practiceSetup->id));
+
+					m_practiceSetups.Add(practiceSetup->id, practiceSetup);
+					m_practiceSetupsByChartId.Add(practiceSetup->chartId, practiceSetup);
+				}
+				else
+				{
+					Log("Failed to retrieve rowid for UpdateOrAddPracticeSetup", Logger::Severity::Warning);
+				}
+
+				rowidStatement.Rewind();
 			}
+		}
+		else
+		{
+			Log("Failed to execute query for UpdateOrAddPracticeSetup", Logger::Severity::Warning);
 		}
 
 		statement.Rewind();
@@ -1517,9 +1566,9 @@ Vector<String> MapDatabase::GetCollectionsForMap(int32 mapid)
 {
 	return m_impl->GetCollectionsForMap(mapid);
 }
-Vector<PracticeSetupIndex*> MapDatabase::GetPracticeSetups(int32 chartId)
+Vector<PracticeSetupIndex*> MapDatabase::GetOrAddPracticeSetups(int32 chartId)
 {
-	return m_impl->GetPracticeSetups(chartId);
+	return m_impl->GetOrAddPracticeSetups(chartId);
 }
 void MapDatabase::AddOrRemoveToCollection(const String& name, int32 mapid)
 {
@@ -1541,9 +1590,9 @@ void MapDatabase::AddScore(ScoreIndex* score)
 {
 	m_impl->AddScore(score);
 }
-void MapDatabase::AddPracticeSetup(PracticeSetupIndex* practiceSetup)
+void MapDatabase::UpdatePracticeSetup(PracticeSetupIndex* practiceSetup)
 {
-	m_impl->AddPracticeSetup(practiceSetup);
+	m_impl->UpdateOrAddPracticeSetup(practiceSetup);
 }
 ChartIndex* MapDatabase::GetRandomChart()
 {

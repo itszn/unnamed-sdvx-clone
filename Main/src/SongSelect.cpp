@@ -1551,6 +1551,8 @@ public:
 			if (m_settDiag.IsActive()) m_settDiag.Close();
 			m_suspended = true;
 
+			practiceGame->SetSongDB(m_mapDatabase);
+
 			// Transition to practice mode
 			g_transition->TransitionTo(practiceGame);
 		});

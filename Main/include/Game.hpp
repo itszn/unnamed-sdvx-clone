@@ -110,7 +110,7 @@ public:
 	virtual struct lua_State* GetLuaState() = 0;
 	// Set demo mode
 	virtual void SetDemoMode(bool value) = 0; 
-	// Set song db so a random song can be selected
+	// Set song db for random song selection and practice mode setups
 	virtual void SetSongDB(class MapDatabase* db) = 0;
 	// The folder that contians the map
 	virtual const String& GetChartRootPath() const = 0;

@@ -232,13 +232,18 @@ public:
 		}
 		if (m_fxSamples)
 			delete[] m_fxSamples;
+		
 		// Save hispeed
 		if (m_saveSpeed)
 		{
 			g_gameConfig.Set(GameConfigKeys::HiSpeed, m_hispeed);
 		}
 
-		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>()); 
+		// Save practice indices
+		if (m_db && m_isPracticeMode)
+		{
+			StorePracticeSetupIndex();
+		}
 
 		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
@@ -2198,10 +2203,10 @@ public:
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
 		scoreData.gameflags = (uint32) GetFlags();
-		scoreData.gauge = m_scoring.currentGauge;
-		scoreData.score = m_scoring.CalculateCurrentScore();
+scoreData.gauge = m_scoring.currentGauge;
+scoreData.score = m_scoring.CalculateCurrentScore();
 
-		return Scoring::CalculateBadge(scoreData);
+return Scoring::CalculateBadge(scoreData);
 	}
 
 	void m_setLuaHolds(lua_State* L)
@@ -2232,13 +2237,13 @@ public:
 	// Skips ahead to the right before the first object in the map
 	bool SkipIntro()
 	{
-		ObjectState *const* firstObj = &m_beatmap->GetLinearObjects().front();
-		while((*firstObj)->type == ObjectType::Event && firstObj != &m_beatmap->GetLinearObjects().back())
+		ObjectState* const* firstObj = &m_beatmap->GetLinearObjects().front();
+		while ((*firstObj)->type == ObjectType::Event && firstObj != &m_beatmap->GetLinearObjects().back())
 		{
 			firstObj++;
 		}
 		MapTime skipTime = (*firstObj)->time - 1000;
-		if(skipTime > m_lastMapTime)
+		if (skipTime > m_lastMapTime)
 		{
 			// In multiplayer mode we have to stay synced
 			if (m_multiplayer != nullptr)
@@ -2253,16 +2258,16 @@ public:
 	void SkipOutro()
 	{
 		// Just to be sure
-		if(m_beatmap->GetLinearObjects().empty())
+		if (m_beatmap->GetLinearObjects().empty())
 		{
 			FinishGame();
 			return;
 		}
 
 		// Check if last object has passed
-		ObjectState *const* lastObj = &m_beatmap->GetLinearObjects().back();
+		ObjectState* const* lastObj = &m_beatmap->GetLinearObjects().back();
 		MapTime timePastEnd = m_lastMapTime - (*lastObj)->time;
-		if(timePastEnd > 250)
+		if (timePastEnd > 250)
 		{
 			FinishGame();
 		}
@@ -2295,6 +2300,71 @@ public:
 
 		m_playOnDialogClose = true;
 		m_triggerPause = true;
+	}
+
+	void LoadPracticeSetupIndex()
+	{
+		if (!m_db) return;
+		assert(m_isPracticeMode);
+
+		Vector<PracticeSetupIndex*> practiceSetups = m_db->GetOrAddPracticeSetups(m_chartIndex->id);
+		if (practiceSetups.empty()) return;
+
+		const PracticeSetupIndex* practiceSetup = practiceSetups.front();
+
+		m_playOptions.loopOnSuccess = practiceSetup->loopSuccess != 0;
+		m_playOptions.loopOnFail = practiceSetup->loopFail != 0;
+		m_practiceSetupRange.begin = practiceSetup->rangeBegin;
+		m_practiceSetupRange.end = practiceSetup->rangeEnd;
+		m_playOptions.failCondition = GameFailCondition::CreateGameFailCondition(
+			practiceSetup->failCondType, practiceSetup->failCondValue
+		);
+		m_playOptions.playbackSpeed = (float) practiceSetup->playbackSpeed;
+		
+		m_playOptions.incSpeedOnSuccess = practiceSetup->incSpeedOnSuccess != 0;
+		m_playOptions.incSpeedAmount = (float) practiceSetup->incSpeed;
+		m_playOptions.incStreak = practiceSetup->incStreak;
+
+		m_playOptions.decSpeedOnFail = practiceSetup->decSpeedOnFail != 0;
+		m_playOptions.decSpeedAmount = (float) practiceSetup->decSpeed;
+		m_playOptions.minPlaybackSpeed = (float) practiceSetup->minPlaybackSpeed;
+
+		m_playOptions.enableMaxRewind = practiceSetup->maxRewind != 0;
+		m_playOptions.maxRewindMeasure = practiceSetup->maxRewindMeasure;
+	}
+
+	void StorePracticeSetupIndex()
+	{
+		if (!m_db) return;
+		assert(m_isPracticeMode);
+
+		Vector<PracticeSetupIndex*> practiceSetups = m_db->GetOrAddPracticeSetups(m_chartIndex->id);
+		if (practiceSetups.empty()) return;
+
+		PracticeSetupIndex* practiceSetup = practiceSetups.front();
+
+		practiceSetup->loopSuccess = m_playOptions.loopOnSuccess ? 1 : 0;
+		practiceSetup->loopFail = m_playOptions.loopOnFail ? 1 : 0;
+		practiceSetup->rangeBegin = m_practiceSetupRange.begin;
+		practiceSetup->rangeEnd = m_practiceSetupRange.end;
+		practiceSetup->failCondType = static_cast<int32>(
+			m_playOptions.failCondition ? m_playOptions.failCondition->GetType() : GameFailCondition::Type::None
+		);
+		practiceSetup->failCondValue = m_playOptions.failCondition ? m_playOptions.failCondition->GetThreshold() : 0;
+		practiceSetup->playbackSpeed = m_playOptions.playbackSpeed;
+
+		practiceSetup->incSpeedOnSuccess = m_playOptions.incSpeedOnSuccess ? 1 : 0;
+		practiceSetup->incSpeed = m_playOptions.incSpeedAmount;
+		practiceSetup->incStreak = m_playOptions.incStreak;
+
+		practiceSetup->decSpeedOnFail = m_playOptions.decSpeedOnFail ? 1 : 0;
+		practiceSetup->decSpeed = m_playOptions.decSpeedAmount;
+		practiceSetup->minPlaybackSpeed = m_playOptions.minPlaybackSpeed;
+
+		practiceSetup->maxRewind = m_playOptions.enableMaxRewind ? 1 : 0;
+		practiceSetup->maxRewindMeasure = m_playOptions.maxRewindMeasure;
+
+		m_db->UpdatePracticeSetup(practiceSetup);
 	}
 
 	void m_InitPracticeSetupDialog()
@@ -2518,6 +2588,8 @@ public:
 	virtual void SetSongDB(MapDatabase* db)
 	{
 		m_db = db;
+		
+		if (m_isPracticeMode) LoadPracticeSetupIndex();
 	}
 	virtual void SetGameplayLua(lua_State* L)
 	{

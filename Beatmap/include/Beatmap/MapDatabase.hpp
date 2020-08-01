@@ -152,7 +152,7 @@ public:
 	FolderIndex* GetFolder(int32 idx);
 	Vector<String> GetCollections();
 	Vector<String> GetCollectionsForMap(int32 mapid);
-	Vector<PracticeSetupIndex*> GetPracticeSetups(int32 chartId);
+	Vector<PracticeSetupIndex*> GetOrAddPracticeSetups(int32 chartId);
 
 	// Get a random chart
 	ChartIndex* GetRandomChart();
@@ -162,8 +162,7 @@ public:
 	void AddSearchPath(const String& path);
 	void AddScore(ScoreIndex* score);
 
-	// Either new index with id=-1, or existing index with updated info
-	void AddPracticeSetup(PracticeSetupIndex* practiceSetup);
+	void UpdatePracticeSetup(PracticeSetupIndex* practiceSetup);
 	
 	void RemoveSearchPath(const String& path);
 	void UpdateChartOffset(const ChartIndex* chart);
