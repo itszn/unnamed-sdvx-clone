@@ -240,6 +240,8 @@ public:
 		}
 
 		// Save practice indices
+		// TODO: this crashes when the window is closed during gaming
+		// because m_db is freed (which is owned by SongSelect) before this destructor is called.
 		if (m_db && m_isPracticeMode)
 		{
 			StorePracticeSetupIndex();
@@ -380,7 +382,7 @@ public:
 		m_particleSystem = ParticleSystemRes::Create(g_gl);
 
 		if (m_isPracticeSetup)
-			m_InitPracticeSetupDialog();
+			m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(*this, m_lastMapTime, m_tempOffset, m_playOptions, m_practiceSetupRange);
 		
 		return true;
 	}
@@ -395,9 +397,6 @@ public:
 		//Lua
 		m_lua = g_application->LoadScript("gameplay");
 		if (!m_lua)
-			return false;
-
-		if (m_practiceSetupDialog && !m_practiceSetupDialog->Init())
 			return false;
 
 		m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
@@ -444,7 +443,6 @@ public:
 			m_foreground = CreateBackground(this, true);
 		}
 		g_application->LoadGauge((GetFlags() & GameFlags::Hard) != GameFlags::None);
-
 
 		// Do this here so we don't get input events while still loading
 		m_scoring.SetFlags(GetFlags());
@@ -528,7 +526,10 @@ public:
 		}
 
 		if (m_practiceSetupDialog)
+		{
+			m_InitPracticeSetupDialog();
 			m_practiceSetupDialog->Open();
+		}
 
 		return true;
 	}
@@ -2369,9 +2370,14 @@ return Scoring::CalculateBadge(scoreData);
 
 	void m_InitPracticeSetupDialog()
 	{
-		assert(m_isPracticeSetup && m_isPracticeMode && !IsMultiplayerGame());
+		assert(m_isPracticeSetup && m_isPracticeMode && m_practiceSetupDialog && !IsMultiplayerGame());
 
-		m_practiceSetupDialog = std::make_unique<PracticeModeSettingsDialog>(*this, m_lastMapTime, m_tempOffset, m_playOptions, m_practiceSetupRange);
+		if (!m_practiceSetupDialog->Init())
+		{
+			Log("Failed to initialize PracticeSetupDialog!", Logger::Severity::Error);
+			return;
+		}
+
 		m_practiceSetupDialog->onSetMapTime.AddLambda([this](MapTime time) { if (m_isPracticeSetup) { m_paused = true; JumpTo(time); } });
 		m_practiceSetupDialog->onSpeedChange.AddLambda([this](float speed) { if (m_isPracticeSetup) { m_playOptions.playbackSpeed = speed; ApplyPlaybackSpeed(); } });
 		m_practiceSetupDialog->onClose.AddLambda([this]() {
@@ -2477,6 +2483,11 @@ return Scoring::CalculateBadge(scoreData);
 				}
 			}
 			lua_settop(m_lua, 0);
+		}
+
+		if (m_db)
+		{
+			StorePracticeSetupIndex();
 		}
 
 		Restart();

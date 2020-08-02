@@ -97,7 +97,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
 
     // Loop begin
     {
-        m_startMeasure = m_TimeToMeasure(m_range.begin);
+        m_SetStartTime(m_range.begin);
 
         Setting loopBeginButton = CreateButton("Set the start point at here", [this](const auto&) {
             m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
@@ -119,7 +119,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
 
     // Loop end
     {
-        m_endMeasure = m_TimeToMeasure(m_range.end);
+        m_SetEndTime(m_range.end);
 
         Setting loopEndButton = CreateButton("Set the end point at here", [this](const auto&) {
             m_SetEndTime(m_lastMapTime);
