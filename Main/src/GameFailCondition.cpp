@@ -27,12 +27,12 @@ bool GameFailCondition::Gauge::IsFailed(const Scoring& scoring) const
 
 bool GameFailCondition::MissCount::IsFailed(const Scoring& scoring) const
 {
-	return scoring.categorizedHits[0] > m_count;
+	return scoring.GetMisses() > m_count;
 }
 
 bool GameFailCondition::MissAndNearCount::IsFailed(const Scoring& scoring) const
 {
-	return scoring.categorizedHits[0] + scoring.categorizedHits[1] > m_count;
+	return scoring.GetMisses() + scoring.GetGoods() > m_count;
 }
 
 std::unique_ptr<GameFailCondition> GameFailCondition::CreateGameFailCondition(uint32 type, uint32 threshold)

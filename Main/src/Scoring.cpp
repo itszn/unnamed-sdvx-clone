@@ -91,7 +91,7 @@ void Scoring::m_CleanupInput()
 	}
 }
 
-void Scoring::Reset(MapTimeRange range)
+void Scoring::Reset(const MapTimeRange& range)
 {
 	{
 		MapTime begin = range.begin;

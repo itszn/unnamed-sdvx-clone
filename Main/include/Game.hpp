@@ -103,7 +103,12 @@ public:
 	// The beatmap
 	virtual Ref<class Beatmap> GetBeatmap() = 0;
 	
+	// Whether the score can be scored
+	// (Full playthrough, playback speed at least x1)
 	virtual bool IsStorableScore() = 0;
+
+	// Current playback speed
+	// Warning: this returns 0 when the song is not playing (ex: end of the game).
 	virtual float GetPlaybackSpeed() = 0;
 
 	// Get lua state

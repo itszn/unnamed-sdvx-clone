@@ -80,7 +80,7 @@ public:
 
 	// Resets/Initializes the scoring system
 	// Called after SetPlayback
-	void Reset(MapTimeRange range = {});
+	void Reset(const MapTimeRange& range = {});
 
 	void FinishGame();
 

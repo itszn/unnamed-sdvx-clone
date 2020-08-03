@@ -144,7 +144,7 @@ MapTime Beatmap::GetLastObjectTime() const
 	return 0;
 }
 
-constexpr static double MEASURE_EPSILON = 0.0001;
+constexpr static double MEASURE_EPSILON = 0.005;
 
 inline static int GetBarCount(const TimingPoint* a, const TimingPoint* b)
 {
@@ -154,7 +154,7 @@ inline static int GetBarCount(const TimingPoint* a, const TimingPoint* b)
 
 	if (std::abs(barCount - static_cast<double>(barCountInt)) >= MEASURE_EPSILON)
 	{
-		Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Warning, a->time, barCount);
+		Logf("A timing point at %d contains non-integer # of bars: %g", Logger::Severity::Info, a->time, barCount);
 		if (barCount > barCountInt) ++barCountInt;
 	}
 

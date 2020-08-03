@@ -74,7 +74,8 @@ function render(deltaTime, visible)
 
     local posX = SettingsDiag.posX or 0.5
     local posY = SettingsDiag.posY or 0.5
-    local message = "Use FX keys to navigate tabs. Use arrow keys to navigate and modify settings."
+    local message_1 = "Press both FXs to open/close. Use the Start button to press buttons."
+    local message_2 = "Use FX keys to navigate tabs. Use arrow keys to navigate and modify settings."
 
     resX, resY = game.GetResolution()
     local scale = resY / 1080
@@ -89,15 +90,12 @@ function render(deltaTime, visible)
     gfx.FillColor(255,255,255)
     
     gfx.FontSize(20)
-    local m_xmin, m_ymin, m_xmax, m_ymax = gfx.TextBounds(0, 0, message)
-    gfx.Text(message, diagWidth/2 - m_xmax, diagHeight/2 - m_ymax)
     
-    if SettingsDiag.message then
-        local m_yprev = diagHeight/2 - m_ymax + m_ymin
-        message = SettingsDiag.message
-        m_xmin, m_ymin, m_xmax, m_ymax = gfx.TextBounds(0, 0, message)
-        gfx.Text(message, diagWidth/2 - m_xmax, m_yprev - m_ymax)
-    end
+    local m_xmin, m_ymin, m_xmax, m_ymax = gfx.TextBounds(0, 0, message_1)
+    gfx.Text(message_1, diagWidth/2 - m_xmax, diagHeight/2 - m_ymax - 20)
+    
+    m_xmin, m_ymin, m_xmax, m_ymax = gfx.TextBounds(0, 0, message_2)
+    gfx.Text(message_2, diagWidth/2 - m_xmax, diagHeight/2 - m_ymax)
 
     tabStroke.start = tabStrokeAnimation.start:tick(deltaTime)
     tabStroke.stop = tabStrokeAnimation.stop:tick(deltaTime)

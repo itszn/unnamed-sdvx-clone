@@ -47,7 +47,7 @@ void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
 void GameConfig::InitDefaults()
 {
 	// Do not set ConfigVersion to GameConfig::VERSION here. It will cause problems for config files with no ConfigVersion field.
-	// For new config, ConfigVersion will be set to the appropriate value in Application::m_LoadConfig.
+	// For a new config, ConfigVersion will be set to the appropriate value in Application::m_LoadConfig.
 	Set(GameConfigKeys::ConfigVersion, 0);
 
 	Set(GameConfigKeys::ScreenWidth, 1280);
