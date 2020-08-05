@@ -71,7 +71,7 @@ void PracticeModeSettingsDialog::m_SetStartTime(MapTime time, int measure)
 {
     m_range.begin = time;
     m_startMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
-    m_setStartButton->name = Utility::Sprintf("Set start point (%dms) to here", time);
+    m_setStartButton->name = Utility::Sprintf("Set the start point (%dms) to here", time);
     onSetMapTime.Call(time);
     if (m_range.end < time)
     {
@@ -84,7 +84,7 @@ void PracticeModeSettingsDialog::m_SetEndTime(MapTime time, int measure)
 {
     m_range.end = time;
     m_endMeasure = measure >= 0 ? measure : m_TimeToMeasure(time);
-    m_setEndButton->name = Utility::Sprintf("Set end point (%dms) to here", time);
+    m_setEndButton->name = Utility::Sprintf("Set the end point (%dms) to here", time);
 
     if(time != 0) onSetMapTime.Call(time);
 }
@@ -99,7 +99,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
     {
         m_SetStartTime(m_range.begin);
 
-        Setting loopBeginButton = CreateButton("Set the start point at here", [this](const auto&) {
+        Setting loopBeginButton = CreateButton("Set the start point to here", [this](const auto&) {
             m_SetStartTime(Math::Clamp(m_lastMapTime, 0, m_endTime));
             });
         loopingTab->settings.emplace_back(std::move(loopBeginButton));
@@ -115,18 +115,13 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetStartTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopBeginMSSetting));
-        
-        Setting loopStartClearButton = CreateButton("Clear the start point", [this](const auto&) {
-            m_SetStartTime(0);
-        });
-        loopingTab->settings.emplace_back(std::move(loopStartClearButton));
     }
 
     // Loop end
     {
         m_SetEndTime(m_range.end);
 
-        Setting loopEndButton = CreateButton("Set the end point at here", [this](const auto&) {
+        Setting loopEndButton = CreateButton("Set the end point to here", [this](const auto&) {
             m_SetEndTime(m_lastMapTime);
             });
         loopingTab->settings.emplace_back(std::move(loopEndButton));
@@ -142,6 +137,14 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetEndTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopEndMSSetting));
+    }
+    
+    // Clearing
+    {   
+        Setting loopStartClearButton = CreateButton("Clear the start point", [this](const auto&) {
+            m_SetStartTime(0);
+        });
+        loopingTab->settings.emplace_back(std::move(loopStartClearButton));
         
         Setting loopEndClearButton = CreateButton("Clear the end point", [this](const auto&) {
             m_SetEndTime(0);
