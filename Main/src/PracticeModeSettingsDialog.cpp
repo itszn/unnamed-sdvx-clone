@@ -115,6 +115,11 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetStartTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopBeginMSSetting));
+        
+        Setting loopStartClearButton = CreateButton("Clear the start point", [this](const auto&) {
+            m_SetStartTime(0);
+        });
+        loopingTab->settings.emplace_back(std::move(loopStartClearButton));
     }
 
     // Loop end
@@ -137,7 +142,7 @@ PracticeModeSettingsDialog::Tab PracticeModeSettingsDialog::m_CreateLoopingTab()
             m_SetEndTime(data.intSetting.val);
         });
         loopingTab->settings.emplace_back(std::move(loopEndMSSetting));
-
+        
         Setting loopEndClearButton = CreateButton("Clear the end point", [this](const auto&) {
             m_SetEndTime(0);
         });
