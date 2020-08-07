@@ -1169,6 +1169,11 @@ void MultiplayerScreen::OnKeyPressed(SDL_Scancode code)
 
 		String path = Path::Absolute("./usc-event.exe");
 		if (!Path::FileExists(path)) {
+			String c_path = Path::Absolute("./usc-game.exe");
+			Path::Copy(c_path, path);
+		}
+
+		if (!Path::FileExists(path)) {
 			g_gameWindow->ShowMessageBox("Playback Error", Utility::Sprintf("Could not find usc-event.exe at '%s'", path), 0);
 			return;
 		}
