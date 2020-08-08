@@ -11,13 +11,13 @@ namespace Graphics
 	DefineEnum(MouseButton,
 		Left = 0,
 		Middle,
-		Right);
+		Right)
 
 	DefineBitflagEnum(ModifierKeys,
 		None = 0,
 		Alt = 1,
 		Ctrl = 2,
-		Shift = 4);
+		Shift = 4)
 
 	DefineEnum(Key,
 		None = 0,
@@ -90,5 +90,5 @@ namespace Graphics
 		Return,
 		PageUp,
 		PageDown,
-		Tab);
+		Tab)
 }

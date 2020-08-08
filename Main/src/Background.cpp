@@ -97,14 +97,14 @@ public:
 		String skin = g_gameConfig.GetString(GameConfigKeys::Skin);
 		lua = luaL_newstate();
 
-		auto openLib = [this](char* name, lua_CFunction lib)
+		auto openLib = [this](const char* name, lua_CFunction lib)
 		{
 			luaL_requiref(lua, name, lib, 1);
 			lua_pop(lua, 1);
 		};
 
 
-		auto errorOnLib = [this](char* name)
+		auto errorOnLib = [this](const char* name)
 		{
 			luaL_dostring(lua, (String(name) + " = {}; setmetatable(" + String(name) + ", {__index = function() error(\"Song background cannot access the '" + name + "' library\") end})").c_str());
 		};
@@ -227,7 +227,6 @@ public:
 
 		clearTransition = Math::Clamp(clearTransition, 0.0f, 1.0f);
 
-		Vector3 trackEndWorld = Vector3(0.0f, 25.0f, 0.0f);
 		Vector2i screenCenter = game->GetCamera().GetScreenCenter();
 
 		tilt = { game->GetCamera().GetActualRoll(), game->GetCamera().GetBackgroundSpin() };

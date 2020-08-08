@@ -43,8 +43,9 @@ bool ChatOverlay::Init()
 
 void ChatOverlay::InitNuklearIfNeeded()
 {
-    if (m_nuklearRunning)
+    if (m_nuklearRunning) {
         return;
+	}
 	m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 
 	g_gameWindow->OnAnyEvent.Add(this, &ChatOverlay::UpdateNuklearInput);
@@ -53,22 +54,22 @@ void ChatOverlay::InitNuklearIfNeeded()
 		nk_sdl_font_stash_begin(&atlas);
 		struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize( Path::Absolute("fonts/settings/NotoSans-Regular.ttf")).c_str(), 24, 0);
 
-		struct nk_font_config cfg_kr = nk_font_config(24);
-		cfg_kr.merge_mode = nk_true;
-		cfg_kr.range = nk_font_korean_glyph_ranges();
+		// struct nk_font_config cfg_kr = nk_font_config(24);
+		// cfg_kr.merge_mode = nk_true;
+		// cfg_kr.range = nk_font_korean_glyph_ranges();
 
-		NK_STORAGE const nk_rune jp_ranges[] = {
-			0x0020, 0x00FF,
-			0x3000, 0x303f,
-			0x3040, 0x309f,
-			0x30a0, 0x30ff,
-			0x4e00, 0x9faf,
-			0xff00, 0xffef,
-			0
-		};
-		struct nk_font_config cfg_jp = nk_font_config(24);
-		cfg_jp.merge_mode = nk_true;
-		cfg_jp.range = jp_ranges;
+		// NK_STORAGE const nk_rune jp_ranges[] = {
+		// 	0x0020, 0x00FF,
+		// 	0x3000, 0x303f,
+		// 	0x3040, 0x309f,
+		// 	0x30a0, 0x30ff,
+		// 	0x4e00, 0x9faf,
+		// 	0xff00, 0xffef,
+		// 	0
+		// };
+		// struct nk_font_config cfg_jp = nk_font_config(24);
+		// cfg_jp.merge_mode = nk_true;
+		// cfg_jp.range = jp_ranges;
 
 		NK_STORAGE const nk_rune cjk_ranges[] = {
 			0x0020, 0x00FF,

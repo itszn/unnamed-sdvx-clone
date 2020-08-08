@@ -22,7 +22,7 @@ class SongSort
 {
 	public:
 		SongSort(String name, bool dir) : m_name(name),m_dir(dir) {};
-		~SongSort() = default;
+		virtual ~SongSort() = default;
 		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) = 0;
 		virtual SortType GetType() const = 0;

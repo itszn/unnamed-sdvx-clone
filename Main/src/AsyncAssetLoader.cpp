@@ -17,12 +17,12 @@ struct AsyncTextureLoadOperation : public AsyncLoadOperation
 	bool AsyncLoad()
 	{
 		image = g_application->LoadImage(name);
-		return image.IsValid();
+		return image.get() != nullptr;
 	}
 	bool AsyncFinalize()
 	{
 		target = TextureRes::Create(g_gl, image);
-		return target.IsValid();
+		return target.get() != nullptr;
 	}
 };
 struct AsyncMeshLoadOperation : public AsyncLoadOperation
@@ -55,7 +55,7 @@ struct AsyncMaterialLoadOperation : public AsyncLoadOperation
 	}
 	bool AsyncFinalize()
 	{
-		return (target = g_application->LoadMaterial(name)).IsValid();
+		return (target = g_application->LoadMaterial(name)).get() != nullptr;
 	}
 };
 struct AsyncWrapperOperation : public AsyncLoadOperation

@@ -56,7 +56,7 @@ class TransitionScreen_Impl : public TransitionScreen
 		m_loadComplete = false;
 		m_transitionTimer = 0.0f;
 		m_lastComplete = false;
-		m_transition = In;
+		m_transition = Transition::In;
 	}
 
 public:
@@ -87,6 +87,7 @@ public:
 
 	virtual void Tick(float deltaTime)
 	{
+		if(m_tickableToLoad == nullptr) return;
 		m_transitionTimer += deltaTime;
 
 		if (m_transition == Wait && m_lastComplete)
@@ -103,7 +104,7 @@ public:
 			if (m_tickableToLoad)
 			{
 				Log("[Transition] Finished loading tickable", Logger::Severity::Info);
-				g_application->AddTickable(m_tickableToLoad, this);
+				g_application->AddTickable(m_tickableToLoad);
 			}
 		}
 		m_lastComplete = m_loadComplete;
@@ -112,6 +113,7 @@ public:
 	{
 		if (m_tickableToLoad && m_transition == End)
 		{
+			Log("transition tickable nulled", Logger::Severity::Debug);
 			m_tickableToLoad = nullptr;
 		}
 	}
@@ -154,7 +156,7 @@ public:
 		return true;
 	}
 
-	virtual void TransitionTo(IAsyncLoadableApplicationTickable *next, bool noCancel)
+	virtual void TransitionTo(IAsyncLoadableApplicationTickable *next, bool noCancel, IApplicationTickable* before)
 	{
 		m_isGame = false;
 		m_InitTransition(next);
@@ -179,10 +181,10 @@ public:
 			g_jobSheduler->Queue(m_loadingJob);
 		}
 
-		g_application->AddTickable(this);
+		g_application->AddTickable(this, before);
 	}
 
-	virtual void TransitionTo(Game *next)
+	virtual void TransitionTo(Game* next, IApplicationTickable* before)
 	{
 		m_isGame = true;
 		m_canCancel = true;
@@ -259,7 +261,7 @@ public:
 		{
 			g_jobSheduler->Queue(m_loadingJob);
 		}
-		g_application->AddTickable(this);
+		g_application->AddTickable(this, before);
 	}
 
 	void Render(float deltaTime)
@@ -347,7 +349,7 @@ public:
 		}
 	}
 
-	void OnFinished(Job job)
+	void OnFinished(Job& job)
 	{
 		// Finalize?
 		IAsyncLoadable *loadable = dynamic_cast<IAsyncLoadable *>(m_tickableToLoad);

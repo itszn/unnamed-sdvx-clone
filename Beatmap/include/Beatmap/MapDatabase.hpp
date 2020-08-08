@@ -136,6 +136,7 @@ public:
 	void RemoveSearchPath(const String& path);
 	void UpdateChartOffset(const ChartIndex* chart);
 
+	void SetChartUpdateBehavior(bool transferScores);
 
 	Delegate<String> OnSearchStatusUpdated;
 	// (mapId, mapIndex)
@@ -154,4 +155,5 @@ public:
 
 private:
 	class MapDatabase_Impl* m_impl;
+	bool m_transferScores = false;
 };

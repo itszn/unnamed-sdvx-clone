@@ -14,6 +14,7 @@ namespace Graphics
 	class IParticleParameter
 	{
 	public:
+		virtual ~IParticleParameter() = default;
 		// Used to initialize a starting attribute
 		virtual T Init(float systemTime) { return Sample(systemTime); }
 		// Used to process over lifetime events
@@ -171,9 +172,13 @@ namespace Graphics
 	*/
 	class PPCone : public IParticleParameter<Vector3>
 	{
+	private:
+		float lengthMin, lengthMax;
+		float angle;
+		Transform mat;
 	public:
 		PPCone(Vector3 dir, float angle, float lengthMin, float lengthMax)
-			: angle(angle * Math::degToRad), lengthMin(lengthMin), lengthMax(lengthMax)
+			: lengthMin(lengthMin), lengthMax(lengthMax), angle(angle * Math::degToRad)
 		{
 			Vector3 normal = dir.Normalized();
 			Vector3 tangent = Vector3(normal.y, -normal.x, normal.z);
@@ -210,10 +215,7 @@ namespace Graphics
 			return Vector3(0, 0, lengthMax);
 		}
 		IMPLEMENT_DUPLICATE(Vector3, PPCone);
-	private:
-		float lengthMin, lengthMax;
-		float angle;
-		Transform mat;
+
 	};
 
 #undef IMPLEMENT_DUPLICATE

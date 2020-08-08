@@ -144,20 +144,21 @@ DefineEnum(GameConfigKeys,
 		   EnableFancyHighwayRoll,
 
 		   GameplaySettingsDialogLastTab,
+		   TransferScoresOnChartUpdate,
 
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
-		   RandomizeChart);
+		   RandomizeChart)
 
 DefineEnum(GaugeTypes,
 		   Normal,
-		   Hard);
+		   Hard)
 
 DefineEnum(SpeedMods,
 		   XMod,
 		   MMod,
-		   CMod);
+		   CMod)
 
 DefineEnum(AbortMethod,
 		   None,
@@ -170,7 +171,7 @@ DefineEnum(AbortMethod,
 DefineEnum(AutoScoreScreenshotSettings,
 		   Off,
 		   Highscore,
-		   Always);
+		   Always)
 
 DefineEnum(ButtonComboModeSettings,
 		   Disabled,

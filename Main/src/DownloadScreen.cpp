@@ -161,7 +161,6 @@ void DownloadScreen::m_ArchiveLoop()
 				int res = archive_read_open_memory(a, ar.data.data(), ar.data.size());
 				if (res == ARCHIVE_OK)
 				{
-				
 					m_archiveLock.lock();
 					m_archiveResps.push(std::move(ar));
 					m_archiveLock.unlock();
@@ -234,6 +233,11 @@ void DownloadScreen::m_ProcessArchiveResponses()
 	m_archiveLock.lock();
 	if (m_archiveResps.size() > 0)
 	{
+		// When CP_UTF8 is used, libarchive will read the file name as the system codepage and convert it to UTF8 (why???)
+		// Temporarily change the locale to C while extracting the archive to avoid the problem.
+		String defaultLocale = setlocale(LC_CTYPE, nullptr);
+		setlocale(LC_CTYPE, "C");
+
 		// Get response
 		ArchiveResponse& ar = m_archiveResps.front();
 		m_archiveLock.unlock();
@@ -328,6 +332,8 @@ void DownloadScreen::m_ProcessArchiveResponses()
 		// Pop response
 		m_archiveLock.lock();
 		m_archiveResps.pop();
+
+		setlocale(LC_CTYPE, defaultLocale.c_str());
 	}
 	m_archiveLock.unlock();
 }
@@ -392,6 +398,7 @@ bool DownloadScreen::m_extractFile(archive * a, String path)
 		f.Write(buff, size);
 	}
 	f.Close();
+	return true;
 }
 
 //https://stackoverflow.com/a/6142700
@@ -466,7 +473,7 @@ int DownloadScreen::m_PlayPreview(lua_State* L)
 
 	// Try to play the preview
 	Ref<AudioStream> previewAudio = g_audio->CreateStream(preview_path);
-	if (previewAudio && previewAudio.GetData())
+	if (previewAudio && previewAudio.get())
 	{
 		m_previewPlayer.FadeTo(previewAudio, 0);
 	}

@@ -20,6 +20,7 @@ public:
 class BQFDSP : public DSP
 {
 public:
+	BQFDSP();
 	float b0 = 1.0f;
 	float b1 = 0.0f;
 	float b2 = 0.0f;

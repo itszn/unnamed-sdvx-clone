@@ -48,5 +48,5 @@ namespace Graphics
 
 	typedef Ref<MeshRes> Mesh;
 
-	DEFINE_RESOURCE_TYPE(Mesh, MeshRes);
+	DEFINE_RESOURCE_TYPE(Mesh, MeshRes)
 }

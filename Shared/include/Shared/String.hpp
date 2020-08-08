@@ -37,7 +37,7 @@ public:
 	void ToUpper();
 	bool Split(const StringBase& delim, StringBase* l, StringBase* r) const;
 	bool SplitLast(const StringBase& delim, StringBase* l, StringBase* r) const;
-	Vector<StringBase> Explode(const StringBase& delim) const;
+	Vector<StringBase> Explode(const StringBase& delim, bool keepEmpty = true) const;
 	void TrimFront(T c);
 	void TrimBack(T c);
 	void Trim(T c = ' ');
@@ -147,7 +147,7 @@ template<typename T>
 bool StringBase<T>::Split(const StringBase& delim, StringBase* l, StringBase* r) const
 {
 	size_t f = find(delim);
-	if(f == -1)
+	if(f == (size_t)-1)
 		return false;
 	StringBase selfCopy = *this;
 	if(r)
@@ -179,7 +179,7 @@ bool StringBase<T>::SplitLast(const StringBase& delim, StringBase* l, StringBase
 	return true;
 }
 template<typename T>
-Vector<StringBase<T>> StringBase<T>::Explode(const StringBase& delim) const
+Vector<StringBase<T>> StringBase<T>::Explode(const StringBase& delim, bool keepEmpty /*=true*/) const
 {
 	String a, b;
 	Vector<StringBase> res;
@@ -191,16 +191,19 @@ Vector<StringBase<T>> StringBase<T>::Explode(const StringBase& delim) const
 
 	do
 	{
-		res.Add(a);
+		if(keepEmpty || !a.empty())
+			res.Add(a);
+
 	} while(b.Split(delim, &a, &b));
-	res.Add(b);
+
+	if (keepEmpty || !b.empty())
+		res.Add(b);
 
 	return res;
 }
 template<typename T>
 void StringBase<T>::TrimFront(T c)
 {
-	StringBase& s = (*this);
 	while(length() > 0)
 	{
 		if(front() != c)
@@ -211,7 +214,6 @@ void StringBase<T>::TrimFront(T c)
 template<typename T>
 void StringBase<T>::TrimBack(T c)
 {
-	StringBase& s = (*this);
 	while(length() > 0)
 	{
 		if(back() != c)

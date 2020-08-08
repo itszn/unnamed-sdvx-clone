@@ -103,6 +103,7 @@ static AudioEffect CreateDefault(EffectType type)
 		ret.wobble.q = FloatRange(2.0f);
 		break;
 	case EffectType::Flanger:
+		ret.duration = TimeRange(2000);
 		ret.flanger.offset = IntRange(10);
 		ret.flanger.depth = IntRange(40);
 		break;
@@ -133,4 +134,23 @@ const AudioEffect& AudioEffect::GetDefault(EffectType type)
 	static DefaultEffectSettings defaults;
 	assert((size_t)type < defaults.effects.size());
 	return defaults.effects[(size_t)type];
+}
+
+void AudioEffect::SetDefaultEffectParams(int16* params)
+{
+	// Set defaults based on effect type
+	switch (type)
+	{
+		case EffectType::Bitcrush:
+			params[0] = bitcrusher.reduction.Sample(1);
+			break;
+		case EffectType::Wobble:
+			break;
+		case EffectType::Flanger:
+			params[0] = flanger.depth.Sample(1);
+			params[1] = flanger.offset.Sample(1);
+			break;
+		default:
+			break;
+	}
 }

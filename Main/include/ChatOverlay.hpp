@@ -72,13 +72,13 @@ private:
 
     bool m_nuklearRunning = false;
 
+	MultiplayerScreen* m_multi = NULL;
 	struct nk_context* m_nctx = NULL;
 	std::queue<SDL_Event> m_eventQueue;
-	MultiplayerScreen* m_multi = NULL;
 
 	char m_chatDraft[512] = {0};
 	bool m_isOpen = false;
-	struct nk_scroll m_chatScroll = {0};
+	struct nk_scroll m_chatScroll = {0, 0};
 	int m_newMessages = 0;
 	bool m_inEdit = false;
 	bool m_forceToBottom = false;

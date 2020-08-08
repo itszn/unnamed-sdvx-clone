@@ -115,11 +115,11 @@ private:
 
 			m_displayIndex += (button == Input::Button::FX_0) ? -1 : 1;
 
-			if (m_displayIndex >= m_stats->size())
+			if (m_displayIndex >= (int)m_stats->size())
 				m_displayIndex = 0;
 
 			if (m_displayIndex < 0)
-				m_displayIndex = m_stats->size() - 1;
+				m_displayIndex = (int)m_stats->size() - 1;
 
 			loadScoresFromMultiplayer();
 			updateLuaData();
@@ -175,7 +175,7 @@ public:
 	}
 
 	void loadScoresFromMultiplayer() {
-		if (m_displayIndex >= m_stats->size())
+		if (m_displayIndex >= (int)m_stats->size())
 			return;
 
 		const nlohmann::json& data= (*m_stats)[m_displayIndex];
@@ -249,7 +249,7 @@ public:
 			m_playerId = uid;
 
 			// Show the player's score first
-			for (int i=0; i<m_stats->size(); i++)
+			for (size_t i=0; i<m_stats->size(); i++)
 			{
 				if (m_playerId == (*m_stats)[i].value("uid", ""))
 				{
@@ -580,7 +580,7 @@ public:
 			AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
 			if (screensetting == AutoScoreScreenshotSettings::Always ||
 				(screensetting == AutoScoreScreenshotSettings::Highscore && m_highScores.empty()) ||
-				(screensetting == AutoScoreScreenshotSettings::Highscore && m_score > m_highScores.front()->score))
+				(screensetting == AutoScoreScreenshotSettings::Highscore && m_score > (uint32)m_highScores.front()->score))
 			{
 				Capture();
 			}
@@ -593,10 +593,10 @@ public:
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 
 		// Check for new scores
-		if (m_multiplayer && m_numPlayersSeen != m_stats->size())
+		if (m_multiplayer && m_numPlayersSeen != (int)m_stats->size())
 		{
 			// Reselect the player we were looking at before
-			for (int i = 0; i < m_stats->size(); i++)
+			for (size_t i = 0; i < m_stats->size(); i++)
 			{
 				if (m_displayId == static_cast<String>((*m_stats)[i].value("uid", "")))
 				{
@@ -674,8 +674,15 @@ public:
 		Vector2i size(w, h);
 		Image screenshot = ImageRes::Screenshot(g_gl, size, { x,y });
 		String screenshotPath = "screenshots/" + Shared::Time::Now().ToString() + ".png";
-		screenshot->SavePNG(screenshotPath);
-		screenshot.Release();
+		if (screenshot.get() != nullptr)
+		{
+			screenshot->SavePNG(screenshotPath);
+			screenshot.reset();
+		}
+		else 
+		{
+			screenshotPath = "Failed to capture screenshot";
+		}
 
 		lua_getglobal(m_lua, "screenshot_captured");
 		if (lua_isfunction(m_lua, -1))
