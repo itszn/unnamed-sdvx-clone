@@ -20,56 +20,33 @@ Scoring::~Scoring()
 	m_CleanupTicks();
 }
 
-String Scoring::CalculateGrade(uint32 score)
+ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 {
-	if (score >= 9900000) // S
-		return "S";
-	if (score >= 9800000) // AAA+
-		return "AAA+";
-	if (score >= 9700000) // AAA
-		return "AAA";
-	if (score >= 9500000) // AA+
-		return "AA+";
-	if (score >= 9300000) // AA
-		return "AA";
-	if (score >= 9000000) // A+
-		return "A+";
-	if (score >= 8700000) // A
-		return "A";
-	if (score >= 7500000) // B
-		return "B";
-	if (score >= 6500000) // C
-		return "C";
-	return "D"; // D
-}
-
-uint8 Scoring::CalculateBadge(const ScoreIndex& score)
-{
-	if (score.score == 10000000) //Perfect
-		return 5;
+	if (score.score >= static_cast<int32>(MAX_SCORE)) //Perfect
+		return ClearMark::Perfect;
 	if (score.miss == 0) //Full Combo
-		return 4;
+		return ClearMark::FullCombo;
 	if (((GameFlags)score.gameflags & GameFlags::Hard) != GameFlags::None && score.gauge > 0) //Hard Clear
-		return 3;
+		return ClearMark::HardClear;
 	if (((GameFlags)score.gameflags & GameFlags::Hard) == GameFlags::None && score.gauge >= 0.70) //Normal Clear
-		return 2;
+		return ClearMark::NormalClear;
 
-	return 1; //Failed
+	return ClearMark::Played; //Failed
 }
 
-uint8 Scoring::CalculateBestBadge(Vector<ScoreIndex*> scores)
+ClearMark Scoring::CalculateBestBadge(Vector<ScoreIndex*> scores)
 {
 	if (scores.size() < 1)
-		return 0;
-	uint8 top = 1;
+		return ClearMark::NotPlayed;
+
+	ClearMark top = ClearMark::Played;
+
 	for (ScoreIndex* score : scores)
 	{
-		uint8 temp = CalculateBadge(*score);
-		if (temp > top)
-		{
-			top = temp;
-		}
+		ClearMark temp = CalculateBadge(*score);
+		if (temp > top) top = temp;
 	}
+
 	return top;
 }
 
@@ -114,8 +91,22 @@ void Scoring::m_CleanupInput()
 	}
 }
 
-void Scoring::Reset()
+void Scoring::Reset(const MapTimeRange& range)
 {
+	{
+		MapTime begin = range.begin;
+		MapTime end = range.end;
+
+		// Ensure that nothing could go wrong when the start is 0
+		if (begin <= 0)
+		{
+			begin = std::numeric_limits<decltype(begin)>::min();
+			if (!range.HasEnd()) end = begin;
+		}
+
+		m_range = { begin, end };
+	}
+
 	// Reset score/combo counters
 	currentMaxScore = 0;
 	currentHitScore = 0;
@@ -150,7 +141,6 @@ void Scoring::Reset()
 	mapTotals = CalculateMapTotals();
 
 	// Recalculate gauge gain
-
 	currentGauge = 0.0f;
 	float total = 2.10f + 0.001f; //Add a little in case floats go under
 	bool manualTotal = m_playback->GetBeatmap().GetMapSettings().total > 99;
@@ -206,7 +196,8 @@ void Scoring::Reset()
 	m_CleanupHitStats();
 	m_CleanupTicks();
 
-	OnScoreChanged.Call(0);
+	OnScoreChanged.Call();
+	OnComboChanged.Call(0);
 }
 
 void Scoring::FinishGame()
@@ -259,7 +250,7 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	{
 		for (auto l : m_laserSegmentQueue)
 		{
-			if (l->index == index && !l->prev)
+			if (l->index == index && m_IsRoot(l))
 			{
 				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
 				{
@@ -478,7 +469,7 @@ void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks
 	double tickInterval = m_CalculateTicks(tp);
 
 	double tickpos = hold->time;
-	if (!hold->prev) // no tick at the very start of a hold
+	if (m_IsRoot(hold)) // no tick at the very start of a hold
 	{
 		tickpos += tickInterval;
 	}
@@ -494,7 +485,7 @@ void Scoring::m_CalculateHoldTicks(HoldObjectState* hold, Vector<MapTime>& ticks
 }
 void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTick>& ticks) const
 {
-	assert(laserRoot->prev == nullptr);
+	assert(m_IsRoot(laserRoot));
 	const TimingPoint* tp = m_playback->GetTimingPointAt(laserRoot->time);
 
 	// Tick rate based on BPM
@@ -538,7 +529,7 @@ void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTic
 			ScoreTick& t = ticks.Add(ScoreTick(*it));
 			t.time = it->time;
 			t.flags = TickFlags::Laser | TickFlags::Slam;
-			if (!it->prev)
+			if (m_IsRoot(it))
 				t.SetFlag(TickFlags::Start);
 			lastSlam = it;
 			if (it->next)
@@ -590,7 +581,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 		{
 			ScoreTick* t = m_ticks[hold->index].Add(new ScoreTick(obj));
 			t->SetFlag(TickFlags::Hold);
-			if (i == 0 && !hold->prev)
+			if (i == 0 && m_IsRoot(hold))
 				t->SetFlag(TickFlags::Start);
 			if (i == holdTicks.size() - 1 && !hold->next)
 				t->SetFlag(TickFlags::End);
@@ -600,7 +591,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 	else if (obj->type == ObjectType::Laser)
 	{
 		LaserObjectState* laser = (LaserObjectState*)obj;
-		if (!laser->prev) // Only register root laser objects
+		if (m_IsRoot(laser)) // Only register root laser objects
 		{
 			// Can cause problems if the previous laser segment hasnt ended yet for whatever reason
 			if (!m_currentLaserSegments[laser->index])
@@ -816,9 +807,11 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 
 void Scoring::m_OnTickProcessed(ScoreTick* tick, uint32 index)
 {
+	currentMaxScore += (uint32)ScoreHitRating::Perfect;
+
 	if (OnScoreChanged.IsHandled())
 	{
-		OnScoreChanged.Call(CalculateCurrentScore());
+		OnScoreChanged.Call();
 	}
 }
 void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
@@ -875,6 +868,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 		stat->rating = ScoreHitRating::Perfect;
 		stat->hold++;
 	}
+
 	m_OnTickProcessed(tick, index);
 
 	// Count hits per category (miss,perfect,etc.)
@@ -1030,6 +1024,18 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	return true;
 }
 
+bool Scoring::m_IsRoot(const LaserObjectState* laser) const
+{
+	if (!laser->prev) return true;
+	return !m_range.Includes(laser->prev->time);
+}
+
+bool Scoring::m_IsRoot(const HoldObjectState* hold) const
+{
+	if (!hold->prev) return true;
+	return !m_range.Includes(hold->prev->time);
+}
+
 void Scoring::m_UpdateLasers(float deltaTime)
 {
 	/// TODO: Change to only re-calculate on bpm change
@@ -1131,7 +1137,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			float inputDir = Math::Sign(input);
 
 			// Always snap laser to start sections if they are completely vertical
-			if (laserDir == 0.0f && currentSegment->prev == nullptr)
+			if (laserDir == 0.0f && m_IsRoot(currentSegment))
 			{
 				laserPositions[i] = laserTargetPositions[i];
 				m_autoLaserTime[i] = m_assistTime;
@@ -1308,6 +1314,12 @@ MapTotals Scoring::CalculateMapTotals() const
 	return ret;
 }
 
+constexpr static uint32 CalculateScore(const uint32 currHitScore, const uint32 maxHitScore, const uint32 maxScore)
+{
+	if (maxHitScore == 0) return 0;
+	else return (uint32) (((double) currHitScore / (double) maxHitScore) * (double) maxScore);
+}
+
 uint32 Scoring::CalculateCurrentScore() const
 {
 	return CalculateScore(currentHitScore);
@@ -1315,23 +1327,48 @@ uint32 Scoring::CalculateCurrentScore() const
 
 uint32 Scoring::CalculateScore(uint32 hitScore) const
 {
-	return (uint32)(((double)hitScore / (double)mapTotals.maxScore) * 10000000.0);
+	return ::CalculateScore(hitScore, mapTotals.maxScore, MAX_SCORE);
 }
 
-uint32 Scoring::CalculateCurrentGrade() const
+uint32 Scoring::CalculateCurrentDisplayScore() const
 {
-	uint32 value = (uint32)((double)CalculateCurrentScore() * (double)0.9 + currentGauge * 1000000.0);
-	if (value > 9800000) // AAA
-		return 0;
-	if (value > 9400000) // AA
-		return 1;
-	if (value > 8900000) // A
-		return 2;
-	if (value > 8000000) // B
-		return 3;
-	if (value > 7000000) // C
-		return 4;
-	return 5; // D
+	return CalculateCurrentDisplayScore(currentHitScore, currentMaxScore);
+}
+
+uint32 Scoring::CalculateCurrentDisplayScore(const ScoreReplay& replay) const
+{
+	return CalculateCurrentDisplayScore(replay.currentScore, replay.currentMaxScore);
+}
+
+uint32 Scoring::CalculateCurrentDisplayScore(uint32 currHit, uint32 currMaxHit) const
+{
+	switch (g_gameConfig.GetEnum<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode))
+	{
+	case ScoreDisplayModes::Average:
+		return CalculateCurrentAverageScore(currHit, currMaxHit);
+		break;
+	case ScoreDisplayModes::Subtractive:
+		return CalculateCurrentMaxPossibleScore(currHit, currMaxHit);
+		break;
+	case ScoreDisplayModes::Additive:
+	default:
+		return CalculateScore(currHit);
+	}
+}
+
+uint32 Scoring::CalculateCurrentMaxPossibleScore() const
+{
+	return CalculateCurrentMaxPossibleScore(currentHitScore, currentMaxScore);
+}
+
+uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxHit) const
+{
+	return CalculateScore(mapTotals.maxScore - (currMaxHit - currHit));
+}
+
+uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const
+{
+	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
 }
 
 MapTime ScoreTick::GetHitWindow() const
