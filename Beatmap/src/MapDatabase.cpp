@@ -300,6 +300,7 @@ public:
 				m_database.Exec("UPDATE Scores SET local_score=1");
 				m_database.Exec("UPDATE Scores SET user_name=\"\"");
 				m_database.Exec("UPDATE Scores SET user_id=\"\"");
+				gotVersion = 14;
 			}
 			if (gotVersion == 14)
 			{
@@ -323,6 +324,7 @@ public:
 					"max_rewind_measure INTEGER,"
 					"FOREIGN KEY(chart_id) REFERENCES Charts(rowid)"
 				")");
+				gotVersion = 15;
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
