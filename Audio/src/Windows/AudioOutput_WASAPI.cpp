@@ -203,28 +203,27 @@ public:
 
 				int numRates = 5;
 				long sampleRates[5] = {192000L, 96000L, 88200L, 48000L, 44100L};
-
-				int numDepths = 3;
-				int bitDepths[3] = {32, 24, 16 };
 				
 				Vector<WAVEFORMATEX> allFormats;
 				for (size_t f = 0; f < numFormats; f++)
 				{
-					for (size_t d = 0; d < numDepths; d++)
+					WORD bitDepth = 16;
+					if (formats[f] == WAVE_FORMAT_IEEE_FLOAT)
 					{
-						for (size_t r = 0; r < numRates; r++)
-						{
-							long avgBytesPerSec = (bitDepths[d] / 8) * sampleRates[r] * 2;
-							WAVEFORMATEX newformat;
-							newformat.wFormatTag = formats[f];
-							newformat.nChannels = 2;
-							newformat.nSamplesPerSec = sampleRates[r];
-							newformat.nAvgBytesPerSec = avgBytesPerSec;
-							newformat.nBlockAlign = 4;
-							newformat.wBitsPerSample = bitDepths[d];
-							newformat.cbSize = 0;
-							allFormats.Add(newformat);
-						}
+						bitDepth = 32;
+					}
+					for (size_t r = 0; r < numRates; r++)
+					{
+						long avgBytesPerSec = (bitDepth / 8) * sampleRates[r] * 2;
+						WAVEFORMATEX newformat;
+						newformat.wFormatTag = formats[f];
+						newformat.nChannels = 2;
+						newformat.nSamplesPerSec = sampleRates[r];
+						newformat.nAvgBytesPerSec = avgBytesPerSec;
+						newformat.nBlockAlign = 4;
+						newformat.wBitsPerSample = bitDepth;
+						newformat.cbSize = 0;
+						allFormats.Add(newformat);
 					}
 				}
 
