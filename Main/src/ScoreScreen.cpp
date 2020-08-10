@@ -29,7 +29,7 @@ private:
 	bool m_autoButtons;
 	bool m_startPressed;
 	bool m_showStats;
-	uint8 m_badge;
+	ClearMark m_badge;
 	uint32 m_score;
 	uint32 m_maxCombo;
 	uint32 m_categorizedHits[3];
@@ -55,6 +55,10 @@ private:
 	Vector<nlohmann::json> const* m_stats;
 	int m_numPlayersSeen = 0;
 
+	String m_mission = "";
+	int m_retryCount = 0;
+	float m_playbackSpeed = 1.0f;
+
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
 
@@ -65,7 +69,7 @@ private:
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
-	void m_PushStringToTable(const char* name, String data)
+	void m_PushStringToTable(const char* name, const String& data)
 	{
 		lua_pushstring(m_lua, name);
 		lua_pushstring(m_lua, data.c_str());
@@ -147,14 +151,19 @@ public:
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
 		m_scoredata.gameflags = (uint32)m_flags;
-		if (game->GetManualExit())
+		if (!game->IsStorableScore())
 		{
-			m_badge = 0;
+			m_badge = ClearMark::NotPlayed;
 		}
 		else
 		{
 			m_badge = Scoring::CalculateBadge(m_scoredata);
 		}
+
+		m_playbackSpeed = game->GetPlaybackSpeed();
+
+		m_retryCount = game->GetRetryCount();
+		m_mission = game->GetMissionStr();
 
 		m_meanHitDelta[0] = scoring.GetMeanHitDelta();
 		m_medianHitDelta[0] = scoring.GetMedianHitDelta();
@@ -198,7 +207,7 @@ public:
 		m_scoredata.gauge = m_finalGaugeValue;
 
 		m_scoredata.gameflags = data["flags"];
-		m_badge = data["clear"];
+		m_badge = static_cast<ClearMark>(data["clear"]);
 
 		m_meanHitDelta[0] = data["mean_delta"];
 		m_medianHitDelta[0] = data["median_delta"];
@@ -296,7 +305,7 @@ public:
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
-		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && !game->GetManualExit())
+		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
 		{
 			ScoreIndex* newScore = new ScoreIndex();
 			auto chart = game->GetChartIndex();
@@ -411,8 +420,8 @@ public:
 		m_PushFloatToTable("meanHitDeltaAbs", m_meanHitDelta[1]);
 		m_PushIntToTable("earlies", m_timedHits[0]);
 		m_PushIntToTable("lates", m_timedHits[1]);
-		m_PushStringToTable("grade", Scoring::CalculateGrade(m_score).c_str());
-		m_PushIntToTable("badge", m_badge);
+		m_PushStringToTable("grade", ToDisplayString(ToGradeMark(m_score)));
+		m_PushIntToTable("badge", static_cast<int>(m_badge));
 
 		if (m_multiplayer)
 		{
@@ -423,6 +432,14 @@ public:
 		lua_pushstring(m_lua, "autoplay");
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
+
+		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
+
+		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInResult))
+		{
+			m_PushStringToTable("mission", m_mission);
+			m_PushIntToTable("retryCount", m_retryCount);
+		}
 
 		//Push gauge samples
 		lua_pushstring(m_lua, "gaugeSamples");
@@ -475,7 +492,7 @@ public:
 				m_PushIntToTable("goods", score->almost);
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
-				m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
+				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);

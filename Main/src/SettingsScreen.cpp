@@ -588,6 +588,7 @@ public:
 		{
 			RenderSettingsInput();
 			RenderSettingsGame();
+			RenderSettingsDisplay();
 			RenderSettingsSystem();
 			RenderSettingsOnline();
 
@@ -696,7 +697,7 @@ public:
 				IntSetting(GameConfigKeys::RestartPlayHoldDuration, "Restart Hold Duration (ms):", 250, 10000, 250);
 			}
 
-			EnumSetting<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, "Exit gameplay with:");
+			EnumSetting<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, "Exit gameplay with Back:");
 			if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod) == AbortMethod::Hold)
 			{
 				IntSetting(GameConfigKeys::ExitPlayHoldDuration, "Exit Hold Duration (ms):", 250, 10000, 250);
@@ -730,6 +731,29 @@ public:
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
 			ToggleSetting(GameConfigKeys::AutoSaveSpeed, "Save hispeed changes during gameplay");
 
+			IntSetting(GameConfigKeys::LeadInTime, "Lead-in time (ms)", 250, 10000, 250);
+			IntSetting(GameConfigKeys::PracticeLeadInTime, "(for practice mode)", 250, 10000, 250);
+
+			ToggleSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the practice setup");
+			ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the practice setup after the score screen is shown");
+
+			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
+			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+
+			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
+
+			ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
+
+			nk_tree_pop(m_nctx);
+		}
+	}
+
+	// Display settings
+	void RenderSettingsDisplay()
+	{
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", NK_MINIMIZED))
+		{
 			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
@@ -749,11 +773,6 @@ public:
 			ToggleSetting(GameConfigKeys::DisableBackgrounds, "Disable Song Backgrounds");
 			FloatSetting(GameConfigKeys::DistantButtonScale, "Distant Button Scale", 1.0f, 5.0f);
 			ToggleSetting(GameConfigKeys::ShowCover, "Show Track Cover");
-			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
-			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
-
-			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
-			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
 
 			if (m_skins.size() > 0)
 			{
@@ -764,9 +783,12 @@ public:
 				}
 			}
 
-			ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
+			EnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "In-game score display is:");
 
 			RenderSettingsLaserColor();
+
+			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice info during gameplay");
+			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInResult, "Show practice info on the result");
 
 			nk_tree_pop(m_nctx);
 		}
