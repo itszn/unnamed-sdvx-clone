@@ -1,5 +1,5 @@
 # Root CMake file
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 #set(VCPKG_CRT_LINKAGE static)
 #set(VCPKG_LIBRARY_LINKAGE static)
 #set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "Vcpkg target triplet (ex. x86-windows)")

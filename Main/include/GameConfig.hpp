@@ -21,7 +21,7 @@ DefineEnum(GameConfigKeys,
 		   VSync,
 		   ShowFps,
 		   ForcePortrait,
-	       LogLevel,
+		   LogLevel,
 
 		   // Game settings
 		   HiSpeed,
@@ -52,6 +52,14 @@ DefineEnum(GameConfigKeys,
 		   DistantButtonScale,
 		   BTOverFXScale,
 		   DisableBackgrounds,
+		   ScoreDisplayMode,
+
+		   LeadInTime,
+		   PracticeLeadInTime,
+		   PracticeSetupNavEnabled,
+		   RevertToSetupAfterScoreScreen,
+		   DisplayPracticeInfoInGame,
+		   DisplayPracticeInfoInResult,
 
 		   // Input device setting per element
 		   LaserInputDevice,
@@ -164,6 +172,11 @@ DefineEnum(AbortMethod,
 		   None,
 		   Press,
 		   Hold)
+
+DefineEnum(ScoreDisplayModes,
+		   Additive,
+		   Subtractive,
+		   Average)
 
 #ifdef Always
 #undef Always

@@ -72,7 +72,7 @@ public:
 	void SetSelectedMap(FolderIndex*, ChartIndex*);
 
 	void PerformScoreTick(Scoring& scoring, MapTime time);
-	void SendFinalScore(class Game* game, int clearState);
+	void SendFinalScore(class Game* game, ClearMark clearState);
 	void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
 
 	Vector<nlohmann::json> const* GetFinalStats() const

@@ -830,7 +830,7 @@ private:
 			m_PushIntToTable("id", diff->id);
 			m_PushStringToTable("effector", diff->effector.c_str());
 			m_PushStringToTable("illustrator", diff->illustrator.c_str());
-			m_PushIntToTable("topBadge", Scoring::CalculateBestBadge(diff->scores));
+			m_PushIntToTable("topBadge", static_cast<int>(Scoring::CalculateBestBadge(diff->scores)));
 			lua_pushstring(m_lua, "scores");
 			lua_newtable(m_lua);
 			int scoreIndex = 0;
@@ -845,7 +845,7 @@ private:
 				m_PushIntToTable("goods", score->almost);
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
-				m_PushIntToTable("badge", Scoring::CalculateBadge(*score));
+				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
@@ -1431,13 +1431,15 @@ public:
 		}
 	}
 
-	void m_GetCurrentChartOffset(int &value)
+	int m_GetCurrentChartOffset()
 	{
 		ChartIndex* chart = m_selectionWheel->GetSelectedChart();
 		if (chart)
 		{
-			value = m_selectionWheel->GetSelectedChart()->custom_offset;
+			return m_selectionWheel->GetSelectedChart()->custom_offset;
 		}
+
+		return 0;
 	}
 
 	bool AsyncFinalize() override
@@ -1496,35 +1498,64 @@ public:
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 		m_previewParams = {"", 0, 0};
 		m_hasCollDiag = m_collDiag.Init(m_mapDatabase);
+
 		if (!m_settDiag.Init())
-		{
-			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing game settings dialog", "No game settings dialog script file could be found, suggested solution:\n"
-				"Would you like to copy \"scripts/gamesettingsdialog.lua\" from the default skin to your current skin?");
-			if (!copyDefault)
-				return false;
-			String defaultPath = Path::Normalize(Path::Absolute("skins/Default/scripts/gamesettingsdialog.lua"));
-			String skinPath = Path::Normalize(Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/gamesettingsdialog.lua"));
-			Path::Copy(defaultPath, skinPath);
-			if (!m_settDiag.Init())
-			{
-				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default", 2);
-				return false;
-			}
-		}
+			return false;
 
 		GameplaySettingsDialog::Tab songTab = std::make_unique<GameplaySettingsDialog::TabData>();
-		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>();
+		GameplaySettingsDialog::Setting songOffsetSetting = std::make_unique<GameplaySettingsDialog::SettingData>("Song Offset", SettingType::Integer);
 		songTab->name = "Song";
 		songOffsetSetting->name = "Song Offset";
 		songOffsetSetting->type = SettingType::Integer;
 		songOffsetSetting->intSetting.val = 0;
 		songOffsetSetting->intSetting.min = -200;
 		songOffsetSetting->intSetting.max = 200;
-		songOffsetSetting->intSetting.setter.Add(this, &SongSelect_Impl::m_SetCurrentChartOffset);
-		songOffsetSetting->intSetting.getter.Add(this, &SongSelect_Impl::m_GetCurrentChartOffset);
+		songOffsetSetting->setter.AddLambda([this](const auto& data) { m_SetCurrentChartOffset(data.intSetting.val); });
+		songOffsetSetting->getter.AddLambda([this](auto& data) { data.intSetting.val = m_GetCurrentChartOffset(); });
 		songTab->settings.push_back(std::move(songOffsetSetting));
 		m_settDiag.AddTab(std::move(songTab));
+
+		m_settDiag.onPressAutoplay.AddLambda([this]() {
+			if (m_multiplayer != nullptr) return;
+
+			ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+			Game* game = Game::Create(chart, Game::FlagsFromSettings());
+			if (!game)
+			{
+				Log("Failed to start game", Logger::Severity::Error);
+				return;
+			}
+
+			game->GetScoring().autoplay = true;
+
+			if(m_settDiag.IsActive()) m_settDiag.Close();
+			m_suspended = true;
+
+			// Transition to game
+			g_transition->TransitionTo(game);
+		});
 		
+		m_settDiag.onPressPractice.AddLambda([this]() {
+			if (m_multiplayer != nullptr) return;
+
+			ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+			m_mapDatabase->UpdateChartOffset(chart);
+
+			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
+			if (!practiceGame)
+			{
+				Log("Failed to start practice", Logger::Severity::Error);
+				return;
+			}
+
+			if (m_settDiag.IsActive()) m_settDiag.Close();
+			m_suspended = true;
+
+			practiceGame->SetSongDB(m_mapDatabase);
+
+			// Transition to practice mode
+			g_transition->TransitionTo(practiceGame);
+		});
 
 		if (m_hasCollDiag)
 		{
@@ -1859,7 +1890,7 @@ public:
 			{
 				m_selectionWheel->SelectRandom();
 			}
-			else if (code == SDL_SCANCODE_F8 && m_multiplayer == NULL) // start demo mode
+			else if (code == SDL_SCANCODE_F8 && m_multiplayer == nullptr) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
 
@@ -1902,6 +1933,10 @@ public:
 			else if (code == SDL_SCANCODE_RETURN && m_searchInput->active)
 			{
 				m_searchInput->SetActive(false);
+			}
+			else if (code == SDL_SCANCODE_GRAVE)
+			{
+				m_settDiag.onPressPractice.Call();
 			}
 		}
 	}
