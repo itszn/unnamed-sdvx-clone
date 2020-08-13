@@ -252,6 +252,10 @@ render = function(deltaTime, showStats)
 	    gfx.FontSize(50)
 		gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
 		gfx.Text("Autoplay", 250, 345)
+    elseif result.hitWindow ~= nil and result.hitWindow.type == 0 then
+	    gfx.FontSize(30)
+		gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+		gfx.Text("Expand Judge", 250, 360)
 	end
 	
     --Score data

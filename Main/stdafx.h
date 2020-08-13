@@ -43,6 +43,12 @@
 #include <Graphics/Font.hpp>
 using namespace Graphics;
 
+extern "C"
+{
+#include "lua.h"
+#include "lauxlib.h"
+}
+
 #include "BasicDefinitions.hpp"
 
 // Asset loading macro

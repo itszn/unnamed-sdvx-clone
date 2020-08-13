@@ -753,7 +753,7 @@ public:
 				nk_label(m_nctx, "Timing Window:", nk_text_alignment::NK_TEXT_LEFT);
 				nk_layout_row_dynamic(m_nctx, 30, 3);
 
-				const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.miss, 1, 1);
+				const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.perfect, 1, 1);
 				if (hitWindowPerfect != m_hitWindow.perfect)
 				{
 					m_hitWindow.perfect = hitWindowPerfect;
@@ -763,7 +763,7 @@ public:
 						m_hitWindow.hold = m_hitWindow.perfect;
 				}
 
-				const int hitWindowGood = nk_propertyi_sdl_text(m_nctx, "Near", 0, m_hitWindow.good, HitWindow::NORMAL.miss, 1, 1);
+				const int hitWindowGood = nk_propertyi_sdl_text(m_nctx, "Near", 0, m_hitWindow.good, HitWindow::NORMAL.good, 1, 1);
 				if (hitWindowGood != m_hitWindow.good)
 				{
 					m_hitWindow.good = hitWindowGood;
@@ -773,7 +773,7 @@ public:
 						m_hitWindow.hold = m_hitWindow.good;
 				}
 
-				const int hitWindowHold = nk_propertyi_sdl_text(m_nctx, "Hold", 0, m_hitWindow.hold, HitWindow::NORMAL.miss, 1, 1);
+				const int hitWindowHold = nk_propertyi_sdl_text(m_nctx, "Hold", 0, m_hitWindow.hold, HitWindow::NORMAL.hold, 1, 1);
 				if (hitWindowHold != m_hitWindow.hold)
 				{
 					m_hitWindow.hold = hitWindowHold;

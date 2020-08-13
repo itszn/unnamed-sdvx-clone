@@ -2857,17 +2857,9 @@ return Scoring::CalculateBadge(scoreData);
 		lua_pushboolean(L, m_multiplayer != nullptr);
 		lua_settable(L, -3);
 
-		{
-			const HitWindow hitWindow = GetHitWindow();
-
-			lua_pushstring(L, "hitWindow");
-			lua_newtable(L);
-			pushIntToTable("perfect", hitWindow.perfect);
-			pushIntToTable("good", hitWindow.good);
-			pushIntToTable("hold", hitWindow.hold);
-			pushIntToTable("miss", hitWindow.miss);
-			lua_settable(L, -3);
-		}
+		lua_pushstring(L, "hitWindow");
+		GetHitWindow().ToLuaTable(L);
+		lua_settable(L, -3);
 
 		if (m_multiplayer != nullptr)
 		{
