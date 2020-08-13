@@ -26,13 +26,17 @@ HitWindow HitWindow::FromConfig()
 	{
 		Log("HitWindow is automatically adjusted to NORMAL", Logger::Severity::Warning);
 		hitWindow = HitWindow::NORMAL;
-
-		g_gameConfig.Set(GameConfigKeys::HitWindowPerfect, hitWindow.perfect);
-		g_gameConfig.Set(GameConfigKeys::HitWindowGood, hitWindow.good);
-		g_gameConfig.Set(GameConfigKeys::HitWindowHold, hitWindow.hold);
+		hitWindow.SaveConfig();
 	}
 
 	return hitWindow;
+}
+
+void HitWindow::SaveConfig() const
+{
+	g_gameConfig.Set(GameConfigKeys::HitWindowPerfect, perfect);
+	g_gameConfig.Set(GameConfigKeys::HitWindowGood, good);
+	g_gameConfig.Set(GameConfigKeys::HitWindowHold, hold);
 }
 
 void HitWindow::ToLuaTable(lua_State* L)

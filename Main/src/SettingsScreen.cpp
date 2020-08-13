@@ -264,9 +264,7 @@ private:
 		g_gameConfig.Set(GameConfigKeys::Laser1Color, m_laserColors[1]);
 
 		m_hitWindow.Validate();
-		g_gameConfig.Set(GameConfigKeys::HitWindowPerfect, m_hitWindow.perfect);
-		g_gameConfig.Set(GameConfigKeys::HitWindowGood, m_hitWindow.good);
-		g_gameConfig.Set(GameConfigKeys::HitWindowHold, m_hitWindow.hold);
+		m_hitWindow.SaveConfig();
 
 		String songsPath = String(m_songsPath, m_pathlen);
 		songsPath.TrimBack('\n');
