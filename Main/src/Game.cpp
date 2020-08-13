@@ -24,12 +24,6 @@
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
 
-extern "C"
-{
-#include "lua.h"
-#include "lauxlib.h"
-}
-
 #include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
 

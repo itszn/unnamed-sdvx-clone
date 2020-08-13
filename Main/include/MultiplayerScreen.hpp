@@ -5,7 +5,6 @@
 #include "Shared/Thread.hpp"
 #include "GameConfig.hpp"
 #include "cpr/cpr.h"
-#include <queue>
 #include "Beatmap/MapDatabase.hpp"
 #include "json.hpp"
 #include "TCPSocket.hpp"

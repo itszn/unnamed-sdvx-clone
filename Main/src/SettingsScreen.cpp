@@ -13,7 +13,6 @@
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
 #include "Input.hpp"
-#include <queue>
 #include <SDL2/SDL.h>
 #include "nanovg.h"
 #include "CalibrationScreen.hpp"
