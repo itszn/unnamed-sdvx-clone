@@ -24,6 +24,9 @@ DefineEnum(GameConfigKeys,
 		   LogLevel,
 
 		   // Game settings
+		   HitWindowPerfect,
+		   HitWindowGood,
+		   HitWindowHold,
 		   HiSpeed,
 		   SpeedMod,
 		   ModSpeed,

@@ -136,6 +136,7 @@ void Scoring::Reset(const MapTimeRange& range)
 	m_assistPunish = g_gameConfig.GetFloat(GameConfigKeys::LaserPunish);
 	m_assistChangeExponent = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeExponent);
 	m_assistChangePeriod = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeTime);
+
 	// Recalculate maximum score
 	mapTotals = CalculateMapTotals();
 
@@ -1419,4 +1420,13 @@ TickFlags operator|(const TickFlags& a, const TickFlags& b)
 TickFlags operator&(const TickFlags& a, const TickFlags& b)
 {
 	return (TickFlags)((uint8)a & (uint8)b);
+}
+
+HitWindow HitWindow::FromConfig()
+{
+	return HitWindow(
+		g_gameConfig.GetInt(GameConfigKeys::HitWindowPerfect),
+		g_gameConfig.GetInt(GameConfigKeys::HitWindowGood),
+		g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
+	);
 }

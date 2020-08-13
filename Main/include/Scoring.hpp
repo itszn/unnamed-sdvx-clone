@@ -23,12 +23,36 @@ TickFlags operator&(const TickFlags& a, const TickFlags& b);
 
 struct HitWindow
 {
-	HitWindow(MapTime perfect, MapTime good) noexcept : perfect(perfect), good(good), hold(good + (good/2)) {}
+	inline HitWindow(MapTime perfect, MapTime good) noexcept : perfect(perfect), good(good) { Validate(); }
+	inline HitWindow(MapTime perfect, MapTime good, MapTime hold) noexcept : perfect(perfect), good(good), hold(hold) { Validate(); }
+	inline HitWindow(const HitWindow& that) noexcept : perfect(that.perfect), good(that.good), hold(that.hold), miss(that.miss) { Validate(); }
 
-	const MapTime miss = 250;
-	const MapTime hold = 138;
-	const MapTime good = 92;
-	const MapTime perfect = 46;
+	static HitWindow FromConfig();
+
+	inline HitWindow& operator= (const HitWindow& that) noexcept { perfect = that.perfect; good = that.good; hold = that.hold; miss = that.miss; return *this; }
+
+	constexpr bool operator== (const HitWindow& that) const noexcept { return perfect == that.perfect && good == that.good && hold == that.hold && miss == that.miss; }
+	constexpr bool operator<= (const HitWindow& that) const noexcept { return perfect <= that.perfect && good <= that.good && hold <= that.hold && miss <= that.miss; }
+
+	inline bool Validate()
+	{
+		if (perfect <= good && good <= hold && hold <= miss && miss <= NORMAL.miss)
+			return true;
+
+		Logf("Invalid timing window: %d/%d/%d/%d", Logger::Severity::Warning, perfect, good, hold, miss);
+
+		if (miss > NORMAL.miss) miss = NORMAL.miss;
+		if (hold > miss) hold = miss;
+		if (good > hold) good = hold;
+		if (perfect > good) perfect = good;
+
+		return false;
+	}
+
+	MapTime miss = 250;
+	MapTime hold = 138;
+	MapTime good;
+	MapTime perfect;
 
 	static const HitWindow NORMAL;
 	static const HitWindow HARD;
@@ -90,6 +114,8 @@ public:
 
 	void SetFlags(GameFlags flags);
 	void SetEndTime(MapTime time);
+
+	inline void SetHitWindow(const HitWindow& window) { hitWindow = window; }
 
 	// Resets/Initializes the scoring system
 	// Called after SetPlayback

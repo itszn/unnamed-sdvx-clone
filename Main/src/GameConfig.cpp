@@ -2,6 +2,7 @@
 #include "GameConfig.hpp"
 
 #include "Shared/Log.hpp"
+#include "Scoring.hpp"
 
 inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {
@@ -65,6 +66,10 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::ShowFps, false);
 	Set(GameConfigKeys::ForcePortrait, false);
 	Set(GameConfigKeys::SkipScore, true);
+
+	Set(GameConfigKeys::HitWindowPerfect, HitWindow::NORMAL.perfect);
+	Set(GameConfigKeys::HitWindowGood, HitWindow::NORMAL.good);
+	Set(GameConfigKeys::HitWindowHold, HitWindow::NORMAL.hold);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);
