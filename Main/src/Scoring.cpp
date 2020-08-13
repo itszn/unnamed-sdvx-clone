@@ -1019,7 +1019,7 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	if (!m_prevHoldHit[index]) return false;
 
 	// b) The last button release happened inside the 'near window' for the end of this hold object.
-	if (obj->time + obj->duration - m_buttonReleaseTime[index] - m_inputOffset > hitWindow.hold) return false;
+	if (obj->time + obj->duration - m_buttonReleaseTime[index] - static_cast<MapTime>(m_inputOffset) > hitWindow.hold) return false;
 
 	return true;
 }
