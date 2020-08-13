@@ -337,6 +337,14 @@ public:
 					replay.maxScore = score->score;
 					FileReader replayReader(replayFile);
 					replayReader.SerializeObject(replay.replay);
+
+					if (replayReader.Tell() + 16 <= replayReader.GetSize())
+					{
+						replayReader.Serialize(&(replay.hitWindow.perfect), 4);
+						replayReader.Serialize(&(replay.hitWindow.good), 4);
+						replayReader.Serialize(&(replay.hitWindow.hold), 4);
+						replayReader.Serialize(&(replay.hitWindow.miss), 4);
+					}
 				}
 			}
 

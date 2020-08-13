@@ -2,7 +2,7 @@
 #include "GameConfig.hpp"
 
 #include "Shared/Log.hpp"
-#include "Scoring.hpp"
+#include "HitStat.hpp"
 
 inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {

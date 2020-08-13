@@ -348,6 +348,10 @@ public:
 			{
 				FileWriter fw(replayFile);
 				fw.SerializeObject(m_simpleHitStats);
+				fw.Serialize(&(m_hitWindow.perfect), 4);
+				fw.Serialize(&(m_hitWindow.good), 4);
+				fw.Serialize(&(m_hitWindow.hold), 4);
+				fw.Serialize(&(m_hitWindow.miss), 4);
 			}
 
 			newScore->score = m_score;
