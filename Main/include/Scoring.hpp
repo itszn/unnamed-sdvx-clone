@@ -49,10 +49,10 @@ struct HitWindow
 		return false;
 	}
 
-	MapTime miss = 250;
+	MapTime perfect = 46;
+	MapTime good = 92;
 	MapTime hold = 138;
-	MapTime good;
-	MapTime perfect;
+	MapTime miss = 250;
 
 	static const HitWindow NORMAL;
 	static const HitWindow HARD;
