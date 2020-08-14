@@ -1428,6 +1428,7 @@ public:
 		if (chart)
 		{
 			chart->custom_offset = newValue;
+			m_mapDatabase->UpdateChartOffset(chart);
 		}
 	}
 
@@ -2098,7 +2099,10 @@ public:
 		{
 			m_selectionWheel->SelectMapByMapIndex(m_lastMapIndex);
 		}
-
+		if (ChartIndex* chartIndex = m_selectionWheel->GetSelectedChart())
+		{
+			m_mapDatabase->UpdateChartOffset(chartIndex);
+		}
 	}
 
 	void MakeMultiplayer(MultiplayerScreen *multiplayer)
