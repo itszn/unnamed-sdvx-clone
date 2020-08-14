@@ -1938,6 +1938,17 @@ public:
 			{
 				m_settDiag.onPressPractice.Call();
 			}
+			else if (code == SDL_SCANCODE_DELETE)
+			{
+				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
+				String name = chart->title + " [" + chart->diff_shortname + "]";
+				bool res = g_gameWindow->ShowYesNoMessage("Delete chart?", "Are you sure you want to delete " + name + "\nThis will only delete "+chart->path+"\nThis cannot be undone...");
+				if (!res)
+					return;
+				Path::Delete(chart->path);
+				m_mapDatabase->StartSearching();
+				OnSearchTermChanged(m_searchInput->input);
+			}
 		}
 	}
 	virtual void OnKeyReleased(SDL_Scancode code)
