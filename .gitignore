@@ -30,6 +30,9 @@ Release
 *.ipdb
 lib/
 
+# Code analysis status file markers
+*.lastcodeanalysissucceeded
+
 # Profiling results
 *.vspx
 
@@ -49,8 +52,13 @@ CMakeCache.txt
 CMakeFiles
 Makefile
 !docs/Makefile
+
 # Not adding photoshop source files for textures
 *.psd
 
 # Document build files
 docs/build
+
+#CLion directories
+.idea
+cmake-build-*
