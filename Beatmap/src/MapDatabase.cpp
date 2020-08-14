@@ -78,7 +78,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 15;
+	static const int32 m_version = 16;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
@@ -325,6 +325,18 @@ public:
 					"FOREIGN KEY(chart_id) REFERENCES Charts(rowid)"
 				")");
 				gotVersion = 15;
+			}
+			if (gotVersion == 15)
+			{
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_perfect INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_good INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_hold INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_miss INTEGER");
+				m_database.Exec("UPDATE Scores SET window_perfect=46");
+				m_database.Exec("UPDATE Scores SET window_good=92");
+				m_database.Exec("UPDATE Scores SET window_hold=138");
+				m_database.Exec("UPDATE Scores SET window_miss=250");
+				gotVersion = 16;
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
@@ -623,7 +635,7 @@ public:
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score FROM Scores WHERE chart_hash=?");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
 		Set<FolderIndex*> addedEvents;
@@ -707,6 +719,11 @@ public:
 					score->userName = scoreScan.StringColumn(9);
 					score->userId = scoreScan.StringColumn(10);
 					score->localScore = scoreScan.IntColumn(11);
+
+					score->hitWindowPerfect = scoreScan.IntColumn(12);
+					score->hitWindowGood = scoreScan.IntColumn(13);
+					score->hitWindowHold = scoreScan.IntColumn(14);
+					score->hitWindowMiss = scoreScan.IntColumn(15);
 
 					score->chartHash = chart->hash;
 					chart->scores.Add(score);
@@ -905,7 +922,7 @@ public:
 
 	void AddScore(ScoreIndex* score)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)");
+		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
 		m_database.Exec("BEGIN");
 		addScore.BindInt(1, score->score);
@@ -920,6 +937,10 @@ public:
 		addScore.BindString(10, score->userName);
 		addScore.BindString(11, score->userId);
 		addScore.BindInt(12, score->localScore);
+		addScore.BindInt(13, score->hitWindowPerfect);
+		addScore.BindInt(14, score->hitWindowGood);
+		addScore.BindInt(15, score->hitWindowHold);
+		addScore.BindInt(16, score->hitWindowMiss);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -1132,6 +1153,10 @@ private:
 			"user_name TEXT,"
 			"user_id TEXT,"
 			"local_score INTEGER,"
+			"window_perfect INTEGER,"
+			"window_good INTEGER,"
+			"window_hold INTEGER,"
+			"window_miss INTEGER,"
 			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"
@@ -1256,7 +1281,7 @@ private:
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -1275,6 +1300,11 @@ private:
 			score->userName = scoreScan.StringColumn(10);
 			score->userId = scoreScan.StringColumn(11);
 			score->localScore = scoreScan.IntColumn(12);
+
+			score->hitWindowPerfect = scoreScan.IntColumn(13);
+			score->hitWindowGood = scoreScan.IntColumn(14);
+			score->hitWindowHold = scoreScan.IntColumn(15);
+			score->hitWindowMiss = scoreScan.IntColumn(16);
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);

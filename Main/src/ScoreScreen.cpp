@@ -366,6 +366,11 @@ public:
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 			newScore->localScore = true;
 
+			newScore->hitWindowPerfect = m_hitWindow.perfect;
+			newScore->hitWindowGood = m_hitWindow.good;
+			newScore->hitWindowHold = m_hitWindow.hold;
+			newScore->hitWindowMiss = m_hitWindow.miss;
+
 			m_mapDatabase.AddScore(newScore);
 
 		 	chart->scores.Add(newScore);

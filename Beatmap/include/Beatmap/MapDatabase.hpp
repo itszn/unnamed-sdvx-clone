@@ -30,6 +30,11 @@ struct ScoreIndex
 	String userName;
 	String userId;
 	bool localScore;
+
+	int32 hitWindowPerfect;
+	int32 hitWindowGood;
+	int32 hitWindowHold;
+	int32 hitWindowMiss;
 };
 
 
