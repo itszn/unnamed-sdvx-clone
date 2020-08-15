@@ -107,9 +107,13 @@ public:
 	{
 		return m_playbackPointer;
 	}
-	float* GetPCM()
+	float* GetPCM() override
 	{
 		return nullptr;
+	}
+	uint64 GetPCMCount() const override
+	{
+		return 0;
 	}
 	uint32 GetSampleRate() const
 	{
