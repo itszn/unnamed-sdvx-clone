@@ -33,6 +33,11 @@ bool OffsetComputer::Compute(int& outOffset)
 		m_beats.size(), m_beats[0]);
 
 	ComputeEnergy();
+	if (m_energy.empty())
+	{
+		Log("OffsetComputer::Compute: Insufficient data...", Logger::Severity::Info);
+		return false;
+	}
 
 	// Doing in the most naive way for proof-of-concept implementation
 	MapTime maxOffset = 0;
@@ -42,6 +47,7 @@ bool OffsetComputer::Compute(int& outOffset)
 		if (offset == 0) continue;
 
 		const int fitness = ComputeFitness(offset);
+		Logf("Offset %3d: Fitness %d", Logger::Severity::Debug, offset, fitness);
 		if (fitness > maxFitness)
 		{
 			maxFitness = fitness;
@@ -128,7 +134,7 @@ static inline float GetAmplitude(const float* pcm, const uint64 count, const uin
 void OffsetComputer::ComputeEnergy()
 {
 	constexpr MapTime ENERGY_COUNT = COMPUTE_WINDOW + MAX_OFFSET * 2 + 10;
-	constexpr float ENERGY_EPSILON = 0.000'001;
+	constexpr float ENERGY_EPSILON = 0.000'001f;
 
 	m_energyOffset = m_beats[0] - MAX_OFFSET - 5;
 
@@ -140,9 +146,9 @@ void OffsetComputer::ComputeEnergy()
 
 	if (m_beats.empty()) return;
 
-	uint64 ind = (m_energyOffset * m_sampleRate) / 1000;
-	const uint64 endInd = ((m_energyOffset + ENERGY_COUNT) * m_sampleRate) / 1000;
-	uint64 nextInd = ((m_energyOffset + 1) * m_sampleRate) / 1000;
+	uint64 ind = (static_cast<uint64>(m_energyOffset) * m_sampleRate) / 1000;
+	const uint64 endInd = ((static_cast<uint64>(m_energyOffset) + ENERGY_COUNT) * m_sampleRate) / 1000;
+	uint64 nextInd = (static_cast<uint64>(m_energyOffset + 1) * m_sampleRate) / 1000;
 	uint64 intervalSize = nextInd - ind;
 
 	uint64 energyInd = 0;
@@ -151,7 +157,7 @@ void OffsetComputer::ComputeEnergy()
 		if (ind >= nextInd)
 		{
 			++energyInd;
-			nextInd = ((m_energyOffset + energyInd + 1) * m_sampleRate) / 1000;
+			nextInd = ((static_cast<uint64>(m_energyOffset) + energyInd + 1) * m_sampleRate) / 1000;
 			intervalSize = nextInd - ind;
 
 			// Check for abnormal cases
@@ -171,15 +177,27 @@ void OffsetComputer::ComputeEnergy()
 		m_energy[energyInd] += std::sqrtf(energySq < 0 ? 0 : energySq) / intervalSize;
 	}
 
+	bool isQuiet = true;
+
 	// This is an experimentally-determined formula.
 	for (ind = 1; ind < ENERGY_COUNT; ++ind)
 	{
 		const float min_energy = m_energy[ind - 1] * 0.995f;
 		if (m_energy[ind] < min_energy) m_energy[ind] = min_energy;
+
+		if (m_energy[ind] > ENERGY_EPSILON)
+			isQuiet = false;
+
 		const float prevEnergy = std::logf(std::max(m_energy[ind - 1], ENERGY_EPSILON));
 		const float currEnergy = std::logf(std::max(m_energy[ind], ENERGY_EPSILON));
 
 		m_onsetScore[ind] = (currEnergy - prevEnergy) * m_energy[ind];
+	}
+
+	if (isQuiet)
+	{
+		m_energy.clear();
+		m_onsetScore.clear();
 	}
 }
 
