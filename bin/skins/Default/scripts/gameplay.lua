@@ -355,6 +355,8 @@ function render(deltaTime)
         then play_mode = "Autoplay"
     elseif gameplay.playbackSpeed ~= nil and gameplay.playbackSpeed < 1
         then play_mode = string.format("Speed: x%.2f", gameplay.playbackSpeed)
+    elseif gameplay.hitWindow ~= nil and gameplay.hitWindow.type == 0
+        then play_mode = "Expand Judge"
     end
     
     if play_mode ~= "" then

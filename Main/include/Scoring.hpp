@@ -29,11 +29,11 @@ public:
 	ScoreTick(ObjectState* object) : object(object) {};
 
 	// Returns the time frame in which this tick can be hit
-	MapTime GetHitWindow() const;
+	MapTime GetHitWindow(const HitWindow& hitWindow) const;
 	// Hit rating when hitting object at given time
-	ScoreHitRating GetHitRating(MapTime currentTime) const;
+	ScoreHitRating GetHitRating(const HitWindow& hitWindow, MapTime currentTime) const;
 	// Hit rating when hitting object give a delta 
-	ScoreHitRating GetHitRatingFromDelta(MapTime delta) const;
+	ScoreHitRating GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const;
 	// Check a flag
 	bool HasFlag(TickFlags flag) const;
 	void SetFlag(TickFlags flag);
@@ -77,6 +77,8 @@ public:
 
 	void SetFlags(GameFlags flags);
 	void SetEndTime(MapTime time);
+
+	inline void SetHitWindow(const HitWindow& window) { hitWindow = window; }
 
 	// Resets/Initializes the scoring system
 	// Called after SetPlayback
@@ -160,10 +162,7 @@ public:
 	Delegate<> OnScoreChanged;
 
 	// Object timing window
-	static const MapTime missHitTime;
-	static const MapTime holdHitTime;
-	static const MapTime goodHitTime;
-	static const MapTime perfectHitTime;
+	HitWindow hitWindow = HitWindow::NORMAL;
 	static const float idleLaserSpeed;
 
 	// Map total infos

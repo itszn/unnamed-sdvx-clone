@@ -38,6 +38,8 @@ private:
 	String m_jacketPath;
 	uint32 m_timedHits[2];
 
+	HitWindow m_hitWindow = HitWindow::NORMAL;
+
 	//0 = normal, 1 = absolute
 	float m_meanHitDelta[2] = {0.f, 0.f};
 	MapTime m_medianHitDelta[2] = {0, 0};
@@ -170,6 +172,8 @@ public:
 
 		m_meanHitDelta[1] = scoring.GetMeanHitDelta(true);
 		m_medianHitDelta[1] = scoring.GetMedianHitDelta(true);
+
+		m_hitWindow = scoring.hitWindow;
 
 		// Make texture for performance graph samples
 		m_graphTex = TextureRes::Create(g_gl);
@@ -344,6 +348,10 @@ public:
 			{
 				FileWriter fw(replayFile);
 				fw.SerializeObject(m_simpleHitStats);
+				fw.Serialize(&(m_hitWindow.perfect), 4);
+				fw.Serialize(&(m_hitWindow.good), 4);
+				fw.Serialize(&(m_hitWindow.hold), 4);
+				fw.Serialize(&(m_hitWindow.miss), 4);
 			}
 
 			newScore->score = m_score;
@@ -357,6 +365,11 @@ public:
 			newScore->chartHash = hash;
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 			newScore->localScore = true;
+
+			newScore->hitWindowPerfect = m_hitWindow.perfect;
+			newScore->hitWindowGood = m_hitWindow.good;
+			newScore->hitWindowHold = m_hitWindow.hold;
+			newScore->hitWindowMiss = m_hitWindow.miss;
 
 			m_mapDatabase.AddScore(newScore);
 
@@ -440,6 +453,10 @@ public:
 			m_PushStringToTable("mission", m_mission);
 			m_PushIntToTable("retryCount", m_retryCount);
 		}
+
+		lua_pushstring(m_lua, "hitWindow");
+		m_hitWindow.ToLuaTable(m_lua);
+		lua_settable(m_lua, -3);
 
 		//Push gauge samples
 		lua_pushstring(m_lua, "gaugeSamples");

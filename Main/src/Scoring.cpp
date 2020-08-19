@@ -4,10 +4,6 @@
 #include <math.h>
 #include "GameConfig.hpp"
 
-const MapTime Scoring::missHitTime = 250;
-const MapTime Scoring::holdHitTime = 138;
-const MapTime Scoring::goodHitTime = 92;
-const MapTime Scoring::perfectHitTime = 46;
 const float Scoring::idleLaserSpeed = 1.0f;
 
 Scoring::Scoring()
@@ -137,6 +133,7 @@ void Scoring::Reset(const MapTimeRange& range)
 	m_assistPunish = g_gameConfig.GetFloat(GameConfigKeys::LaserPunish);
 	m_assistChangeExponent = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeExponent);
 	m_assistChangePeriod = g_gameConfig.GetFloat(GameConfigKeys::LaserChangeTime);
+
 	// Recalculate maximum score
 	mapTotals = CalculateMapTotals();
 
@@ -654,7 +651,7 @@ void Scoring::m_UpdateTicks()
 		{
 			ScoreTick* tick = ticks[i];
 			MapTime delta = currentTime - ticks[i]->time + m_inputOffset;
-			bool shouldMiss = abs(delta) > tick->GetHitWindow();
+			bool shouldMiss = abs(delta) > tick->GetHitWindow(hitWindow);
 			bool processed = false;
 			if (delta >= 0)
 			{
@@ -749,7 +746,7 @@ void Scoring::m_UpdateTicks()
 				}
 			}
 
-			if (delta > Scoring::goodHitTime && !processed)
+			if (delta > hitWindow.good && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
 				processed = true;
@@ -789,11 +786,11 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
-			if (hos->time - Scoring::holdHitTime <= currentTime)
+			if (hos->time - hitWindow.hold <= currentTime)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
-		if (abs(delta) <= Scoring::goodHitTime)
+		if (abs(delta) <= hitWindow.good)
 			m_TickHit(tick, buttonCode, delta);
 		else
 			m_TickMiss(tick, buttonCode, delta);
@@ -820,7 +817,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 	if (tick->HasFlag(TickFlags::Button))
 	{
 		stat->delta = delta;
-		stat->rating = tick->GetHitRatingFromDelta(delta);
+		stat->rating = tick->GetHitRatingFromDelta(hitWindow, delta);
 		OnButtonHit.Call((Input::Button)index, stat->rating, tick->object, delta);
 
 		if (stat->rating == ScoreHitRating::Perfect)
@@ -887,7 +884,7 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 	}
 	if (tick->HasFlag(TickFlags::Button))
 	{
-		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > goodHitTime, tick->object);
+		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > hitWindow.good, tick->object);
 		stat->rating = ScoreHitRating::Miss;
 		stat->delta = delta;
 		currentGauge -= shortMissDrain;
@@ -1019,7 +1016,7 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	if (!m_prevHoldHit[index]) return false;
 
 	// b) The last button release happened inside the 'near window' for the end of this hold object.
-	if (obj->time + obj->duration - m_buttonReleaseTime[index] - m_inputOffset > Scoring::holdHitTime) return false;
+	if (obj->time + obj->duration - m_buttonReleaseTime[index] - static_cast<MapTime>(m_inputOffset) > hitWindow.hold) return false;
 
 	return true;
 }
@@ -1371,7 +1368,7 @@ uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) 
 	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
 }
 
-MapTime ScoreTick::GetHitWindow() const
+MapTime ScoreTick::GetHitWindow(const HitWindow& hitWindow) const
 {
 	// Hold ticks don't have a hit window, but the first ones do
 	if (HasFlag(TickFlags::Hold) && !HasFlag(TickFlags::Start))
@@ -1381,24 +1378,24 @@ MapTime ScoreTick::GetHitWindow() const
 	{
 		if (!HasFlag(TickFlags::Start) && !HasFlag(TickFlags::Slam))
 			return 0;
-		return Scoring::perfectHitTime;
+		return hitWindow.perfect;
 	}
-	return Scoring::missHitTime;
+	return hitWindow.miss;
 }
-ScoreHitRating ScoreTick::GetHitRating(MapTime currentTime) const
+ScoreHitRating ScoreTick::GetHitRating(const HitWindow& hitWindow, MapTime currentTime) const
 {
-	MapTime delta = abs(time - currentTime);
-	return GetHitRatingFromDelta(delta);
+	const MapTime delta = abs(time - currentTime);
+	return GetHitRatingFromDelta(hitWindow, delta);
 }
-ScoreHitRating ScoreTick::GetHitRatingFromDelta(MapTime delta) const
+ScoreHitRating ScoreTick::GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const
 {
 	delta = abs(delta);
 	if (HasFlag(TickFlags::Button))
 	{
 		// Button hit judgeing
-		if (delta <= Scoring::perfectHitTime)
+		if (delta <= hitWindow.perfect)
 			return ScoreHitRating::Perfect;
-		if (delta <= Scoring::goodHitTime)
+		if (delta <= hitWindow.good)
 			return ScoreHitRating::Good;
 		return ScoreHitRating::Miss;
 	}
