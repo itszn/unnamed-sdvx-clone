@@ -149,7 +149,7 @@ void OffsetComputer::ReadBeats()
 	m_beats.resize(maxBeatsCount);
 }
 
-static inline float GetSmoothValue(const float* pcm, const uint64 count, const uint64 ind)
+static inline float GetSmoothValue(const float* pcm, const uint64 count, const int64 ind)
 {
 	const float prev = 0 <= ind - 2 && ind - 2 < 2*count ? pcm[ind - 2] : 0;
 	const float curr = 0 <= ind && ind < 2*count ? pcm[ind] : 0;
@@ -158,7 +158,7 @@ static inline float GetSmoothValue(const float* pcm, const uint64 count, const u
 	return curr + (prev + next) * 0.5f;
 }
 
-static inline float GetAmplitude(const float* pcm, const uint64 count, const uint64 sample)
+static inline float GetAmplitude(const float* pcm, const uint64 count, const int64 sample)
 {
 	return std::hypotf(GetSmoothValue(pcm, count, 2*sample), GetSmoothValue(pcm, count, 2*sample + 1));
 }
@@ -182,18 +182,18 @@ void OffsetComputer::ComputeEnergy()
 
 	m_energyOffset = m_beats[0] - MAX_OFFSET - 5;
 
-	uint64 ind = (static_cast<uint64>(m_energyOffset) * m_sampleRate) / 1000;
-	const uint64 endInd = ((static_cast<uint64>(m_energyOffset) + ENERGY_COUNT) * m_sampleRate) / 1000;
-	uint64 nextInd = (static_cast<uint64>(m_energyOffset + 1) * m_sampleRate) / 1000;
-	uint64 intervalSize = nextInd - ind;
+	int64 ind = (static_cast<int64>(m_energyOffset) * m_sampleRate) / 1000;
+	const int64 endInd = ((static_cast<int64>(m_energyOffset) + ENERGY_COUNT) * m_sampleRate) / 1000;
+	int64 nextInd = (static_cast<int64>(m_energyOffset + 1) * m_sampleRate) / 1000;
+	int64 intervalSize = nextInd - ind;
 
-	uint64 energyInd = 0;
+	int64 energyInd = 0;
 	for (; ind < endInd; ++ind)
 	{
 		if (ind >= nextInd)
 		{
 			++energyInd;
-			nextInd = ((static_cast<uint64>(m_energyOffset) + energyInd + 1) * m_sampleRate) / 1000;
+			nextInd = ((static_cast<int64>(m_energyOffset) + energyInd + 1) * m_sampleRate) / 1000;
 			intervalSize = nextInd - ind;
 
 			// Check for abnormal cases
