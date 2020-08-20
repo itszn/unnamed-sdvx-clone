@@ -151,9 +151,10 @@ void OffsetComputer::ReadBeats()
 
 static inline float GetSmoothValue(const float* pcm, const uint64 count, const int64 ind)
 {
-	const float prev = 0 <= ind - 2 && ind - 2 < 2*count ? pcm[ind - 2] : 0;
-	const float curr = 0 <= ind && ind < 2*count ? pcm[ind] : 0;
-	const float next = 0 <= ind + 2 && ind + 2 < 2*count ? pcm[ind + 2] : 0;
+	const int64 max_ind = static_cast<int64>(count * 2);
+	const float prev = 0 <= ind - 2 && ind - 2 < max_ind ? pcm[ind - 2] : 0;
+	const float curr = 0 <= ind && ind < max_ind ? pcm[ind] : 0;
+	const float next = 0 <= ind + 2 && ind + 2 < max_ind ? pcm[ind + 2] : 0;
 
 	return curr + (prev + next) * 0.5f;
 }
@@ -210,7 +211,7 @@ void OffsetComputer::ComputeEnergy()
 		const float v = (next - prev) / 2;
 		const float a = (prev + next - 2 * curr);
 		const float energySq = v * v - curr * a;
-		m_energy[energyInd] += std::sqrtf(energySq < 0 ? 0 : energySq) / intervalSize;
+		m_energy[energyInd] += std::sqrt(energySq < 0 ? 0 : energySq) / intervalSize;
 	}
 
 	bool isQuiet = true;
@@ -224,8 +225,8 @@ void OffsetComputer::ComputeEnergy()
 		if (m_energy[ind] > ENERGY_EPSILON)
 			isQuiet = false;
 
-		const float prevEnergy = std::logf(std::max(m_energy[ind - 1], ENERGY_EPSILON));
-		const float currEnergy = std::logf(std::max(m_energy[ind], ENERGY_EPSILON));
+		const float prevEnergy = std::log(std::max(m_energy[ind - 1], ENERGY_EPSILON));
+		const float currEnergy = std::log(std::max(m_energy[ind], ENERGY_EPSILON));
 
 		m_onsetScore[ind] = (currEnergy - prevEnergy) * m_energy[ind];
 	}
