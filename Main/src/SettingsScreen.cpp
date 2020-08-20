@@ -13,7 +13,6 @@
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
 #include "Input.hpp"
-#include <queue>
 #include <SDL2/SDL.h>
 #include "nanovg.h"
 #include "CalibrationScreen.hpp"
@@ -204,6 +203,8 @@ private:
 	bool m_useBTGamepad = false;
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
+	
+	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 	String m_skinBeforeSkinSettings = "";
 
@@ -261,6 +262,9 @@ private:
 
 		g_gameConfig.Set(GameConfigKeys::Laser0Color, m_laserColors[0]);
 		g_gameConfig.Set(GameConfigKeys::Laser1Color, m_laserColors[1]);
+
+		m_hitWindow.Validate();
+		m_hitWindow.SaveConfig();
 
 		String songsPath = String(m_songsPath, m_pathlen);
 		songsPath.TrimBack('\n');
@@ -502,6 +506,8 @@ public:
 		m_laserColors[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 		m_laserColors[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
 
+		m_hitWindow = HitWindow::FromConfig();
+
 		String songspath = g_gameConfig.GetString(GameConfigKeys::SongFolder);
 		strcpy(m_songsPath, songspath.c_str());
 		m_pathlen = songspath.length();
@@ -739,6 +745,55 @@ public:
 
 			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
+
+			{
+				nk_label(m_nctx, "Timing Window:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_layout_row_dynamic(m_nctx, 30, 3);
+
+				const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.perfect, 1, 1);
+				if (hitWindowPerfect != m_hitWindow.perfect)
+				{
+					m_hitWindow.perfect = hitWindowPerfect;
+					if (m_hitWindow.good < m_hitWindow.perfect)
+						m_hitWindow.good = m_hitWindow.perfect;
+					if (m_hitWindow.hold < m_hitWindow.perfect)
+						m_hitWindow.hold = m_hitWindow.perfect;
+				}
+
+				const int hitWindowGood = nk_propertyi_sdl_text(m_nctx, "Near", 0, m_hitWindow.good, HitWindow::NORMAL.good, 1, 1);
+				if (hitWindowGood != m_hitWindow.good)
+				{
+					m_hitWindow.good = hitWindowGood;
+					if (m_hitWindow.good < m_hitWindow.perfect)
+						m_hitWindow.perfect = m_hitWindow.good;
+					if (m_hitWindow.hold < m_hitWindow.good)
+						m_hitWindow.hold = m_hitWindow.good;
+				}
+
+				const int hitWindowHold = nk_propertyi_sdl_text(m_nctx, "Hold", 0, m_hitWindow.hold, HitWindow::NORMAL.hold, 1, 1);
+				if (hitWindowHold != m_hitWindow.hold)
+				{
+					m_hitWindow.hold = hitWindowHold;
+					if (m_hitWindow.hold < m_hitWindow.perfect)
+						m_hitWindow.perfect = m_hitWindow.hold;
+					if (m_hitWindow.hold < m_hitWindow.good)
+						m_hitWindow.good = m_hitWindow.hold;
+				}
+
+				nk_layout_row_dynamic(m_nctx, 30, 2);
+
+				if (nk_button_label(m_nctx, "Set to NORMAL (default)"))
+				{
+					m_hitWindow = HitWindow::NORMAL;
+				}
+
+				if (nk_button_label(m_nctx, "Set to HARD"))
+				{
+					m_hitWindow = HitWindow::HARD;
+				}
+
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+			}
 
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
