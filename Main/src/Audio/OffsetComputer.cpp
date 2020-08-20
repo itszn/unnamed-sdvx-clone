@@ -4,6 +4,7 @@
 #include <Audio/Audio_Impl.hpp>
 #include <Beatmap/Beatmap.hpp>
 #include <Shared/Profiling.hpp>
+#include <array>
 
 OffsetComputer::OffsetComputer(Ref<AudioStream> music, const Beatmap& beatmap)
 	: m_pcm(music->GetPCM()), m_pcmCount(music->GetPCMCount()), m_sampleRate(music->GetSampleRate()),
@@ -39,25 +40,48 @@ bool OffsetComputer::Compute(int& outOffset)
 		return false;
 	}
 
-	// Doing in the most naive way for proof-of-concept implementation
-	MapTime maxOffset = 0;
-	int maxFitness = ComputeFitness(0);
+	std::array<int, MAX_OFFSET*2 + 1> fitnesses;
+
+	// This O(MAX_OFFSET*MAX_BEATS) is sub-optimal for computing convolution,
+	// but it's simple and doesn't matter a lot in practice.
 	for(MapTime offset = -MAX_OFFSET; offset <= MAX_OFFSET; ++offset)
 	{
-		if (offset == 0) continue;
-
-		const int fitness = ComputeFitness(offset);
-		Logf("Offset %3d: Fitness %d", Logger::Severity::Debug, offset, fitness);
-		if (fitness > maxFitness)
-		{
-			maxFitness = fitness;
-			maxOffset = offset;
-		}
+		fitnesses[MAX_OFFSET + offset] = ComputeFitness(offset);
 	}
 
-	Logf("OffsetComputer::Compute: Determined offset: %d (fitness = %d)", Logger::Severity::Info, maxOffset, maxFitness);
+	std::vector<MapTime> peaks;
 
-	outOffset = static_cast<int>(maxOffset);
+	for (MapTime offset = -MAX_OFFSET; offset <= MAX_OFFSET; ++offset)
+	{
+		// Only consider the peaks of fitnesses
+		if (-MAX_OFFSET < offset && offset < MAX_OFFSET)
+		{
+			const int index = static_cast<int>(offset + MAX_OFFSET);
+			if (!(fitnesses[index - 1] < fitnesses[index] && fitnesses[index] >= fitnesses[index + 1]))
+				continue;
+		}
+
+		peaks.emplace_back(offset);
+	}
+
+	if (peaks.empty())
+	{
+		Log("OffsetComputer::Compute: Insufficient candidates...", Logger::Severity::Info);
+		return false;
+	}
+
+	std::sort(peaks.begin(), peaks.end(), [&fitnesses](MapTime a, MapTime b) {
+		return fitnesses[a + MAX_OFFSET] > fitnesses[b + MAX_OFFSET];
+	});
+
+	for (size_t i = 0; i < 5 && i < peaks.size(); ++i)
+	{
+		Logf("offset %3d | score = %d", Logger::Severity::Info, peaks[i], fitnesses[peaks[i] + MAX_OFFSET]);
+	}
+
+	Logf("OffsetComputer::Compute: Determined offset: %d (fitness = %d)", Logger::Severity::Info, peaks[0], fitnesses[peaks[0] + MAX_OFFSET]);
+
+	outOffset = static_cast<int>(peaks[0]);
 	return true;
 }
 
@@ -109,6 +133,14 @@ void OffsetComputer::ReadBeats()
 	if (m_beats.empty()) return;
 	assert(maxBeatsCount > 0);
 
+	if (maxBeatsCount > MAX_BEATS)
+	{
+		Logf("The chart contains too much # of beats (%d / max %d)", Logger::Severity::Warning,
+			maxBeatsCount, MAX_BEATS);
+
+		maxBeatsCount = MAX_BEATS;
+	}
+
 	for (int i = 0; i < maxBeatsCount; ++i)
 	{
 		const MapTime currBeat = m_beats[i] = m_beats[maxBeatsBeginInd + i];
@@ -119,9 +151,9 @@ void OffsetComputer::ReadBeats()
 
 static inline float GetSmoothValue(const float* pcm, const uint64 count, const uint64 ind)
 {
-	const float prev = 0 <= ind - 2 && ind - 2 < count ? pcm[ind - 2] : 0;
-	const float curr = 0 <= ind && ind < count ? pcm[ind] : 0;
-	const float next = 0 <= ind + 2 && ind + 2 < count ? pcm[ind + 2] : 0;
+	const float prev = 0 <= ind - 2 && ind - 2 < 2*count ? pcm[ind - 2] : 0;
+	const float curr = 0 <= ind && ind < 2*count ? pcm[ind] : 0;
+	const float next = 0 <= ind + 2 && ind + 2 < 2*count ? pcm[ind + 2] : 0;
 
 	return curr + (prev + next) * 0.5f;
 }
@@ -136,15 +168,19 @@ void OffsetComputer::ComputeEnergy()
 	constexpr MapTime ENERGY_COUNT = COMPUTE_WINDOW + MAX_OFFSET * 2 + 10;
 	constexpr float ENERGY_EPSILON = 0.000'001f;
 
-	m_energyOffset = m_beats[0] - MAX_OFFSET - 5;
-
 	m_energy.clear();
 	m_energy.resize(ENERGY_COUNT, 0);
 	
 	m_onsetScore.clear();
 	m_onsetScore.resize(ENERGY_COUNT, 0);
 
-	if (m_beats.empty()) return;
+	if (m_beats.empty())
+	{
+		m_energyOffset = 0;
+		return;
+	}
+
+	m_energyOffset = m_beats[0] - MAX_OFFSET - 5;
 
 	uint64 ind = (static_cast<uint64>(m_energyOffset) * m_sampleRate) / 1000;
 	const uint64 endInd = ((static_cast<uint64>(m_energyOffset) + ENERGY_COUNT) * m_sampleRate) / 1000;
@@ -206,13 +242,13 @@ int OffsetComputer::ComputeFitness(MapTime offset)
 	int fitness = 0;
 	for (MapTime beat : m_beats)
 	{
-		fitness += ComputeOnsetScore(beat + offset);
+		fitness += GetOnsetScore(beat + offset);
 	}
 
 	return fitness;
 }
 
-int OffsetComputer::ComputeOnsetScore(MapTime time)
+int OffsetComputer::GetOnsetScore(MapTime time)
 {
 	time -= m_energyOffset;
 
