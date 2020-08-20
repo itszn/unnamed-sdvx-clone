@@ -401,10 +401,17 @@ public:
 		if (!m_lua)
 			return false;
 
-		m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
+		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
+			m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
+			m_track->hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
+		}
+		else {
+			m_track->suddenCutoff = 1.0f;
+			m_track->hiddenCutoff = 0.0f;
+		}
 		m_track->suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
-		m_track->hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
+
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 

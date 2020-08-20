@@ -34,6 +34,7 @@ void GameplaySettingsDialog::InitTabs()
 
     Tab hidsudTab = std::make_unique<TabData>();
     hidsudTab->name = "Hid/Sud";
+    hidsudTab->settings.push_back(CreateBoolSetting(GameConfigKeys::EnableHiddenSudden, "Enable Hidden / Sudden"));
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::HiddenCutoff, "Hidden Cutoff", { 0.f, 1.f }));
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::HiddenFade, "Hidden Fade", { 0.f, 1.f }));
     hidsudTab->settings.push_back(CreateFloatSetting(GameConfigKeys::SuddenCutoff, "Sudden Cutoff", { 0.f, 1.f }));

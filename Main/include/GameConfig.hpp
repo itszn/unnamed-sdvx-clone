@@ -46,6 +46,7 @@ DefineEnum(GameConfigKeys,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
 
+		   EnableHiddenSudden,
 		   HiddenCutoff,
 		   HiddenFade,
 		   SuddenCutoff,

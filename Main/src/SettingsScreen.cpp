@@ -809,6 +809,7 @@ public:
 	{
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", NK_MINIMIZED))
 		{
+			ToggleSetting(GameConfigKeys::EnableHiddenSudden, "Enable Hidden / Sudden Mode");
 			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
