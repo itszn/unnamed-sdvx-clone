@@ -629,8 +629,10 @@ public:
 			pads.Add(s.GetData());
 		}
 
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", (treesOpen & 1) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 1);
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetBTBind((*m_activeBTKeys)[0]);
@@ -725,13 +727,19 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~1));
+		}
 	}
 
 	// Game settings
 	void RenderSettingsGame()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", (treesOpen & 2) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 2);
 			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
 			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", 0.25f, 20, 0.05f);
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
@@ -802,13 +810,19 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~2));
+		}
 	}
 
 	// Display settings
 	void RenderSettingsDisplay()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", (treesOpen & 4) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 4);
 			ToggleSetting(GameConfigKeys::EnableHiddenSudden, "Enable Hidden / Sudden Mode");
 			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
@@ -847,6 +861,10 @@ public:
 			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInResult, "Show practice info on the result");
 
 			nk_tree_pop(m_nctx);
+		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~4));
 		}
 	}
 
@@ -908,8 +926,10 @@ public:
 	// System (audio/visual) settings
 	void RenderSettingsSystem()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", (treesOpen & 8) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 8);
 			nk_layout_row_dynamic(m_nctx, 30, 1);
 			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
 			ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
@@ -929,12 +949,18 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~8));
+		}
 	}
 
 	void RenderSettingsOnline()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", (treesOpen & 16) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 16);
 			nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default));
 
@@ -944,6 +970,10 @@ public:
 			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
 			nk_tree_pop(m_nctx);
+		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~16));
 		}
 	}
 
