@@ -88,6 +88,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Laser1Color, 330.0f);
 	Set(GameConfigKeys::SongSelSensMult, 1.0f);
 
+	Set(GameConfigKeys::EnableHiddenSudden, false);
 	Set(GameConfigKeys::HiddenCutoff, 0.0f);
 	Set(GameConfigKeys::HiddenFade, 0.2f);
 	Set(GameConfigKeys::SuddenCutoff, 1.0f);
@@ -181,6 +182,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AutoResetSettings, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
+
+	Set(GameConfigKeys::SettingsTreesOpen, 1);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 
