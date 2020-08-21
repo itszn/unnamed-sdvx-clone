@@ -63,6 +63,10 @@ private:
 
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
+	Vector<SimpleHitStat> m_simpleNoteHitStats; ///< For notes only
+
+	// For scaling simpleHitStats
+	MapTime m_beatmapDuration = 0;
 
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
@@ -304,7 +308,13 @@ public:
 			shs.delta = stat->delta;
 			shs.hold = stat->hold;
 			shs.holdMax = stat->holdMax;
+
 			m_simpleHitStats.Add(shs);
+
+			if (stat->object && stat->object->type == ObjectType::Single)
+			{
+				m_simpleNoteHitStats.Add(shs);
+			}
 		}
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
@@ -380,8 +390,9 @@ public:
 			});
 		}
 
-
 		m_startPressed = false;
+
+		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
 
 		// Used for jacket images
 		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
@@ -425,7 +436,11 @@ public:
 		}
 		m_PushStringToTable("artist", m_beatmapSettings.artist);
 		m_PushStringToTable("effector", m_beatmapSettings.effector);
+		m_PushStringToTable("illustrator", m_beatmapSettings.illustrator);
+
 		m_PushStringToTable("bpm", m_beatmapSettings.bpm);
+		m_PushIntToTable("duration", m_beatmapDuration);
+
 		m_PushStringToTable("jacketPath", m_jacketPath);
 		m_PushIntToTable("medianHitDelta", m_medianHitDelta[0]);
 		m_PushFloatToTable("meanHitDelta", m_meanHitDelta[0]);
@@ -515,6 +530,24 @@ public:
 			lua_settable(m_lua, -3);
 		}
 
+		lua_pushstring(m_lua, "hitStats");
+		lua_newtable(m_lua);
+		for(size_t i = 0; i < m_simpleNoteHitStats.size(); ++i)
+		{
+			const SimpleHitStat simpleHitStat = m_simpleNoteHitStats[i];
+
+			lua_newtable(m_lua);
+			m_PushIntToTable("rating", simpleHitStat.rating);
+			m_PushIntToTable("lane", simpleHitStat.lane);
+			m_PushIntToTable("time", simpleHitStat.time);
+			m_PushFloatToTable("timeFrac",
+				Math::Clamp(static_cast<float>(simpleHitStat.time) / (m_beatmapDuration > 0 ? m_beatmapDuration : 1), 0.0f, 1.0f));
+			m_PushIntToTable("delta", simpleHitStat.delta);
+
+			lua_rawseti(m_lua, -2, i + 1);
+		}
+		lua_settable(m_lua, -3);
+		
 		///TODO: maybe push complete hit stats
 
 		lua_setglobal(m_lua, "result");
