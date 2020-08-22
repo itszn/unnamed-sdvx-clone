@@ -2591,6 +2591,10 @@ return Scoring::CalculateBadge(scoreData);
 	{
 		return m_audioPlayback.GetPlaybackSpeed();
 	}
+	virtual const PlayOptions& GetPlayOptions() const override
+	{
+		return m_playOptions;
+	}
 	virtual int GetRetryCount() const override
 	{
 		return m_loopCount;

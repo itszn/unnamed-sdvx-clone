@@ -24,6 +24,8 @@ local shotPath = "";
 game.LoadSkinSample("shutter")
 local highScores = nil
 
+local highestScore = 0
+
 local hasHitStat = false
 local hitHistogram = {}
 local hitDeltaScale = 1.5
@@ -86,6 +88,11 @@ function result_set()
             else 
                 newScore.subtext = ""
             end
+            
+            if highestScore < s.score then
+                highestScore = s.score
+            end
+            
             table.insert(highScores, newScore)
         end
 
@@ -116,11 +123,16 @@ function result_set()
 
             newScore.score = string.format("%08d", s.score)
             newScore.subtext = s.name
+            
+            if highestScore < s.score then
+                highestScore = s.score
+            end
+            
             table.insert(highScores, newScore)
         end
     end
     
-    hasHitStat = result.hitStats ~= nil and #result.hitStats > 0
+    hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
     
     if result.hitWindow ~= nil then
         hitWindowPerfect = result.hitWindow.perfect
@@ -129,8 +141,8 @@ function result_set()
     
     if hasHitStat then
         hitHistogram = {}
-        for i = 1, #result.hitStats do
-            local hitStat = result.hitStats[i]
+        for i = 1, #result.noteHitStats do
+            local hitStat = result.noteHitStats[i]
             if hitStat.rating == 1 or hitStat.rating == 2 then
                 if hitHistogram[hitStat.delta] == nil then hitHistogram[hitStat.delta] = 0 end
                 hitHistogram[hitStat.delta] = hitHistogram[hitStat.delta] + 1
@@ -179,17 +191,19 @@ draw_stat = function(x,y,w,h, name, value, format,r,g,b)
     return y + h + 5
 end
 
-draw_score = function(x, y, w)
-    local center = x + w/2 + 12
+draw_score = function(score, x, y, w, h, pre)
+    local center = x + w * 0.55
+    local prefix = ""
+    if pre ~= nil then prefix = pre end
 
     gfx.LoadSkinFont("NovaMono.ttf")
     gfx.BeginPath()
     gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT)
-    gfx.FontSize(72)
-    gfx.Text(string.format("%04d", result.score // 10000), center-1, y)
+    gfx.FontSize(h)
+    gfx.Text(string.format("%s%04d", prefix, score // 10000), center-h/70, y)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
-    gfx.FontSize(54)
-    gfx.Text(string.format("%04d", result.score % 10000), center+1, y)
+    gfx.FontSize(h*0.75)
+    gfx.Text(string.format("%04d", score % 10000), center+h/70, y)
 end
 
 draw_highscores = function()
@@ -278,8 +292,8 @@ draw_hit_graph = function(x, y, w, h)
     draw_hit_graph_lines(x, y, w, h)
     gfx.StrokeWidth(1)
     
-    for i = 1, #result.hitStats do
-        local hitStat = result.hitStats[i]
+    for i = 1, #result.noteHitStats do
+        local hitStat = result.noteHitStats[i]
         local hitStatY = h/2 + hitStat.delta * hitDeltaScale
         if hitStatY < 0 then hitStatY = 0
         elseif hitStatY > h then hitStatY = h
@@ -287,17 +301,17 @@ draw_hit_graph = function(x, y, w, h)
         if hitStat.rating == 2 then
             gfx.BeginPath()
             gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.25)
-            gfx.StrokeColor(255, 150, 0)
+            gfx.StrokeColor(255, 150, 0, 160)
             gfx.Stroke()
         elseif hitStat.rating == 1 then
             gfx.BeginPath()
             gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.5)
-            gfx.StrokeColor(255, 0, 200)
+            gfx.StrokeColor(255, 0, 200, 160)
             gfx.Stroke()
         elseif hitStat.rating == 0 then
             gfx.BeginPath()
             gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.75)
-            gfx.StrokeColor(255, 0, 0)
+            gfx.StrokeColor(255, 0, 0, 160)
             gfx.Stroke()
         end
     end
@@ -366,9 +380,9 @@ draw_hit_histogram = function(x, y, w, h)
         end
     end
     
-    gfx.StrokeWidth(1)
+    gfx.StrokeWidth(1.5)
     gfx.BeginPath()
-    gfx.StrokeColor(255, 255, 128, 64)
+    gfx.StrokeColor(255, 255, 128, 96)
     gfx.MoveTo(x, y)
     for i = -maxDispDelta, maxDispDelta do
         local count = hitHistogram[i-1] + hitHistogram[i]*2 + hitHistogram[i+1]
@@ -429,7 +443,7 @@ draw_right_graph = function(x, y, w, h)
     
     gfx.BeginPath()
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
-    gfx.Text(string.format("Last: %d ms", hitMaxDelta), x+5, y+h)
+    gfx.Text(string.format("Latest: %d ms", hitMaxDelta), x+5, y+h)
 end
 
 -- Header (chart title)
@@ -562,7 +576,22 @@ draw_col_right = function(x, y, w, h)
         end
     end
     
-    draw_score(x, y+155, w)
+    draw_score(result.score, x, y+155, w, 72)
+    
+    if highestScore > 0 then
+        if highestScore > result.score then
+            gfx.FillColor(255, 0, 0)
+            draw_score(highestScore - result.score, x+w/2, y+174, w/2, 25, "-")
+        elseif highestScore == result.score then
+            gfx.FillColor(128, 128, 128)
+            draw_score(0, x+w/2, y+174, w/2, 25, utf8.char(0xB1))
+        else
+            gfx.FillColor(0, 255, 0)
+            draw_score(result.score - highestScore, x+w/2, y+174, w/2, 25, "+")
+        end
+    end
+    
+    gfx.FillColor(255, 255, 255)
     
     local stat_y = y+180
     stat_y = draw_stat(x+4, stat_y, w-14, 25, "CRIT", result.perfects, "%d", 255, 150, 0)
@@ -597,8 +626,24 @@ draw_graphs = function(x, y, w, h)
     end
 end
 
+local i = 1
+
 draw_footer = function(x, y, w, h)
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
+    if result.playbackSpeed ~= nil and result.playbackSpeed ~= 1.00 then
+        gfx.FontSize(30)
+        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE)
+        
+        if result.playbackSpeed < 1.00 then
+            gfx.FillColor(128, 255, 128)
+        else
+            gfx.FillColor(255, 128, 64)
+        end
+        
+        gfx.BeginPath()
+        gfx.Text(string.format("x%.2f play", result.playbackSpeed), x+w-10, y+h/2)
+    end
 end
 
 render = function(deltaTime, showStats)
@@ -618,7 +663,7 @@ render = function(deltaTime, showStats)
     draw_col_left(0, 120, 280, 420)
     draw_col_right(280, 120, 220, 420)
     draw_graphs(0, 550, 500, 200)
-    draw_footer(0, 760, 500, 40)
+    draw_footer(0, 750, 500, 50)
     
     -- Highscores
     draw_highscores()

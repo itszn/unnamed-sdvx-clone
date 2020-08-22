@@ -166,7 +166,7 @@ public:
 			m_badge = Scoring::CalculateBadge(m_scoredata);
 		}
 
-		m_playbackSpeed = game->GetPlaybackSpeed();
+		m_playbackSpeed = game->GetPlayOptions().playbackSpeed;
 
 		m_retryCount = game->GetRetryCount();
 		m_mission = game->GetMissionStr();
@@ -530,7 +530,7 @@ public:
 			lua_settable(m_lua, -3);
 		}
 
-		lua_pushstring(m_lua, "hitStats");
+		lua_pushstring(m_lua, "noteHitStats");
 		lua_newtable(m_lua);
 		for(size_t i = 0; i < m_simpleNoteHitStats.size(); ++i)
 		{
@@ -548,8 +548,6 @@ public:
 		}
 		lua_settable(m_lua, -3);
 		
-		///TODO: maybe push complete hit stats
-
 		lua_setglobal(m_lua, "result");
 
 		lua_getglobal(m_lua, "result_set");
