@@ -28,7 +28,7 @@ local highestScore = 0
 
 local hasHitStat = false
 local hitHistogram = {}
-local hitDeltaScale = 1.5
+local hitDeltaScale = 1.6
 local hitMinDelta = 0
 local hitMaxDelta = 0
 
@@ -38,6 +38,17 @@ local hitWindowGood = 92
 local showStatsHit = false
 local prevShowStats = false
 local clearText = ""
+
+local currTime = 0
+
+function waveParam(period, offset)
+    local t = currTime
+    if offset then t = t+offset end
+    
+    t = t / period
+    
+    return 0.5 + 0.5*math.cos(t * math.pi * 2)
+end
 
 function getTextScale(txt, max_width)
     local x1, y1, x2, y2 = gfx.TextBounds(0, 0, txt)
@@ -211,6 +222,10 @@ draw_shotnotif = function(x,y)
     gfx.Restore()
 end
 
+---------------------
+-- Subcomponents --
+---------------------
+
 draw_stat = function(x,y,w,h, name, value, format,r,g,b)
     gfx.Save()
     gfx.Translate(x,y)
@@ -231,7 +246,7 @@ draw_stat = function(x,y,w,h, name, value, format,r,g,b)
 end
 
 draw_score = function(score, x, y, w, h, pre)
-    local center = x + w * 0.55
+    local center = x + w * 0.54
     local prefix = ""
     if pre ~= nil then prefix = pre end
 
@@ -426,7 +441,7 @@ draw_hit_histogram = function(x, y, w, h)
     for i = -maxDispDelta, maxDispDelta do
         local count = hitHistogram[i-1] + hitHistogram[i]*2 + hitHistogram[i+1]
         
-        gfx.LineTo(x + 0.8 * w * count / modeCount, y+h/2 + i*hitDeltaScale)
+        gfx.LineTo(x + 0.9 * w * count / modeCount, y+h/2 + i*hitDeltaScale)
     end
     gfx.LineTo(x, y+h)
     gfx.Stroke()
@@ -461,17 +476,17 @@ draw_right_graph = function(x, y, w, h)
     end
     gfx.FillColor(255, 128, 128)
     gfx.FontSize(16)
-    gfx.Text(string.format("Mean: %.1f ms", result.meanHitDelta), x+5, y+meanY)
+    gfx.Text(string.format("Mean: %.1f ms", result.meanHitDelta), x+2, y+meanY)
     
     gfx.BeginPath()
     if medianY <= meanY then
-        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_BOTTOM)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
     else
-        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_TOP)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
     end
     gfx.FillColor(196, 196, 255)
     gfx.FontSize(16)
-    gfx.Text(string.format("Median: %d ms", result.medianHitDelta), x+w-5, y+medianY)
+    gfx.Text(string.format("Median: %d ms", result.medianHitDelta), x+2, y+medianY)
     
     gfx.FillColor(255, 255, 255)
     gfx.FontSize(15)
@@ -485,7 +500,9 @@ draw_right_graph = function(x, y, w, h)
     gfx.Text(string.format("Latest: %d ms", hitMaxDelta), x+5, y+h)
 end
 
--- Main components
+---------------------
+-- Main components --
+---------------------
 
 draw_title = function(x, y, w, h)
     local centerLineY = y+h*0.6
@@ -529,9 +546,10 @@ draw_chart_info = function(x, y, w, h, full)
         gfx.Fill()
         
         gfx.BeginPath()
-        gfx.FillColor(255, 255, 255, 160)
+        gfx.FillColor(255, 255, 255, math.floor(40+80*waveParam(4)))
         gfx.FontSize(30)
-        gfx.Text("No Image", x+w/2, y+jacket_size/2+60)
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+        gfx.Text("No Image", x+w/2, jacket_y + jacket_size/2)
     end
     
     if full then
@@ -609,12 +627,14 @@ draw_basic_hitstat = function(x, y, w, h, full)
     local stat_size = 30
     local stat_width = w-8
     
+    local showRetryCount = (result.retryCount ~= nil and result.retryCount > 0) or (result.mission ~= nil and result.mission ~= "")
+    
     if full then
         stat_gap = 6
         stat_size = 25
         stat_width = w-18
         
-        if result.retryCount == nil or result.retryCount <= 0 then
+        if not showRetryCount then
             stat_gap = 25
             stat_y = stat_y + 5
         end
@@ -623,21 +643,30 @@ draw_basic_hitstat = function(x, y, w, h, full)
         gfx.ImageRect(x + (w-grade_width)/2 - 5, stat_y, grade_width, 70, gradeImg, 1, 0)
         stat_y = stat_y + 85
     else
-        if result.retryCount == nil or result.retryCount <= 0 then
+        if not showRetryCount then
             stat_gap = 30
         end
     end
     
-    
     if clearText ~= "" then
+        if clearText == "PERFECT" then gfx.FillColor(255, 255, math.floor(120+125*waveParam(2.0)))
+        elseif clearText == "FULL COMBO" then gfx.FillColor(255, 0, 200)
+        else gfx.FillColor(255, 255, 255)
+        end
+        
         gfx.BeginPath()
-        gfx.FillColor(255, 255, 255)
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
         gfx.FontSize(20)
         gfx.Text(clearText, x+w/2 - 5, stat_y)
     end
     
     stat_y = stat_y + 50
+    
+    if result.score == 10000000 then
+        gfx.FillColor(255, 255, math.floor(120+125*waveParam(2.0)))
+    else
+        gfx.FillColor(255, 255, 255)
+    end
     draw_score(result.score, x, stat_y, w, 72)
     
     stat_y = stat_y + 19
@@ -672,8 +701,11 @@ draw_basic_hitstat = function(x, y, w, h, full)
     
     stat_y = draw_stat(x+4, stat_y+15, stat_width, stat_size, "MAX COMBO", result.maxCombo, "%d", 255, 255, 0)
     
-    if result.retryCount ~= nil and result.retryCount > 0 then
-        stat_y = draw_stat(x+4, stat_y+15, stat_width, stat_size-6, "RETRY", result.retryCount, "%d")
+    if showRetryCount then
+        local retryCount = 0
+        if result.retryCount ~= nil then retryCount = result.retryCount end
+        
+        stat_y = draw_stat(x+4, stat_y+15, stat_width, stat_size-6, "RETRY", retryCount, "%d")
         
         if result.mission ~= nil and result.mission ~= "" then
             gfx.LoadSkinFont("NotoSans-Regular.ttf")
@@ -695,7 +727,7 @@ draw_graphs = function(x, y, w, h)
     end
 end
 
-draw_footer = function(x, y, w, h)
+draw_footer = function(x, y, w, h, full)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
     if result.playbackSpeed ~= nil and result.playbackSpeed ~= 1.00 then
@@ -711,9 +743,27 @@ draw_footer = function(x, y, w, h)
         gfx.BeginPath()
         gfx.Text(string.format("x%.2f play", result.playbackSpeed), x+w-10, y+h/2)
     end
+    
+    local footerText = "FX-L for more info"
+    if full then
+        footerText = "FX-L for simple view"
+    end
+    
+    if hitWindowPerfect ~= 46 or hitWindowGood ~= 92 then
+        footerText = string.format("%s | Crit %dms, Near %dms", footerText,  hitWindowPerfect, hitWindowGood)
+    end
+    
+    gfx.FontSize(20)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+    
+    gfx.BeginPath()
+    gfx.FillColor(255, 255, 255, 96)
+    gfx.Text(footerText, x+5, y+h)
 end
 
 render = function(deltaTime, showStats)
+    currTime = currTime + deltaTime
+
     local resx,resy = game.GetResolution()
     
     if resx ~= currResX or resy ~= currResY then
@@ -750,15 +800,17 @@ render = function(deltaTime, showStats)
     
     -- Result
     draw_title(0, 0, 500, 110)
+    
     if showStatsHit then
         draw_chart_info(0, 120, 280, 420, true)
         draw_basic_hitstat(280, 120, 220, 420, true)
-        draw_graphs(0, 540, 500, 200)
+        draw_graphs(0, 540, 500, 210)
+        draw_footer(0, 750, 500, 50, true)
     else
         draw_chart_info(0, 120, 500, 310, false)
         draw_basic_hitstat(50, 430, 400, 400, false)
+        draw_footer(0, 750, 500, 50, false)
     end
-    draw_footer(0, 750, 500, 50)
     
     -- Highscores
     draw_highscores()
