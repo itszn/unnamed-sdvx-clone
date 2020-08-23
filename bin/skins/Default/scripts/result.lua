@@ -1,6 +1,6 @@
 local jacketImg = nil
 
-local desw = 800
+local desw = 770
 local desh = 800
 
 local moveX = 0
@@ -14,6 +14,14 @@ local scale = 1
 local gradeImg = nil;
 local badgeImg = nil;
 local gradeAR = 1 --grade aspect ratio
+
+local badgeImages = {
+    gfx.CreateSkinImage("badges/played.png", 0),
+    gfx.CreateSkinImage("badges/clear.png", 0),
+    gfx.CreateSkinImage("badges/hard-clear.png", 0),
+    gfx.CreateSkinImage("badges/full-combo.png", 0),
+    gfx.CreateSkinImage("badges/perfect.png", 0)
+}
 
 local diffNames = {"NOV", "ADV", "EXH", "INF"}
 local backgroundImage = gfx.CreateSkinImage("bg.png", 1);
@@ -80,6 +88,15 @@ function drawLine(x1,y1,x2,y2,w,r,g,b)
     gfx.Stroke()
 end
 
+function getScoreBadgeDesc(s)
+    if s.badge == 1 then
+        return string.format("%.1f%%", s.gauge * 100)
+    elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
+        return string.format("%d-%d", s.goods, s.misses)
+    end
+    return ""
+end
+
 function result_set()
     highScores = { }
     currentAdded = false
@@ -88,6 +105,8 @@ function result_set()
             newScore = { }
             if currentAdded == false and result.score > s.score then
                 newScore.score = string.format("%08d", result.score)
+                newScore.badge = result.badge
+                newScore.badgeDesc = getScoreBadgeDesc(result)
                 newScore.color = {255, 127, 0}
                 newScore.subtext = "Now"
                 newScore.xoff = 0
@@ -96,6 +115,8 @@ function result_set()
                 currentAdded = true
             end
             newScore.score = string.format("%08d", s.score)
+            newScore.badge = s.badge
+            newScore.badgeDesc = getScoreBadgeDesc(s)
             newScore.color = {0, 127, 255}
             newScore.xoff = 0
             if s.timestamp > 0 then
@@ -114,6 +135,8 @@ function result_set()
         if currentAdded == false then
             newScore = { }
             newScore.score = string.format("%08d", result.score)
+            newScore.badge = result.badge
+            newScore.badgeDesc = getScoreBadgeDesc(result)
             newScore.color = {255, 127, 0}
             newScore.subtext = "Now"
             newScore.xoff = 0
@@ -137,6 +160,8 @@ function result_set()
             end
 
             newScore.score = string.format("%08d", s.score)
+            newScore.badge = s.badge
+            newScore.badgeDesc = getScoreBadgeDesc(s)
             newScore.subtext = s.name
             
             if highestScore < s.score then
@@ -157,18 +182,8 @@ function result_set()
         gradeAR = gradew / gradeh
     end
     
-    do
-        local path = nil
-        if result.badge == 1 then path = "badges/played.png"
-        elseif result.badge == 2 then path = "badges/clear.png"
-        elseif result.badge == 3 then path = "badges/hard-clear.png"
-        elseif result.badge == 4 then path = "badges/full-combo.png"
-        elseif result.badge == 5 then path = "badges/perfect.png"
-        end
-        
-        if path ~= nil then
-            badgeImg = gfx.CreateSkinImage(path, 0)
-        end
+    if 1 <= result.badge and result.badge <= 5 then
+        badgeImg = badgeImages[result.badge]
     end
     
     if result.autoplay then clearText = "AUTOPLAY"
@@ -260,20 +275,20 @@ draw_score = function(score, x, y, w, h, pre)
     gfx.Text(string.format("%04d", score % 10000), center+h/70, y)
 end
 
-draw_highscores = function()
+draw_highscores = function(full)
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     gfx.FontSize(30)
-    gfx.Text("Highscores:",510,30)
+    gfx.Text("High Scores",510,30)
     gfx.StrokeWidth(1)
     for i,s in ipairs(highScores) do
         gfx.Save()
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
         gfx.BeginPath()
-        local ypos =  50 + (i - 1) * 80
+        local ypos =  45 + (i - 1) * 80
         gfx.Translate(510 + s.xoff, ypos)
-        gfx.RoundedRectVarying(0, 0, 280, 70,0,0,35,0)
+        gfx.RoundedRectVarying(0, 0, 260, 70,0,0,25,0)
         gfx.FillColor(15,15,15)
         gfx.StrokeColor(s.color[1], s.color[2], s.color[3])
         gfx.Fill()
@@ -282,13 +297,25 @@ draw_highscores = function()
         gfx.FillColor(255,255,255)
         gfx.FontSize(25)
         gfx.Text(string.format("#%d",i), 5, 5)
-        gfx.LoadSkinFont("NovaMono.ttf")
-        gfx.FontSize(60)
+        
+        if s.badge ~= nil and 1 <= s.badge and s.badge <= 5 then
+            gfx.BeginPath()
+            gfx.ImageRect(37, 7, 36, 36, badgeImages[s.badge], 1, 0)
+            
+            if full then
+                gfx.BeginPath()
+                gfx.FontSize(15)
+                gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_BOTTOM)
+                gfx.Text(s.badgeDesc, 55, 52)
+            end
+        end
+        
+        draw_score(s.score, 55, 42, 215, 60)
+        
         gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_TOP)
-        gfx.Text(s.score, 140, -4)
         gfx.LoadSkinFont("NotoSans-Regular.ttf")
         gfx.FontSize(20)
-        gfx.Text(s.subtext, 140, 45)
+        gfx.Text(s.subtext, 135, 45)
         gfx.Restore()
     end
 end
@@ -771,7 +798,9 @@ render = function(deltaTime, showStats)
         
         if resx / resy > 1 then
             moveX = resx / (2*scale) - desw / 2
+            moveY = 0
         else
+            moveX = 0
             moveY = resy / (2*scale) - desh / 2
         end
         
@@ -805,15 +834,13 @@ render = function(deltaTime, showStats)
         draw_chart_info(0, 120, 280, 420, true)
         draw_basic_hitstat(280, 120, 220, 420, true)
         draw_graphs(0, 540, 500, 210)
-        draw_footer(0, 750, 500, 50, true)
     else
         draw_chart_info(0, 120, 500, 310, false)
         draw_basic_hitstat(50, 430, 400, 400, false)
-        draw_footer(0, 750, 500, 50, false)
     end
     
-    -- Highscores
-    draw_highscores()
+    draw_footer(0, 750, 500, 50, showStatsHit)
+    draw_highscores(showStatsHit)
     
     -- Applause SFX
     if result.badge > 1 and not played then
