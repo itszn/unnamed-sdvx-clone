@@ -1,20 +1,20 @@
-local jacket = nil
-local resx,resy = game.GetResolution()
+local jacketImg = nil
+
 local desw = 800
 local desh = 800
-local scale = math.min(resx / desw, resy / desh)
-local gradeImg = nil;
-local badgeImg = nil;
-local lastGrade = -1;
-local lastBadge = -1
-local gradear = 1 --grade aspect ratio
+
 local moveX = 0
 local moveY = 0
-if resx / resy > 1 then
-    moveX = resx / (2*scale) - desw / 2
-else
-    moveY = resy / (2*scale) - desh / 2
-end
+
+local currResX = 0
+local currResY = 0
+
+local scale = 1
+
+local gradeImg = nil;
+local badgeImg = nil;
+local gradeAR = 1 --grade aspect ratio
+
 local diffNames = {"NOV", "ADV", "EXH", "INF"}
 local backgroundImage = gfx.CreateSkinImage("bg.png", 1);
 game.LoadSkinSample("applause")
@@ -34,6 +34,10 @@ local hitMaxDelta = 0
 
 local hitWindowPerfect = 46
 local hitWindowGood = 92
+
+local showStatsHit = false
+local prevShowStats = false
+local clearText = ""
 
 function getTextScale(txt, max_width)
     local x1, y1, x2, y2 = gfx.TextBounds(0, 0, txt)
@@ -132,6 +136,41 @@ function result_set()
         end
     end
     
+    if result.jacketPath ~= nil and result.jacketPath ~= "" then
+        jacketImg = gfx.CreateImage(result.jacketPath, 0)
+    end
+    
+    gradeImg = gfx.CreateSkinImage(string.format("score/%s.png", result.grade), 0)
+    if gradeImg ~= nil then
+        local gradew, gradeh = gfx.ImageSize(gradeImg)
+        gradeAR = gradew / gradeh
+    end
+    
+    do
+        local path = nil
+        if result.badge == 1 then path = "badges/played.png"
+        elseif result.badge == 2 then path = "badges/clear.png"
+        elseif result.badge == 3 then path = "badges/hard-clear.png"
+        elseif result.badge == 4 then path = "badges/full-combo.png"
+        elseif result.badge == 5 then path = "badges/perfect.png"
+        end
+        
+        if path ~= nil then
+            badgeImg = gfx.CreateSkinImage(path, 0)
+        end
+    end
+    
+    if result.autoplay then clearText = "AUTOPLAY"
+    elseif result.hitWindow ~= nil and result.hitWindow.type == 0 then clearText = "EXPAND JUDGE"
+    elseif result.badge == 0 then clearText = "NOT SAVED"
+    elseif result.badge == 1 then clearText = "PLAYED"
+    elseif result.badge == 2 then clearText = "CLEAR"
+    elseif result.badge == 3 then clearText = "HARD CLEAR"
+    elseif result.badge == 4 then clearText = "FULL COMBO"
+    elseif result.badge == 5 then clearText = "PERFECT"
+    else clearText = ""
+    end
+    
     hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
     
     if result.hitWindow ~= nil then
@@ -217,7 +256,7 @@ draw_highscores = function()
         gfx.Save()
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
         gfx.BeginPath()
-        local ypos =  60 + (i - 1) * 80
+        local ypos =  50 + (i - 1) * 80
         gfx.Translate(510 + s.xoff, ypos)
         gfx.RoundedRectVarying(0, 0, 280, 70,0,0,35,0)
         gfx.FillColor(15,15,15)
@@ -247,7 +286,7 @@ draw_gauge_graph = function(x, y, w, h)
         gfx.LineTo(x + i * w / #result.gaugeSamples,y + h - h * result.gaugeSamples[i])
     end
     
-    gfx.StrokeWidth(2)
+    gfx.StrokeWidth(2.0)
     if result.flags & 1 ~= 0 then
         gfx.StrokeColor(255,80,0,160)
         gfx.Stroke()
@@ -446,8 +485,9 @@ draw_right_graph = function(x, y, w, h)
     gfx.Text(string.format("Latest: %d ms", hitMaxDelta), x+5, y+h)
 end
 
--- Header (chart title)
-draw_header = function(x, y, w, h)
+-- Main components
+
+draw_title = function(x, y, w, h)
     local centerLineY = y+h*0.6
     
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
@@ -465,155 +505,184 @@ draw_header = function(x, y, w, h)
     drawScaledText(result.artist, x+w/2, centerLineY+28, w/2-5)
 end
 
--- Left column (chart info)
-draw_col_left = function(x, y, w, h)
-    gfx.BeginPath()
-    -- gfx.Rect(x, y, w, h)
-    gfx.FillColor(96, 96, 96, 64)
-    gfx.Fill()
+draw_chart_info = function(x, y, w, h, full)
+    local jacket_size = 250
+    
+    local jacket_y = y+40
+    
+    if not full then
+        jacket_y = y
+        jacket_size = 300
+    end
+    
+    local jacket_x = x+(w-jacket_size)/2
     
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
     gfx.BeginPath()
-    gfx.FillColor(255, 255, 255)
-    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
-    gfx.FontSize(30)
-    gfx.Text(string.format("%s %02d", diffNames[result.difficulty + 1], result.level), x+w/2, y+30)
-    
-    if jacket == nil then
-        jacket = gfx.CreateImage(result.jacketPath, 0)
-    end
-    
-    gfx.BeginPath()
-    if jacket then
-        gfx.ImageRect(x+10, y+40, w-20, w-20, jacket, 1, 0)
+    if jacketImg ~= nil then
+        gfx.ImageRect(jacket_x, jacket_y, jacket_size, jacket_size, jacketImg, 1, 0)
     else
+        gfx.BeginPath()
         gfx.FillColor(0, 0, 0, 128)
-        gfx.Rect(x+10, y+40, w-20, w-20)
+        gfx.Rect(jacket_x, jacket_y, jacket_size, jacket_size)
         gfx.Fill()
         
+        gfx.BeginPath()
         gfx.FillColor(255, 255, 255, 160)
         gfx.FontSize(30)
-        gfx.Text("No Image", x+w/2, y+w/2+50)
+        gfx.Text("No Image", x+w/2, y+jacket_size/2+60)
     end
     
-    draw_y = w + 47
+    if full then
+        gfx.BeginPath()
+        gfx.FillColor(255, 255, 255)
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
+        gfx.FontSize(30)
+        gfx.Text(string.format("%s %02d", diffNames[result.difficulty + 1], result.level), x+w/2, y+30)
+    else
+        local level_text = string.format("%s %02d", diffNames[result.difficulty + 1], result.level)
+        if result.effector ~= nil and result.effector ~= "" then
+            level_text = string.format("%s, by %s", level_text, result.effector)
+        end
+        
+        gfx.FontSize(20)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+        local x1, y1, x2, y2 = gfx.TextBounds(0, 0, level_text)
+        local box_width = x2+10
+        if box_width > jacket_size then box_width = jacket_size end
+        
+        gfx.BeginPath()
+        gfx.FillColor(0, 0, 0, 200)
+        gfx.RoundedRectVarying(jacket_x, jacket_y, box_width, 25, 0, 0, 5, 0)
+        gfx.Fill()
+        
+        gfx.FillColor(255, 255, 255)
+        drawScaledText(level_text, jacket_x+5, jacket_y+2, jacket_size-10)
+    
+        local graph_height = jacket_size * 0.3
+        local graph_y = jacket_y+jacket_size - graph_height
+    
+        gfx.BeginPath()
+        gfx.FillColor(0,0,0,200)
+        gfx.Rect(jacket_x, graph_y, jacket_size, graph_height)
+        gfx.Fill()
+        draw_gauge_graph(jacket_x, graph_y, jacket_size, graph_height)
+        
+        if gradeImg ~= nil then
+            gfx.BeginPath()
+            gfx.ImageRect(jacket_x+jacket_size-60*gradeAR, jacket_y+jacket_size-60, 60*gradeAR, 60, gradeImg, 1, 0)
+        end
+        
+        gfx.BeginPath()
+        gfx.FillColor(255,255,255)
+        gfx.FontSize(20)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_MIDDLE)
+        gfx.Text(string.format("%.1f%%", result.gauge*100), jacket_x+jacket_size+10, jacket_y+jacket_size-graph_height*result.gauge)
+        return
+    end
+    
+    draw_y = jacket_y + jacket_size + 27
     
     if result.effector ~= nil and result.effector ~= "" then
         gfx.FillColor(255, 255, 255)
         gfx.FontSize(16)
-        gfx.Text("Effected by", x+w/2, y+draw_y)
+        gfx.Text("Effected by", x+w/2, draw_y)
         gfx.FontSize(27)
-        drawScaledText(result.effector, x+w/2, y+draw_y+24, w/2-5)
+        drawScaledText(result.effector, x+w/2, draw_y+24, w/2-5)
         draw_y = draw_y + 50
     end
     
     if result.illustrator ~= nil and result.illustrator ~= "" then
         gfx.FontSize(16)
-        gfx.Text("Illustrated by", x+w/2, y+draw_y)
+        gfx.Text("Illustrated by", x+w/2, draw_y)
         gfx.FontSize(27)
-        drawScaledText(result.illustrator, x+w/2, y+draw_y+24, w/2-5)
+        drawScaledText(result.illustrator, x+w/2, draw_y+24, w/2-5)
         draw_y = draw_y + 50
     end
 end
 
-draw_col_right = function(x, y, w, h)
-    if not gradeImg or result.grade ~= lastGrade then
-        gradeImg = gfx.CreateSkinImage(string.format("score/%s.png", result.grade), 0)
-        local gradew, gradeh = gfx.ImageSize(gradeImg)
-        gradear = gradew / gradeh
-        lastGrade = result.grade 
-    end
+draw_basic_hitstat = function(x, y, w, h, full)    
+    local grade_width = 70 * gradeAR
+    local stat_y = y+12
+    local stat_gap = 15
+    local stat_size = 30
+    local stat_width = w-8
     
-    if result.badge ~= lastBadge then
-        lastBadge = result.badge
-        local path = nil
-        if result.badge == 1 then path = "badges/played.png"
-        elseif result.badge == 2 then path = "badges/clear.png"
-        elseif result.badge == 3 then path = "badges/hard-clear.png"
-        elseif result.badge == 4 then path = "badges/full-combo.png"
-        elseif result.badge == 5 then path = "badges/perfect.png"
+    if full then
+        stat_gap = 6
+        stat_size = 25
+        stat_width = w-18
+        
+        if result.retryCount == nil or result.retryCount <= 0 then
+            stat_gap = 25
+            stat_y = stat_y + 5
         end
-        if path ~= nil then
-            badgeImg = gfx.CreateSkinImage(path, 0)
-        end
-    end
-    
-    local grade_width = 70 * gradear
-    
-    gfx.BeginPath()
-    gfx.ImageRect(x + (w-grade_width)/2 - 5, y + 10, grade_width, 70, gradeImg, 1, 0)
-    
-    gfx.BeginPath()
-    gfx.FillColor(255, 255, 255)
-    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
-    gfx.FontSize(24)
-    
-    local clear_text = ""
-    
-    if result.autoplay then clear_text = "AUTOPLAY"
-    elseif result.hitWindow ~= nil and result.hitWindow.type == 0 then clear_text = "EXPAND JUDGE"
-    elseif result.badge == 0 then clear_text = "NOT SAVED"
-    elseif result.badge == 1 then clear_text = "PLAYED"
-    elseif result.badge == 2 then clear_text = "CLEAR"
-    elseif result.badge == 3 then clear_text = "HARD CLEAR"
-    elseif result.badge == 4 then clear_text = "FULL COMBO"
-    elseif result.badge == 5 then clear_text = "PERFECT"
-    end
-    
-    if clear_text ~= "" then
+        
         gfx.BeginPath()
-        gfx.Text(clear_text, x+w/2 - 5, y+101)
-        
-        if badgeImg ~= nil then
-            local x1, y1, x2, y2 = gfx.TextBounds(x+w/2 - 5, 0, clear_text)
-        
-            -- gfx.BeginPath()
-            -- gfx.ImageRect(x1-27, y+80, 25, 25, badgeImg, 1, 0)
-            
-            -- gfx.BeginPath()
-            -- gfx.ImageRect(x2+1, y+80, 25, 25, badgeImg, 1, 0)
+        gfx.ImageRect(x + (w-grade_width)/2 - 5, stat_y, grade_width, 70, gradeImg, 1, 0)
+        stat_y = stat_y + 85
+    else
+        if result.retryCount == nil or result.retryCount <= 0 then
+            stat_gap = 30
         end
     end
     
-    draw_score(result.score, x, y+155, w, 72)
+    
+    if clearText ~= "" then
+        gfx.BeginPath()
+        gfx.FillColor(255, 255, 255)
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
+        gfx.FontSize(20)
+        gfx.Text(clearText, x+w/2 - 5, stat_y)
+    end
+    
+    stat_y = stat_y + 50
+    draw_score(result.score, x, stat_y, w, 72)
+    
+    stat_y = stat_y + 19
     
     if highestScore > 0 then
         if highestScore > result.score then
             gfx.FillColor(255, 0, 0)
-            draw_score(highestScore - result.score, x+w/2, y+174, w/2, 25, "-")
+            draw_score(highestScore - result.score, x+w/2, stat_y, w/2, 25, "-")
         elseif highestScore == result.score then
             gfx.FillColor(128, 128, 128)
-            draw_score(0, x+w/2, y+174, w/2, 25, utf8.char(0xB1))
+            draw_score(0, x+w/2, stat_y, w/2, 25, utf8.char(0xB1))
         else
             gfx.FillColor(0, 255, 0)
-            draw_score(result.score - highestScore, x+w/2, y+174, w/2, 25, "+")
+            draw_score(result.score - highestScore, x+w/2, stat_y, w/2, 25, "+")
         end
     end
     
+    stat_y = stat_y + stat_gap
+    
     gfx.FillColor(255, 255, 255)
     
-    local stat_y = y+180
-    stat_y = draw_stat(x+4, stat_y, w-14, 25, "CRIT", result.perfects, "%d", 255, 150, 0)
-    stat_y = draw_stat(x+4, stat_y, w-14, 25, "NEAR", result.goods, "%d", 255, 0, 200)
+    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, "CRIT", result.perfects, "%d", 255, 150, 0)
+    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, "NEAR", result.goods, "%d", 255, 0, 200)
     
-    draw_stat(x+22, stat_y, w/2-20, 19, "EARLY", result.earlies, "%d", 255, 0, 255)
-    draw_stat(x+w/2+9, stat_y, w/2-20, 19, "LATE", result.lates, "%d", 0, 255, 255)
+    local early_late_width = w/2-20
+    local late_x = x+stat_width-early_late_width
+    draw_stat(late_x-early_late_width-10, stat_y, early_late_width, stat_size-6, "EARLY", result.earlies, "%d", 255, 0, 255)
+    draw_stat(late_x, stat_y, early_late_width, stat_size-6, "LATE", result.lates, "%d", 0, 255, 255)
     
-    stat_y = stat_y + 30
-    stat_y = draw_stat(x+4, stat_y, w-14, 25, "ERROR", result.misses, "%d", 255, 0, 0)
+    stat_y = stat_y + stat_size + 5
+    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, "ERROR", result.misses, "%d", 255, 0, 0)
     
-    stat_y = draw_stat(x+4, stat_y+15, w-14, 25, "MAX COMBO", result.maxCombo, "%d", 255, 255, 0)
+    stat_y = draw_stat(x+4, stat_y+15, stat_width, stat_size, "MAX COMBO", result.maxCombo, "%d", 255, 255, 0)
     
-    if result.mission ~= nil and result.mission ~= "" then
-        stat_y = draw_stat(x+4, stat_y+15, w-14, 19, "RETRY", result.retryCount, "%d")
+    if result.retryCount ~= nil and result.retryCount > 0 then
+        stat_y = draw_stat(x+4, stat_y+15, stat_width, stat_size-6, "RETRY", result.retryCount, "%d")
         
-        gfx.LoadSkinFont("NotoSans-Regular.ttf")
-        gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
-        
-        gfx.BeginPath()
-        gfx.FontSize(16)
-        gfx.Text(string.format("Mission: %s", result.mission), x+4, stat_y)
+        if result.mission ~= nil and result.mission ~= "" then
+            gfx.LoadSkinFont("NotoSans-Regular.ttf")
+            gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
+            
+            gfx.BeginPath()
+            gfx.FontSize(16)
+            gfx.Text(string.format("Mission: %s", result.mission), x+4, stat_y)
+        end
     end
 end
 
@@ -625,8 +694,6 @@ draw_graphs = function(x, y, w, h)
         draw_right_graph(x + (w - w//4), y, w//4, h)
     end
 end
-
-local i = 1
 
 draw_footer = function(x, y, w, h)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
@@ -647,6 +714,29 @@ draw_footer = function(x, y, w, h)
 end
 
 render = function(deltaTime, showStats)
+    local resx,resy = game.GetResolution()
+    
+    if resx ~= currResX or resy ~= currResY then
+        scale = math.min(resx / desw, resy / desh)
+        
+        if resx / resy > 1 then
+            moveX = resx / (2*scale) - desw / 2
+        else
+            moveY = resy / (2*scale) - desh / 2
+        end
+        
+        currResX = resX
+        currResY = resY
+    end
+    
+    if prevShowStats ~= showStats then
+        prevShowStats = showStats
+        
+        if showStats then
+            showStatsHit = not showStatsHit
+        end
+    end
+    
     -- Background image
     gfx.BeginPath()
     gfx.ImageRect(0, 0, resx, resy, backgroundImage, 0.5, 0);
@@ -659,10 +749,15 @@ render = function(deltaTime, showStats)
     gfx.Fill()
     
     -- Result
-    draw_header(0, 0, 500, 110)
-    draw_col_left(0, 120, 280, 420)
-    draw_col_right(280, 120, 220, 420)
-    draw_graphs(0, 550, 500, 200)
+    draw_title(0, 0, 500, 110)
+    if showStatsHit then
+        draw_chart_info(0, 120, 280, 420, true)
+        draw_basic_hitstat(280, 120, 220, 420, true)
+        draw_graphs(0, 540, 500, 200)
+    else
+        draw_chart_info(0, 120, 500, 310, false)
+        draw_basic_hitstat(50, 430, 400, 400, false)
+    end
     draw_footer(0, 750, 500, 50)
     
     -- Highscores
