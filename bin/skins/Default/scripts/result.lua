@@ -649,7 +649,7 @@ end
 
 draw_basic_hitstat = function(x, y, w, h, full)    
     local grade_width = 70 * gradeAR
-    local stat_y = y+12
+    local stat_y = y
     local stat_gap = 15
     local stat_size = 30
     local stat_width = w-8
@@ -663,13 +663,15 @@ draw_basic_hitstat = function(x, y, w, h, full)
         
         if not showRetryCount then
             stat_gap = 25
-            stat_y = stat_y + 5
+            stat_y = stat_y + 15
         end
         
         gfx.BeginPath()
         gfx.ImageRect(x + (w-grade_width)/2 - 5, stat_y, grade_width, 70, gradeImg, 1, 0)
         stat_y = stat_y + 85
     else
+        stat_y = y + 12
+    
         if not showRetryCount then
             stat_gap = 30
         end
@@ -678,6 +680,7 @@ draw_basic_hitstat = function(x, y, w, h, full)
     if clearText ~= "" then
         if clearText == "PERFECT" then gfx.FillColor(255, 255, math.floor(120+125*waveParam(2.0)))
         elseif clearText == "FULL COMBO" then gfx.FillColor(255, 0, 200)
+        elseif result.badge == 0 then gfx.FillColor(255, 0, 0)
         else gfx.FillColor(255, 255, 255)
         end
         
@@ -694,19 +697,26 @@ draw_basic_hitstat = function(x, y, w, h, full)
     else
         gfx.FillColor(255, 255, 255)
     end
-    draw_score(result.score, x, stat_y, w, 72)
     
-    stat_y = stat_y + 19
+    if full then
+        draw_score(result.score, x, stat_y, w, 72)
+        stat_y = stat_y + 19
+    else
+        stat_y = stat_y + 10
+        stat_gap = stat_gap - 8
+        draw_score(result.score, x, stat_y, w, 88)
+        stat_y = stat_y + 19
+    end
     
     if highestScore > 0 then
         if highestScore > result.score then
-            gfx.FillColor(255, 0, 0)
+            gfx.FillColor(255, 32, 32)
             draw_score(highestScore - result.score, x+w/2, stat_y, w/2, 25, "-")
         elseif highestScore == result.score then
             gfx.FillColor(128, 128, 128)
             draw_score(0, x+w/2, stat_y, w/2, 25, utf8.char(0xB1))
         else
-            gfx.FillColor(0, 255, 0)
+            gfx.FillColor(32, 255, 32)
             draw_score(result.score - highestScore, x+w/2, stat_y, w/2, 25, "+")
         end
     end
@@ -777,7 +787,7 @@ draw_footer = function(x, y, w, h, full)
     end
     
     if hitWindowPerfect ~= 46 or hitWindowGood ~= 92 then
-        footerText = string.format("%s | Crit %dms, Near %dms", footerText,  hitWindowPerfect, hitWindowGood)
+        footerText = string.format("Crit %dms, Near %dms | %s", hitWindowPerfect, hitWindowGood, footerText)
     end
     
     gfx.FontSize(20)
@@ -816,7 +826,13 @@ render = function(deltaTime, showStats)
         end
     end
     
-    -- Background image
+    -- For better screenshot display
+    gfx.BeginPath()
+    gfx.FillColor(0, 0, 0)
+    gfx.Rect(0, 0, resx, resy)
+    gfx.Fill()
+    
+    -- Background image    
     gfx.BeginPath()
     gfx.ImageRect(0, 0, resx, resy, backgroundImage, 0.5, 0);
     gfx.Scale(scale,scale)
