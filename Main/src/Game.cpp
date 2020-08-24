@@ -1323,6 +1323,7 @@ public:
 		}
 		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
+			m_scoring.currentGauge = 0.0f;
 			FailCurrentRun();
 		}
 	}
