@@ -68,15 +68,49 @@ function getTextScale(txt, max_width)
 end
 
 function drawScaledText(txt, x, y, max_width)
-    gfx.Save()
-    
     local text_scale = getTextScale(txt, max_width)
+    
+    if text_scale == 1 then
+        gfx.BeginPath()
+        gfx.Text(txt, x, y)
+        return
+    end
+    
+    gfx.Save()
     
     gfx.Translate(x, y)
     gfx.Scale(text_scale, 1)
+    
+    gfx.BeginPath()
     gfx.Text(txt, 0, 0)
     
     gfx.Restore()
+end
+
+function drawScrollingText(txt, x, y, max_width)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
+    local x1, y1, x2, y2 = gfx.TextBounds(max_width/2, 0, txt)
+    if x2 <= max_width then
+        gfx.BeginPath()
+        gfx.Text(txt, x+max_width/2, y)
+        return
+    end
+    
+    local maxScrollAmount = (x2-x1) - max_width
+    local scrollOffset = ((currTime % 6.0) / 3.0 - 0.5) * maxScrollAmount
+    
+    if scrollOffset < 0 then scrollOffset = 0
+    elseif scrollOffset > maxScrollAmount then scrollOffset = maxScrollAmount
+    end
+    
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
+    
+    gfx.BeginPath()
+    gfx.Scissor(x, y + y1, max_width, y + y2)
+    gfx.Text(txt, x-scrollOffset, y)
+    gfx.Fill()
+    
+    gfx.ResetScissor()
 end
 
 function drawLine(x1,y1,x2,y2,w,r,g,b)
@@ -90,7 +124,9 @@ end
 
 function getScoreBadgeDesc(s)
     if s.badge == 1 then
-        return string.format("%.1f%%", s.gauge * 100)
+        if s.flags & 1 ~= 0 then return "crash"
+        else return string.format("%.1f%%", s.gauge * 100)
+        end
     elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
         return string.format("%d-%d", s.goods, s.misses)
     end
@@ -586,24 +622,42 @@ draw_chart_info = function(x, y, w, h, full)
         gfx.FontSize(30)
         gfx.Text(string.format("%s %02d", diffNames[result.difficulty + 1], result.level), x+w/2, y+30)
     else
-        local level_text = string.format("%s %02d", diffNames[result.difficulty + 1], result.level)
-        if result.effector ~= nil and result.effector ~= "" then
-            level_text = string.format("%s, by %s", level_text, result.effector)
+        do
+            gfx.FontSize(20)
+            gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+            
+            local level_text = string.format("%s %02d", diffNames[result.difficulty + 1], result.level)
+            local _a, _b, level_text_width, _c = gfx.TextBounds(0, 0, level_text)
+            local box_width = level_text_width
+            
+            local effector_text = ""
+            
+            if result.effector ~= nil and result.effector ~= "" then
+                effector_text = string.format("  by %s", result.effector)
+                
+                gfx.FontSize(16)
+                local _d, _e, effector_text_width, _f = gfx.TextBounds(0, 0, effector_text)
+                box_width = box_width + effector_text_width
+            end
+            
+            box_width = box_width + 10
+            if box_width > jacket_size then box_width = jacket_size end
+            
+            gfx.BeginPath()
+            gfx.FillColor(0, 0, 0, 200)
+            gfx.RoundedRectVarying(jacket_x, jacket_y, box_width, 25, 0, 0, 5, 0)
+            gfx.Fill()
+            
+            gfx.FillColor(255, 255, 255)
+            gfx.BeginPath()
+            gfx.FontSize(20)
+            gfx.Text(level_text, jacket_x+5, jacket_y+22)
+            
+            if effector_text ~= "" then
+                gfx.FontSize(16)
+                drawScaledText(effector_text, jacket_x+level_text_width+5, jacket_y+21, jacket_size-level_text_width-10)
+            end
         end
-        
-        gfx.FontSize(20)
-        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
-        local x1, y1, x2, y2 = gfx.TextBounds(0, 0, level_text)
-        local box_width = x2+10
-        if box_width > jacket_size then box_width = jacket_size end
-        
-        gfx.BeginPath()
-        gfx.FillColor(0, 0, 0, 200)
-        gfx.RoundedRectVarying(jacket_x, jacket_y, box_width, 25, 0, 0, 5, 0)
-        gfx.Fill()
-        
-        gfx.FillColor(255, 255, 255)
-        drawScaledText(level_text, jacket_x+5, jacket_y+2, jacket_size-10)
     
         local graph_height = jacket_size * 0.3
         local graph_y = jacket_y+jacket_size - graph_height
@@ -630,6 +684,7 @@ draw_chart_info = function(x, y, w, h, full)
     draw_y = jacket_y + jacket_size + 27
     
     if result.effector ~= nil and result.effector ~= "" then
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
         gfx.FillColor(255, 255, 255)
         gfx.FontSize(16)
         gfx.Text("Effected by", x+w/2, draw_y)
@@ -639,6 +694,7 @@ draw_chart_info = function(x, y, w, h, full)
     end
     
     if result.illustrator ~= nil and result.illustrator ~= "" then
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
         gfx.FontSize(16)
         gfx.Text("Illustrated by", x+w/2, draw_y)
         gfx.FontSize(27)
@@ -823,6 +879,7 @@ render = function(deltaTime, showStats)
         
         if showStats then
             showStatsHit = not showStatsHit
+            game.PlaySample("menu_click")
         end
     end
     
