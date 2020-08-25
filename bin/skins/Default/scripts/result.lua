@@ -53,6 +53,9 @@ local currTime = 0
 local critText = "CRIT"
 local nearText = "NEAR"
 
+local speedMod = ""
+local speedModValue = ""
+
 function waveParam(period, offset)
     local t = currTime
     if offset then t = t+offset end
@@ -243,6 +246,25 @@ result_set = function()
         end
     else
         clearText = clearTextBase
+    end
+    
+    if result.speedModType ~= nil then
+        if result.speedModType == 0 then
+            speedMod = "XMOD"
+            speedModValue = string.format("%.2f", result.speedModValue)
+        elseif result.speedModType == 1 then
+            speedMod = "MMOD"
+            speedModValue = string.format("%.1f", result.speedModValue)
+        elseif result.speedModType == 2 then
+            speedMod = "CMOD"
+            speedModValue = string.format("%.1f", result.speedModValue)
+        else
+            speedMod = ""
+            speedModValue = ""
+        end
+    else
+        speedMod = ""
+        speedModValue = ""
     end
 
     hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
@@ -588,6 +610,97 @@ draw_right_graph = function(x, y, w, h)
     gfx.Text(string.format("Latest: %d ms", hitMaxDelta), x+5, y+h)
 end
 
+draw_laser_perk = function(x, y, s)
+    gfx.Save()
+    gfx.Translate(x, y)
+    
+    local r, g, b = game.GetLaserColor(0)
+    gfx.BeginPath()
+    gfx.FillColor(r, g, b, 96)
+    gfx.MoveTo(s*0.1, s*0.1)
+    gfx.LineTo(s*0.4, s*0.5)
+    gfx.LineTo(s*0.1, s*0.9)
+    gfx.LineTo(s*0.3, s*0.9)
+    gfx.LineTo(s*0.6, s*0.5)
+    gfx.LineTo(s*0.3, s*0.1)
+    gfx.LineTo(s*0.1, s*0.1)
+    gfx.Fill()
+    
+    local r, g, b = game.GetLaserColor(1)
+    gfx.BeginPath()
+    gfx.FillColor(r, g, b, 96)
+    gfx.MoveTo(s*0.7, s*0.1)
+    gfx.LineTo(s*0.4, s*0.5)
+    gfx.LineTo(s*0.7, s*0.9)
+    gfx.LineTo(s*0.9, s*0.9)
+    gfx.LineTo(s*0.6, s*0.5)
+    gfx.LineTo(s*0.9, s*0.1)
+    gfx.LineTo(s*0.7, s*0.1)
+    gfx.Fill()
+    
+    gfx.Restore()
+    
+    return x - s
+end
+
+draw_speed_perk = function(x, y, s)
+    if speedMod == "" then return x end
+    
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    gfx.FillColor(255, 255, 255)
+    
+    gfx.BeginPath()
+    gfx.FontSize(15)
+    gfx.Text(speedMod, x + s/2, y + s*0.3)
+    
+    gfx.BeginPath()
+    gfx.FontSize(20)
+    gfx.Text(speedModValue, x + s/2, y + s*0.65)
+    
+    return x - s
+end
+
+draw_hidsud_perk = function(x, y, s)
+    if result.hidsud == nil then
+        return x
+    end
+    
+    gfx.FontSize(15)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    gfx.FillColor(255, 255, 255)
+    
+    gfx.BeginPath()
+    gfx.Text("SUDDEN", x + s/2, y + s*0.13)
+    gfx.Text("HIDDEN", x + s/2, y + s*0.62)
+    
+    gfx.BeginPath()
+    gfx.FontSize(13)
+    gfx.Text(string.format("%.2f fd %.1f", result.hidsud.suddenCutoff, result.hidsud.suddenFade), x + s/2, y + s*0.35)
+    gfx.Text(string.format("%.2f fd %.1f", result.hidsud.hiddenCutoff, result.hidsud.hiddenFade), x + s/2, y + s*0.84)
+    
+    return x - s
+end
+
+draw_mir_ran_perk = function(x, y, s)
+    if result.flags & 6 == 0 then return x end
+    
+    gfx.FontSize(20)
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    gfx.FillColor(255, 255, 255)
+    
+    if result.flags & 2 ~= 0 then
+        gfx.BeginPath()
+        gfx.Text("MIR", x + s/2, y + s*0.3)
+    end
+    
+    if result.flags & 4 ~= 0 then
+        gfx.BeginPath()
+        gfx.Text("RAN", x + s/2, y + s*0.7)
+    end
+    
+    return x - s
+end
+
 ---------------------
 -- Main components --
 ---------------------
@@ -850,9 +963,9 @@ end
 draw_footer = function(x, y, w, h, full)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
-    local footerText = "FX-L for more info"
+    local footerText = "FX-L: more info"
     if full then
-        footerText = "FX-L for simple view"
+        footerText = "FX-L: simple view"
     end
     
     gfx.FontSize(20)
@@ -861,6 +974,13 @@ draw_footer = function(x, y, w, h, full)
     gfx.BeginPath()
     gfx.FillColor(255, 255, 255, 96)
     gfx.Text(footerText, x+5, y+h)
+    
+    local perk_x = x+w-h
+    
+    perk_x = draw_laser_perk(perk_x, y, h)
+    perk_x = draw_speed_perk(perk_x, y, h)
+    perk_x = draw_hidsud_perk(perk_x, y, h)
+    perk_x = draw_mir_ran_perk(perk_x, y, h)
 end
 
 render = function(deltaTime, showStats)

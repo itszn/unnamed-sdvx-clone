@@ -441,6 +441,26 @@ public:
 		m_PushStringToTable("bpm", m_beatmapSettings.bpm);
 		m_PushIntToTable("duration", m_beatmapDuration);
 
+		SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+		m_PushIntToTable("speedModType", static_cast<int>(speedMod));
+		m_PushFloatToTable("speedModValue", g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed));
+
+		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
+			lua_pushstring(m_lua, "hidsud");
+			lua_newtable(m_lua);
+
+			lua_pushstring(m_lua, "showCover");
+			lua_pushboolean(m_lua, g_gameConfig.GetBool(GameConfigKeys::ShowCover));
+			lua_settable(m_lua, -3);
+
+			m_PushFloatToTable("suddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff));
+			m_PushFloatToTable("hiddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff));
+			m_PushFloatToTable("suddenFade", g_gameConfig.GetFloat(GameConfigKeys::SuddenFade));
+			m_PushFloatToTable("hiddenFade", g_gameConfig.GetFloat(GameConfigKeys::HiddenFade));
+			
+			lua_settable(m_lua, -3);
+		}
+
 		m_PushStringToTable("jacketPath", m_jacketPath);
 		m_PushIntToTable("medianHitDelta", m_medianHitDelta[0]);
 		m_PushFloatToTable("meanHitDelta", m_meanHitDelta[0]);
@@ -463,11 +483,8 @@ public:
 
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
-		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInResult))
-		{
-			m_PushStringToTable("mission", m_mission);
-			m_PushIntToTable("retryCount", m_retryCount);
-		}
+		m_PushStringToTable("mission", m_mission);
+		m_PushIntToTable("retryCount", m_retryCount);
 
 		lua_pushstring(m_lua, "hitWindow");
 		m_hitWindow.ToLuaTable(m_lua);
@@ -525,6 +542,9 @@ public:
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
 				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
+				lua_pushstring(m_lua, "hitWindow");
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold).ToLuaTable(m_lua);
+				lua_settable(m_lua, -3);
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
