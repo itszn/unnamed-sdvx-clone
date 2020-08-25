@@ -1345,9 +1345,6 @@ private:
 	// Player of preview music
 	PreviewPlayer m_previewPlayer;
 
-	// Current map that has music being preview played
-	ChartIndex* m_currentPreviewAudio;
-
 	// Select sound
 	Sample m_selectSound;
 
@@ -1358,9 +1355,6 @@ private:
 	MouseLockHandle m_lockMouse;
 	bool m_suspended = true;
 	bool m_hasRestored = false;
-	bool m_previewLoaded = true;
-	bool m_showScores = false;
-	uint64_t m_previewDelayTicks = 0;
 	Map<Input::Button, float> m_timeSinceButtonPressed;
 	Map<Input::Button, float> m_timeSinceButtonReleased;
 	lua_State* m_lua = nullptr;
