@@ -54,6 +54,7 @@ private:
 	String m_playerId;
 	String m_displayId;
 	int m_displayIndex = 0;
+	int m_selfDisplayIndex = 0;
 	Vector<nlohmann::json> const* m_stats;
 	int m_numPlayersSeen = 0;
 
@@ -245,6 +246,7 @@ public:
 		String uid, Vector<nlohmann::json> const* multistats)
 	{
 		m_displayIndex = 0;
+		m_selfDisplayIndex = 0;
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
 		m_autoButtons = scoring.autoplayButtons;
@@ -271,6 +273,7 @@ public:
 				if (m_playerId == (*m_stats)[i].value("uid", ""))
 				{
 					m_displayIndex = i;
+					m_selfDisplayIndex = i;
 					break;
 				}
 			}
@@ -416,6 +419,8 @@ public:
 
 	void updateLuaData()
 	{
+		const bool isSelf = m_displayIndex == m_selfDisplayIndex;
+
 		lua_newtable(m_lua);
 		m_PushIntToTable("score", m_score);
 		m_PushIntToTable("flags", (int)m_flags);
@@ -440,26 +445,6 @@ public:
 
 		m_PushStringToTable("bpm", m_beatmapSettings.bpm);
 		m_PushIntToTable("duration", m_beatmapDuration);
-
-		SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
-		m_PushIntToTable("speedModType", static_cast<int>(speedMod));
-		m_PushFloatToTable("speedModValue", g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed));
-
-		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
-			lua_pushstring(m_lua, "hidsud");
-			lua_newtable(m_lua);
-
-			lua_pushstring(m_lua, "showCover");
-			lua_pushboolean(m_lua, g_gameConfig.GetBool(GameConfigKeys::ShowCover));
-			lua_settable(m_lua, -3);
-
-			m_PushFloatToTable("suddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff));
-			m_PushFloatToTable("hiddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff));
-			m_PushFloatToTable("suddenFade", g_gameConfig.GetFloat(GameConfigKeys::SuddenFade));
-			m_PushFloatToTable("hiddenFade", g_gameConfig.GetFloat(GameConfigKeys::HiddenFade));
-			
-			lua_settable(m_lua, -3);
-		}
 
 		m_PushStringToTable("jacketPath", m_jacketPath);
 		m_PushIntToTable("medianHitDelta", m_medianHitDelta[0]);
@@ -550,23 +535,46 @@ public:
 			lua_settable(m_lua, -3);
 		}
 
-		lua_pushstring(m_lua, "noteHitStats");
-		lua_newtable(m_lua);
-		for(size_t i = 0; i < m_simpleNoteHitStats.size(); ++i)
+		if (isSelf)
 		{
-			const SimpleHitStat simpleHitStat = m_simpleNoteHitStats[i];
+			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+			m_PushIntToTable("speedModType", static_cast<int>(speedMod));
+			m_PushFloatToTable("speedModValue", g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed));
 
+			if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
+				lua_pushstring(m_lua, "hidsud");
+				lua_newtable(m_lua);
+
+				lua_pushstring(m_lua, "showCover");
+				lua_pushboolean(m_lua, g_gameConfig.GetBool(GameConfigKeys::ShowCover));
+				lua_settable(m_lua, -3);
+
+				m_PushFloatToTable("suddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff));
+				m_PushFloatToTable("hiddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff));
+				m_PushFloatToTable("suddenFade", g_gameConfig.GetFloat(GameConfigKeys::SuddenFade));
+				m_PushFloatToTable("hiddenFade", g_gameConfig.GetFloat(GameConfigKeys::HiddenFade));
+
+				lua_settable(m_lua, -3);
+			}
+
+			lua_pushstring(m_lua, "noteHitStats");
 			lua_newtable(m_lua);
-			m_PushIntToTable("rating", simpleHitStat.rating);
-			m_PushIntToTable("lane", simpleHitStat.lane);
-			m_PushIntToTable("time", simpleHitStat.time);
-			m_PushFloatToTable("timeFrac",
-				Math::Clamp(static_cast<float>(simpleHitStat.time) / (m_beatmapDuration > 0 ? m_beatmapDuration : 1), 0.0f, 1.0f));
-			m_PushIntToTable("delta", simpleHitStat.delta);
+			for (size_t i = 0; i < m_simpleNoteHitStats.size(); ++i)
+			{
+				const SimpleHitStat simpleHitStat = m_simpleNoteHitStats[i];
 
-			lua_rawseti(m_lua, -2, i + 1);
+				lua_newtable(m_lua);
+				m_PushIntToTable("rating", simpleHitStat.rating);
+				m_PushIntToTable("lane", simpleHitStat.lane);
+				m_PushIntToTable("time", simpleHitStat.time);
+				m_PushFloatToTable("timeFrac",
+					Math::Clamp(static_cast<float>(simpleHitStat.time) / (m_beatmapDuration > 0 ? m_beatmapDuration : 1), 0.0f, 1.0f));
+				m_PushIntToTable("delta", simpleHitStat.delta);
+
+				lua_rawseti(m_lua, -2, i + 1);
+			}
+			lua_settable(m_lua, -3);
 		}
-		lua_settable(m_lua, -3);
 		
 		lua_setglobal(m_lua, "result");
 

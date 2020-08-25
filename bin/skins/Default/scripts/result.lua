@@ -67,9 +67,7 @@ local hitDeltaScale = game.GetSkinSetting("hit_graph_delta_scale")
 local showGuide = game.GetSkinSetting("show_result_guide")
 local showIcons = game.GetSkinSetting("show_result_icons")
 local showStatsHit = game.GetSkinSetting("show_detailed_results")
-
-local showHiScoreSetting = game.GetSkinSetting("show_result_hiscore")
-local showHiScore = showHiScoreSetting ~= "never"
+local showHiScore = game.GetSkinSetting("show_result_hiscore")
 local prevShowHiScore = not showHiScore
 
 function waveParam(period, offset)
@@ -171,7 +169,6 @@ result_set = function()
     end
     
     if result.uid == nil then --local scores
-        showHiScore = showHiScoreSetting == "always"
         for i,s in ipairs(result.highScores) do
             newScore = { }
             if currentAdded == false and result.score > s.score then
@@ -216,7 +213,7 @@ result_set = function()
             currentAdded = true
         end
     else --multi scores
-        showHiScore = showHiScoreSetting ~= "never"
+        showHiScore = true
         for i,s in ipairs(result.highScores) do
             newScore = { }
             if s.uid == result.uid then 
@@ -309,10 +306,16 @@ result_set = function()
             critText = string.format("%02dms CRIT", hitWindowPerfect)
             nearText = string.format("%02dms NEAR", hitWindowGood)
         end
+    else
+        hitWindowPerfect = 46
+        hitWindowGood = 92
+        critText = "CRIT"
+        nearText = "NEAR"
     end
     
+    hitHistogram = {}
+    
     if hasHitStat then
-        hitHistogram = {}
         for i = 1, #result.noteHitStats do
             local hitStat = result.noteHitStats[i]
             if hitStat.rating == 1 or hitStat.rating == 2 then
@@ -565,11 +568,20 @@ draw_left_graph = function(x, y, w, h)
     draw_hit_graph(x, y, w, h, hit_xfocus, hit_xscale)
     draw_gauge_graph(x, y, w, h)
     
-    gfx.FontSize(16)
-    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
-    gfx.BeginPath()
-    gfx.FillColor(255, 255, 255, 128)
-    gfx.Text(string.format("Mean absolute delta: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
+    -- hitDeltaAbs is unavailable for multiplayers
+    if result.uid ~= nil then
+        gfx.FontSize(16)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+        gfx.BeginPath()
+        gfx.FillColor(255, 255, 255, 128)
+        gfx.Text(string.format("Mean: %.1f ms, Median: %d ms", result.meanHitDelta, result.medianHitDelta), x+4, y+h)
+    elseif hasHitStat then
+        gfx.FontSize(16)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+        gfx.BeginPath()
+        gfx.FillColor(255, 255, 255, 128)
+        gfx.Text(string.format("Mean absolute delta: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
+    end
     
     -- End gauge display
     local endGauge = result.gauge
@@ -1070,7 +1082,7 @@ render = function(deltaTime, fxLeft)
         prevFXRight = fxRight
         
         if fxRight then
-            showHiScore = not showHiScore
+            if result.uid == nil then showHiScore = not showHiScore end
             game.PlaySample("menu_click")
         end
     end
@@ -1107,7 +1119,7 @@ render = function(deltaTime, fxLeft)
         prevFXLeft = fxLeft
         
         if fxLeft then
-            showStatsHit = not showStatsHit
+            if result.uid == nil then showStatsHit = not showStatsHit end
             game.PlaySample("menu_click")
         end
     end

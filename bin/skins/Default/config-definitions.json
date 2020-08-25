@@ -24,10 +24,9 @@
 	"separator_b" : {},
 	"Result:" : { "type" : "label" },
 	"show_result_hiscore": {
-		"label": "Show hiscores by default",
-		"type": "selection",
-		"default": "always",
-		"values": ["never", "multiplay", "always"]
+		"label": "Show hiscore on result",
+		"type": "bool",
+		"default": true
 	},
 	"hit_graph_delta_scale": {
 		"label": "Hit graph scale (y-axis)",
