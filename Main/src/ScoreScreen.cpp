@@ -652,11 +652,11 @@ public:
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		m_restored = false;
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
 		m_restored = true;

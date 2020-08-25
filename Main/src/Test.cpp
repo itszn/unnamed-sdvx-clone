@@ -31,7 +31,7 @@ public:
 	{
 		return arg * 2;
 	}
-	bool Init()
+	bool Init() override
 	{
 		m_gamepad = g_gameWindow->OpenGamepad(0);
 		return true;
