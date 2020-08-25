@@ -1022,10 +1022,13 @@ render = function(deltaTime, fxLeft)
         else
             desw = 500
         end
-    
-        scale = math.min(resx / desw, resy / desh)
         
-        if resx / resy > 1 then
+        local scaleX = resx / desw
+        local scaleY = resy / desh
+    
+        scale = math.min(scaleX, scaleY)
+        
+        if scaleX > scaleY then
             moveX = resx / (2*scale) - desw / 2
             moveY = 0
         else
