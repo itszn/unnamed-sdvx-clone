@@ -1,3 +1,4 @@
+-- TODO: move util functions to common.lua
 local jacketImg = nil
 
 local desw = 770
@@ -43,8 +44,6 @@ local hitMaxDelta = 0
 local hitWindowPerfect = 46
 local hitWindowGood = 92
 
-local showStatsHit = false
-local prevShowStats = false
 local clearTextBase = "" -- Used to determind the type of clear
 local clearText = ""
 
@@ -55,6 +54,17 @@ local nearText = "NEAR"
 
 local speedMod = ""
 local speedModValue = ""
+
+local prevFXLeft = false
+local prevFXRight = false
+
+local showGuide = game.GetSkinSetting("show_result_guide")
+local showIcons = game.GetSkinSetting("show_result_icons")
+local showStatsHit = game.GetSkinSetting("show_detailed_results")
+
+local showHiScoreSetting = game.GetSkinSetting("show_result_hiscore")
+local showHiScore = showHiScoreSetting ~= "never"
+local prevShowHiScore = not showHiScore
 
 function waveParam(period, offset)
     local t = currTime
@@ -144,6 +154,7 @@ result_set = function()
     highScores = { }
     currentAdded = false
     if result.uid == nil then --local scores
+        showHiScore = showHiScoreSetting == "always"
         for i,s in ipairs(result.highScores) do
             newScore = { }
             if currentAdded == false and result.score > s.score then
@@ -188,6 +199,7 @@ result_set = function()
             currentAdded = true
         end
     else --multi scores
+        showHiScore = showHiScoreSetting ~= "never"
         for i,s in ipairs(result.highScores) do
             newScore = { }
             if s.uid == result.uid then 
@@ -610,7 +622,7 @@ draw_right_graph = function(x, y, w, h)
     gfx.Text(string.format("Latest: %d ms", hitMaxDelta), x+5, y+h)
 end
 
-draw_laser_perk = function(x, y, s)
+draw_laser_icon = function(x, y, s)
     gfx.Save()
     gfx.Translate(x, y)
     
@@ -643,7 +655,7 @@ draw_laser_perk = function(x, y, s)
     return x - s
 end
 
-draw_speed_perk = function(x, y, s)
+draw_speed_icon = function(x, y, s)
     if speedMod == "" then return x end
     
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
@@ -660,7 +672,7 @@ draw_speed_perk = function(x, y, s)
     return x - s
 end
 
-draw_hidsud_perk = function(x, y, s)
+draw_hidsud_icon = function(x, y, s)
     if result.hidsud == nil then
         return x
     end
@@ -681,7 +693,7 @@ draw_hidsud_perk = function(x, y, s)
     return x - s
 end
 
-draw_mir_ran_perk = function(x, y, s)
+draw_mir_ran_icon = function(x, y, s)
     if result.flags & 6 == 0 then return x end
     
     gfx.FontSize(20)
@@ -963,32 +975,54 @@ end
 draw_footer = function(x, y, w, h, full)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
-    local footerText = "FX-L: more info"
-    if full then
-        footerText = "FX-L: simple view"
+    if showGuide then
+        local fxLText = "FX-L: more info"
+        if full then
+            fxLText = "FX-L: simple view"
+        end
+        
+        local fxRText = "FX-R: toggle hiscore"
+        
+        gfx.FontSize(20)
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+        
+        gfx.BeginPath()
+        gfx.FillColor(255, 255, 255, 96)
+        gfx.Text(string.format("%s, %s", fxLText, fxRText), x+5, y+h)
     end
     
-    gfx.FontSize(20)
-    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+    local icon_x = x+w-h
     
-    gfx.BeginPath()
-    gfx.FillColor(255, 255, 255, 96)
-    gfx.Text(footerText, x+5, y+h)
-    
-    local perk_x = x+w-h
-    
-    perk_x = draw_laser_perk(perk_x, y, h)
-    perk_x = draw_speed_perk(perk_x, y, h)
-    perk_x = draw_hidsud_perk(perk_x, y, h)
-    perk_x = draw_mir_ran_perk(perk_x, y, h)
+    icon_x = draw_laser_icon(icon_x, y, h)
+    icon_x = draw_speed_icon(icon_x, y, h)
+    icon_x = draw_hidsud_icon(icon_x, y, h)
+    icon_x = draw_mir_ran_icon(icon_x, y, h)
 end
 
-render = function(deltaTime, showStats)
+render = function(deltaTime, fxLeft)
     currTime = currTime + deltaTime
+    
+    local fxRight = game.GetButton(5)
+    if fxRight ~= prevFXRight then
+        prevFXRight = fxRight
+        
+        if fxRight then
+            showHiScore = not showHiScore
+            game.PlaySample("menu_click")
+        end
+    end
 
     local resx,resy = game.GetResolution()
     
-    if resx ~= currResX or resy ~= currResY then
+    if resx ~= currResX or resy ~= currResY or showHiScore ~= prevShowHiScore then
+        prevShowHiScore = showHiScore
+        
+        if showHiScore then
+            desw = 770
+        else
+            desw = 500
+        end
+    
         scale = math.min(resx / desw, resy / desh)
         
         if resx / resy > 1 then
@@ -1003,10 +1037,10 @@ render = function(deltaTime, showStats)
         currResY = resY
     end
     
-    if prevShowStats ~= showStats then
-        prevShowStats = showStats
+    if prevFXLeft ~= fxLeft then
+        prevFXLeft = fxLeft
         
-        if showStats then
+        if fxLeft then
             showStatsHit = not showStatsHit
             game.PlaySample("menu_click")
         end
@@ -1042,7 +1076,10 @@ render = function(deltaTime, showStats)
     end
     
     draw_footer(0, 750, 500, 50, showStatsHit)
-    draw_highscores(showStatsHit)
+    
+    if showHiScore then
+        draw_highscores(showStatsHit)
+    end
     
     -- Applause SFX
     if result.badge > 1 and not played then
