@@ -1141,7 +1141,7 @@ render = function(deltaTime)
         draw_guide(0, 750, 500, 50, showStatsHit)
     end
     
-    if showIcons then
+    if showIcons and result.isSelf ~= false then
         draw_icons(0, 750, 500, 50)
     end
     
