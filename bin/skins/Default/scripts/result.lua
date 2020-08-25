@@ -1066,12 +1066,14 @@ draw_footer = function(x, y, w, h, full)
         gfx.Text(string.format("%s, %s", fxLText, fxRText), x+5, y+h)
     end
     
-    local icon_x = x+w-h
-    
-    icon_x = draw_laser_icon(icon_x, y, h)
-    icon_x = draw_speed_icon(icon_x, y, h)
-    icon_x = draw_hidsud_icon(icon_x, y, h)
-    icon_x = draw_mir_ran_icon(icon_x, y, h)
+    if showIcons then
+        local icon_x = x+w-h
+        
+        icon_x = draw_laser_icon(icon_x, y, h)
+        icon_x = draw_speed_icon(icon_x, y, h)
+        icon_x = draw_hidsud_icon(icon_x, y, h)
+        icon_x = draw_mir_ran_icon(icon_x, y, h)
+    end
 end
 
 render = function(deltaTime, fxLeft)
