@@ -290,7 +290,7 @@ public:
 			g_application->RemoveTickable(m_owner);
 		}
 	}
-	~SelectionWheel()
+	virtual ~SelectionWheel()
 	{
 		g_gameConfig.Set(GameConfigKeys::LastSelected, m_currentlySelectedMapId);
 		if (m_lua)
@@ -1793,7 +1793,7 @@ public:
 			m_selectionWheel->AdvanceSelection(steps);
 		}
 	}
-	virtual void OnKeyPressed(SDL_Scancode code)
+	void OnKeyPressed(SDL_Scancode code) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
@@ -1924,10 +1924,10 @@ public:
 			}
 		}
 	}
-	virtual void OnKeyReleased(SDL_Scancode code)
+	void OnKeyReleased(SDL_Scancode code) override
 	{
 	}
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (m_dbUpdateTimer.Milliseconds() > 500)
 		{
@@ -1952,7 +1952,7 @@ public:
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime) override
 	{
 		if (m_suspended && m_hasRestored) return;
 		lua_getglobal(m_lua, "render");
@@ -2042,7 +2042,7 @@ public:
 		m_advanceSong -= advanceSongActual;
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		m_lastMapIndex = m_selectionWheel->GetCurrentSongIndex();
 
@@ -2052,7 +2052,7 @@ public:
 		if (m_lockMouse)
 			m_lockMouse.reset();
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;
