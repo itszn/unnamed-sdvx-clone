@@ -433,12 +433,17 @@ public:
 		m_PushIntToTable("difficulty", m_beatmapSettings.difficulty);
 		if (m_multiplayer)
 		{
+			m_PushStringToTable("playerName", m_playerName);
 			m_PushStringToTable("title", "<"+m_playerName+"> " + m_beatmapSettings.title);
 		}
 		else
 		{
 			m_PushStringToTable("title", m_beatmapSettings.title);
 		}
+		lua_pushstring(m_lua, "isSelf");
+		lua_pushboolean(m_lua, isSelf);
+		lua_settable(m_lua, -3);
+		m_PushStringToTable("realTitle", m_beatmapSettings.title);
 		m_PushStringToTable("artist", m_beatmapSettings.artist);
 		m_PushStringToTable("effector", m_beatmapSettings.effector);
 		m_PushStringToTable("illustrator", m_beatmapSettings.illustrator);

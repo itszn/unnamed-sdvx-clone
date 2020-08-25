@@ -1,5 +1,6 @@
 -- TODO: move util functions to common.lua
 local jacketImg = nil
+local chartTitle = ""
 
 local desw = 770
 local desh = 800
@@ -108,32 +109,6 @@ function drawScaledText(txt, x, y, max_width)
     gfx.Restore()
 end
 
-function drawScrollingText(txt, x, y, max_width)
-    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
-    local x1, y1, x2, y2 = gfx.TextBounds(max_width/2, 0, txt)
-    if x2 <= max_width then
-        gfx.BeginPath()
-        gfx.Text(txt, x+max_width/2, y)
-        return
-    end
-    
-    local maxScrollAmount = (x2-x1) - max_width
-    local scrollOffset = ((currTime % 6.0) / 3.0 - 0.5) * maxScrollAmount
-    
-    if scrollOffset < 0 then scrollOffset = 0
-    elseif scrollOffset > maxScrollAmount then scrollOffset = maxScrollAmount
-    end
-    
-    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
-    
-    gfx.BeginPath()
-    gfx.Scissor(x, y + y1, max_width, y + y2)
-    gfx.Text(txt, x-scrollOffset, y)
-    gfx.Fill()
-    
-    gfx.ResetScissor()
-end
-
 function drawLine(x1,y1,x2,y2,w,r,g,b)
     gfx.BeginPath()
     gfx.MoveTo(x1,y1)
@@ -157,6 +132,9 @@ end
 result_set = function()
     highScores = { }
     currentAdded = false
+    
+    chartTitle = result.title
+    if result.realTitle ~= nil and result.playerName ~= nil then chartTitle = result.realTitle end
     
     if result.duration ~= nil then
         chartDuration = result.duration
@@ -274,6 +252,10 @@ result_set = function()
         clearText = clearTextBase
     end
     
+    if result.uid ~= nil and result.playerName ~= nil and result.isSelf ~= true then
+        clearText = string.format("By %s", result.playerName)
+    end
+    
     if result.speedModType ~= nil then
         if result.speedModType == 0 then
             speedMod = "XMOD"
@@ -295,22 +277,19 @@ result_set = function()
 
     hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
     
+    hitWindowPerfect = 46
+    hitWindowGood = 92
+    critText = "CRIT"
+    nearText = "NEAR"
+        
     if result.hitWindow ~= nil then
         hitWindowPerfect = result.hitWindow.perfect
         hitWindowGood = result.hitWindow.good
         
-        if hitWindowPerfect == 46 and hitWindowGood == 92 then
-            critText = "CRIT"
-            nearText = "NEAR"
-        else
+        if hitWindowPerfect ~= 46 or hitWindowGood ~= 92 then
             critText = string.format("%02dms CRIT", hitWindowPerfect)
             nearText = string.format("%02dms NEAR", hitWindowGood)
         end
-    else
-        hitWindowPerfect = 46
-        hitWindowGood = 92
-        critText = "CRIT"
-        nearText = "NEAR"
     end
     
     hitHistogram = {}
@@ -802,7 +781,7 @@ draw_title = function(x, y, w, h)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
     
     gfx.FontSize(48)
-    drawScaledText(result.title, x+w/2, centerLineY-18, w/2-5)
+    drawScaledText(chartTitle, x+w/2, centerLineY-18, w/2-5)
     
     drawLine(x+30, centerLineY, x+w-30,centerLineY, 1, 64, 64, 64)
     
@@ -1047,40 +1026,52 @@ draw_graphs = function(x, y, w, h)
     end
 end
 
-draw_footer = function(x, y, w, h, full)
+draw_guide = function(x, y, w, h, full)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
-    if showGuide then
-        local fxLText = "FX-L: more info"
-        if full then
-            fxLText = "FX-L: simple view"
-        end
-        
-        local fxRText = "FX-R: toggle hiscore"
-        
-        gfx.FontSize(20)
-        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
-        
-        gfx.BeginPath()
-        gfx.FillColor(255, 255, 255, 96)
-        gfx.Text(string.format("%s, %s", fxLText, fxRText), x+5, y+h)
+    local fxLText = "FX-L: more info"
+    if full then
+        fxLText = "FX-L: simple view"
     end
     
-    if showIcons then
-        local icon_x = x+w-h
-        
-        icon_x = draw_laser_icon(icon_x, y, h)
-        icon_x = draw_speed_icon(icon_x, y, h)
-        icon_x = draw_hidsud_icon(icon_x, y, h)
-        icon_x = draw_mir_ran_icon(icon_x, y, h)
-    end
+    local fxRText = "FX-R: toggle hiscore"
+    
+    gfx.FontSize(20)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
+    
+    gfx.BeginPath()
+    gfx.FillColor(255, 255, 255, 96)
+    gfx.Text(string.format("%s, %s", fxLText, fxRText), x+5, y+h)
 end
 
-render = function(deltaTime, fxLeft)
+draw_icons = function(x, y, w, h)    
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
+    
+    local icon_x = x+w-h
+    
+    icon_x = draw_laser_icon(icon_x, y, h)
+    icon_x = draw_speed_icon(icon_x, y, h)
+    icon_x = draw_hidsud_icon(icon_x, y, h)
+    icon_x = draw_mir_ran_icon(icon_x, y, h)
+end
+
+render = function(deltaTime)
     currTime = currTime + deltaTime
     
+    -- Note: these keys are also used for viewing other players' scores on multiplayer.
+    local fxLeft = game.GetButton(4)
     local fxRight = game.GetButton(5)
-    if fxRight ~= prevFXRight then
+    
+    if prevFXLeft ~= fxLeft then
+        prevFXLeft = fxLeft
+        
+        if fxLeft then
+            if result.uid == nil then showStatsHit = not showStatsHit end
+            game.PlaySample("menu_click")
+        end
+    end
+    
+    if prevFXRight ~= fxRight then
         prevFXRight = fxRight
         
         if fxRight then
@@ -1117,15 +1108,6 @@ render = function(deltaTime, fxLeft)
         currResY = resY
     end
     
-    if prevFXLeft ~= fxLeft then
-        prevFXLeft = fxLeft
-        
-        if fxLeft then
-            if result.uid == nil then showStatsHit = not showStatsHit end
-            game.PlaySample("menu_click")
-        end
-    end
-    
     -- For better screenshot display
     gfx.BeginPath()
     gfx.FillColor(0, 0, 0)
@@ -1155,7 +1137,13 @@ render = function(deltaTime, fxLeft)
         draw_basic_hitstat(50, 430, 400, 400, false)
     end
     
-    draw_footer(0, 750, 500, 50, showStatsHit)
+    if showGuide then
+        draw_guide(0, 750, 500, 50, showStatsHit)
+    end
+    
+    if showIcons then
+        draw_icons(0, 750, 500, 50)
+    end
     
     if showHiScore then
         draw_highscores(showStatsHit)
