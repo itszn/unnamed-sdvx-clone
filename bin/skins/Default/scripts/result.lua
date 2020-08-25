@@ -45,9 +45,13 @@ local hitWindowGood = 92
 
 local showStatsHit = false
 local prevShowStats = false
+local clearTextBase = "" -- Used to determind the type of clear
 local clearText = ""
 
 local currTime = 0
+
+local critText = "CRIT"
+local nearText = "NEAR"
 
 function waveParam(period, offset)
     local t = currTime
@@ -133,7 +137,7 @@ function getScoreBadgeDesc(s)
     return ""
 end
 
-function result_set()
+result_set = function()
     highScores = { }
     currentAdded = false
     if result.uid == nil then --local scores
@@ -222,22 +226,38 @@ function result_set()
         badgeImg = badgeImages[result.badge]
     end
     
-    if result.autoplay then clearText = "AUTOPLAY"
-    elseif result.hitWindow ~= nil and result.hitWindow.type == 0 then clearText = "EXPAND JUDGE"
-    elseif result.badge == 0 then clearText = "NOT SAVED"
-    elseif result.badge == 1 then clearText = "PLAYED"
-    elseif result.badge == 2 then clearText = "CLEAR"
-    elseif result.badge == 3 then clearText = "HARD CLEAR"
-    elseif result.badge == 4 then clearText = "FULL COMBO"
-    elseif result.badge == 5 then clearText = "PERFECT"
-    else clearText = ""
+    if result.autoplay then clearTextBase = "AUTOPLAY"
+    elseif result.hitWindow ~= nil and result.hitWindow.type == 0 then clearTextBase = "EXPAND JUDGE"
+    elseif result.badge == 0 then clearTextBase = "NOT SAVED"
+    elseif result.badge == 1 then clearTextBase = "PLAYED"
+    elseif result.badge == 2 then clearTextBase = "CLEAR"
+    elseif result.badge == 3 then clearTextBase = "HARD CLEAR"
+    elseif result.badge == 4 then clearTextBase = "FULL COMBO"
+    elseif result.badge == 5 then clearTextBase = "PERFECT"
+    else clearTextBase = ""
     end
     
+    if result.playbackSpeed ~= nil and result.playbackSpeed ~= 1.00 then
+        if clearTextBase == "" then clearText = string.format("x%.2f play", result.playbackSpeed)
+        else clearText = string.format("%s (x%.2f play)", clearTextBase, result.playbackSpeed)
+        end
+    else
+        clearText = clearTextBase
+    end
+
     hasHitStat = result.noteHitStats ~= nil and #result.noteHitStats > 0
     
     if result.hitWindow ~= nil then
         hitWindowPerfect = result.hitWindow.perfect
         hitWindowGood = result.hitWindow.good
+        
+        if hitWindowPerfect == 46 and hitWindowGood == 92 then
+            critText = "CRIT"
+            nearText = "NEAR"
+        else
+            critText = string.format("%02dms CRIT", hitWindowPerfect)
+            nearText = string.format("%02dms NEAR", hitWindowGood)
+        end
     end
     
     if hasHitStat then
@@ -323,6 +343,9 @@ draw_highscores = function(full)
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
         gfx.BeginPath()
         local ypos =  45 + (i - 1) * 80
+        if ypos > desh then
+            break
+        end
         gfx.Translate(510 + s.xoff, ypos)
         gfx.RoundedRectVarying(0, 0, 260, 70,0,0,25,0)
         gfx.FillColor(15,15,15)
@@ -449,6 +472,8 @@ draw_left_graph = function(x, y, w, h)
     gfx.FillColor(255, 255, 255, 128)
     gfx.Text(string.format("Mean absolute delta: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
     gfx.Fill()
+    
+    -- End gauge display
     
     local endGauge = result.gauge
     local endGaugeY = y + h - h * endGauge
@@ -733,10 +758,12 @@ draw_basic_hitstat = function(x, y, w, h, full)
         end
     end
     
-    if clearText ~= "" then
-        if clearText == "PERFECT" then gfx.FillColor(255, 255, math.floor(120+125*waveParam(2.0)))
-        elseif clearText == "FULL COMBO" then gfx.FillColor(255, 0, 200)
-        elseif result.badge == 0 then gfx.FillColor(255, 0, 0)
+    if clearTextBase ~= "" then
+        if clearTextBase == "PERFECT" then gfx.FillColor(255, 255, math.floor(120+125*waveParam(2.0)))
+        elseif clearTextBase == "FULL COMBO" then gfx.FillColor(255, 0, 200)
+        elseif result.badge == 0 then
+            local w = math.floor(128*waveParam(2.0))
+            gfx.FillColor(255, w, w)
         else gfx.FillColor(255, 255, 255)
         end
         
@@ -781,8 +808,8 @@ draw_basic_hitstat = function(x, y, w, h, full)
     
     gfx.FillColor(255, 255, 255)
     
-    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, "CRIT", result.perfects, "%d", 255, 150, 0)
-    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, "NEAR", result.goods, "%d", 255, 0, 200)
+    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, critText, result.perfects, "%d", 255, 150, 0)
+    stat_y = draw_stat(x+4, stat_y, stat_width, stat_size, nearText, result.goods, "%d", 255, 0, 200)
     
     local early_late_width = w/2-20
     local late_x = x+stat_width-early_late_width
@@ -823,27 +850,9 @@ end
 draw_footer = function(x, y, w, h, full)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     
-    if result.playbackSpeed ~= nil and result.playbackSpeed ~= 1.00 then
-        gfx.FontSize(30)
-        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE)
-        
-        if result.playbackSpeed < 1.00 then
-            gfx.FillColor(128, 255, 128)
-        else
-            gfx.FillColor(255, 128, 64)
-        end
-        
-        gfx.BeginPath()
-        gfx.Text(string.format("x%.2f play", result.playbackSpeed), x+w-10, y+h/2)
-    end
-    
     local footerText = "FX-L for more info"
     if full then
         footerText = "FX-L for simple view"
-    end
-    
-    if hitWindowPerfect ~= 46 or hitWindowGood ~= 92 then
-        footerText = string.format("Crit %dms, Near %dms | %s", hitWindowPerfect, hitWindowGood, footerText)
     end
     
     gfx.FontSize(20)
