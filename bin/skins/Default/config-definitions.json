@@ -29,6 +29,13 @@
 		"default": "always",
 		"values": ["never", "multiplay", "always"]
 	},
+	"hit_graph_delta_scale": {
+		"label": "Hit graph scale (y-axis)",
+		"type": "float",
+		"default": 1.6,
+		"max": 3.0,
+		"min": 1.0
+	},
 	"show_result_guide": {
 		"label": "Show control guide on result",
 		"type": "bool",

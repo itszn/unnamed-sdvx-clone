@@ -11,10 +11,14 @@ local currResX = 0
 local currResY = 0
 
 local scale = 1
+local hitGraphHoverScale = 10
 
 local gradeImg = nil;
 local badgeImg = nil;
 local gradeAR = 1 --grade aspect ratio
+
+local chartDuration = 0
+local chartDurationText = "0m 00s"
 
 local badgeImages = {
     gfx.CreateSkinImage("badges/played.png", 0),
@@ -24,6 +28,7 @@ local badgeImages = {
     gfx.CreateSkinImage("badges/perfect.png", 0)
 }
 
+local laneNames = {"A", "B", "C", "D", "L", "R"}
 local diffNames = {"NOV", "ADV", "EXH", "INF"}
 local backgroundImage = gfx.CreateSkinImage("bg.png", 1);
 game.LoadSkinSample("applause")
@@ -37,7 +42,6 @@ local highestScore = 0
 
 local hasHitStat = false
 local hitHistogram = {}
-local hitDeltaScale = 1.6
 local hitMinDelta = 0
 local hitMaxDelta = 0
 
@@ -57,6 +61,8 @@ local speedModValue = ""
 
 local prevFXLeft = false
 local prevFXRight = false
+
+local hitDeltaScale = game.GetSkinSetting("hit_graph_delta_scale")
 
 local showGuide = game.GetSkinSetting("show_result_guide")
 local showIcons = game.GetSkinSetting("show_result_icons")
@@ -153,6 +159,17 @@ end
 result_set = function()
     highScores = { }
     currentAdded = false
+    
+    if result.duration ~= nil then
+        chartDuration = result.duration
+        chartDurationText = string.format("%dm %02d.%01ds", chartDuration // 60000, (chartDuration // 1000) % 60, (chartDuration // 100) % 10)
+        hitGraphHoverScale = math.max(chartDuration / 10000, 5)
+    else
+        chartDuration = 0
+        chartDurationText = ""
+        hitGraphHoverScale = 10
+    end
+    
     if result.uid == nil then --local scores
         showHiScore = showHiScoreSetting == "always"
         for i,s in ipairs(result.highScores) do
@@ -458,46 +475,94 @@ draw_hit_graph_lines = function(x, y, w, h)
     end
 end
 
-draw_hit_graph = function(x, y, w, h)
+draw_hit_graph = function(x, y, w, h, xfocus, xscale)
     if not hasHitStat or hitDeltaScale == 0.0 then
         return
     end
     
+    if xfocus == nil then xfocus = 0 end
+    if xscale == nil then xscale = 1 end
+    
     draw_hit_graph_lines(x, y, w, h)
-    gfx.StrokeWidth(1)
+    
+    gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
+    gfx.FontSize(12)
     
     for i = 1, #result.noteHitStats do
         local hitStat = result.noteHitStats[i]
-        local hitStatY = h/2 + hitStat.delta * hitDeltaScale
-        if hitStatY < 0 then hitStatY = 0
-        elseif hitStatY > h then hitStatY = h
-        end
-        if hitStat.rating == 2 then
+        local hitStatX = (hitStat.timeFrac*w - xfocus)*xscale + xfocus
+        
+        if 0 <= hitStatX then
+            if hitStatX > w then break end
+            
+            local hitStatY = h/2 + hitStat.delta * hitDeltaScale
+            if hitStatY < 0 then hitStatY = 0
+            elseif hitStatY > h then hitStatY = h
+            end
+            
+            local hitStatSize = 1
+            
+            if hitStat.rating == 2 then
+                hitStatSize = 0.75
+                gfx.FillColor(255, 150, 0, 160)
+            elseif hitStat.rating == 1 then
+                hitStatSize = 1
+                gfx.FillColor(255, 0, 200, 160)
+            elseif hitStat.rating == 0 then
+                hitStatSize = 1.25
+                gfx.FillColor(255, 0, 0, 160)
+            end
+            
             gfx.BeginPath()
-            gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.25)
-            gfx.StrokeColor(255, 150, 0, 160)
-            gfx.Stroke()
-        elseif hitStat.rating == 1 then
-            gfx.BeginPath()
-            gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.5)
-            gfx.StrokeColor(255, 0, 200, 160)
-            gfx.Stroke()
-        elseif hitStat.rating == 0 then
-            gfx.BeginPath()
-            gfx.Circle(x+hitStat.timeFrac*w, y+hitStatY, 0.75)
-            gfx.StrokeColor(255, 0, 0, 160)
-            gfx.Stroke()
+            if xscale > 1 then
+                gfx.Text(laneNames[hitStat.lane + 1], x+hitStatX, y+hitStatY)
+            else
+                gfx.Circle(x+hitStatX, y+hitStatY, hitStatSize)
+                gfx.Fill()
+            end
         end
     end
 end
 
 draw_left_graph = function(x, y, w, h)
+    local mx, my = game.GetMousePos()
+    mx = mx / scale - moveX
+    my = my / scale - moveY
+    
+    local mhit = x <= mx and mx <= x+w and y <= my and my <= y+h
+    local hit_xfocus = 0
+    local hit_xscale = 1
+    
     gfx.BeginPath()
     gfx.Rect(x, y, w, h)
     gfx.FillColor(255, 255, 255, 32)
     gfx.Fill()
     
-    draw_hit_graph(x, y, w, h)
+    local chartDurationDisp = string.format("Duration: %s", chartDurationText)
+    
+    if mhit then
+        hit_xfocus = mx - x
+        hit_xscale = hitGraphHoverScale
+        
+        local currPos = chartDuration * ((mx - x) / w)
+        chartDurationDisp = string.format("%dm %02d.%01ds / %s" , currPos // 60000, (currPos // 1000) % 60, (currPos // 100) % 10, chartDurationText)
+        
+        drawLine(mx, y, mx, y+h, 1, 64, 96, 64)
+    end
+    
+    gfx.FontSize(17)
+    gfx.FillColor(64, 128, 64, 96)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+    
+    gfx.BeginPath()
+    gfx.Text(chartDurationDisp, x+5, y)
+    
+    if result.bpm ~= nil then
+        gfx.BeginPath()
+        gfx.Text(string.format("BPM: %s", result.bpm), x+5, y+15)
+    end
+    
+    draw_hit_graph(x, y, w, h, hit_xfocus, hit_xscale)
     draw_gauge_graph(x, y, w, h)
     
     gfx.FontSize(16)
@@ -505,10 +570,8 @@ draw_left_graph = function(x, y, w, h)
     gfx.BeginPath()
     gfx.FillColor(255, 255, 255, 128)
     gfx.Text(string.format("Mean absolute delta: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
-    gfx.Fill()
     
     -- End gauge display
-    
     local endGauge = result.gauge
     local endGaugeY = y + h - h * endGauge
     
