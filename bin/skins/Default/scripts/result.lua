@@ -412,25 +412,38 @@ draw_highscores = function(full)
     end
 end
 
-draw_gauge_graph = function(x, y, w, h)
-    gfx.BeginPath()
-    gfx.MoveTo(x, y + h - h * result.gaugeSamples[1])
+draw_gauge_graph = function(x, y, w, h, alpha, xfocus, xscale)
+    if alpha == nil then alpha = 160 end
+    if xfocus == nil then
+        xfocus = 0
+        xscale = 1
+    end
     
-    for i = 2, #result.gaugeSamples do
-        gfx.LineTo(x + i * w / #result.gaugeSamples,y + h - h * result.gaugeSamples[i])
+    local leftIndex = math.floor(#result.gaugeSamples/w * (-xfocus / xscale + xfocus))
+    leftIndex = math.max(1, math.min(#result.gaugeSamples, leftIndex))
+    
+    gfx.BeginPath()
+    gfx.MoveTo(x, y + h - h * result.gaugeSamples[leftIndex])
+    
+    for i = leftIndex+1, #result.gaugeSamples do
+        local gaugeX = i * w / #result.gaugeSamples
+        gaugeX = (gaugeX - xfocus) * xscale + xfocus
+        gfx.LineTo(x + gaugeX,y + h - h * result.gaugeSamples[i])
+        
+        if gaugeX > w then break end
     end
     
     gfx.StrokeWidth(2.0)
     if result.flags & 1 ~= 0 then
-        gfx.StrokeColor(255,80,0,160)
+        gfx.StrokeColor(255,80,0,alpha)
         gfx.Stroke()
     else
-        gfx.StrokeColor(0,180,255,160)
+        gfx.StrokeColor(0,180,255,alpha)
         gfx.Scissor(x, y + h * 0.3, w, h * 0.7)
         gfx.Stroke()
         gfx.ResetScissor()
         gfx.Scissor(x,y-10,w,10+h*0.3)
-        gfx.StrokeColor(255,0,255,160)
+        gfx.StrokeColor(255,0,255,alpha)
         gfx.Stroke()
         gfx.ResetScissor()
     end
@@ -441,20 +454,25 @@ draw_hit_graph_lines = function(x, y, w, h)
     
     gfx.StrokeWidth(1)
     
+    gfx.BeginPath()
+    gfx.StrokeColor(128, 255, 128, 128)
+    gfx.MoveTo(x, y+h/2)
+    gfx.LineTo(x+w, y+h/2)
+    gfx.Stroke()
+    
+    gfx.BeginPath()
+    gfx.StrokeColor(64, 128, 64, 64)
+    
     for i = -math.floor(maxDispDelta / 10), math.floor(maxDispDelta / 10) do
         local lineY = y + h/2 + i*10*hitDeltaScale
         
-        if i == 0 then
-            gfx.StrokeColor(128, 255, 128, 128)
-        else
-            gfx.StrokeColor(64, 128, 64, 64)
+        if i ~= 0 then
+            gfx.MoveTo(x, lineY)
+            gfx.LineTo(x+w, lineY)
         end
-        
-        gfx.BeginPath()
-        gfx.MoveTo(x, lineY)
-        gfx.LineTo(x+w, lineY)
-        gfx.Stroke()
     end
+    
+    gfx.Stroke()
 end
 
 draw_hit_graph = function(x, y, w, h, xfocus, xscale)
@@ -489,10 +507,10 @@ draw_hit_graph = function(x, y, w, h, xfocus, xscale)
                 gfx.FillColor(255, 150, 0, 160)
             elseif hitStat.rating == 1 then
                 hitStatSize = 1.75
-                gfx.FillColor(255, 0, 200, 160)
+                gfx.FillColor(255, 0, 200, 128)
             elseif hitStat.rating == 0 then
                 hitStatSize = 2
-                gfx.FillColor(255, 0, 0, 160)
+                gfx.FillColor(255, 0, 0, 128)
             end
             
             gfx.BeginPath()
@@ -545,7 +563,28 @@ draw_left_graph = function(x, y, w, h)
     end
     
     draw_hit_graph(x, y, w, h, hit_xfocus, hit_xscale)
-    draw_gauge_graph(x, y, w, h)
+    if hit_xscale == 1 then
+        draw_gauge_graph(x, y, w, h)
+    else
+        draw_gauge_graph(x, y, w, h, 64, hit_xfocus, hit_xscale)
+        draw_gauge_graph(x, y, w, h)
+        
+        local gaugeInd = math.floor(1 + #result.gaugeSamples/w * ((mx-x - hit_xfocus) / hit_xscale + hit_xfocus))
+        gaugeInd = math.max(1, math.min(#result.gaugeSamples, gaugeInd))
+        
+        local gaugeY = h - h * result.gaugeSamples[gaugeInd]
+        
+        gfx.StrokeColor(255, 0, 0, 196)
+        gfx.FillColor(255, 255, 255, 196)
+        gfx.FontSize(16)
+        
+        gfx.BeginPath()
+        gfx.Circle(mx, y + gaugeY, 2)
+        gfx.Stroke()
+        
+        gfx.BeginPath()
+        gfx.Text(string.format("%.1f%%", result.gaugeSamples[gaugeInd]*100), mx, y + gaugeY - 10)
+    end
     
     -- hitDeltaAbs is unavailable for multiplayers
     if result.uid ~= nil then
