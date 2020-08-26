@@ -485,13 +485,13 @@ draw_hit_graph = function(x, y, w, h, xfocus, xscale)
             local hitStatSize = 1
             
             if hitStat.rating == 2 then
-                hitStatSize = 0.75
+                hitStatSize = 1.25
                 gfx.FillColor(255, 150, 0, 160)
             elseif hitStat.rating == 1 then
-                hitStatSize = 1
+                hitStatSize = 1.75
                 gfx.FillColor(255, 0, 200, 160)
             elseif hitStat.rating == 0 then
-                hitStatSize = 1.25
+                hitStatSize = 2
                 gfx.FillColor(255, 0, 0, 160)
             end
             
@@ -499,7 +499,7 @@ draw_hit_graph = function(x, y, w, h, xfocus, xscale)
             if xscale > 1 then
                 gfx.Text(laneNames[hitStat.lane + 1], x+hitStatX, y+hitStatY)
             else
-                gfx.Circle(x+hitStatX, y+hitStatY, hitStatSize)
+                gfx.Rect(x+hitStatX-hitStatSize/2, y+hitStatY-hitStatSize/2, hitStatSize, hitStatSize)
                 gfx.Fill()
             end
         end
@@ -559,7 +559,7 @@ draw_left_graph = function(x, y, w, h)
         gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
         gfx.BeginPath()
         gfx.FillColor(255, 255, 255, 128)
-        gfx.Text(string.format("Mean absolute delta: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
+        gfx.Text(string.format("Mean deviation: %.1fms", result.meanHitDeltaAbs), x+4, y+h)
     end
     
     -- End gauge display
