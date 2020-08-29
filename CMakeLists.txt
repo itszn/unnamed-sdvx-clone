@@ -65,6 +65,12 @@ if(EMBEDDED)
     add_definitions(-DEMBEDDED)
 endif()
 
+OPTION(CRASHDUMP "Enable collecting crash dumps" ON)
+if(CRASHDUMP)
+    message("Enabling crash dumps")
+    add_definitions(-DCRASHDUMP)
+endif()
+
 # Include macros
 include(${PROJECT_SOURCE_DIR}/cmake/Macros.cmake)
 
