@@ -31,9 +31,9 @@
 	"hit_graph_delta_scale": {
 		"label": "Hit graph scale (y-axis)",
 		"type": "float",
-		"default": 1.6,
+		"default": 0.8,
 		"max": 3.0,
-		"min": 1.0
+		"min": 0.5
 	},
 	"show_result_guide": {
 		"label": "Show control guide on result",
