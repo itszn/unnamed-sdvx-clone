@@ -114,6 +114,8 @@ public:
 	// Warning: this returns 0 when the song is not playing (ex: end of the game).
 	virtual float GetPlaybackSpeed() = 0;
 
+	virtual const PlayOptions& GetPlayOptions() const = 0;
+
 	// Get lua state
 	virtual struct lua_State* GetLuaState() = 0;
 	// Set demo mode
