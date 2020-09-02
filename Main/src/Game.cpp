@@ -1340,6 +1340,7 @@ public:
 		}
 		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
+			m_scoring.currentGauge = 0.0f;
 			FailCurrentRun();
 		}
 	}
@@ -2607,6 +2608,10 @@ return Scoring::CalculateBadge(scoreData);
 	virtual float GetPlaybackSpeed() override
 	{
 		return m_audioPlayback.GetPlaybackSpeed();
+	}
+	virtual const PlayOptions& GetPlayOptions() const override
+	{
+		return m_playOptions;
 	}
 	virtual int GetRetryCount() const override
 	{

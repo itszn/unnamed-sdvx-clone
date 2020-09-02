@@ -102,7 +102,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::PracticeSetupNavEnabled, true);
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
-	Set(GameConfigKeys::DisplayPracticeInfoInResult, true);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
