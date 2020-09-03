@@ -1,15 +1,48 @@
 #include "stdafx.h"
+#include "Audio/AudioPlayback.hpp"
 #include "Audio/OffsetComputer.hpp"
 
 #include <Audio/Audio_Impl.hpp>
 #include <Beatmap/Beatmap.hpp>
+#include <Beatmap/BeatmapPlayback.hpp>
+#include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
 #include <array>
+
+OffsetComputer::OffsetComputer(AudioPlayback& audioPlayback)
+	: OffsetComputer(audioPlayback.GetMusic(), audioPlayback.GetBeatmap())
+{
+}
 
 OffsetComputer::OffsetComputer(Ref<AudioStream> music, const Beatmap& beatmap)
 	: m_pcm(music->GetPCM()), m_pcmCount(music->GetPCMCount()), m_sampleRate(music->GetSampleRate()),
 	m_beatmap(beatmap)
 {
+}
+
+bool OffsetComputer::Compute(const ChartIndex* chart, int& outOffset)
+{
+	const String chartPath = Path::Normalize(chart->path);
+	const String chartRootPath = Path::RemoveLast(chartPath, nullptr);
+
+	Beatmap beatmap;
+	File mapFile;
+
+	if (!mapFile.OpenRead(chartPath))
+		return false;
+
+	FileReader reader(mapFile);
+	if (!beatmap.Load(reader))
+		return false;
+
+	BeatmapPlayback beatmapPlayback(beatmap);
+	beatmapPlayback.Reset();
+
+	AudioPlayback audioPlayback;
+	if (!audioPlayback.Init(beatmapPlayback, chartRootPath))
+		return false;
+
+	return OffsetComputer(audioPlayback).Compute(outOffset);
 }
 
 bool OffsetComputer::Compute(int& outOffset)

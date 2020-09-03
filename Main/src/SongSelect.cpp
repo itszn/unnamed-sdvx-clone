@@ -22,6 +22,8 @@
 #include "DBUpdateScreen.hpp"
 #include "PreviewPlayer.hpp"
 
+#include "Audio/OffsetComputer.hpp"
+
 class TextInput
 {
 public:
@@ -1535,6 +1537,16 @@ public:
 
 			// Transition to practice mode
 			g_transition->TransitionTo(practiceGame);
+		});
+
+		m_settDiag.onPressComputeSongOffset.AddLambda([this]() {
+			ChartIndex* chart = GetCurrentSelectedChart();
+			if (!chart) return;
+
+			if (OffsetComputer::Compute(chart, chart->custom_offset))
+			{
+				m_mapDatabase->UpdateChartOffset(chart);
+			}
 		});
 
 		if (m_hasCollDiag)

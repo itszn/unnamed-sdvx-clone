@@ -2,11 +2,14 @@
 #include <Audio/AudioStream.hpp>
 #include <Beatmap/BeatmapObjects.hpp>
 
+class AudioPlayback;
 class Beatmap;
+struct ChartIndex;
 
 class OffsetComputer
 {
 public:
+	OffsetComputer(AudioPlayback& audioPlayback);
 	OffsetComputer(Ref<AudioStream> music, const Beatmap& beatmap);
 	OffsetComputer(const OffsetComputer&) = delete;
 	OffsetComputer(OffsetComputer&&) = delete;
@@ -15,6 +18,7 @@ public:
 	OffsetComputer& operator= (OffsetComputer&&) = delete;
 
 	bool Compute(int& outOffset);
+	static bool Compute(const ChartIndex* chart, int& outOffset);
 
 private:
 	// Length of the region to use for offset computation

@@ -351,12 +351,11 @@ public:
 		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
 			return false;
 
-		// Compute chart offset
-		// TODO: specify conditions on when to do this
 		m_songOffset = 0;
 
-		{
-			if (OffsetComputer(m_audioPlayback.GetMusic(), m_audioPlayback.GetBeatmap()).Compute(m_songOffset) && m_chartIndex)
+		// Compute chart offset
+		if (g_gameConfig.GetBool(GameConfigKeys::AutoComputeSongOffset) && m_scoreReplays.empty()) {
+			if (OffsetComputer(m_audioPlayback).Compute(m_songOffset) && m_chartIndex)
 			{
 				Logf("Setting the chart offset of '%s' to %d (previously %d)", Logger::Severity::Info, m_chartIndex->title, m_songOffset, m_chartIndex->custom_offset);
 				m_chartIndex->custom_offset = m_songOffset;
