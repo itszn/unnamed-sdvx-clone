@@ -169,7 +169,7 @@ void OffsetComputer::ReadBeats()
 		float weight = 1.0f;
 		if (!timingPoints.empty())
 		{
-			if (timingPointInd + 1 < timingPoints.size())
+			if (timingPointInd + 1 < static_cast<int>(timingPoints.size()))
 			{
 				if (timingPoints[timingPointInd + 1]->time <= currBeat)
 					++timingPointInd;
