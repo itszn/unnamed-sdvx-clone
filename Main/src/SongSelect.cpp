@@ -1543,10 +1543,14 @@ public:
 			ChartIndex* chart = GetCurrentSelectedChart();
 			if (!chart) return;
 
+			m_previewPlayer.Pause();
+
 			if (OffsetComputer::Compute(chart, chart->custom_offset))
 			{
 				m_mapDatabase->UpdateChartOffset(chart);
 			}
+
+			m_previewPlayer.Restore();
 		});
 
 		if (m_hasCollDiag)

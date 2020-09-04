@@ -9,6 +9,13 @@
 #include <Shared/Profiling.hpp>
 #include <array>
 
+static inline double GetBeatWeight(double d)
+{
+	d -= Math::Floor(d);
+	if (d >= 0.5) return d;
+	return 1.0 - d;
+}
+
 OffsetComputer::OffsetComputer(AudioPlayback& audioPlayback)
 	: OffsetComputer(audioPlayback.GetMusic(), audioPlayback.GetBeatmap())
 {
@@ -51,7 +58,7 @@ bool OffsetComputer::Compute(int& outOffset)
 
 	if (!m_pcm || m_pcmCount <= 0 || m_sampleRate <= 0)
 	{
-		Log("OffsetComputer::Compute: The stream is not loaded!", Logger::Severity::Info);
+		Log("OffsetComputer::Compute: The stream is not loaded!", Logger::Severity::Warning);
 		return false;
 	}
 
@@ -59,17 +66,20 @@ bool OffsetComputer::Compute(int& outOffset)
 
 	if (m_beats.empty())
 	{
-		Log("OffsetComputer::Compute: # of beats is zero!", Logger::Severity::Info);
+		Log("OffsetComputer::Compute: # of beats is zero!", Logger::Severity::Warning);
 		return false;
 	}
 
 	Logf("OffsetComputer::Compute: Using %d beats starting from %d...", Logger::Severity::Info,
-		m_beats.size(), m_beats[0]);
+		m_beats.size(), m_beats[0].time);
+
+	m_offsetCenter = outOffset;
 
 	ComputeEnergy();
+	
 	if (m_energy.empty())
 	{
-		Log("OffsetComputer::Compute: Insufficient data...", Logger::Severity::Info);
+		Log("OffsetComputer::Compute: Insufficient data...", Logger::Severity::Warning);
 		return false;
 	}
 
@@ -79,7 +89,7 @@ bool OffsetComputer::Compute(int& outOffset)
 	// but it's simple and doesn't matter a lot in practice.
 	for(MapTime offset = -MAX_OFFSET; offset <= MAX_OFFSET; ++offset)
 	{
-		fitnesses[MAX_OFFSET + offset] = ComputeFitness(offset);
+		fitnesses[MAX_OFFSET + offset] = ComputeFitness(offset+m_offsetCenter);
 	}
 
 	std::vector<MapTime> peaks;
@@ -99,7 +109,7 @@ bool OffsetComputer::Compute(int& outOffset)
 
 	if (peaks.empty())
 	{
-		Log("OffsetComputer::Compute: Insufficient candidates...", Logger::Severity::Info);
+		Log("OffsetComputer::Compute: Insufficient candidates...", Logger::Severity::Warning);
 		return false;
 	}
 
@@ -109,12 +119,12 @@ bool OffsetComputer::Compute(int& outOffset)
 
 	for (size_t i = 0; i < 5 && i < peaks.size(); ++i)
 	{
-		Logf("offset %3d | score = %d", Logger::Severity::Info, peaks[i], fitnesses[peaks[i] + MAX_OFFSET]);
+		Logf("offset %3d | score = %d", Logger::Severity::Info, peaks[i]+m_offsetCenter, fitnesses[peaks[i] + MAX_OFFSET]);
 	}
 
-	Logf("OffsetComputer::Compute: Determined offset: %d (fitness = %d)", Logger::Severity::Info, peaks[0], fitnesses[peaks[0] + MAX_OFFSET]);
+	Logf("OffsetComputer::Compute: Determined offset: %d (fitness = %d)", Logger::Severity::Info, peaks[0]+m_offsetCenter, fitnesses[peaks[0] + MAX_OFFSET]);
 
-	outOffset = static_cast<int>(peaks[0]);
+	outOffset = static_cast<int>(peaks[0]+m_offsetCenter);
 	return true;
 }
 
@@ -131,6 +141,9 @@ void OffsetComputer::ReadBeats()
 	int maxBeatsBeginInd = 0;
 	int maxBeatsCount = 0;
 
+	const Vector<TimingPoint*>& timingPoints = m_beatmap.GetLinearTimingPoints();
+	int timingPointInd = 0;
+
 	for (const ObjectState* object : m_beatmap.GetLinearObjects())
 	{
 		MapTime currBeat = lastBeat;
@@ -138,20 +151,40 @@ void OffsetComputer::ReadBeats()
 		{
 		case ObjectType::Single:
 		case ObjectType::Hold:
-			currBeat = object->time;;
+			currBeat = object->time;
 			break;
 		default:
 			continue;
 			break;
 		}
+
 		if (currBeat == lastBeat) continue;
 
-		while (regionBeginInd < regionEndInd && COMPUTE_WINDOW <= currBeat - m_beats[regionBeginInd])
+		while (regionBeginInd < regionEndInd && COMPUTE_WINDOW <= currBeat - m_beats[regionBeginInd].time)
 		{
 			++regionBeginInd;
 		}
 
-		m_beats.emplace_back(currBeat);
+		// Compute weight based on beats
+		float weight = 1.0f;
+		if (!timingPoints.empty())
+		{
+			if (timingPointInd + 1 < timingPoints.size())
+			{
+				if (timingPoints[timingPointInd + 1]->time <= currBeat)
+					++timingPointInd;
+			}
+
+			const TimingPoint* timingPoint = timingPoints[timingPointInd];
+			const double barDuration = timingPoint->GetBarDuration();
+			const double beatDuration = barDuration / timingPoint->numerator;
+
+			double timingOffset = static_cast<double>(currBeat - timingPoint->time);
+
+			weight = static_cast<float>(GetBeatWeight(timingOffset / barDuration) * 0.75 + GetBeatWeight(timingOffset / beatDuration) * 0.25);
+		}
+
+		m_beats.emplace_back(currBeat, weight);
 		++regionEndInd;
 
 		if (regionEndInd - regionBeginInd > maxBeatsCount)
@@ -176,30 +209,16 @@ void OffsetComputer::ReadBeats()
 
 	for (int i = 0; i < maxBeatsCount; ++i)
 	{
-		const MapTime currBeat = m_beats[i] = m_beats[maxBeatsBeginInd + i];
+		m_beats[i] = m_beats[maxBeatsBeginInd + i];
 	}
 
 	m_beats.resize(maxBeatsCount);
 }
 
-static inline float GetSmoothValue(const float* pcm, const uint64 count, const int64 ind)
-{
-	const int64 max_ind = static_cast<int64>(count * 2);
-	const float prev = 0 <= ind - 2 && ind - 2 < max_ind ? pcm[ind - 2] : 0;
-	const float curr = 0 <= ind && ind < max_ind ? pcm[ind] : 0;
-	const float next = 0 <= ind + 2 && ind + 2 < max_ind ? pcm[ind + 2] : 0;
-
-	return curr + (prev + next) * 0.5f;
-}
-
-static inline float GetAmplitude(const float* pcm, const uint64 count, const int64 sample)
-{
-	return std::hypotf(GetSmoothValue(pcm, count, 2*sample), GetSmoothValue(pcm, count, 2*sample + 1));
-}
-
 void OffsetComputer::ComputeEnergy()
 {
-	constexpr MapTime ENERGY_COUNT = COMPUTE_WINDOW + MAX_OFFSET * 2 + 10;
+	constexpr MapTime ENERGY_MARGIN = MAX_OFFSET + 5;
+	constexpr MapTime ENERGY_COUNT = COMPUTE_WINDOW + ENERGY_MARGIN * 2;
 	constexpr float ENERGY_EPSILON = 0.000'001f;
 
 	m_energy.clear();
@@ -214,14 +233,27 @@ void OffsetComputer::ComputeEnergy()
 		return;
 	}
 
-	m_energyOffset = m_beats[0] - MAX_OFFSET - 5;
+	m_energyOffset = m_beats[0].time + m_offsetCenter - ENERGY_MARGIN;
 
 	int64 ind = (static_cast<int64>(m_energyOffset) * m_sampleRate) / 1000;
+	if (ind >= static_cast<int64>(m_pcmCount))
+	{
+		m_energy.clear();
+		m_energyOffset = 0;
+		m_onsetScore.clear();
+
+		return;
+	}
+
 	const int64 endInd = ((static_cast<int64>(m_energyOffset) + ENERGY_COUNT) * m_sampleRate) / 1000;
 	int64 nextInd = (static_cast<int64>(m_energyOffset + 1) * m_sampleRate) / 1000;
 	int64 intervalSize = nextInd - ind;
 
 	int64 energyInd = 0;
+	
+	float prevAmp = ind < 0 ? 0 : std::hypotf(m_pcm[2*ind-2], m_pcm[2*ind-1]);
+	float currAmp = std::hypotf(m_pcm[2 * ind], m_pcm[2 * ind + 1]);
+
 	for (; ind < endInd; ++ind)
 	{
 		if (ind >= nextInd)
@@ -235,16 +267,18 @@ void OffsetComputer::ComputeEnergy()
 			if (energyInd >= COMPUTE_WINDOW) break;
 		}
 
-		// Compute energy based on Newton's laws(?)
+		const float nextAmp = ind + 1 >= static_cast<int64>(m_pcmCount) ? 0 : std::hypotf(m_pcm[ind*2 + 2], m_pcm[ind*2 + 3]);
 
-		const float prev = GetAmplitude(m_pcm, m_pcmCount, ind-1);
-		const float curr = GetAmplitude(m_pcm, m_pcmCount, ind);
-		const float next = GetAmplitude(m_pcm, m_pcmCount, ind+1);
-
-		const float v = (next - prev) / 2;
-		const float a = (prev + next - 2 * curr);
-		const float energySq = v * v - curr * a;
+		// Compute energy based on Newton's laws (?)
+		const float v = (nextAmp - prevAmp) / 2;
+		const float a = (prevAmp + nextAmp - 2 * currAmp);
+		const float energySq = v * v - currAmp * a;
 		m_energy[energyInd] += std::sqrt(energySq < 0 ? 0 : energySq) / intervalSize;
+
+		prevAmp = currAmp;
+		currAmp = nextAmp;
+
+		if (ind + 1 >= static_cast<int64>(m_pcmCount)) break;
 	}
 
 	bool isQuiet = true;
@@ -273,18 +307,20 @@ void OffsetComputer::ComputeEnergy()
 
 int OffsetComputer::ComputeFitness(MapTime offset)
 {
-	int fitness = 0;
-	for (MapTime beat : m_beats)
+	float fitness = 0;
+	for (const Beat& beat : m_beats)
 	{
-		fitness += GetOnsetScore(beat + offset);
+		fitness += 10.0f * GetOnsetScore(beat.time + offset) * beat.weight;
 	}
 
-	return fitness;
+	return static_cast<int>(fitness);
 }
 
-int OffsetComputer::GetOnsetScore(MapTime time)
+float OffsetComputer::GetOnsetScore(MapTime time)
 {
 	time -= m_energyOffset;
+	if (time < 0 || time >= static_cast<MapTime>(m_onsetScore.size()))
+		return 0;
 
-	return 0 <= time && time < static_cast<MapTime>(m_onsetScore.size()) ? Math::Clamp(static_cast<int>(100 * m_onsetScore[time]), -100, 100) : 0;
+	return Math::Clamp(100 * m_onsetScore[time], -100.0f, 100.0f);
 }

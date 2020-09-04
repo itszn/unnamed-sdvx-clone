@@ -21,25 +21,35 @@ public:
 	static bool Compute(const ChartIndex* chart, int& outOffset);
 
 private:
+	struct Beat {
+		Beat(MapTime time, float weight) noexcept : time(time), weight(weight) {}
+		Beat() noexcept : Beat(0, 1.0f) {}
+
+		MapTime time;
+		float weight;
+	};
+
 	// Length of the region to use for offset computation
-	static constexpr MapTime COMPUTE_WINDOW = 20'000;
+	static constexpr MapTime COMPUTE_WINDOW = 25'000;
 
 	// Maximal # of beats for consideration
 	// (would never be achieved in practice)
 	static constexpr int MAX_BEATS = 5'000;
 
 	// Maximal absolute value for offset
-	static constexpr MapTime MAX_OFFSET = 75;
+	static constexpr MapTime MAX_OFFSET = 50;
 
 	const float* m_pcm = nullptr;
 	uint64 m_pcmCount = 0;
 	uint32 m_sampleRate = 0;
 	const Beatmap& m_beatmap;
 
+	MapTime m_offsetCenter = 0;
+
 	// Reads the beats from the chart
 	void ReadBeats();
 	// Most dense 30 seconds of the chart
-	Vector<MapTime> m_beats;
+	Vector<Beat> m_beats;
 
 	// Computes the energy and likelihood of onset being present in the 30 seconds window
 	void ComputeEnergy();
@@ -49,5 +59,5 @@ private:
 	Vector<float> m_onsetScore;
 
 	int ComputeFitness(MapTime offset);
-	int GetOnsetScore(MapTime time);
+	float GetOnsetScore(MapTime time);
 };
