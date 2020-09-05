@@ -112,7 +112,7 @@ private:
 		{
 			if (m_collDiag.IsInitialized())
 			{
-				m_collDiag.Open(*m_chartIndex);
+				m_collDiag.Open(m_chartIndex);
 			}
 		}
 
