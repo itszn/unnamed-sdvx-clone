@@ -84,9 +84,14 @@ target_include_directories(usc-game SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 
 if(WIN32)
     target_link_libraries(usc-game
-        ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler.lib
-        ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client.lib
-        ${PROJECT_SOURCE_DIR}/third_party/breakpad/common.lib
+        optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Release.lib
+	optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Release.lib
+	optimized ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Release.lib
+    )
+    target_link_libraries(usc-game
+        debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/exception_handler_Debug.lib
+	debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/crash_generation_client_Debug.lib
+	debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
     )
     target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
     # Always generate pdb
