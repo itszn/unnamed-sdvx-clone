@@ -21,9 +21,12 @@ DefineEnum(GameConfigKeys,
 		   VSync,
 		   ShowFps,
 		   ForcePortrait,
-	       LogLevel,
+		   LogLevel,
 
 		   // Game settings
+		   HitWindowPerfect,
+		   HitWindowGood,
+		   HitWindowHold,
 		   HiSpeed,
 		   SpeedMod,
 		   ModSpeed,
@@ -44,6 +47,7 @@ DefineEnum(GameConfigKeys,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
 
+		   EnableHiddenSudden,
 		   HiddenCutoff,
 		   HiddenFade,
 		   SuddenCutoff,
@@ -53,6 +57,13 @@ DefineEnum(GameConfigKeys,
 		   DistantButtonScale,
 		   BTOverFXScale,
 		   DisableBackgrounds,
+		   ScoreDisplayMode,
+
+		   LeadInTime,
+		   PracticeLeadInTime,
+		   PracticeSetupNavEnabled,
+		   RevertToSetupAfterScoreScreen,
+		   DisplayPracticeInfoInGame,
 
 		   // Input device setting per element
 		   LaserInputDevice,
@@ -125,6 +136,8 @@ DefineEnum(GameConfigKeys,
 		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
 
+		   SettingsTreesOpen,
+
 		   EditorPath,
 		   EditorParamsFormat,
 
@@ -165,6 +178,11 @@ DefineEnum(AbortMethod,
 		   None,
 		   Press,
 		   Hold)
+
+DefineEnum(ScoreDisplayModes,
+		   Additive,
+		   Subtractive,
+		   Average)
 
 #ifdef Always
 #undef Always
