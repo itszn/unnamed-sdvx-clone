@@ -1512,7 +1512,13 @@ public:
 			m_suspended = true;
 
 			// Transition to game
+#ifndef PLAYBACK
 			g_transition->TransitionTo(game);
+#else
+			TransitionScreen* trans = TransitionScreen::Create();
+			trans->SetWindowIndex(this->GetWindowIndex());
+			trans->TransitionTo(game);
+#endif
 		});
 		
 		m_settDiag.onPressPractice.AddLambda([this]() {
@@ -1535,7 +1541,13 @@ public:
 			practiceGame->SetSongDB(m_mapDatabase);
 
 			// Transition to practice mode
+#ifndef PLAYBACK
 			g_transition->TransitionTo(practiceGame);
+#else
+				TransitionScreen* trans = TransitionScreen::Create();
+				trans->SetWindowIndex(this->GetWindowIndex());
+				trans->TransitionTo(practiceGame);
+#endif
 		});
 
 		if (m_hasCollDiag)

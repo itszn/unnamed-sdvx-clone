@@ -8,18 +8,6 @@ local desh = 800
 local moveX = 0
 local moveY = 0
 
-if resx / resy > 1 then
-    moveX = resx / (2*scale) - 400
-else
-    moveY = resy / (2*scale) - 400
-end
-
-if game.isPlayback then
-    moveX = 0;
-end
-
-
-
 local currResX = 0
 local currResY = 0
 
@@ -80,7 +68,7 @@ local hitDeltaScale = game.GetSkinSetting("hit_graph_delta_scale")
 local showGuide = game.GetSkinSetting("show_result_guide")
 local showIcons = game.GetSkinSetting("show_result_icons")
 local showStatsHit = game.GetSkinSetting("show_detailed_results")
-local showHiScore = game.GetSkinSetting("show_result_hiscore") and game.isPlayback
+local showHiScore = game.GetSkinSetting("show_result_hiscore")
 local prevShowHiScore = not showHiScore
 
 function waveParam(period, offset)

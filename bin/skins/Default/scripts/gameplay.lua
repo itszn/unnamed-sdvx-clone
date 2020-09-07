@@ -188,9 +188,6 @@ local laserCursor = gfx.CreateSkinImage("pointer.png", 0)
 local laserCursorOverlay = gfx.CreateSkinImage("pointer_overlay.png", 0)
 local earlatePos = game.GetSkinSetting("earlate_position")
 
-local topFillLeft = gfx.CreateSkinImage("fill_top_left.png", 0)
-local topFillRight = gfx.CreateSkinImage("fill_top_right.png", 0)
-
 local ioConsoleDetails = {
     gfx.CreateSkinImage("console/detail_left.png", 0),
     gfx.CreateSkinImage("console/detail_right.png", 0),
@@ -337,21 +334,7 @@ function render(deltaTime)
 
     gfx.Translate(0, yshift - 150 * math.max(introTimer - 1, 0))
     draw_song_info(deltaTime)
-    -- draw_score(deltaTime)
-
-    if gameplay.isPlayback then
-        gfx.Save()
-
-        local bannerWidth, bannerHeight = gfx.ImageSize(topFill)
-        gfx.Translate(0, - yshift + (desw*180 / bannerWidth))
-
-        draw_score_playback(deltaTime)
-
-        gfx.Restore()
-    else 
-        draw_score(deltaTime)
-    end
-
+    draw_score(deltaTime)
     gfx.Translate(0, -yshift + 150 * math.max(introTimer - 1, 0))
     draw_gauge(deltaTime)
     if earlatePos ~= "off" then
@@ -359,7 +342,6 @@ function render(deltaTime)
     end
     draw_combo(deltaTime)
     draw_alerts(deltaTime)
-
     
     if gameplay.practice_setup ~= nil then
         draw_practice(deltaTime);
@@ -632,26 +614,11 @@ end
 -- Renders the banner across the top of the screen in portrait.               --
 -- This function expects no graphics transform except the design scale.       --
 function draw_banner(deltaTime)
-    local img = topFill;
-    if (gameplay.isPlayback and gameplay.windowIndex == 0) then
-        img = topFillLeft;
-    end
-    if (gameplay.isPlayback and gameplay.windowIndex == 1) then
-        img = topFillRight;
-    end
-    local bannerWidth, bannerHeight = gfx.ImageSize(img)
-
+    local bannerWidth, bannerHeight = gfx.ImageSize(topFill)
     local actualHeight = desw * (bannerHeight / bannerWidth)
 
     gfx.FillColor(255, 255, 255)
-
-    gfx.DrawRect(img, 0, 0, desw, actualHeight)
-
-    if (gameplay.isPlayback) then
-        gfx.FontSize(40)
-        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_TOP)
-        gfx.Text(gameplay.username, desw/2,(desw*25)/bannerWidth) -- 0, 0, is x, y after translation
-    end
+    gfx.DrawRect(topFill, 0, 0, desw, actualHeight)
 
     return actualHeight
 end
@@ -762,7 +729,7 @@ function draw_song_info(deltaTime)
 
     -- When the player is holding Start, the hispeed can be changed
     -- Shows the current hispeed values
-    if game.GetButton(game.BUTTON_STA) or game.isPlayback then
+    if game.GetButton(game.BUTTON_STA) then
         gfx.FillColor(20, 20, 20, 200);
         gfx.DrawRect(RECT_FILL, 100, 100, song_info.songInfoWidth - 100, 20)
         gfx.FillColor(255, 255, 255)
@@ -798,8 +765,7 @@ function draw_best_diff(deltaTime, x, y)
     local prefix = "" -- used to properly display negative values
 
     gfx.BeginPath()
-    --gfx.FontSize(40)
-    gfx.FontSize(25)
+    gfx.FontSize(40)
 
     gfx.FillColor(255, 255, 255)
     if difference < 0 then
@@ -1048,46 +1014,6 @@ function laser_alert(isRight) --for starting laser alert animations
         alertTimers[2] = 1.5
     elseif alertTimers[1] < -1.5 then
         alertTimers[1] = 1.5
-    end
-end
-
-function draw_score_playback(deltaTime)
-    gfx.BeginPath()
-    gfx.LoadSkinFont("NovaMono.ttf")
-    gfx.BeginPath()
-
-    if gameplay.windowIndex == 0 then
-        gfx.RoundedRectVarying(desw - 240, 5, 240, 62, 0, 0, 0, 20)
-    else
-        gfx.RoundedRectVarying(0, 5, 240, 62, 0, 0, 20, 0)
-    end
-    gfx.FillColor(20, 20, 20)
-    gfx.StrokeColor(0, 128, 255)
-    gfx.StrokeWidth(2)
-    gfx.Fill()
-    gfx.Stroke()
-    gfx.FillColor(255, 255, 255)
-    gfx.FontSize(60)
-    if gameplay.windowIndex == 0 then
-        gfx.Translate(-25, 5) -- upper right margin
-
-        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_TOP)
-        gfx.Text(string.format("%08d", score), desw, 0)
-
-
-        gfx.Translate(25, -5) -- undo margin
-
-        draw_best_diff(deltaTime, desw-10, 65)
-    else
-        gfx.Translate(25, 5) -- upper right margin
-
-        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
-        gfx.Text(string.format("%08d", score), 0, 0)
-
-
-        gfx.Translate(-25, -5) -- undo margin
-
-        draw_best_diff(deltaTime, 10, 65)
     end
 end
 
