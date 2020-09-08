@@ -279,8 +279,8 @@ void TapeStopDSP::SetLength(double length)
 }
 void TapeStopDSP::Process(float* out, uint32 numSamples)
 {
-	uint32 startSample = startTime * m_audio->GetSampleRate() / 1000.0;
-	uint32 currentSample = m_audioBase->GetPosition() * m_audio->GetSampleRate() / 1000.0;
+	const uint32 startSample = GetStartSample();
+	const uint32 currentSample = GetCurrentSample();
 
 	for(uint32 i = 0; i < numSamples; i++)
 	{
@@ -369,14 +369,14 @@ void RetriggerDSP::Process(float* out, uint32 numSamples)
 		if (m_resetDuration > 0)
 		{
 			startOffset = (nowSample + i - baseStartRepeat) / (int)m_resetDuration;
-			startOffset = startOffset * m_resetDuration * rateMult;
+			startOffset = static_cast<int>(startOffset * m_resetDuration * rateMult);
 		}
 		else
 		{
-			startOffset = (startSample - baseStartRepeat) * rateMult;
+			startOffset = static_cast<int>((startSample - baseStartRepeat) * rateMult);
 		}
 
-		int pcmSample = pcmStartSample + startOffset + (int)m_currentSample * rateMult;
+		int pcmSample = static_cast<int>(pcmStartSample) + startOffset + static_cast<int>(m_currentSample * rateMult);
 		float gating = 1.0f;
 		if (m_currentSample > m_gateLength)
 			gating = 0;
@@ -508,13 +508,12 @@ void FlangerDSP::SetLength(double length) {
 void FlangerDSP::SetDelayRange(uint32 offset, uint32 depth)
 {
 	// Assuming 44100hz is the base sample rate
-	uint32 max = offset + depth;
-	uint32 min = offset;
+	const uint32 max = offset + depth;
+	const uint32 min = offset;
 
-
-	float mult = (float) m_sampleRate / 44100.f;
-	m_min = min * mult;
-	m_max = max * mult;
+	const float mult = (float) m_sampleRate / 44100.f;
+	m_min = static_cast<uint32>(min * mult);
+	m_max = static_cast<uint32>(max * mult);
 	m_bufferLength = m_max * 2;
 	m_sampleBuffer.resize(m_bufferLength);
 }

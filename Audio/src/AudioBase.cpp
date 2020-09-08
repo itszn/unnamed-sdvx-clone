@@ -55,7 +55,7 @@ uint32 AudioBase::GetAudioSampleRate() const
 {
 	return audio->GetSampleRate();
 }
-void AudioBase::ProcessDSPs(float*& out, uint32 numSamples)
+void AudioBase::ProcessDSPs(float* out, uint32 numSamples)
 {
 	for(DSP* dsp : DSPs)
 	{
