@@ -125,7 +125,7 @@ void Audio_Impl::Start()
 	m_sampleBuffer = new float[2 * m_sampleBufferLength];
 
 	limiter = new LimiterDSP();
-	limiter->audio = this;
+	limiter->SetAudio(this);
 	limiter->releaseTime = 0.2f;
 	globalDSPs.Add(limiter);
 	output->Start(this);
@@ -133,10 +133,12 @@ void Audio_Impl::Start()
 void Audio_Impl::Stop()
 {
 	output->Stop();
-	delete limiter;
 	globalDSPs.Remove(limiter);
 
+	delete limiter;
 	delete[] m_sampleBuffer;
+
+	limiter = nullptr;
 	m_sampleBuffer = nullptr;
 }
 void Audio_Impl::Register(AudioBase* audio)
