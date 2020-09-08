@@ -10,6 +10,8 @@
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <iostream>
+#include <fstream>
 #include <condition_variable>
 using std::thread;
 using std::mutex;
@@ -32,6 +34,7 @@ public:
 
 	Map<int32, FolderIndex*> m_folders;
 	Map<int32, ChartIndex*> m_charts;
+	Map<int32, ChallengeIndex*> m_challenges;
 	Map<int32, PracticeSetupIndex*> m_practiceSetups;
 
 	Map<String, ChartIndex*> m_chartsByHash;
@@ -40,18 +43,20 @@ public:
 
 	int32 m_nextFolderId = 1;
 	int32 m_nextChartId = 1;
+	int32 m_nextChalId = 1;
 	String m_sortField = "title";
 	bool m_transferScores = true;
 
 	struct SearchState
 	{
-		struct ExistingDifficulty
+		struct ExistingFileEntry
 		{
 			int32 id;
 			uint64 lwt;
 		};
 		// Maps file paths to the id's and last write time's for difficulties already in the database
-		Map<String, ExistingDifficulty> difficulties;
+		Map<String, ExistingFileEntry> difficulties;
+		Map<String, ExistingFileEntry> challenges;
 	} m_searchState;
 
 	// Represents an event produced from a scan
@@ -59,6 +64,11 @@ public:
 	//	a BeatmapSettings structure will be provided for added/updated events
 	struct Event
 	{
+		enum Type{
+			Chart,
+			Challenge
+		};
+		Type type;
 		enum Action
 		{
 			Added,
@@ -73,12 +83,13 @@ public:
 		int32 id;
 		// Scanned map data, for added/updated maps
 		BeatmapSettings* mapData = nullptr;
+		nlohmann::json json;
 		String hash;
 	};
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 16;
+	static const int32 m_version = 17;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
@@ -338,6 +349,21 @@ public:
 				m_database.Exec("UPDATE Scores SET window_miss=250");
 				gotVersion = 16;
 			}
+			if (gotVersion == 16)
+			{
+				m_database.Exec("CREATE TABLE Challenges"
+					"("
+					"title TEXT,"
+					"charts TEXT,"
+					"clear_rating INTEGER,"
+					"req_text TEXT,"
+					"path TEXT,"
+					"hash TEXT,"
+					"level INTEGER,"
+					"lwt INTEGER"
+					")");
+				gotVersion = 17;
+			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
 			m_outer.OnDatabaseUpdateDone.Call();
@@ -433,6 +459,14 @@ public:
 		}
 		m_pendingChangesLock.unlock();
 		return std::move(changes);
+	}
+
+	ChartIndex* FindFirstChartByHash(const String& hash)
+	{
+		ChartIndex** chart = m_chartsByHash.Find(hash);
+		if (!chart)
+			return nullptr;
+		return *chart;
 	}
 
 	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash)
@@ -631,16 +665,24 @@ public:
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path,rowid) VALUES(?,?)");
+		DBStatement addChallenge = m_database.Query("INSERT INTO Challenges("
+			"title,charts,clear_rating,req_text,path,hash,level,lwt) "
+			"VALUES(?,?,?,?,?,?,?,?)");
 		DBStatement update = m_database.Query("UPDATE Charts SET path=?,title=?,artist=?,title_translit=?,artist_translit=?,jacket_path=?,effector=?,illustrator=?,"
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
+		DBStatement updateChallenge = m_database.Query("UPDATE Challenges SET title=?,charts=?,clear_rating=?,req_text=?,path=?,hash=?,level=?,lwt=? WHERE rowid=?");
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
-		Set<FolderIndex*> addedEvents;
-		Set<FolderIndex*> removeEvents;
-		Set<FolderIndex*> updatedEvents;
+		Set<FolderIndex*> addedChartEvents;
+		Set<FolderIndex*> removeChartEvents;
+		Set<FolderIndex*> updatedChartEvents;
+
+		Set<ChallengeIndex*> addedChalEvents;
+		Set<ChallengeIndex*> removeChalEvents;
+		Set<ChallengeIndex*> updatedChalEvents;
 
 		const String diffShortNames[4] = { "NOV", "ADV", "EXH", "INF" };
 		const String diffNames[4] = { "Novice", "Advanced", "Exhaust", "Infinite" };
@@ -648,7 +690,96 @@ public:
 		m_database.Exec("BEGIN");
 		for(Event& e : changes)
 		{
-			if(e.action == Event::Added)
+			if (e.type == Event::Challenge && (e.action == Event::Added || e.action == Event::Updated))
+			{
+				ChallengeIndex* chal;
+				if (e.action == Event::Added)
+				{
+					chal = new ChallengeIndex();
+					chal->id = m_nextChalId++;
+				}
+				else
+				{
+					auto itChal = m_challenges.find(e.id);
+					assert(itChal != m_challenges.end());
+					chal = itChal->second;
+				}
+
+				if (e.json.is_discarded() || e.json.is_null())
+				{
+					Logf("Tried to process invalid json in Challenge Add event", Logger::Severity::Warning);
+					continue;
+				}
+				chal->settings = e.json;
+				chal->settings["title"].get_to(chal->title);
+				chal->path = e.path;
+				chal->settings["level"].get_to(chal->level);
+				// TODO in the future save clear with hash
+				chal->clearRating = 0;
+				// TODO fill this with some more info
+				chal->reqText = "Clear All Charts\nGet 125% average";
+				chal->hash = e.hash;
+				chal->missingChart = false;
+				chal->lwt = e.lwt;
+				chal->charts.clear();
+
+				// Grab the charts
+				for (auto& el : chal->settings["charts"].items())
+				{
+					assert(el.value().is_string());
+					String hash;
+					el.value().get_to(hash);
+					ChartIndex* chart = FindFirstChartByHash(hash);
+					if (chart)
+					{
+						chal->charts.push_back(chart);
+						continue;
+					}
+					// TODO alternate search by name and level
+					Logf("Could not find chart hash %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
+					chal->missingChart = true;
+				}
+
+				String chartString = chal->settings["charts"].dump();
+
+				if (e.action == Event::Added)
+				{
+					m_challenges.Add(chal->id, chal);
+
+					// Add Chart
+					addChallenge.BindString(1, chal->title);
+					addChallenge.BindString(2, chartString);
+					addChallenge.BindInt(3, chal->clearRating);
+					addChallenge.BindString(4, chal->reqText);
+					addChallenge.BindString(5, chal->path);
+					addChallenge.BindString(6, chal->hash);
+					addChallenge.BindInt(7, chal->level);
+					addChallenge.BindInt64(8, chal->lwt);
+
+					addChallenge.Step();
+					addChallenge.Rewind();
+
+					addedChalEvents.Add(chal);
+				}
+				else if (e.action == Event::Updated)
+				{
+					updateChallenge.BindString(1, chal->title);
+					updateChallenge.BindString(2, chartString);
+					updateChallenge.BindInt(3, chal->clearRating);
+					updateChallenge.BindString(4, chal->reqText);
+					updateChallenge.BindString(5, chal->path);
+					updateChallenge.BindString(6, chal->hash);
+					updateChallenge.BindInt(7, chal->level);
+					updateChallenge.BindInt64(8, chal->lwt);
+					updateChallenge.BindInt(9, e.id);
+
+					updateChallenge.Step();
+					updateChallenge.Rewind();
+
+					updatedChalEvents.Add(chal);
+				}
+			}
+			if(e.type == Event::Chart && e.action == Event::Added)
 			{
 				String folderPath = Path::RemoveLast(e.path, nullptr);
 				bool existingUpdated;
@@ -765,14 +896,14 @@ public:
 				// Send appropriate notification
 				if(existingUpdated)
 				{
-					updatedEvents.Add(folder);
+					updatedChartEvents.Add(folder);
 				}
 				else
 				{
-					addedEvents.Add(folder);
+					addedChartEvents.Add(folder);
 				}
 			}
-			else if(e.action == Event::Updated)
+			else if(e.type == Event::Chart && e.type == Event::Chart && e.action == Event::Updated)
 			{
 				update.BindString(1, e.path);
 				update.BindString(2, e.mapData->title);
@@ -832,9 +963,9 @@ public:
 				assert(itFolder != m_folders.end());
 
 				// Send notification
-				updatedEvents.Add(itFolder->second);
+				updatedChartEvents.Add(itFolder->second);
 			}
-			else if(e.action == Event::Removed)
+			else if(e.type == Event::Chart && e.action == Event::Removed)
 			{
 				auto itChart = m_charts.find(e.id);
 				assert(itChart != m_charts.end());
@@ -859,7 +990,7 @@ public:
 
 				if(itFolder->second->charts.empty()) // Remove map as well
 				{
-					removeEvents.Add(itFolder->second);
+					removeChartEvents.Add(itFolder->second);
 
 					removeFolder.BindInt(1, itFolder->first);
 					removeFolder.Step();
@@ -870,7 +1001,7 @@ public:
 				}
 				else
 				{
-					updatedEvents.Add(itFolder->second);
+					updatedChartEvents.Add(itFolder->second);
 				}
 			}
 			if(e.mapData)
@@ -879,14 +1010,14 @@ public:
 		m_database.Exec("END");
 
 		// Fire events
-		if(!removeEvents.empty())
+		if(!removeChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : removeEvents)
+			for(auto i : removeChartEvents)
 			{
 				// Don't send 'updated' or 'added' events for removed maps
-				addedEvents.erase(i);
-				updatedEvents.erase(i);
+				addedChartEvents.erase(i);
+				updatedChartEvents.erase(i);
 				eventsArray.Add(i);
 			}
 
@@ -896,27 +1027,49 @@ public:
 				delete e;
 			}
 		}
-		if(!addedEvents.empty())
+		if(!addedChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : addedEvents)
+			for(auto i : addedChartEvents)
 			{
 				// Don't send 'updated' events for added maps
-				updatedEvents.erase(i);
+				updatedChartEvents.erase(i);
 				eventsArray.Add(i);
 			}
 
 			m_outer.OnFoldersAdded.Call(eventsArray);
 		}
-		if(!updatedEvents.empty())
+		if(!addedChalEvents.empty())
+		{
+			Vector<ChallengeIndex*> eventsArray;
+			for(auto i : addedChalEvents)
+			{
+				// Don't send 'updated' events for added maps
+				updatedChalEvents.erase(i);
+				eventsArray.Add(i);
+			}
+
+			m_outer.OnChallengesAdded.Call(eventsArray);
+		}
+		if(!updatedChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : updatedEvents)
+			for(auto i : updatedChartEvents)
 			{
 				eventsArray.Add(i);
 			}
 
 			m_outer.OnFoldersUpdated.Call(eventsArray);
+		}
+		if(!updatedChalEvents.empty())
+		{
+			Vector<ChallengeIndex*> eventsArray;
+			for(auto i : updatedChalEvents)
+			{
+				eventsArray.Add(i);
+			}
+
+			m_outer.OnChallengesUpdated.Call(eventsArray);
 		}
 	}
 
@@ -1184,6 +1337,18 @@ private:
 			"max_rewind_measure INTEGER,"
 			"FOREIGN KEY(chart_id) REFERENCES Charts(rowid)"
 		")");
+
+		m_database.Exec("CREATE TABLE Challenges"
+			"("
+			"title TEXT,"
+			"charts TEXT,"
+			"clear_rating INTEGER,"
+			"req_text TEXT,"
+			"path TEXT,"
+			"hash TEXT,"
+			"level INTEGER,"
+			"lwt INTEGER"
+			")");
 	}
 	void m_LoadInitialData()
 	{
@@ -1267,7 +1432,7 @@ private:
 			m_SortCharts(folderIt->second);
 
 			// Add to search state
-			SearchState::ExistingDifficulty ed;
+			SearchState::ExistingFileEntry ed;
 			ed.id = chart->id;
 			if (chart->hash.length() == 0)
 			{
@@ -1356,6 +1521,86 @@ private:
 		}
 
 		m_outer.OnFoldersCleared.Call(m_folders);
+
+		DBStatement chalScan = m_database.Query("SELECT rowid"
+			",title"
+			",charts"
+			",clear_rating"
+			",req_text"
+			",path"
+			",hash"
+			",level"
+			",lwt"
+			" FROM Challenges");
+		while (chalScan.StepRow())
+		{
+			ChallengeIndex* chal = new ChallengeIndex();
+			chal->id = chalScan.IntColumn(0);
+			chal->title = chalScan.StringColumn(1);
+			String chartsString = chalScan.StringColumn(2);
+			chal->clearRating = chalScan.IntColumn(3);
+			chal->reqText = chalScan.StringColumnEmptyOnNull(4);
+			chal->path = chalScan.StringColumn(5);
+			chal->hash = chalScan.StringColumn(6);
+			chal->level = chalScan.IntColumn(7);
+			chal->lwt = chalScan.Int64Column(8);
+			chal->missingChart = false;
+			chal->charts.clear();
+
+			nlohmann::json charts = nlohmann::json::parse(chartsString, nullptr, false);
+			if (!charts.is_discarded() && charts.is_array())
+			{
+				for (auto& el : charts.items())
+				{
+					if (!el.value().is_string())
+					{
+						Logf("Found non string chart entry for challenge %s in database", Logger::Severity::Warning, chal->path);
+						continue;
+					}
+					String hash;
+					el.value().get_to(hash);
+					ChartIndex* chart = FindFirstChartByHash(hash);
+					if (chart)
+					{
+						chal->charts.push_back(chart);
+						continue;
+					}
+					Logf("Could not find chart hash %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
+					chal->missingChart = true;
+					// TODO alternate search by name and level
+				}
+			}
+
+			if (chal->charts.size() == 0)
+			{
+				Logf("Unable to parse charts for challenge %s in database", Logger::Severity::Warning, chal->path);
+				// Try to reload from the file
+				chal->lwt = 0;
+			}
+
+			// If we don't have req text, update
+			if (chal->reqText == "")
+				chal->lwt = 0;
+
+			m_challenges.Add(chal->id, chal);
+
+			// Add to search state
+			SearchState::ExistingFileEntry ed;
+			ed.id = chal->id;
+			if (chal->hash.length() == 0)
+			{
+				ed.lwt = 0;
+			}
+			else {
+				ed.lwt = chal->lwt;
+
+			}
+			m_searchState.challenges.Add(chal->path, ed);
+		}
+
+		// TODO load challenges from database
+
+		m_outer.OnChallengesCleared.Call(m_challenges);
 	}
 	void m_SortCharts(FolderIndex* folderIndex)
 	{
@@ -1381,7 +1626,7 @@ private:
 		Map<String, FileInfo> fileList;
 
 		{
-			ProfilerScope $("Chart Database - Enumerate Files and Folders");
+			ProfilerScope $("Chart Database - Enumerate Files and Charts");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Enumerate Files and Folders");
 			for(String rootSearchPath : m_searchPaths)
 			{
@@ -1393,30 +1638,31 @@ private:
 					fileList.Add(fi.fullPath, fi);
 				}
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders for Charts");
 		}
 
 		{
-			ProfilerScope $("Chart Database - Process Removed Files");
-			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Files");
+			ProfilerScope $("Chart Database - Process Removed Charts");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Charts");
 			// Process scanned files
 			for(auto f : m_searchState.difficulties)
 			{
 				if(!fileList.Contains(f.first))
 				{
 					Event evt;
+					evt.type = Event::Chart;
 					evt.action = Event::Removed;
 					evt.path = f.first;
 					evt.id = f.second.id;
 					AddChange(evt);
 				}
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Files");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Charts");
 		}
 
 		{
-			ProfilerScope $("Chart Database - Process New Files");
-			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Files");
+			ProfilerScope $("Chart Database - Process New Charts");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Charts");
 			// Process scanned files
 			for(auto f : fileList)
 			{
@@ -1431,9 +1677,10 @@ private:
 
 				uint64 mylwt = f.second.lastWriteTime;
 				Event evt;
+				evt.type = Event::Chart;
 				evt.lwt = mylwt;
 
-				SearchState::ExistingDifficulty* existing = m_searchState.difficulties.Find(f.first);
+				SearchState::ExistingFileEntry* existing = m_searchState.difficulties.Find(f.first);
 				if(existing)
 				{
 					evt.id = existing->id;
@@ -1503,8 +1750,10 @@ private:
 						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted chart [%s]", f.first));
 						if(evt.mapData)
 							delete evt.mapData;
+						evt.mapData = nullptr;
 						continue;
 					}
+					// XXX does remove actually use / free mapData
 					// Invalid maps get removed from the database
 					evt.action = Event::Removed;
 				}
@@ -1512,9 +1761,200 @@ private:
 				AddChange(evt);
 				continue;
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Files");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Charts");
 		}
 		m_outer.OnSearchStatusUpdated.Call("");
+		
+		// Look up challenges
+		// TODO combine this with the first enum to reduce file lookup
+		Map<String, FileInfo> challengeFileList;
+		{
+			ProfilerScope $("Chart Database - Enumerate Files and Folders for Challenges");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Enumerate Files and Folders");
+			for(String rootSearchPath : m_searchPaths)
+			{
+				Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "chal", &m_interruptSearch);
+				if(m_interruptSearch)
+					return;
+				for(FileInfo& fi : files)
+				{
+					Logf("Found chal: %s", Logger::Severity::Info, *fi.fullPath);
+					challengeFileList.Add(fi.fullPath, fi);
+				}
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders for Challenges");
+		}
+
+		{
+			ProfilerScope $("Chart Database - Process Removed Challenges");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Challenges");
+			// Process scanned files
+			for(auto f : m_searchState.challenges)
+			{
+				if(!challengeFileList.Contains(f.first))
+				{
+					Event evt;
+					evt.type = Event::Challenge;
+					evt.action = Event::Removed;
+					evt.path = f.first;
+					evt.id = f.second.id;
+					AddChange(evt);
+				}
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Challenges");
+		}
+
+		{
+			ProfilerScope $("Chart Database - Process New Challenges");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Challenges");
+			// Process scanned files
+			for(auto f : challengeFileList)
+			{
+				if (m_paused.load())
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
+				if(!m_searching)
+					break;
+
+				uint64 mylwt = f.second.lastWriteTime;
+				Event evt;
+				evt.type = Event::Challenge;
+				evt.lwt = mylwt;
+
+				SearchState::ExistingFileEntry* existing = m_searchState.challenges.Find(f.first);
+				if(existing)
+				{
+					evt.id = existing->id;
+					if(existing->lwt != mylwt)
+					{
+						// Challenge Updated
+						evt.action = Event::Updated;
+					}
+					else
+					{
+						// Skip, not changed
+						continue;
+					}
+				}
+				else
+				{
+					// Challenge added
+					evt.action = Event::Added;
+				}
+
+				if (existing)
+					Logf("Discovered Updated Challenge [%s]", Logger::Severity::Info, f.first);
+				else
+					Logf("Discovered Challenge [%s]", Logger::Severity::Info, f.first);
+				m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Discovered Challenge [%s]", f.first));
+
+				bool chalValid = true;
+				nlohmann::json settings;
+
+				File chalFile;
+				if (!chalFile.OpenRead(f.first))
+					chalValid = false;
+
+				if (chalValid)
+				{
+					// TODO support old style courses
+					Buffer jsonBuf;
+					jsonBuf.resize(chalFile.GetSize());
+					chalFile.Read(jsonBuf.data(), jsonBuf.size());
+					String jsonData((char*)jsonBuf.data(), jsonBuf.size());
+					Logf("JSON loaded: %s", Logger::Severity::Info, *jsonData);
+
+					try
+					{
+						settings = nlohmann::json::parse(*jsonData);
+					}
+					catch (const std::exception& e)
+					{
+						Logf("Encountered JSON error with %s: %s", Logger::Severity::Warning, f.first, e.what());
+						chalValid = false;
+					}
+
+					sha1::SHA1 s;
+
+					s.processBytes(jsonBuf.data(), jsonBuf.size());
+						
+					uint32_t digest[5];
+					s.getDigest(digest);
+
+					evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+
+				}
+
+				if (chalValid)
+				{
+					if (settings.is_discarded() || !settings.is_object())
+					{
+						chalValid = false;
+					}
+					else if (!settings.contains("title") || !settings["title"].is_string())
+					{
+						Logf("Encountered error loading challenge %s: missing or invalid title", Logger::Severity::Warning, f.first);
+						chalValid = false;
+					}
+					else if (!settings.contains("level") || !settings["level"].is_number_integer())
+					{
+						Logf("Encountered error loading challenge %s: missing or invalid level", Logger::Severity::Warning, f.first);
+						chalValid = false;
+					}
+					else if (!settings.contains("charts") || !settings["charts"].is_array())
+					{
+						Logf("Encountered error loading challenge %s: missing or invalid chart array", Logger::Severity::Warning, f.first);
+						chalValid = false;
+					}
+					else if (settings["level"].size() == 0)
+					{
+						Logf("Encountered error loading challenge %s: Must have at least one chart", Logger::Severity::Warning, f.first);
+						chalValid = false;
+					}
+				}
+
+				if (chalValid)
+				{
+					for (auto& el : settings["charts"].items())
+					{
+						// TODO alternate search by name and level
+						if (!el.value().is_string())
+						{
+							Logf("Encountered error loading challenge %s: Chart hashes must be strings", Logger::Severity::Warning, f.first);
+							chalValid = false;
+						}
+					}
+				}
+
+				if (!chalValid)
+				{
+					// Reset json entry
+					evt.json = nlohmann::json();
+
+					if(!existing) // Never added
+					{
+						Logf("Skipping corrupted challenge [%s]", Logger::Severity::Warning, f.first);
+						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted challenge [%s]", f.first));
+						continue;
+					}
+					// Invalid maps get removed from the database
+					evt.action = Event::Removed;
+				}
+				else
+				{
+					evt.json = settings;
+				}
+				evt.path = f.first;
+				AddChange(evt);
+				continue;
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Challenges");
+		}
+		m_outer.OnSearchStatusUpdated.Call("");
+
 		m_searching = false;
 	}
 

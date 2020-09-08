@@ -11,21 +11,21 @@ enum FilterType
 	Collection
 };
 
-class SongFilter
+template<class ItemIndex>
+class Filter
 {
 public:
-	SongFilter() = default;
-	virtual ~SongFilter() = default;
-
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) { return source; }
+	Filter() = default;
+	virtual ~Filter() = default;
 	virtual String GetName() const { return m_name; }
 	virtual bool IsAll() const { return true; }
 	virtual FilterType GetType() const { return FilterType::All; }
-
+	virtual Map<int32, ItemIndex> GetFiltered(const Map<int32, ItemIndex>& source) { return source; }
 private:
 	String m_name = "All";
-
 };
+
+using SongFilter = Filter<SongSelectIndex>;
 
 class LevelFilter : public SongFilter
 {

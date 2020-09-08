@@ -127,6 +127,7 @@ DefineEnum(GameConfigKeys,
 		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
 
 		   LastSelected,
+		   LastSelectedChal,
 		   LastSort,
 		   LevelFilter,
 		   FolderFilter,

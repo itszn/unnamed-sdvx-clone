@@ -1,5 +1,6 @@
 #pragma once
 #include "Beatmap.hpp"
+#include "json.hpp"
 
 struct SimpleHitStat
 {
@@ -98,6 +99,22 @@ struct FolderIndex
 	Vector<ChartIndex*> charts;
 };
 
+
+struct ChallengeIndex 
+{
+	int32 id;
+	Vector<ChartIndex*> charts;
+	nlohmann::json settings;
+	String title;
+	int32 clearRating;
+	String reqText;
+	String path;
+	String hash;
+	int32 level;
+	uint64 lwt;
+	bool missingChart;
+};
+
 struct PracticeSetupIndex
 {
 	int32 id = -1;
@@ -184,6 +201,11 @@ public:
 	// Called when all maps are cleared
 	// (newMapList)
 	Delegate<Map<int32, FolderIndex*>> OnFoldersCleared;
+
+	Delegate<Vector<ChallengeIndex*>> OnChallengesRemoved;
+	Delegate<Vector<ChallengeIndex*>> OnChallengesAdded;
+	Delegate<Vector<ChallengeIndex*>> OnChallengesUpdated;
+	Delegate<Map<int32, ChallengeIndex*>> OnChallengesCleared;
 
 	Delegate<int> OnDatabaseUpdateStarted;
 	Delegate<int, int> OnDatabaseUpdateProgress;

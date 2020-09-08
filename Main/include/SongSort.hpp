@@ -1,10 +1,12 @@
 #pragma once
 #include "stdafx.h"
 #include "SongSelect.hpp"
+#include "ChallengeSelect.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 enum SortType
 {
+	NO_SORT,
 	TITLE_ASC,
 	TITLE_DESC,
 	SCORE_DESC,
@@ -18,19 +20,23 @@ enum SortType
 	SORT_COUNT,
 };
 
-class SongSort
+template<class ItemIndex>
+class ItemSort
 {
 	public:
-		SongSort(String name, bool dir) : m_name(name),m_dir(dir) {};
-		virtual ~SongSort() = default;
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
-				SongSelectIndex>& collection) = 0;
-		virtual SortType GetType() const = 0;
+		ItemSort(String name, bool dir) : m_name(name),m_dir(dir) {};
+		virtual ~ItemSort() = default;
+
+		virtual SortType GetType() const { return NO_SORT; };
 		String GetName() const { return m_name; }
+		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+			ItemIndex>& collection) {};
 	protected:
 		String m_name;
 		bool m_dir;
 };
+
+using SongSort = ItemSort<SongSelectIndex>;
 
 class TitleSort : public SongSort
 {
@@ -101,3 +107,6 @@ class EffectorSort : public TitleSort
 	private:
 		Map<uint32, uint64> m_dateMap;
 };
+
+using ChallengeSort = ItemSort<ChallengeSelectIndex>;
+
