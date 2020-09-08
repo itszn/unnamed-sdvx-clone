@@ -158,7 +158,6 @@ public:
 	virtual void OnItemsAdded(Vector<DBIndex*> items)
 	{
 		bool hadItems = m_items.size() != 0;
-		Logf("OnItemsAdded", Logger::Severity::Info);
 		for (auto i : items)
 		{
 			ItemSelectIndex index(i);
