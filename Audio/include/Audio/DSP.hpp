@@ -120,7 +120,6 @@ private:
 	uint32 m_length = 0;
 	Vector<float> m_sampleBuffer;
 	float m_sampleIdx = 0.0f;
-	uint32 m_lastSample = 0;
 	uint32 m_currentSample = 0;
 };
 
@@ -140,7 +139,6 @@ private:
 	uint32 m_gateLength = 0;
 	uint32 m_resetDuration = 0;
 	Vector<float> m_sampleBuffer;
-	uint32 m_loops = 0;
 	uint32 m_currentSample = 0;
 	bool m_bufferReserved = false;
 };
