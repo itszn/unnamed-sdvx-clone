@@ -964,12 +964,12 @@ public:
 			return;
 		}
 
-		constexpr char* addQuery = "INSERT INTO PracticeSetups("
+		const constexpr char* addQuery = "INSERT INTO PracticeSetups("
 			"chart_id, setup_title, loop_success, loop_fail, range_begin, range_end, fail_cond_type, fail_cond_value, "
 			"playback_speed, inc_speed_on_success, inc_speed, inc_streak, dec_speed_on_fail, dec_speed, min_playback_speed, max_rewind, max_rewind_measure"
 			") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-		constexpr char* updateQuery = "UPDATE PracticeSetups SET "
+		const constexpr char* updateQuery = "UPDATE PracticeSetups SET "
 			"chart_id=?, setup_title=?, loop_success=?, loop_fail=?, range_begin=?, range_end=?, fail_cond_type=?, fail_cond_value=?, "
 			"playback_speed=?, inc_speed_on_success=?, inc_speed=?, inc_streak=?, dec_speed_on_fail=?, dec_speed=?, min_playback_speed=?, max_rewind=?, max_rewind_measure=?"
 			" WHERE rowid=?";

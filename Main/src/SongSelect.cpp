@@ -292,7 +292,7 @@ public:
 			g_application->RemoveTickable(m_owner);
 		}
 	}
-	~SelectionWheel()
+	virtual ~SelectionWheel()
 	{
 		g_gameConfig.Set(GameConfigKeys::LastSelected, m_currentlySelectedMapId);
 		if (m_lua)
@@ -1347,9 +1347,6 @@ private:
 	// Player of preview music
 	PreviewPlayer m_previewPlayer;
 
-	// Current map that has music being preview played
-	ChartIndex* m_currentPreviewAudio;
-
 	// Select sound
 	Sample m_selectSound;
 
@@ -1360,9 +1357,6 @@ private:
 	MouseLockHandle m_lockMouse;
 	bool m_suspended = true;
 	bool m_hasRestored = false;
-	bool m_previewLoaded = true;
-	bool m_showScores = false;
-	uint64_t m_previewDelayTicks = 0;
 	Map<Input::Button, float> m_timeSinceButtonPressed;
 	Map<Input::Button, float> m_timeSinceButtonReleased;
 	lua_State* m_lua = nullptr;
@@ -1501,6 +1495,7 @@ public:
 			if (m_multiplayer != nullptr) return;
 
 			ChartIndex* chart = GetCurrentSelectedChart();
+			if (chart == nullptr) return;
 			Game* game = Game::Create(chart, Game::FlagsFromSettings());
 			if (!game)
 			{
@@ -1521,6 +1516,7 @@ public:
 			if (m_multiplayer != nullptr) return;
 
 			ChartIndex* chart = GetCurrentSelectedChart();
+			if (chart == nullptr) return;
 			m_mapDatabase->UpdateChartOffset(chart);
 
 			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
@@ -1733,11 +1729,11 @@ public:
 				{
 				case Input::Button::BT_1:
 					if (g_input.GetButton(Input::Button::BT_2))
-						m_collDiag.Open(*GetCurrentSelectedChart());
+						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 				case Input::Button::BT_2:
 					if (g_input.GetButton(Input::Button::BT_1))
-						m_collDiag.Open(*GetCurrentSelectedChart());
+						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 
 				case Input::Button::FX_1:
@@ -1816,7 +1812,7 @@ public:
 			m_selectionWheel->AdvanceSelection(steps);
 		}
 	}
-	virtual void OnKeyPressed(SDL_Scancode code)
+	void OnKeyPressed(SDL_Scancode code) override
 	{
 		if (m_multiplayer &&
 				m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
@@ -1880,7 +1876,7 @@ public:
 			}
 			else if (code == SDL_SCANCODE_F1 && m_hasCollDiag)
 			{
-				m_collDiag.Open(*GetCurrentSelectedChart());
+				m_collDiag.Open(GetCurrentSelectedChart());
 			}
 			else if (code == SDL_SCANCODE_F2)
 			{
@@ -1947,10 +1943,10 @@ public:
 			}
 		}
 	}
-	virtual void OnKeyReleased(SDL_Scancode code)
+	void OnKeyReleased(SDL_Scancode code) override
 	{
 	}
-	virtual void Tick(float deltaTime) override
+	void Tick(float deltaTime) override
 	{
 		if (m_dbUpdateTimer.Milliseconds() > 500)
 		{
@@ -1975,7 +1971,7 @@ public:
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 	}
 
-	virtual void Render(float deltaTime)
+	void Render(float deltaTime) override
 	{
 		if (m_suspended && m_hasRestored) return;
 		lua_getglobal(m_lua, "render");
@@ -2065,7 +2061,7 @@ public:
 		m_advanceSong -= advanceSongActual;
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		m_lastMapIndex = m_selectionWheel->GetCurrentSongIndex();
 
@@ -2075,7 +2071,7 @@ public:
 		if (m_lockMouse)
 			m_lockMouse.reset();
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_application->DiscordPresenceMenu("Song Select");
 		m_suspended = false;

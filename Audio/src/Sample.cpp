@@ -91,19 +91,19 @@ public:
 		}
 		m_lock.unlock();
 	}
-	const Buffer& GetData() const
+	const Buffer& GetData() const override
 	{
 		return m_data;
 	}
-	uint32 GetBitsPerSample() const
+	uint32 GetBitsPerSample() const override
 	{
 		return 32;
 	}
-	uint32 GetNumChannels() const
+	uint32 GetNumChannels() const override
 	{
 		return 2;
 	}
-	int32 GetPosition() const
+	int32 GetPosition() const override
 	{
 		return m_playbackPointer;
 	}
@@ -115,11 +115,11 @@ public:
 	{
 		return 0;
 	}
-	uint32 GetSampleRate() const
+	uint32 GetSampleRate() const override
 	{
 		return g_audio->GetSampleRate();
 	}
-	bool IsPlaying() const
+	bool IsPlaying() const override
 	{
 		return m_playing;
 	}

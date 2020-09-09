@@ -253,8 +253,6 @@ Test("Audio.Music.Echo")
 {
 	class MusicPlayer : public TestMusicPlayer
 	{
-		BQFDSP* filter;
-		float filterSetting = 0.0f;
 	public:
 		virtual void Init(const String& songPath, uint32 startOffset) override
 		{
@@ -279,8 +277,6 @@ Test("Audio.Music.Flanger")
 {
 	class MusicPlayer : public TestMusicPlayer
 	{
-		BQFDSP* filter;
-		float filterSetting = 0.0f;
 	public:
 		virtual void Init(const String& songPath, uint32 startOffset) override
 		{
