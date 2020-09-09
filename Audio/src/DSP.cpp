@@ -669,7 +669,7 @@ PitchShiftDSP::~PitchShiftDSP()
 }
 void PitchShiftDSP::Process(float* out, uint32 numSamples)
 {
-	m_impl->pitch = amount;
+	m_impl->pitch = Math::Clamp(amount, -12.0f, 12.0f);
 	if(!m_impl->init)
 		m_impl->Init(audio);
 	m_impl->Process(out, numSamples);
