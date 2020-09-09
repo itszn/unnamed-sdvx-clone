@@ -54,6 +54,7 @@ private:
 	String m_playerId;
 	String m_displayId;
 	int m_displayIndex = 0;
+	int m_selfDisplayIndex = 0;
 	Vector<nlohmann::json> const* m_stats;
 	int m_numPlayersSeen = 0;
 
@@ -63,6 +64,10 @@ private:
 
 	Vector<ScoreIndex*> m_highScores;
 	Vector<SimpleHitStat> m_simpleHitStats;
+	Vector<SimpleHitStat> m_simpleNoteHitStats; ///< For notes only
+
+	// For scaling simpleHitStats
+	MapTime m_beatmapDuration = 0;
 
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
@@ -107,7 +112,7 @@ private:
 		{
 			if (m_collDiag.IsInitialized())
 			{
-				m_collDiag.Open(*m_chartIndex);
+				m_collDiag.Open(m_chartIndex);
 			}
 		}
 
@@ -162,7 +167,7 @@ public:
 			m_badge = Scoring::CalculateBadge(m_scoredata);
 		}
 
-		m_playbackSpeed = game->GetPlaybackSpeed();
+		m_playbackSpeed = game->GetPlayOptions().playbackSpeed;
 
 		m_retryCount = game->GetRetryCount();
 		m_mission = game->GetMissionStr();
@@ -241,6 +246,7 @@ public:
 		String uid, Vector<nlohmann::json> const* multistats)
 	{
 		m_displayIndex = 0;
+		m_selfDisplayIndex = 0;
 		Scoring& scoring = game->GetScoring();
 		m_autoplay = scoring.autoplay;
 		m_autoButtons = scoring.autoplayButtons;
@@ -267,6 +273,7 @@ public:
 				if (m_playerId == (*m_stats)[i].value("uid", ""))
 				{
 					m_displayIndex = i;
+					m_selfDisplayIndex = i;
 					break;
 				}
 			}
@@ -304,7 +311,13 @@ public:
 			shs.delta = stat->delta;
 			shs.hold = stat->hold;
 			shs.holdMax = stat->holdMax;
+
 			m_simpleHitStats.Add(shs);
+
+			if (stat->object && stat->object->type == ObjectType::Single)
+			{
+				m_simpleNoteHitStats.Add(shs);
+			}
 		}
 
 		// Don't save the score if autoplay was on or if the song was launched using command line
@@ -380,8 +393,9 @@ public:
 			});
 		}
 
-
 		m_startPressed = false;
+
+		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
 
 		// Used for jacket images
 		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
@@ -405,6 +419,8 @@ public:
 
 	void updateLuaData()
 	{
+		const bool isSelf = m_displayIndex == m_selfDisplayIndex;
+
 		lua_newtable(m_lua);
 		m_PushIntToTable("score", m_score);
 		m_PushIntToTable("flags", (int)m_flags);
@@ -417,15 +433,24 @@ public:
 		m_PushIntToTable("difficulty", m_beatmapSettings.difficulty);
 		if (m_multiplayer)
 		{
+			m_PushStringToTable("playerName", m_playerName);
 			m_PushStringToTable("title", "<"+m_playerName+"> " + m_beatmapSettings.title);
 		}
 		else
 		{
 			m_PushStringToTable("title", m_beatmapSettings.title);
 		}
+		lua_pushstring(m_lua, "isSelf");
+		lua_pushboolean(m_lua, isSelf);
+		lua_settable(m_lua, -3);
+		m_PushStringToTable("realTitle", m_beatmapSettings.title);
 		m_PushStringToTable("artist", m_beatmapSettings.artist);
 		m_PushStringToTable("effector", m_beatmapSettings.effector);
+		m_PushStringToTable("illustrator", m_beatmapSettings.illustrator);
+
 		m_PushStringToTable("bpm", m_beatmapSettings.bpm);
+		m_PushIntToTable("duration", m_beatmapDuration);
+
 		m_PushStringToTable("jacketPath", m_jacketPath);
 		m_PushIntToTable("medianHitDelta", m_medianHitDelta[0]);
 		m_PushFloatToTable("meanHitDelta", m_meanHitDelta[0]);
@@ -448,11 +473,8 @@ public:
 
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
-		if (g_gameConfig.GetBool(GameConfigKeys::DisplayPracticeInfoInResult))
-		{
-			m_PushStringToTable("mission", m_mission);
-			m_PushIntToTable("retryCount", m_retryCount);
-		}
+		m_PushStringToTable("mission", m_mission);
+		m_PushIntToTable("retryCount", m_retryCount);
 
 		lua_pushstring(m_lua, "hitWindow");
 		m_hitWindow.ToLuaTable(m_lua);
@@ -510,13 +532,55 @@ public:
 				m_PushIntToTable("misses", score->miss);
 				m_PushIntToTable("timestamp", score->timestamp);
 				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
+				lua_pushstring(m_lua, "hitWindow");
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold).ToLuaTable(m_lua);
+				lua_settable(m_lua, -3);
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
 		}
 
-		///TODO: maybe push complete hit stats
+		if (isSelf)
+		{
+			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+			m_PushIntToTable("speedModType", static_cast<int>(speedMod));
+			m_PushFloatToTable("speedModValue", g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed));
 
+			if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
+				lua_pushstring(m_lua, "hidsud");
+				lua_newtable(m_lua);
+
+				lua_pushstring(m_lua, "showCover");
+				lua_pushboolean(m_lua, g_gameConfig.GetBool(GameConfigKeys::ShowCover));
+				lua_settable(m_lua, -3);
+
+				m_PushFloatToTable("suddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff));
+				m_PushFloatToTable("hiddenCutoff", g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff));
+				m_PushFloatToTable("suddenFade", g_gameConfig.GetFloat(GameConfigKeys::SuddenFade));
+				m_PushFloatToTable("hiddenFade", g_gameConfig.GetFloat(GameConfigKeys::HiddenFade));
+
+				lua_settable(m_lua, -3);
+			}
+
+			lua_pushstring(m_lua, "noteHitStats");
+			lua_newtable(m_lua);
+			for (size_t i = 0; i < m_simpleNoteHitStats.size(); ++i)
+			{
+				const SimpleHitStat simpleHitStat = m_simpleNoteHitStats[i];
+
+				lua_newtable(m_lua);
+				m_PushIntToTable("rating", simpleHitStat.rating);
+				m_PushIntToTable("lane", simpleHitStat.lane);
+				m_PushIntToTable("time", simpleHitStat.time);
+				m_PushFloatToTable("timeFrac",
+					Math::Clamp(static_cast<float>(simpleHitStat.time) / (m_beatmapDuration > 0 ? m_beatmapDuration : 1), 0.0f, 1.0f));
+				m_PushIntToTable("delta", simpleHitStat.delta);
+
+				lua_rawseti(m_lua, -2, i + 1);
+			}
+			lua_settable(m_lua, -3);
+		}
+		
 		lua_setglobal(m_lua, "result");
 
 		lua_getglobal(m_lua, "result_set");

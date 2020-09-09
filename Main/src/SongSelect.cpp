@@ -1492,6 +1492,7 @@ public:
 			if (m_multiplayer != nullptr) return;
 
 			ChartIndex* chart = GetCurrentSelectedChart();
+			if (chart == nullptr) return;
 			Game* game = Game::Create(chart, Game::FlagsFromSettings());
 			if (!game)
 			{
@@ -1512,6 +1513,7 @@ public:
 			if (m_multiplayer != nullptr) return;
 
 			ChartIndex* chart = GetCurrentSelectedChart();
+			if (chart == nullptr) return;
 			m_mapDatabase->UpdateChartOffset(chart);
 
 			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
@@ -1710,11 +1712,11 @@ public:
 				{
 				case Input::Button::BT_1:
 					if (g_input.GetButton(Input::Button::BT_2))
-						m_collDiag.Open(*GetCurrentSelectedChart());
+						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 				case Input::Button::BT_2:
 					if (g_input.GetButton(Input::Button::BT_1))
-						m_collDiag.Open(*GetCurrentSelectedChart());
+						m_collDiag.Open(GetCurrentSelectedChart());
 					break;
 
 				case Input::Button::FX_1:
@@ -1857,7 +1859,7 @@ public:
 			}
 			else if (code == SDL_SCANCODE_F1 && m_hasCollDiag)
 			{
-				m_collDiag.Open(*GetCurrentSelectedChart());
+				m_collDiag.Open(GetCurrentSelectedChart());
 			}
 			else if (code == SDL_SCANCODE_F2)
 			{
