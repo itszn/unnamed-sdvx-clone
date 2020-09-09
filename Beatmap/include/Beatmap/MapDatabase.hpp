@@ -113,6 +113,26 @@ struct ChallengeIndex
 	int32 level;
 	uint64 lwt;
 	bool missingChart;
+
+	// Access settings and check if they are actually loaded
+	const nlohmann::json& GetSettings()
+	{
+		if (settings.is_null() || settings.is_discarded())
+			ReloadSettings();
+		return settings;
+	}
+	void ReloadSettings()
+	{
+		settings = LoadJson(path);
+		if (!BasicValidate()) // Only keep if valid
+			settings = nlohmann::json();
+	}
+
+	// This will validate the overall objects/arrays but not option types
+	bool BasicValidate() const { return BasicValidate(settings, path); };
+	static nlohmann::json LoadJson(const String& path);
+	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
+	static bool BasicValidate(const nlohmann::json& v, const String& path);
 };
 
 struct PracticeSetupIndex

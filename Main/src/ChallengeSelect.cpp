@@ -272,6 +272,7 @@ private:
 	}
 };
 
+
 class ChallengeSelect_Impl : public ChallengeSelect
 {
 private:
@@ -289,6 +290,7 @@ private:
 	bool m_hasRestored = false;
 	bool m_previewLoaded = true;
 	bool m_showScores = false;
+
 
 	Map<Input::Button, float> m_timeSinceButtonPressed;
 	Map<Input::Button, float> m_timeSinceButtonReleased;
@@ -778,4 +780,158 @@ ChallengeSelect* ChallengeSelect::Create()
 {
 	ChallengeSelect_Impl* impl = new ChallengeSelect_Impl();
 	return impl;
+}
+
+ChallengeOption<bool> ChallengeManager::m_getOptionAsBool(
+	nlohmann::json reqs, String name)
+{
+	if (!reqs.contains(name))
+		return ChallengeOption<bool>::IgnoreOption();
+
+	nlohmann::json entry = reqs[name];
+	bool val;
+	if (entry.is_null())
+	{
+		return ChallengeOption<bool>::DisableOption();
+	}
+	if (!entry.is_boolean())
+	{
+		Logf("Skipping setting '%s': not a boolean", Logger::Severity::Warning, *name);
+		return ChallengeOption<bool>::IgnoreOption();
+	}
+
+	entry.get_to(val);
+	return ChallengeOption<bool>(val);
+}
+
+ChallengeOption<float> ChallengeManager::m_getOptionAsFloat(
+	nlohmann::json reqs, String name, float min, float max)
+{
+	if (!reqs.contains(name))
+		return ChallengeOption<float>::IgnoreOption();
+
+	nlohmann::json entry = reqs[name];
+	float val;
+	if (entry.is_null())
+	{
+		return ChallengeOption<float>::DisableOption();
+	}
+	if (entry.is_number_float())
+	{
+		entry.get_to(val);
+	}
+	if (!entry.is_number_float() || isnan(val))
+	{
+		Logf("Skipping setting '%s': not a number", Logger::Severity::Warning, *name);
+		return ChallengeOption<float>::IgnoreOption();
+	}
+	if (val < min || val > max)
+	{
+		Logf("Skipping setting '%s': must be between [%f and %f]", Logger::Severity::Warning, *name, min, max);
+		return ChallengeOption<float>::IgnoreOption();
+	}
+
+	return ChallengeOption<float>(val);
+}
+
+ChallengeOption<uint32> ChallengeManager::m_getOptionAsPositiveInteger(
+	nlohmann::json reqs, String name, uint64 min, uint64 max)
+{
+	if (!reqs.contains(name))
+		return ChallengeOption<uint32>::IgnoreOption();
+
+	nlohmann::json entry = reqs[name];
+	int32 val;
+	if (entry.is_null())
+	{
+		return ChallengeOption<uint32>::DisableOption();
+
+	}
+	if (entry.is_string())
+	{
+		// Get the intergral from the string
+		String str;
+		entry.get_to(str);
+		// XXX should we actually like validate the string?
+		val = atoi(*str);
+	}
+	else if (entry.is_number_integer())
+	{
+		entry.get_to(val);
+	}
+	else
+	{
+		Logf("Skipping setting '%s': not a integer or string", Logger::Severity::Warning, *name);
+		return ChallengeOption<uint32>::IgnoreOption();
+	}
+	if (val < min || val > max)
+	{
+		Logf("Skipping setting '%s': must be between [%u and %u]", Logger::Severity::Warning, *name, min, max);
+		return ChallengeOption<uint32>::IgnoreOption();
+	}
+
+	return ChallengeOption<uint32>(val);
+}
+
+ChallengeRequirements ChallengeManager::m_processReqs(nlohmann::json req)
+{
+	ChallengeRequirements out;
+	out.clear = m_getOptionAsBool(req, "clear");
+	out.min_score = m_getOptionAsPositiveInteger(req, "min_percentage", 0, 200);
+	out.min_gauge = m_getOptionAsFloat(req, "min_gauge");
+	out.min_errors = m_getOptionAsPositiveInteger(req, "min_errors");
+	out.min_nears = m_getOptionAsPositiveInteger(req, "min_errors");
+	out.min_chain = m_getOptionAsPositiveInteger(req, "min_chain");
+	return out;
+}
+
+ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
+{
+	ChallengeOptions out;
+	out.mirror = m_getOptionAsBool(j, "mirror");
+	out.excessive = m_getOptionAsBool(j, "excessive_gauge");
+	out.min_modspeed = m_getOptionAsPositiveInteger(j, "min_modspeed");
+	out.max_modspeed = m_getOptionAsPositiveInteger(j, "max_modspeed");
+	out.allow_cmod = m_getOptionAsBool(j, "allow_cmod");
+	out.hidden_min = m_getOptionAsFloat(j, "hidden_min");
+	out.hidden_max = m_getOptionAsFloat(j, "hidden_max");
+	return out;
+}
+
+bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
+{
+	if (chal->missingChart)
+		return false;
+
+	// Check if there are valid settings
+	nlohmann::json settings = m_chal->GetSettings();
+
+	// Check if the json loaded correctly
+	if (settings.is_null() || settings.is_discarded())
+		return false;
+
+	m_chal = chal;
+	m_running = true;
+	m_scores.clear();
+	m_reqs.clear();
+
+	m_globalReqs = m_processReqs(settings["global"]);
+
+	nlohmann::json overrides = settings["overrides"];
+
+	if (m_chal->charts.size() < overrides.size())
+	{
+		Log("Note: more overrides than charts", Logger::Severity::Warning);
+	}
+	for (int i=0; i<overrides.size() && i<m_chal->charts.size(); i++)
+	{
+		m_reqs.push_back(m_processReqs(overrides[i]));
+	}
+
+	return true;
+}
+
+void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
+{
+
 }

@@ -1808,7 +1808,7 @@ private:
 			ProfilerScope $("Chart Database - Process New Challenges");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Challenges");
 			// Process scanned files
-			for(auto f : challengeFileList)
+			for (auto f : challengeFileList)
 			{
 				if (m_paused.load())
 				{
@@ -1816,7 +1816,7 @@ private:
 					m_cvPause.wait(lock);
 				}
 
-				if(!m_searching)
+				if (!m_searching)
 					break;
 
 				uint64 mylwt = f.second.lastWriteTime;
@@ -1825,10 +1825,10 @@ private:
 				evt.lwt = mylwt;
 
 				SearchState::ExistingFileEntry* existing = m_searchState.challenges.Find(f.first);
-				if(existing)
+				if (existing)
 				{
 					evt.id = existing->id;
-					if(existing->lwt != mylwt)
+					if (existing->lwt != mylwt)
 					{
 						// Challenge Updated
 						evt.action = Event::Updated;
@@ -1852,6 +1852,7 @@ private:
 				m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Discovered Challenge [%s]", f.first));
 
 				bool chalValid = true;
+				// TODO support old style courses
 				nlohmann::json settings;
 
 				File chalFile;
@@ -1864,68 +1865,20 @@ private:
 					Buffer jsonBuf;
 					jsonBuf.resize(chalFile.GetSize());
 					chalFile.Read(jsonBuf.data(), jsonBuf.size());
-					String jsonData((char*)jsonBuf.data(), jsonBuf.size());
-					Logf("JSON loaded: %s", Logger::Severity::Info, *jsonData);
+					settings = ChallengeIndex::LoadJson(jsonBuf, f.first);
+					chalValid = ChallengeIndex::BasicValidate(settings, f.first);
 
-					try
+					if (chalValid)
 					{
-						settings = nlohmann::json::parse(*jsonData);
-					}
-					catch (const std::exception& e)
-					{
-						Logf("Encountered JSON error with %s: %s", Logger::Severity::Warning, f.first, e.what());
-						chalValid = false;
-					}
+						sha1::SHA1 s;
 
-					sha1::SHA1 s;
+						s.processBytes(jsonBuf.data(), jsonBuf.size());
 
-					s.processBytes(jsonBuf.data(), jsonBuf.size());
-						
-					uint32_t digest[5];
-					s.getDigest(digest);
+						uint32_t digest[5];
+						s.getDigest(digest);
 
-					evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+						evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 
-				}
-
-				if (chalValid)
-				{
-					if (settings.is_discarded() || !settings.is_object())
-					{
-						chalValid = false;
-					}
-					else if (!settings.contains("title") || !settings["title"].is_string())
-					{
-						Logf("Encountered error loading challenge %s: missing or invalid title", Logger::Severity::Warning, f.first);
-						chalValid = false;
-					}
-					else if (!settings.contains("level") || !settings["level"].is_number_integer())
-					{
-						Logf("Encountered error loading challenge %s: missing or invalid level", Logger::Severity::Warning, f.first);
-						chalValid = false;
-					}
-					else if (!settings.contains("charts") || !settings["charts"].is_array())
-					{
-						Logf("Encountered error loading challenge %s: missing or invalid chart array", Logger::Severity::Warning, f.first);
-						chalValid = false;
-					}
-					else if (settings["level"].size() == 0)
-					{
-						Logf("Encountered error loading challenge %s: Must have at least one chart", Logger::Severity::Warning, f.first);
-						chalValid = false;
-					}
-				}
-
-				if (chalValid)
-				{
-					for (auto& el : settings["charts"].items())
-					{
-						// TODO alternate search by name and level
-						if (!el.value().is_string())
-						{
-							Logf("Encountered error loading challenge %s: Chart hashes must be strings", Logger::Severity::Warning, f.first);
-							chalValid = false;
-						}
 					}
 				}
 
@@ -1940,7 +1893,7 @@ private:
 						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted challenge [%s]", f.first));
 						continue;
 					}
-					// Invalid maps get removed from the database
+					// Invalid chals get removed from the database
 					evt.action = Event::Removed;
 				}
 				else
@@ -2074,4 +2027,93 @@ void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
 	m_transferScores = transferScores;
 	if (m_impl != NULL)
 		m_impl->SetChartUpdateBehavior(transferScores);
+}
+
+nlohmann::json ChallengeIndex::LoadJson(const Buffer& jsonBuf, const String& path)
+{
+	String jsonData((char*)jsonBuf.data(), jsonBuf.size());
+	Logf("JSON loaded: %s", Logger::Severity::Info, *jsonData);
+
+	try
+	{
+		return nlohmann::json::parse(*jsonData);
+	}
+	catch (const std::exception& e)
+	{
+		Logf("Encountered JSON error with %s: %s", Logger::Severity::Warning, path, e.what());
+	}
+	return nlohmann::json();
+}
+
+nlohmann::json ChallengeIndex::LoadJson(const String& path)
+{
+	File chalFile;
+	if (!chalFile.OpenRead(path))
+		return false;
+
+	Buffer jsonBuf;
+	jsonBuf.resize(chalFile.GetSize());
+	chalFile.Read(jsonBuf.data(), jsonBuf.size());
+	return ChallengeIndex::LoadJson(jsonBuf, path);
+}
+
+bool ChallengeIndex::BasicValidate(const nlohmann::json& settings, const String& path)
+{
+	if (settings.is_discarded() || !settings.is_object())
+		return false;
+
+	if (!settings.contains("title") || !settings["title"].is_string())
+	{
+		Logf("Encountered error loading challenge %s: missing or invalid title", Logger::Severity::Warning, *path);
+		return false;
+	}
+	if (!settings.contains("level") || !settings["level"].is_number_integer())
+	{
+		Logf("Encountered error loading challenge %s: missing or invalid level", Logger::Severity::Warning, *path);
+		return false;
+	}
+
+	if (!settings.contains("charts") || !settings["charts"].is_array())
+	{
+		Logf("Encountered error loading challenge %s: missing or invalid chart array", Logger::Severity::Warning, *path);
+		return false;
+	}
+	if (settings["charts"].size() == 0)
+	{
+		Logf("Encountered error loading challenge %s: Must have at least one chart", Logger::Severity::Warning, *path);
+		return false;
+	}
+	for (auto& el : settings["charts"].items())
+	{
+		if (!el.value().is_string())
+		{
+			Logf("Encountered error loading challenge %s: Chart hashes must be strings", Logger::Severity::Warning, *path);
+			return false;
+		}
+	}
+
+	if (settings.contains("global") && !settings["global"].is_object())
+	{
+		Logf("Encountered error loading challenge %s: global must be an object", Logger::Severity::Warning, *path);
+		return false;
+	}
+
+	if (settings.contains("overrides"))
+	{
+		if (!settings["overrides"].is_array())
+		{
+			Logf("Encountered error loading challenge %s: overrides must be an array", Logger::Severity::Warning, *path);
+			return false;
+		}
+		for (auto& el : settings["overrides"].items())
+		{
+			if (!el.value().is_object())
+			{
+				Logf("Encountered error loading challenge %s: Override entries must be objects", Logger::Severity::Warning, *path);
+				return false;
+			}
+		}
+	}
+	return true;
+
 }
