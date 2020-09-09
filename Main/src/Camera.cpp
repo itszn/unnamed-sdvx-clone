@@ -111,7 +111,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 {
 	auto LerpTo = [&](float &value, float target, float speed = 0.5f)
 	{
-		float diff = abs(target - value);
 		float change = deltaTime * speed;
 
 		if (target < value)
@@ -221,7 +220,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	// Update camera shake effects
 	// Ensures the red laser's slam shake is prioritised
-	if (m_shakeEffect.amplitudeToBeAdded)
+	if (m_shakeEffect.amplitudeToBeAdded != 0)
 	{
 		m_shakeEffect.amplitude += m_shakeEffect.amplitudeToBeAdded;
 		m_shakeEffect.amplitudeToBeAdded = 0;
@@ -230,7 +229,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_shakeOffset = m_shakeEffect.amplitude;
 	if (fabsf(m_shakeEffect.amplitude) > 0)
 	{
-		float shakeDecrement = SHAKE_AMOUNT * 0.2 * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
+		float shakeDecrement = SHAKE_AMOUNT * 0.2f * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
 		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
 	}
 	m_shakeEffect.guard -= deltaTime;
@@ -249,7 +248,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		float zoomAmt;
 		if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
 		else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
-		
+
 		return Transform::Translation(zoomDir * zoomAmt) * t;
 	};
 
