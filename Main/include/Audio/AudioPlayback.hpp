@@ -14,7 +14,7 @@ public:
 	GameAudioEffect(const AudioEffect& other);
 
 	// Creates a DSP matching this effect
-	DSP* CreateDSP(class AudioBase* audioTrack, AudioPlayback& playback);
+	DSP* CreateDSP(AudioPlayback& playback, uint32 sampleRate);
 	// Applies the given parameters overriding some settings for this effect (depending on the effect)
 	void SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectState* object);
 };
@@ -75,7 +75,7 @@ public:
 	void SetFXTrackEnabled(bool enabled);
 	
 	// Switch audio track
-	void SetSwitchableTrackEnabled(size_t index, bool enabled);
+	void SetSwitchableTrackEnabled(int index, bool enabled);
 	void ResetSwitchableTracks();
 
 	BeatmapPlayback& GetBeatmapPlayback();
