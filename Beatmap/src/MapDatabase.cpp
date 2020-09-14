@@ -618,7 +618,7 @@ public:
 		String sep(csep);
 		String stmt = "SELECT rowid FROM folders WHERE path LIKE ?";
 		DBStatement search = m_database.Query(stmt);
-		search.BindString(1, sep + folder + sep);
+		search.BindString(1, "%" + sep + folder + sep + "%");
 
 
 		Map<int32, FolderIndex*> res;
