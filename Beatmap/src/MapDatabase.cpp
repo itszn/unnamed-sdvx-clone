@@ -6,6 +6,7 @@
 #include "Shared/Profiling.hpp"
 #include "Shared/Files.hpp"
 #include "Shared/Time.hpp"
+#include "KShootMap.hpp"
 #include <thread>
 #include <mutex>
 #include <chrono>
@@ -461,6 +462,25 @@ public:
 		return std::move(changes);
 	}
 
+	// TODO(itszn) make this not case sensitive
+	ChartIndex* FindFirstChartByPath(const String& searchString)
+	{
+		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE path LIKE \"%" + searchString + "%\"";
+
+		Map<int32, FolderIndex*> res;
+		DBStatement search = m_database.Query(stmt);
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChartIndex** chart = m_charts.Find(id);
+			if (!chart)
+				return nullptr;
+			return *chart;
+		}
+
+		return nullptr;
+	}
+
 	ChartIndex* FindFirstChartByHash(const String& hash)
 	{
 		ChartIndex** chart = m_chartsByHash.Find(hash);
@@ -489,6 +509,7 @@ public:
 		return res;
 	}
 
+	// TODO(itszn) make this not case sensitive
 	Map<int32, FolderIndex*> FindFoldersByPath(const String& searchString)
 	{
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE path LIKE \"%" + searchString + "%\"";
@@ -672,6 +693,7 @@ public:
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
 		DBStatement updateChallenge = m_database.Query("UPDATE Challenges SET title=?,charts=?,clear_rating=?,req_text=?,path=?,hash=?,level=?,lwt=? WHERE rowid=?");
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
+		DBStatement removeChallenge = m_database.Query("DELETE FROM Challenges WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
@@ -735,8 +757,16 @@ public:
 						chal->charts.push_back(chart);
 						continue;
 					}
+					chart = FindFirstChartByPath(hash);
+					if (chart)
+					{
+						chal->charts.push_back(chart);
+						continue;
+					}
+
 					// TODO alternate search by name and level
-					Logf("Could not find chart hash %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
+
+					Logf("Could not find chart %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
 					chal->missingChart = true;
 				}
 
@@ -778,6 +808,27 @@ public:
 
 					updatedChalEvents.Add(chal);
 				}
+			}
+			else if(e.type == Event::Challenge && e.action == Event::Removed)
+			{
+				auto itChal = m_challenges.find(e.id);
+				assert(itChal != m_challenges.end());
+
+				// TODO if we have seperate score entries for challenges, delete them here
+				/*
+				for (auto s : itChal->second->scores)
+				{
+					delete s;
+				}
+				itChal->second->scores.clear();
+				*/
+				delete itChal->second;
+				m_challenges.erase(e.id);
+
+				// Remove diff in db
+				removeChallenge.BindInt(1, e.id);
+				removeChallenge.Step();
+				removeChallenge.Rewind();
 			}
 			if(e.type == Event::Chart && e.action == Event::Added)
 			{
@@ -1565,6 +1616,12 @@ private:
 						chal->charts.push_back(chart);
 						continue;
 					}
+					chart = FindFirstChartByPath(hash);
+					if (chart)
+					{
+						chal->charts.push_back(chart);
+						continue;
+					}
 					Logf("Could not find chart hash %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
 					chal->missingChart = true;
 					// TODO alternate search by name and level
@@ -1624,21 +1681,34 @@ private:
 	void m_SearchThread()
 	{
 		Map<String, FileInfo> fileList;
-
+		Map<String, FileInfo> challengeFileList;
+		Map<String, FileInfo> legacyChallengeFileList;
 		{
 			ProfilerScope $("Chart Database - Enumerate Files and Charts");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Enumerate Files and Folders");
 			for(String rootSearchPath : m_searchPaths)
 			{
-				Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "ksh", &m_interruptSearch);
+				Vector<String> exts(3);
+				exts[0] = "ksh";
+				exts[1] = "chal";
+				exts[2] = "kco";
+				Map<String, Vector<FileInfo>> files = Files::ScanFilesRecursive(rootSearchPath, exts, &m_interruptSearch);
 				if(m_interruptSearch)
 					return;
-				for(FileInfo& fi : files)
+				for(FileInfo& fi : files["ksh"])
 				{
 					fileList.Add(fi.fullPath, fi);
 				}
+				for(FileInfo& fi : files["chal"])
+				{
+					challengeFileList.Add(fi.fullPath, fi);
+				}
+				for(FileInfo& fi : files["kco"])
+				{
+					legacyChallengeFileList.Add(fi.fullPath, fi);
+				}
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders for Charts");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders");
 		}
 
 		{
@@ -1765,26 +1835,6 @@ private:
 		}
 		m_outer.OnSearchStatusUpdated.Call("");
 		
-		// Look up challenges
-		// TODO combine this with the first enum to reduce file lookup
-		Map<String, FileInfo> challengeFileList;
-		{
-			ProfilerScope $("Chart Database - Enumerate Files and Folders for Challenges");
-			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Enumerate Files and Folders");
-			for(String rootSearchPath : m_searchPaths)
-			{
-				Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "chal", &m_interruptSearch);
-				if(m_interruptSearch)
-					return;
-				for(FileInfo& fi : files)
-				{
-					Logf("Found chal: %s", Logger::Severity::Info, *fi.fullPath);
-					challengeFileList.Add(fi.fullPath, fi);
-				}
-			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders for Challenges");
-		}
-
 		{
 			ProfilerScope $("Chart Database - Process Removed Challenges");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Challenges");
@@ -1804,6 +1854,89 @@ private:
 			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Challenges");
 		}
 
+		if (legacyChallengeFileList.size() > 0)
+		{
+			bool addedNewJson = false;
+			ProfilerScope $("Chart Database - Converting Legacy Challenges");
+			for (auto f : legacyChallengeFileList)
+			{
+				if (m_paused.load())
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
+				if (!m_searching)
+					break;
+
+				String newName = f.first + ".chal";
+				// XXX if the kco was modified then after converting, it will not be updated
+				if (Path::FileExists(newName))
+				{
+					// If we already did a convert, check if the kco has been updated
+					uint64 mylwt = f.second.lastWriteTime;
+					FileInfo* conv = challengeFileList.Find(newName);
+					if (conv != nullptr && conv->lastWriteTime >= mylwt)
+					{
+						// No update
+						continue;
+					}
+				}
+				Logf("Converting legacy KShoot course %s", Logger::Severity::Info, f.first);
+
+				File legacyFile;
+				if (!legacyFile.OpenRead(f.first))
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Unable to open KShoot course [%s]", f.first));
+					continue;
+				}
+
+				FileReader legacyReader(legacyFile);
+				Map<String, String> courseSettings;
+				Vector<String> courseCharts;
+				if (!ParseKShootCourse(legacyReader, courseSettings, courseCharts)
+					|| !courseSettings.Contains("title")
+					|| courseCharts.size() == 0)
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted KShoot course [%s]", f.first));
+					continue;
+				}
+
+				nlohmann::json newJson = "{\"charts\":[], \"level\":0, \"global\":{\"clear\":true}}"_json;
+				newJson["title"] = courseSettings["title"];
+				for (const String& chart : courseCharts)
+					newJson["charts"].push_back(chart);
+
+				File newJsonFile;
+				if (!newJsonFile.OpenWrite(newName))
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Unable to open KShoot course json file [%s]", newName));
+					continue;
+				}
+				String jsonData = newJson.dump(4);
+				newJsonFile.Write(*jsonData, jsonData.length());
+				addedNewJson = true;
+			}
+
+			// If we added a json file we have to rescan for chals, this only happens when converting legacy courses
+			if (addedNewJson)
+			{
+				for (String rootSearchPath : m_searchPaths)
+				{
+					challengeFileList.clear();
+					Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "chal", &m_interruptSearch);
+					if (m_interruptSearch)
+						return;
+					for (FileInfo& fi : files)
+					{
+						challengeFileList.Add(fi.fullPath, fi);
+					}
+				}
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Converting Legacy Challenges");
+		}
+
+		if (challengeFileList.size() > 0)
 		{
 			ProfilerScope $("Chart Database - Process New Challenges");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Challenges");

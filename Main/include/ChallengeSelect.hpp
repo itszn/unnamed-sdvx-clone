@@ -43,6 +43,13 @@ public:
 			return overrider;
 		return *this;
 	}
+	// Get the value with an default if it is not set
+	T Get(const T& def) const
+	{
+		if (!HasValue())
+			return def;
+		return **this;
+	}
 
 	// This will pass if not overriden
 	static ChallengeOption<T> IgnoreOption() {
@@ -87,10 +94,17 @@ struct ChallengeOptions{
 	v(uint32, min_modspeed) \
 	v(uint32, max_modspeed) \
 	v(float, hidden_min) \
-	v(float, hidden_max) \
+	v(float, sudden_min) \
 	v(uint32, crit_judge) \
 	v(uint32, near_judge) \
-	v(bool, allow_cmod)
+	v(uint32, hold_judge) \
+	v(bool, allow_cmod) \
+	v(uint32, average_percentage) \
+	v(float, average_gauge) \
+	v(uint32, average_errors) \
+	v(uint32, average_nears) \
+	v(uint32, average_crits)
+
 
 #define CHALLENGE_OPTION_DEC(t, n) ChallengeOption<t> n;
 	CHALLENGE_OPTIONS_ALL(CHALLENGE_OPTION_DEC);
@@ -100,21 +114,28 @@ struct ChallengeOptions{
 	{
 		ChallengeOptions out;
 #define CHALLENGE_OPTIONS_MERGE(t, n) out. ##n = n.Merge(overrider. ##n);
-		CHALLENGE_OPTIONS_ALL(CHALLENGE_OPTIONS_MERGE)
+		CHALLENGE_OPTIONS_ALL(CHALLENGE_OPTIONS_MERGE);
 #undef CHALLENGE_OPTIONS_MERGE
+		return out;
+	}
+	void Reset()
+	{
+#define CHALLENGE_OPTION_RESET(t, n) n.Reset();
+		CHALLENGE_OPTIONS_ALL(CHALLENGE_OPTION_RESET);
+#undef CHALLENGE_OPTION_RESET
 	}
 #undef CHALLENGE_OPTIONS_ALL
 };
 
 struct ChallengeRequirements
 {
-	bool evaluated = false;
 #define CHALLENGE_REQS_ALL(v) \
 	v(bool, clear) \
-	v(uint32, min_score) \
+	v(uint32, min_percentage) \
 	v(float, min_gauge) \
 	v(uint32, min_errors) \
 	v(uint32, min_nears) \
+	v(uint32, min_crits) \
 	v(uint32, min_chain)
 #define CHALLENGE_REQ_DEC(t, n) ChallengeRequirement<t> n;
 	CHALLENGE_REQS_ALL(CHALLENGE_REQ_DEC);
@@ -123,16 +144,22 @@ struct ChallengeRequirements
 	// if the second set doesn't have an active member, this one is used
 	bool Passed(struct ChallengeRequirements& over)
 	{
-		assert(evaluated && over.evaluated);
 #define CHALLENGE_REQ_PASSED_OVERRIDE(t, n) res = res && (over. ##n.PassedOrNull() || n.PassedOrIgnored());
 		bool res = true;
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_PASSED_OVERRIDE);
 		return res;
 #undef CHALLENGE_REQ_PASSED_OVERRIDE
 	}
+	ChallengeRequirements Merge(const ChallengeRequirements& overrider)
+	{
+		ChallengeRequirements out;
+#define CHALLENGE_REQS_MERGE(t, n) out. ##n = n.Merge(overrider. ##n);
+		CHALLENGE_REQS_ALL(CHALLENGE_REQS_MERGE);
+#undef CHALLENGE_REQS_MERGE
+		return out;
+	}
 	bool Passed()
 	{
-		assert(evaluated);
 #define CHALLENGE_REQ_PASSED(t, n) res = res && (n.PassedOrIgnored());
 		bool res = true;
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_PASSED);
@@ -141,7 +168,6 @@ struct ChallengeRequirements
 	}
 	void Reset()
 	{
-		evaluated = false;
 #define CHALLENGE_REQ_RESET(t, n) n.Reset();
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_RESET);
 #undef CHALLENGE_REQ_RESET
@@ -154,15 +180,31 @@ private:
 	ChallengeIndex* m_chal = nullptr;
 	ChartIndex* m_currentChart = nullptr;
 	int m_chartIndex = 0;
+	int m_chartsPlayed = 0;
 	bool m_running = false;
 	Vector<uint32> m_scores;
 	ChallengeRequirements m_globalReqs;
 	Vector<ChallengeRequirements> m_reqs;
+	ChallengeOptions m_globalOpts;
+	Vector<ChallengeOptions> m_opts;
+
+	ChallengeOptions m_currentOptions;
+	bool m_passedCurrentChart;
+	bool m_finishedCurrentChart;
+
+	uint64 m_totalNears = 0;
+	uint64 m_totalErrors = 0;
+	uint64 m_totalCrits = 0;
+	uint64 m_totalScore = 0;
+	uint64 m_totalPercentage = 0;
+	float m_totalGauge = 0.0;
 public:
 	bool RunningChallenge() { return m_running; }
 	bool StartChallenge(ChallengeIndex* chal);
 	friend class Game;
 	void ReportScore(Game*, ClearMark);
+	const ChallengeOptions& GetCurrentOptions() { return m_currentOptions; }
+	bool ReturnToSelect();
 
 private:
 	ChallengeOption<uint32> m_getOptionAsPositiveInteger(
@@ -176,6 +218,9 @@ private:
 
 	ChallengeRequirements m_processReqs(nlohmann::json req);
 	ChallengeOptions m_processOptions(nlohmann::json req);
+
+	bool m_setupNextChart();
+	bool m_finishedAllCharts(bool passed);
 };
 
 struct ChallengeSelectIndex

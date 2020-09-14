@@ -7,6 +7,7 @@
 #include "HitStat.hpp"
 
 class MultiplayerScreen;
+class ChallengeManager;
 
 enum class GameFlags : uint32
 {
@@ -53,6 +54,7 @@ public:
 	virtual ~Game() = default;
 	static Game* Create(ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(MultiplayerScreen*, ChartIndex* chart, PlayOptions&& options);
+	static Game* Create(ChallengeManager*, ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(const String& mapPath, PlayOptions&& options);
 	static Game* CreatePractice(ChartIndex* chart, PlayOptions&& options);
 	static GameFlags FlagsFromSettings();

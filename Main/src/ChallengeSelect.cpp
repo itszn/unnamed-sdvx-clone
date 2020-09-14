@@ -303,6 +303,8 @@ private:
 	int32 m_lastChalIndex = -1;
 
 	DBUpdateScreen* m_dbUpdateScreen = nullptr;
+
+	ChallengeManager m_manager;
 public:
 	ChallengeSelect_Impl() {}
 
@@ -438,6 +440,8 @@ public:
 			{
 				// TODO start the chal logic
 				ChallengeIndex* chal = GetCurrentSelectedChallenge();
+				if (m_manager.StartChallenge(chal))
+					m_transitionedToGame = true;
 				/*
 				Game *game = Game::Create(chart, Game::FlagsFromSettings());
 				if (!game)
@@ -681,6 +685,11 @@ public:
 
 	void TickNavigation(float deltaTime)
 	{
+		if (!m_manager.ReturnToSelect())
+		{
+			return;
+		}
+
 		// Lock mouse to screen when active
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse && g_gameWindow->IsActive())
 		{
@@ -754,12 +763,15 @@ public:
 
 	virtual void OnRestore()
 	{
+		// NOTE: we can't trigger the next chart here bc you can't add tickables on restore
 		g_application->DiscordPresenceMenu("Challenge Select");
 		m_suspended = false;
 		m_hasRestored = true;
 		m_transitionedToGame = false;
 		//m_previewPlayer.Restore();
 		m_selectionWheel->ResetLuaTables();
+		//TODO if the manager is going to trigger in the next tick we probably should not do this
+		//     we could add a delegate for finishing the charts and then use that to restart searching
 		m_mapDatabase->ResumeSearching();
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
 		{
@@ -772,6 +784,11 @@ public:
 			m_selectionWheel->SelectItemByItemIndex(m_lastChalIndex);
 		}
 
+	}
+
+	ChallengeIndex* GetCurrentSelectedChallenge() override
+	{
+		return m_selectionWheel->GetSelection();
 	}
 	
 };
@@ -877,10 +894,11 @@ ChallengeRequirements ChallengeManager::m_processReqs(nlohmann::json req)
 {
 	ChallengeRequirements out;
 	out.clear = m_getOptionAsBool(req, "clear");
-	out.min_score = m_getOptionAsPositiveInteger(req, "min_percentage", 0, 200);
-	out.min_gauge = m_getOptionAsFloat(req, "min_gauge");
+	out.min_percentage = m_getOptionAsPositiveInteger(req, "min_percentage", 0, 200);
+	out.min_gauge = m_getOptionAsFloat(req, "min_gauge", 0.0, 1.0);
 	out.min_errors = m_getOptionAsPositiveInteger(req, "min_errors");
-	out.min_nears = m_getOptionAsPositiveInteger(req, "min_errors");
+	out.min_nears = m_getOptionAsPositiveInteger(req, "min_nears");
+	out.min_crits = m_getOptionAsPositiveInteger(req, "min_crits");
 	out.min_chain = m_getOptionAsPositiveInteger(req, "min_chain");
 	return out;
 }
@@ -893,18 +911,34 @@ ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 	out.min_modspeed = m_getOptionAsPositiveInteger(j, "min_modspeed");
 	out.max_modspeed = m_getOptionAsPositiveInteger(j, "max_modspeed");
 	out.allow_cmod = m_getOptionAsBool(j, "allow_cmod");
-	out.hidden_min = m_getOptionAsFloat(j, "hidden_min");
-	out.hidden_max = m_getOptionAsFloat(j, "hidden_max");
+	out.hidden_min = m_getOptionAsFloat(j, "hidden_min", 0.0, 1.0);
+	out.sudden_min = m_getOptionAsFloat(j, "sudden_min", 0.0, 1.0);
+	out.crit_judge = m_getOptionAsPositiveInteger(j, "crit_judgement", 0, 46);
+	out.near_judge = m_getOptionAsPositiveInteger(j, "near_judgement", 0, 92);
+	out.hold_judge = m_getOptionAsPositiveInteger(j, "hold_judgement", 0, 138);
+
+	// These reqs are checked at the end so we keep em as options
+	// TODO only do this on the global one? (overrides don't work for these)
+	out.average_percentage = m_getOptionAsPositiveInteger(j, "min_average_percentage", 0, 200);
+	out.average_gauge = m_getOptionAsFloat(j, "min_average_gauge", 0, 1.0);
+	out.average_errors = m_getOptionAsPositiveInteger(j, "max_average_errors");
+	out.average_nears = m_getOptionAsPositiveInteger(j, "max_average_nears");
+	out.average_crits = m_getOptionAsPositiveInteger(j, "min_average_crits");
 	return out;
 }
 
 bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
 {
+	assert(!m_running);
+
 	if (chal->missingChart)
 		return false;
 
+	// Force reload from file in case it was changed
+	chal->ReloadSettings();
+
 	// Check if there are valid settings
-	nlohmann::json settings = m_chal->GetSettings();
+	nlohmann::json settings = chal->GetSettings();
 
 	// Check if the json loaded correctly
 	if (settings.is_null() || settings.is_discarded())
@@ -912,26 +946,178 @@ bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
 
 	m_chal = chal;
 	m_running = true;
+	m_finishedCurrentChart = false;
 	m_scores.clear();
 	m_reqs.clear();
+	m_opts.clear();
+	m_chartIndex = 0;
+	m_chartsPlayed = 0;
 
-	m_globalReqs = m_processReqs(settings["global"]);
+	m_totalNears = 0;
+	m_totalErrors = 0;
+	m_totalCrits = 0;
+	m_totalScore = 0;
+	m_totalPercentage = 0;
+	m_totalGauge = 0.0;
 
-	nlohmann::json overrides = settings["overrides"];
-
-	if (m_chal->charts.size() < overrides.size())
+	m_globalReqs.Reset();
+	m_globalOpts.Reset();
+	if (settings.contains("global"))
 	{
-		Log("Note: more overrides than charts", Logger::Severity::Warning);
-	}
-	for (int i=0; i<overrides.size() && i<m_chal->charts.size(); i++)
-	{
-		m_reqs.push_back(m_processReqs(overrides[i]));
+		m_globalReqs = m_processReqs(settings["global"]);
+		m_globalOpts = m_processOptions(settings["global"]);
 	}
 
+
+	if (settings.contains("overrides"))
+	{
+		nlohmann::json overrides = settings["overrides"];
+
+		if (m_chal->charts.size() < overrides.size())
+		{
+			Log("Note: more overrides than charts", Logger::Severity::Warning);
+		}
+		for (int i = 0; i < overrides.size() && i < m_chal->charts.size(); i++)
+		{
+			m_reqs.push_back(m_processReqs(overrides[i]));
+			m_opts.push_back(m_processOptions(overrides[i]));
+		}
+	}
+	for (int i=m_reqs.size(); i<m_chal->charts.size(); i++)
+	{
+		m_reqs.push_back(ChallengeRequirements());
+		m_opts.push_back(ChallengeOptions());
+	}
+
+	return m_setupNextChart();
+}
+
+bool ChallengeManager::m_finishedAllCharts(bool passed)
+{
+	assert(m_chartsPlayed > 0);
+
+	if (m_totalPercentage / m_chartsPlayed < m_globalOpts.average_percentage.Get(0))
+		passed = false;
+	if (m_totalGauge / m_chartsPlayed < m_globalOpts.average_gauge.Get(0.0))
+		passed = false;
+	if (m_totalErrors / m_chartsPlayed > m_globalOpts.average_errors.Get(INT_MAX))
+		passed = false;
+	if (m_totalNears / m_chartsPlayed > m_globalOpts.average_nears.Get(INT_MAX))
+		passed = false;
+	if (m_totalNears / m_chartsPlayed < m_globalOpts.average_crits.Get(0))
+		passed = false;
+
+	if (!passed)
+	{
+		g_gameWindow->ShowMessageBox("Challenge Failed", "Sorry, you failed the challenge", 0);
+	}
+	else
+	{
+		g_gameWindow->ShowMessageBox("Challenge Passed", "Congrats! You passed the challenge", 0);
+	}
+
+	m_running = false;
+	m_chal = nullptr;
+	m_currentChart = nullptr;
+	return true;
+}
+
+// Returns if it is all done or not
+bool ChallengeManager::ReturnToSelect()
+{
+	if (!m_running)
+		return true;
+
+	if (!m_finishedCurrentChart)
+		return false;
+
+	m_chartsPlayed++;
+
+	if (!m_passedCurrentChart)
+	{
+		return m_finishedAllCharts(false);
+	}
+
+	m_chartIndex++;
+	if (m_chartIndex == m_chal->charts.size())
+	{
+		return m_finishedAllCharts(true);
+	}
+
+	return m_setupNextChart();
+}
+
+bool ChallengeManager::m_setupNextChart()
+{
+	assert(m_running);
+
+	m_passedCurrentChart = false;
+	m_finishedCurrentChart = false;
+	m_currentChart = m_chal->charts[m_chartIndex];
+	m_currentOptions = m_globalOpts.Merge(m_opts[m_chartIndex]);
+
+	if (m_currentOptions.min_modspeed.Get(0) > 
+		m_currentOptions.max_modspeed.Get(INT_MAX))
+	{
+		Logf("Skipping setting 'max_modspeed': must be more than 'min_modspeed'", Logger::Severity::Warning);
+		m_currentOptions.max_modspeed = ChallengeOption<uint32>::IgnoreOption();
+	}
+
+	GameFlags flags;
+	if (m_currentOptions.excessive.Get(false))
+		flags = GameFlags::Hard;
+	else
+		flags = GameFlags::None;
+
+	if (m_currentOptions.mirror.Get(false))
+		flags = flags | GameFlags::Mirror;
+
+	Game* game = Game::Create(this, m_currentChart, flags);
+	if (!game)
+	{
+		Log("Failed to start game", Logger::Severity::Error);
+		return false;
+	}
+
+	g_transition->TransitionTo(game);
 	return true;
 }
 
 void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 {
+	assert(m_running);
 
+	m_finishedCurrentChart = true;
+	const Scoring& scoring = game->GetScoring();
+
+	ChallengeRequirements req = m_globalReqs.Merge(m_reqs[m_chartIndex]);
+
+	uint32 finalScore = scoring.CalculateCurrentScore();
+	uint32 percentage = (finalScore - 8000000) / 10000;
+
+	m_totalCrits += scoring.GetPerfects();
+	m_totalNears += scoring.GetGoods();
+	m_totalErrors += scoring.GetMisses();
+	m_totalScore += finalScore;
+	m_totalPercentage += percentage;
+
+	if (req.clear.Get(false) && clearMark >= ClearMark::NormalClear)
+		req.clear.MarkPassed();
+
+	if (req.min_percentage.HasValue() && percentage >= *req.min_percentage)
+		req.min_percentage.MarkPassed();
+
+	if (req.min_gauge.HasValue() && scoring.currentGauge >= *req.min_gauge)
+		req.min_gauge.MarkPassed();
+
+	if (req.min_errors.HasValue() && scoring.GetMisses() >= *req.min_errors)
+		req.min_errors.MarkPassed();
+
+	if (req.min_nears.HasValue() && scoring.GetGoods() >= *req.min_nears)
+		req.min_nears.MarkPassed();
+
+	if (req.min_chain.HasValue() && scoring.maxComboCounter >= *req.min_chain)
+		req.min_chain.MarkPassed();
+
+	m_passedCurrentChart = req.Passed();
 }
