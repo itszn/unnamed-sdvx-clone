@@ -1654,8 +1654,7 @@ private:
 			}
 			m_searchState.challenges.Add(chal->path, ed);
 		}
-
-		// TODO load challenges from database
+		m_nextChalId = m_challenges.empty() ? 1 : (m_challenges.rbegin()->first + 1);
 
 		m_outer.OnChallengesCleared.Call(m_challenges);
 	}
