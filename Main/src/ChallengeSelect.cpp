@@ -37,21 +37,7 @@ public:
 		ChalItemSelectionWheel::Init();
 		m_lua = g_application->LoadScript("songselect/chalwheel");
 		if (!m_lua)
-		{
-			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing Challenge Selection Wheel", "No sort selection script file could be found, suggested solution:\n"
-				"Would you like to copy \"scripts/songselect/chalwheel.lua\" from the default skin to your current skin?");
-			if (!copyDefault)
-				return false;
-			String defaultPath = Path::Absolute("skins/Default/scripts/songselect/chalwheel.lua");
-			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/chalwheel.lua");
-			Path::Copy(defaultPath, skinPath);
-			m_lua = g_application->LoadScript("songselect/chalwheel");
-			if (!m_lua)
-			{
-				g_gameWindow->ShowMessageBox("Missing Challenge Selection", "No challenge selection script file could be found and the system was not able to copy the default", 2);
-				return false;
-			}
-		}
+			return false;
 
 		lua_newtable(m_lua);
 		{
@@ -1031,7 +1017,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 
 	res.passed = passed;
 
-	m_overall_res = res;
+	m_overallResults = res;
 
 	if (!passed)
 	{

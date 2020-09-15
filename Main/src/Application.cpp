@@ -1369,6 +1369,20 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
+
+	// If we can't find this file, copy it from the default skin
+	if (!Path::FileExists(path))
+	{
+		String defaultPath = Path::Absolute("skins/Default/scripts/" + name + ".lua");
+		if (Path::FileExists(defaultPath))
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing " + name + ".lua", "No " + name + ".lua file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/"+name+".lua\" from the default skin to your current skin?");
+			if (copyDefault)
+				Path::Copy(defaultPath, path);
+		}
+	}
+
 	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{

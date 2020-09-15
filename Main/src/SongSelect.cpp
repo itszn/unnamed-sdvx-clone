@@ -1050,20 +1050,7 @@ public:
 		//sort selection
 		m_sortSelection = Ref<SortSolection>(new SortSolection(m_selectionWheel));
 		if (!m_sortSelection->Init())
-		{
-			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing sort selection", "No sort selection script file could be found, suggested solution:\n"
-				"Would you like to copy \"scripts/songselect/sortwheel.lua\" from the default skin to your current skin?");
-			if (!copyDefault)
-				return false;
-			String defaultPath = Path::Absolute("skins/Default/scripts/songselect/sortwheel.lua");
-			String skinPath = Path::Absolute("skins/" + g_application->GetCurrentSkin() + "/scripts/songselect/sortwheel.lua");
-			Path::Copy(defaultPath, skinPath);
-			if (!m_sortSelection->Init())
-			{
-				g_gameWindow->ShowMessageBox("Missing sort selection", "No sort selection script file could be found and the system was not able to copy the default", 2);
-				return false;
-			}
-		}
+			return false;
 
 		m_selectionWheel->SelectMapByMapId(g_gameConfig.GetInt(GameConfigKeys::LastSelected));
 
