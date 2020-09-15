@@ -42,11 +42,11 @@ class TitleSort : public SongSort
 {
 	public:
 		TitleSort(String name, bool dir) : SongSort(name, dir) {};
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) override;
 		virtual bool CompareSongs(const SongSelectIndex& song_a,
 				const SongSelectIndex& song_b);
-		virtual SortType GetType() const
+		SortType GetType() const override
 		{ 
 			return m_dir? SortType::TITLE_DESC : SortType::TITLE_ASC;
 		};
@@ -56,9 +56,9 @@ class ScoreSort : public TitleSort
 {
 	public:
 		ScoreSort(String name, bool dir) : TitleSort(name, dir) {};
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) override;
-		virtual SortType GetType() const
+		SortType GetType() const override
 		{ 
 			return m_dir? SortType::SCORE_DESC : SortType::SCORE_ASC;
 		};
@@ -70,9 +70,9 @@ class DateSort : public TitleSort
 {
 	public:
 		DateSort(String name, bool dir) : TitleSort(name, dir) {};
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) override;
-		virtual SortType GetType() const
+		SortType GetType() const override
 		{ 
 			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
 		};
@@ -84,9 +84,9 @@ class ArtistSort : public TitleSort
 {
 	public:
 		ArtistSort(String name, bool dir) : TitleSort(name, dir) {};
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) override;
-		virtual SortType GetType() const
+		SortType GetType() const override
 		{ 
 			return m_dir? SortType::ARTIST_DESC : SortType::ARTIST_ASC;
 		};
@@ -98,9 +98,9 @@ class EffectorSort : public TitleSort
 {
 	public:
 		EffectorSort(String name, bool dir) : TitleSort(name, dir) {};
-		virtual void SortInplace(Vector<uint32>& vec, const Map<int32,
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
 				SongSelectIndex>& collection) override;
-		virtual SortType GetType() const
+		SortType GetType() const override
 		{ 
 			return m_dir? SortType::EFFECTOR_DESC : SortType::EFFECTOR_ASC;
 		};
