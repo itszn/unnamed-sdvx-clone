@@ -893,37 +893,40 @@ ChallengeOption<uint32> ChallengeManager::m_getOptionAsPositiveInteger(
 ChallengeRequirements ChallengeManager::m_processReqs(nlohmann::json req)
 {
 	ChallengeRequirements out;
-	out.clear = m_getOptionAsBool(req, "clear");
-	out.min_percentage = m_getOptionAsPositiveInteger(req, "min_percentage", 0, 200);
-	out.min_gauge = m_getOptionAsFloat(req, "min_gauge", 0.0, 1.0);
-	out.min_errors = m_getOptionAsPositiveInteger(req, "min_errors");
-	out.min_nears = m_getOptionAsPositiveInteger(req, "min_nears");
-	out.min_crits = m_getOptionAsPositiveInteger(req, "min_crits");
-	out.min_chain = m_getOptionAsPositiveInteger(req, "min_chain");
+	out.clear =          m_getOptionAsBool(req,            "clear");
+	out.min_percentage = m_getOptionAsPositiveInteger(req, "min_percentage", 0,   200);
+	out.min_gauge =      m_getOptionAsFloat(req,           "min_gauge",      0.0, 1.0);
+	out.max_errors =     m_getOptionAsPositiveInteger(req, "max_errors");
+	out.max_nears =      m_getOptionAsPositiveInteger(req, "max_nears");
+	out.min_crits =      m_getOptionAsPositiveInteger(req, "min_crits");
+	out.min_chain =      m_getOptionAsPositiveInteger(req, "min_chain");
 	return out;
 }
 
 ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 {
 	ChallengeOptions out;
-	out.mirror = m_getOptionAsBool(j, "mirror");
-	out.excessive = m_getOptionAsBool(j, "excessive_gauge");
+	out.mirror =       m_getOptionAsBool(j,            "mirror");
+	out.excessive =    m_getOptionAsBool(j,            "excessive_gauge");
 	out.min_modspeed = m_getOptionAsPositiveInteger(j, "min_modspeed");
 	out.max_modspeed = m_getOptionAsPositiveInteger(j, "max_modspeed");
-	out.allow_cmod = m_getOptionAsBool(j, "allow_cmod");
-	out.hidden_min = m_getOptionAsFloat(j, "hidden_min", 0.0, 1.0);
-	out.sudden_min = m_getOptionAsFloat(j, "sudden_min", 0.0, 1.0);
-	out.crit_judge = m_getOptionAsPositiveInteger(j, "crit_judgement", 0, 46);
-	out.near_judge = m_getOptionAsPositiveInteger(j, "near_judgement", 0, 92);
-	out.hold_judge = m_getOptionAsPositiveInteger(j, "hold_judgement", 0, 138);
+	out.allow_cmod =   m_getOptionAsBool(j,            "allow_cmod");
+	out.hidden_min =   m_getOptionAsFloat(j,           "hidden_min",     0.0, 1.0);
+	out.sudden_min =   m_getOptionAsFloat(j,           "sudden_min",     0.0, 1.0);
+	out.crit_judge =   m_getOptionAsPositiveInteger(j, "crit_judgement", 0,   46);
+	out.near_judge =   m_getOptionAsPositiveInteger(j, "near_judgement", 0,   92);
+	out.hold_judge =   m_getOptionAsPositiveInteger(j, "hold_judgement", 0,   138);
 
 	// These reqs are checked at the end so we keep em as options
 	// TODO only do this on the global one? (overrides don't work for these)
 	out.average_percentage = m_getOptionAsPositiveInteger(j, "min_average_percentage", 0, 200);
-	out.average_gauge = m_getOptionAsFloat(j, "min_average_gauge", 0, 1.0);
-	out.average_errors = m_getOptionAsPositiveInteger(j, "max_average_errors");
-	out.average_nears = m_getOptionAsPositiveInteger(j, "max_average_nears");
-	out.average_crits = m_getOptionAsPositiveInteger(j, "min_average_crits");
+	out.average_gauge =      m_getOptionAsFloat(j,           "min_average_gauge",      0, 1.0);
+	out.average_errors =     m_getOptionAsPositiveInteger(j, "max_average_errors");
+	out.max_overall_errors = m_getOptionAsPositiveInteger(j, "max_overall_errors");
+	out.average_nears =      m_getOptionAsPositiveInteger(j, "max_average_nears");
+	out.max_overall_nears =  m_getOptionAsPositiveInteger(j, "max_overall_nears");
+	out.average_crits =      m_getOptionAsPositiveInteger(j, "min_average_crits");
+	out.min_overall_crits =  m_getOptionAsPositiveInteger(j, "min_overall_crits");
 	return out;
 }
 
@@ -950,6 +953,7 @@ bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
 	m_scores.clear();
 	m_reqs.clear();
 	m_opts.clear();
+	m_results.clear();
 	m_chartIndex = 0;
 	m_chartsPlayed = 0;
 
@@ -996,16 +1000,38 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 {
 	assert(m_chartsPlayed > 0);
 
-	if (m_totalPercentage / m_chartsPlayed < m_globalOpts.average_percentage.Get(0))
+	OverallChallengeResult res = { 0 };
+	res.averagePercent = m_totalPercentage / m_chartsPlayed;
+	if (res.averagePercent < m_globalOpts.average_percentage.Get(0))
 		passed = false;
-	if (m_totalGauge / m_chartsPlayed < m_globalOpts.average_gauge.Get(0.0))
+	res.averageGauge = m_totalGauge / m_chartsPlayed;
+	if (res.averageGauge < m_globalOpts.average_gauge.Get(0.0))
 		passed = false;
-	if (m_totalErrors / m_chartsPlayed > m_globalOpts.average_errors.Get(INT_MAX))
+
+	res.averageErrors = m_totalErrors / m_chartsPlayed;
+	if (res.averageErrors > m_globalOpts.average_errors.Get(INT_MAX))
 		passed = false;
-	if (m_totalNears / m_chartsPlayed > m_globalOpts.average_nears.Get(INT_MAX))
+	res.overallErrors = m_totalErrors;
+	if (res.overallErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
 		passed = false;
-	if (m_totalNears / m_chartsPlayed < m_globalOpts.average_crits.Get(0))
+
+	res.averageNears = m_totalNears / m_chartsPlayed;
+	if (res.averageNears > m_globalOpts.average_nears.Get(INT_MAX))
 		passed = false;
+	res.overallNears = m_totalNears;
+	if (res.overallNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
+		passed = false;
+
+	res.averageCrits = m_totalCrits / m_chartsPlayed;
+	if (res.averageCrits < m_globalOpts.average_crits.Get(0))
+		passed = false;
+	res.overallCrits = m_totalCrits;
+	if (res.overallCrits < m_globalOpts.min_overall_crits.Get(0))
+		passed = false;
+
+	res.passed = passed;
+
+	m_overall_res = res;
 
 	if (!passed)
 	{
@@ -1091,33 +1117,55 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 	const Scoring& scoring = game->GetScoring();
 
 	ChallengeRequirements req = m_globalReqs.Merge(m_reqs[m_chartIndex]);
+	ChallengeResult res;
 
 	uint32 finalScore = scoring.CalculateCurrentScore();
+	res.score = finalScore;
 	uint32 percentage = (finalScore - 8000000) / 10000;
 
-	m_totalCrits += scoring.GetPerfects();
-	m_totalNears += scoring.GetGoods();
-	m_totalErrors += scoring.GetMisses();
+	res.crits = scoring.GetPerfects();
+	m_totalCrits += res.crits;
+	res.nears = scoring.GetGoods();
+	m_totalNears += res.nears;
+	res.errors = scoring.GetMisses();
+	m_totalErrors += res.errors;
+
 	m_totalScore += finalScore;
 	m_totalPercentage += percentage;
 
+	res.badge = clearMark;
 	if (req.clear.Get(false) && clearMark >= ClearMark::NormalClear)
 		req.clear.MarkPassed();
 
 	if (req.min_percentage.HasValue() && percentage >= *req.min_percentage)
 		req.min_percentage.MarkPassed();
 
-	if (req.min_gauge.HasValue() && scoring.currentGauge >= *req.min_gauge)
+	res.gauge = scoring.currentGauge;
+	if (req.min_gauge.HasValue() && res.gauge >= *req.min_gauge)
 		req.min_gauge.MarkPassed();
 
-	if (req.min_errors.HasValue() && scoring.GetMisses() >= *req.min_errors)
-		req.min_errors.MarkPassed();
+	if (req.max_errors.HasValue() && res.errors <= *req.max_errors)
+		req.max_errors.MarkPassed();
 
-	if (req.min_nears.HasValue() && scoring.GetGoods() >= *req.min_nears)
-		req.min_nears.MarkPassed();
+	if (req.max_nears.HasValue() && res.nears <= *req.max_nears)
+		req.max_nears.MarkPassed();
 
-	if (req.min_chain.HasValue() && scoring.maxComboCounter >= *req.min_chain)
+	if (req.min_crits.HasValue() && res.crits >= *req.min_crits)
+		req.min_crits.MarkPassed();
+
+	res.maxCombo = scoring.maxComboCounter;
+	if (req.min_chain.HasValue() && res.maxCombo >= *req.min_chain)
 		req.min_chain.MarkPassed();
 
-	m_passedCurrentChart = req.Passed();
+	res.passed = req.Passed();
+
+	// Now check if we crossed any failing thresholds
+	if (m_totalErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
+		res.passed = false;
+	if (m_totalNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
+		res.passed = false;
+
+	m_passedCurrentChart = res.passed;
+
+	m_results.push_back(res);
 }

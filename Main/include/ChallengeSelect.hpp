@@ -101,11 +101,15 @@ struct ChallengeOptions{
 	v(uint32, near_judge) \
 	v(uint32, hold_judge) \
 	v(bool, allow_cmod) \
+	\
 	v(uint32, average_percentage) \
 	v(float, average_gauge) \
 	v(uint32, average_errors) \
+	v(uint32, max_overall_errors) \
 	v(uint32, average_nears) \
-	v(uint32, average_crits)
+	v(uint32, max_overall_nears) \
+	v(uint32, average_crits) \
+	v(uint32, min_overall_crits)
 
 
 #define CHALLENGE_OPTION_DEC(t, n) ChallengeOption<t> n;
@@ -135,8 +139,8 @@ struct ChallengeRequirements
 	v(bool, clear) \
 	v(uint32, min_percentage) \
 	v(float, min_gauge) \
-	v(uint32, min_errors) \
-	v(uint32, min_nears) \
+	v(uint32, max_errors) \
+	v(uint32, max_nears) \
 	v(uint32, min_crits) \
 	v(uint32, min_chain)
 #define CHALLENGE_REQ_DEC(t, n) ChallengeRequirement<t> n;
@@ -176,6 +180,34 @@ struct ChallengeRequirements
 	}
 };
 
+struct ChallengeResult
+{
+	bool passed;
+	ClearMark badge;
+	float gauge;
+	GameFlags flags;
+	uint32 score;
+	uint32 maxCombo;
+	uint32 crits;
+	uint32 nears;
+	uint32 errors;
+};
+
+struct OverallChallengeResult
+{
+	bool passed;
+	uint32 averagePercent;
+	uint32 averageScore;
+	float averageGauge;
+	// TODO(itszn) should we use floats instead?
+	uint32 averageErrors;
+	uint32 averageNears;
+	uint32 averageCrits;
+	uint32 overallErrors;
+	uint32 overallNears;
+	uint32 overallCrits;
+};
+
 class ChallengeManager
 {
 private:
@@ -189,6 +221,9 @@ private:
 	Vector<ChallengeRequirements> m_reqs;
 	ChallengeOptions m_globalOpts;
 	Vector<ChallengeOptions> m_opts;
+
+	Vector<ChallengeResult> m_results;
+	OverallChallengeResult m_overall_res;
 
 	ChallengeOptions m_currentOptions;
 	bool m_passedCurrentChart;
@@ -207,6 +242,9 @@ public:
 	void ReportScore(Game*, ClearMark);
 	const ChallengeOptions& GetCurrentOptions() { return m_currentOptions; }
 	bool ReturnToSelect();
+	const Vector<ChallengeResult>& GetResults() { return m_results; }
+	const Vector<ChartIndex*>& GetCharts() { return m_chal->charts; }
+
 
 private:
 	ChallengeOption<uint32> m_getOptionAsPositiveInteger(
