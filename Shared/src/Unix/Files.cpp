@@ -117,20 +117,20 @@ static Map<String, Vector<FileInfo>> _ScanFiles(const String& rootFolder, const 
 	return move(ret);
 }
 
-Map<String, Vector<FileInfo>>Files::ScanFiles(const String& folder, const Vector<String>& extFilters, bool* interrupt)
+Map<String, Vector<FileInfo>> Files::ScanFiles(const String& folder, const Vector<String>& extFilters, bool* interrupt)
 {
 	return _ScanFiles(folder, extFilters, false, interrupt);
 }
-Map<String, Vector<FileInfo>>Files::ScanFilesRecursive(const String& folder, const Vector<String>& extFilters, bool* interrupt)
+Map<String, Vector<FileInfo>> Files::ScanFilesRecursive(const String& folder, const Vector<String>& extFilters, bool* interrupt)
 {
 	return _ScanFiles(folder, extFilters, true, interrupt);
 }
 
-Vector<FileInfo> Files::ScanFiles(const String& folder, String extFilter, bool* interrupt)
+Vector<FileInfo> Files::ScanFiles(const String& folder, const String& extFilter, bool* interrupt)
 {
 	return _ScanFiles(folder, Vector<String>(1, extFilter), false, interrupt)[extFilter];
 }
-Vector<FileInfo> Files::ScanFilesRecursive(const String& folder, String extFilter, bool* interrupt)
+Vector<FileInfo> Files::ScanFilesRecursive(const String& folder, const String& extFilter, bool* interrupt)
 {
 	return _ScanFiles(folder, Vector<String>(1, extFilter), true, interrupt)[extFilter];
 }

@@ -852,7 +852,7 @@ ChallengeOption<float> ChallengeManager::m_getOptionAsFloat(
 }
 
 ChallengeOption<uint32> ChallengeManager::m_getOptionAsPositiveInteger(
-	nlohmann::json reqs, String name, uint64 min, uint64 max)
+	nlohmann::json reqs, String name, int64 min, int64 max)
 {
 	if (!reqs.contains(name))
 		return ChallengeOption<uint32>::IgnoreOption();
@@ -977,13 +977,13 @@ bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
 		{
 			Log("Note: more overrides than charts", Logger::Severity::Warning);
 		}
-		for (int i = 0; i < overrides.size() && i < m_chal->charts.size(); i++)
+		for (unsigned int i = 0; i < overrides.size() && i < m_chal->charts.size(); i++)
 		{
 			m_reqs.push_back(m_processReqs(overrides[i]));
 			m_opts.push_back(m_processOptions(overrides[i]));
 		}
 	}
-	for (int i=m_reqs.size(); i<m_chal->charts.size(); i++)
+	for (unsigned int i=m_reqs.size(); i<m_chal->charts.size(); i++)
 	{
 		m_reqs.push_back(ChallengeRequirements());
 		m_opts.push_back(ChallengeOptions());
@@ -1059,7 +1059,7 @@ bool ChallengeManager::m_setupNextChart()
 	if (m_currentOptions.min_modspeed.Get(0) > 
 		m_currentOptions.max_modspeed.Get(INT_MAX))
 	{
-		Logf("Skipping setting 'max_modspeed': must be more than 'min_modspeed'", Logger::Severity::Warning);
+		Log("Skipping setting 'max_modspeed': must be more than 'min_modspeed'", Logger::Severity::Warning);
 		m_currentOptions.max_modspeed = ChallengeOption<uint32>::IgnoreOption();
 	}
 

@@ -11,7 +11,7 @@ protected:
 	T m_val;
 public:
 	Optional() : m_hasValue(false) {}
-	Optional(T v) : m_val(v), m_hasValue(true) {}
+	Optional(T v) : m_hasValue(true), m_val(v) {}
 	bool HasValue() const { return m_hasValue; }
 	T operator*() const
 	{
@@ -24,13 +24,15 @@ public:
 	}
 };
 
+class Game;
+
 template<typename T>
 class ChallengeOption : public Optional<T> {
 protected:
 	bool m_isNull;
 public:
-	ChallengeOption() : Optional(), m_isNull(false) {}
-	ChallengeOption(T v) : Optional(v), m_isNull(false) {}
+	ChallengeOption() : Optional<T>(), m_isNull(false) {}
+	ChallengeOption(T v) : Optional<T>(v), m_isNull(false) {}
 	bool IsNull() const { return m_isNull; }
 	void Reset()
 	{
@@ -46,7 +48,7 @@ public:
 	// Get the value with an default if it is not set
 	T Get(const T& def) const
 	{
-		if (!HasValue())
+		if (!this->HasValue())
 			return def;
 		return **this;
 	}
@@ -70,13 +72,13 @@ class ChallengeRequirement : public ChallengeOption<T> {
 protected:
 	bool m_passed = false;
 public:
-	ChallengeRequirement() : ChallengeOption(), m_passed(false) {}
-	ChallengeRequirement(T v) : ChallengeOption(v), m_passed(false) {}
-	ChallengeRequirement(const ChallengeOption<T>& o) : ChallengeOption(o), m_passed(false) {}
+	ChallengeRequirement() : ChallengeOption<T>(), m_passed(false) {}
+	ChallengeRequirement(T v) : ChallengeOption<T>(v), m_passed(false) {}
+	ChallengeRequirement(const ChallengeOption<T>& o) : ChallengeOption<T>(o), m_passed(false) {}
 	// This will be true if marked as passed or no value
-	bool PassedOrIgnored() const { return !HasValue() || m_passed; }
+	bool PassedOrIgnored() const { return !this->HasValue() || m_passed; }
 	// This will be true if marked as passed or null
-	bool PassedOrNull() const { return m_passed || IsNull(); }
+	bool PassedOrNull() const { return m_passed || this->IsNull(); }
 	void MarkPassed() { m_passed = true; }
 	void Reset()
 	{
@@ -113,7 +115,7 @@ struct ChallengeOptions{
 	ChallengeOptions Merge(const ChallengeOptions& overrider)
 	{
 		ChallengeOptions out;
-#define CHALLENGE_OPTIONS_MERGE(t, n) out. ##n = n.Merge(overrider. ##n);
+#define CHALLENGE_OPTIONS_MERGE(t, n) out. n = n.Merge(overrider. n);
 		CHALLENGE_OPTIONS_ALL(CHALLENGE_OPTIONS_MERGE);
 #undef CHALLENGE_OPTIONS_MERGE
 		return out;
@@ -144,7 +146,7 @@ struct ChallengeRequirements
 	// if the second set doesn't have an active member, this one is used
 	bool Passed(struct ChallengeRequirements& over)
 	{
-#define CHALLENGE_REQ_PASSED_OVERRIDE(t, n) res = res && (over. ##n.PassedOrNull() || n.PassedOrIgnored());
+#define CHALLENGE_REQ_PASSED_OVERRIDE(t, n) res = res && (over. n.PassedOrNull() || n.PassedOrIgnored());
 		bool res = true;
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_PASSED_OVERRIDE);
 		return res;
@@ -153,7 +155,7 @@ struct ChallengeRequirements
 	ChallengeRequirements Merge(const ChallengeRequirements& overrider)
 	{
 		ChallengeRequirements out;
-#define CHALLENGE_REQS_MERGE(t, n) out. ##n = n.Merge(overrider. ##n);
+#define CHALLENGE_REQS_MERGE(t, n) out. n = n.Merge(overrider. n);
 		CHALLENGE_REQS_ALL(CHALLENGE_REQS_MERGE);
 #undef CHALLENGE_REQS_MERGE
 		return out;
@@ -179,8 +181,8 @@ class ChallengeManager
 private:
 	ChallengeIndex* m_chal = nullptr;
 	ChartIndex* m_currentChart = nullptr;
-	int m_chartIndex = 0;
-	int m_chartsPlayed = 0;
+	unsigned int m_chartIndex = 0;
+	unsigned int m_chartsPlayed = 0;
 	bool m_running = false;
 	Vector<uint32> m_scores;
 	ChallengeRequirements m_globalReqs;
@@ -208,7 +210,7 @@ public:
 
 private:
 	ChallengeOption<uint32> m_getOptionAsPositiveInteger(
-		nlohmann::json reqs, String name, uint64 min=0, uint64 max=INT_MAX);
+		nlohmann::json reqs, String name, int64 min=0, int64 max=INT_MAX);
 
 	ChallengeOption<float> m_getOptionAsFloat(
 		nlohmann::json reqs, String name, float min=-INFINITY, float max=INFINITY);
