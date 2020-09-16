@@ -106,7 +106,7 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::PitchShift:
 	{
-		PitchShiftDSP* ps = new PitchShiftDSP();
+		PitchShiftDSP* ps = new PitchShiftDSP(sampleRate);
 		ps->amount = pitchshift.amount.Sample(filterInput);
 		ret = ps;
 		break;
