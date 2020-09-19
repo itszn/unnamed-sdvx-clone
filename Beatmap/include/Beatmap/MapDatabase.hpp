@@ -106,7 +106,8 @@ struct ChallengeIndex
 	Vector<ChartIndex*> charts;
 	nlohmann::json settings;
 	String title;
-	int32 clearRating;
+	int32 clearMark;
+	int32 bestScore;
 	String reqText;
 	String path;
 	String hash;
@@ -191,6 +192,7 @@ public:
 	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash);
 	Map<int32, FolderIndex*> FindFoldersByFolder(const String& folder);
 	Map<int32, FolderIndex*> FindFoldersByCollection(const String& collection);
+	Map<int32, ChallengeIndex*> FindChallenges(const String& search);
 	FolderIndex* GetFolder(int32 idx);
 	Vector<String> GetCollections();
 	Vector<String> GetCollectionsForMap(int32 mapid);

@@ -356,7 +356,9 @@ public:
 					"("
 					"title TEXT,"
 					"charts TEXT,"
-					"clear_rating INTEGER,"
+					"chart_meta TEXT," // used for search
+					"clear_mark INTEGER,"
+					"best_score INTEGER,"
 					"req_text TEXT,"
 					"path TEXT,"
 					"hash TEXT,"
@@ -529,14 +531,55 @@ public:
 
 		return res;
 	}
+
+	Map<int32, ChallengeIndex*> FindChallenges(const String& searchString)
+	{
+		WString test = Utility::ConvertToWString(searchString);
+		String stmt = "SELECT DISTINCT rowid FROM Challenges WHERE";
+
+		Vector<String> terms = searchString.Explode(" ");
+		int32 i = 0;
+		for (auto term : terms)
+		{
+			if (i > 0)
+				stmt += " AND";
+			stmt += String(" (title LIKE ?") +
+				" OR chart_meta LIKE ?"
+				" OR path LIKE ?)";
+			i++;
+		}
+		DBStatement search = m_database.Query(stmt);
+
+		i = 1;
+		for (auto term : terms)
+		{
+			// Bind all the terms
+			for (int j = 0; j < 3; j++)
+			{
+				search.BindString(i+j, "%" + term + "%");
+			}
+			i+=6;
+		}
+		
+		Map<int32, ChallengeIndex*> res;
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChallengeIndex** challenge = m_challenges.Find(id);
+			if(challenge)
+			{
+				res.Add(id, *challenge);
+			}
+		}
+
+		return res;
+	}
 	
 	Map<int32, FolderIndex*> FindFolders(const String& searchString)
 	{
 		WString test = Utility::ConvertToWString(searchString);
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE";
 
-
-		//search.spl
 		Vector<String> terms = searchString.Explode(" ");
 		int32 i = 0;
 		for(auto term : terms)
@@ -702,11 +745,11 @@ public:
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path,rowid) VALUES(?,?)");
 		DBStatement addChallenge = m_database.Query("INSERT INTO Challenges("
-			"title,charts,clear_rating,req_text,path,hash,level,lwt) "
-			"VALUES(?,?,?,?,?,?,?,?)");
+			"title,charts,chart_meta,clear_mark,best_score,req_text,path,hash,level,lwt) "
+			"VALUES(?,?,?,?,?,?,?,?,?,?)");
 		DBStatement update = m_database.Query("UPDATE Charts SET path=?,title=?,artist=?,title_translit=?,artist_translit=?,jacket_path=?,effector=?,illustrator=?,"
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
-		DBStatement updateChallenge = m_database.Query("UPDATE Challenges SET title=?,charts=?,clear_rating=?,req_text=?,path=?,hash=?,level=?,lwt=? WHERE rowid=?");
+		DBStatement updateChallenge = m_database.Query("UPDATE Challenges SET title=?,charts=?,chart_meta=?,clear_mark=?,best_score=?,req_text=?,path=?,hash=?,level=?,lwt=? WHERE rowid=?");
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeChallenge = m_database.Query("DELETE FROM Challenges WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
@@ -751,8 +794,11 @@ public:
 				chal->settings["title"].get_to(chal->title);
 				chal->path = e.path;
 				chal->settings["level"].get_to(chal->level);
-				// TODO in the future save clear with hash
-				chal->clearRating = 0;
+				if (e.action == Event::Added)
+				{
+					chal->clearMark = 0;
+					chal->bestScore = 0;
+				}
 				// TODO fill this with some more info
 				chal->reqText = "Clear All Charts\nGet 125% average";
 				chal->hash = e.hash;
@@ -760,6 +806,7 @@ public:
 				chal->lwt = e.lwt;
 				chal->charts.clear();
 
+				String chartMeta = "";
 				// Grab the charts
 				for (auto& el : chal->settings["charts"].items())
 				{
@@ -770,12 +817,14 @@ public:
 					if (chart)
 					{
 						chal->charts.push_back(chart);
+						chartMeta += chart->title + "," + chart->artist + ",";
 						continue;
 					}
 					chart = FindFirstChartByPath(hash);
 					if (chart)
 					{
 						chal->charts.push_back(chart);
+						chartMeta += chart->title + "," + chart->artist + ",";
 						continue;
 					}
 
@@ -792,14 +841,17 @@ public:
 					m_challenges.Add(chal->id, chal);
 
 					// Add Chart
+					// ("title,charts,chart_meta,clear_mark,best_score,req_text,path,hash,level,lwt) "
 					addChallenge.BindString(1, chal->title);
 					addChallenge.BindString(2, chartString);
-					addChallenge.BindInt(3, chal->clearRating);
-					addChallenge.BindString(4, chal->reqText);
-					addChallenge.BindString(5, chal->path);
-					addChallenge.BindString(6, chal->hash);
-					addChallenge.BindInt(7, chal->level);
-					addChallenge.BindInt64(8, chal->lwt);
+					addChallenge.BindString(3, chartMeta);
+					addChallenge.BindInt(4, chal->clearMark);
+					addChallenge.BindInt(5, chal->bestScore);
+					addChallenge.BindString(6, chal->reqText);
+					addChallenge.BindString(7, chal->path);
+					addChallenge.BindString(8, chal->hash);
+					addChallenge.BindInt(9, chal->level);
+					addChallenge.BindInt64(10, chal->lwt);
 
 					addChallenge.Step();
 					addChallenge.Rewind();
@@ -810,13 +862,15 @@ public:
 				{
 					updateChallenge.BindString(1, chal->title);
 					updateChallenge.BindString(2, chartString);
-					updateChallenge.BindInt(3, chal->clearRating);
-					updateChallenge.BindString(4, chal->reqText);
-					updateChallenge.BindString(5, chal->path);
-					updateChallenge.BindString(6, chal->hash);
-					updateChallenge.BindInt(7, chal->level);
-					updateChallenge.BindInt64(8, chal->lwt);
-					updateChallenge.BindInt(9, e.id);
+					updateChallenge.BindString(3, chartMeta);
+					updateChallenge.BindInt(4, chal->clearMark);
+					updateChallenge.BindInt(5, chal->bestScore);
+					updateChallenge.BindString(6, chal->reqText);
+					updateChallenge.BindString(7, chal->path);
+					updateChallenge.BindString(8, chal->hash);
+					updateChallenge.BindInt(9, chal->level);
+					updateChallenge.BindInt64(10, chal->lwt);
+					updateChallenge.BindInt(11, e.id);
 
 					updateChallenge.Step();
 					updateChallenge.Rewind();
@@ -1413,7 +1467,9 @@ private:
 			"("
 			"title TEXT,"
 			"charts TEXT,"
-			"clear_rating INTEGER,"
+			"chart_meta TEXT," // used for search
+			"clear_mark INTEGER,"
+			"best_score INTEGER,"
 			"req_text TEXT,"
 			"path TEXT,"
 			"hash TEXT,"
@@ -1596,7 +1652,8 @@ private:
 		DBStatement chalScan = m_database.Query("SELECT rowid"
 			",title"
 			",charts"
-			",clear_rating"
+			",clear_mark"
+			",best_score"
 			",req_text"
 			",path"
 			",hash"
@@ -1609,12 +1666,13 @@ private:
 			chal->id = chalScan.IntColumn(0);
 			chal->title = chalScan.StringColumn(1);
 			String chartsString = chalScan.StringColumn(2);
-			chal->clearRating = chalScan.IntColumn(3);
-			chal->reqText = chalScan.StringColumnEmptyOnNull(4);
-			chal->path = chalScan.StringColumn(5);
-			chal->hash = chalScan.StringColumn(6);
-			chal->level = chalScan.IntColumn(7);
-			chal->lwt = chalScan.Int64Column(8);
+			chal->clearMark = chalScan.IntColumn(3);
+			chal->bestScore = chalScan.IntColumn(4);
+			chal->reqText = chalScan.StringColumnEmptyOnNull(5);
+			chal->path = chalScan.StringColumn(6);
+			chal->hash = chalScan.StringColumn(7);
+			chal->level = chalScan.IntColumn(8);
+			chal->lwt = chalScan.Int64Column(9);
 			chal->missingChart = false;
 			chal->charts.clear();
 
@@ -2113,6 +2171,10 @@ void MapDatabase::StopSearching()
 Map<int32, FolderIndex*> MapDatabase::FindFoldersByPath(const String& search)
 {
 	return m_impl->FindFoldersByPath(search);
+}
+Map<int32, ChallengeIndex*> MapDatabase::FindChallenges(const String& search)
+{
+	return m_impl->FindChallenges(search);
 }
 Map<int32, FolderIndex*> MapDatabase::FindFolders(const String& search)
 {

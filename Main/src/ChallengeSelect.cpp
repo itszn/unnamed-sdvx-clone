@@ -223,7 +223,7 @@ private:
 		m_PushStringToTable("title", *(chal->title));
 		m_PushStringToTable("requirement_text", *(chal->reqText));
 		m_PushIntToTable("id", chal->id);
-		m_PushIntToTable("rating", chal->clearRating);
+		m_PushIntToTable("rating", chal->clearMark);
 		m_PushIntToTable("missing_chart", chal->missingChart);
 
 		int chartIndex = 0;
@@ -395,15 +395,16 @@ public:
 
 	void OnSearchTermChanged(const String &search)
 	{
-		/*
+		//m_filterSelection->AdvanceSelection(0);
 		if (search.empty())
-			m_filterSelection->AdvanceSelection(0);
+		{
+			m_selectionWheel->ClearFilter();
+		}
 		else
 		{
-			Map<int32, ChallengeIndex *> filter = m_mapDatabase->FindFolders(search);
+			Map<int32, ChallengeIndex *> filter = m_mapDatabase->FindChallenges(search);
 			m_selectionWheel->SetFilter(filter);
 		}
-		*/
 	}
 
 	void m_OnButtonPressed(Input::Button buttonCode)
