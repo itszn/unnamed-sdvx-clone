@@ -110,7 +110,7 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 }
 void Audio_Impl::Start()
 {
-	limiter = new LimiterDSP();
+	limiter = new LimiterDSP(GetSampleRate());
 	limiter->SetAudio(this);
 	limiter->releaseTime = 0.2f;
 

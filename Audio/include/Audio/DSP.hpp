@@ -67,6 +67,8 @@ private:
 class LimiterDSP : public DSP
 {
 public:
+	LimiterDSP(uint32 sampleRate);
+
 	float releaseTime = 0.1f;
 	virtual void Process(float* out, uint32 numSamples);
 	virtual const char* GetName() const { return "LimiterDSP"; }
@@ -270,10 +272,11 @@ private:
 class PitchShiftDSP : public DSP
 {
 public:
+	PitchShiftDSP(uint32 sampleRate);
+
 	// Pitch change amount
 	float amount = 0.0f;
 
-	PitchShiftDSP();
 	~PitchShiftDSP();
 
 	virtual void Process(float* out, uint32 numSamples);
