@@ -176,6 +176,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::LastSelected, 0);
 	Set(GameConfigKeys::LastSelectedChal, 0);
 	Set(GameConfigKeys::LastSort, 0);
+	Set(GameConfigKeys::LastSortChal, 0);
 	Set(GameConfigKeys::LevelFilter, 0);
 	Set(GameConfigKeys::FolderFilter, 0);
 

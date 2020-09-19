@@ -263,18 +263,144 @@ private:
 	}
 };
 
+/*
+	Sorting selection element
+*/
+class ChallengeSortSolection
+{
+public:
+	bool Active = false;
+	bool Initialized = false;
+
+	ChallengeSortSolection(Ref<ChallengeSelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) {}
+	~ChallengeSortSolection()
+	{
+		g_gameConfig.Set(GameConfigKeys::LastSortChal, m_selection);
+		for (ChallengeSort *s : m_sorts)
+		{
+			delete s;
+		}
+		m_sorts.clear();
+
+		if (m_lua)
+		{
+			g_application->DisposeLua(m_lua);
+			m_lua = nullptr;
+		}
+	}
+
+	bool Init()
+	{
+		if (m_sorts.size() == 0)
+		{
+			m_sorts.Add(new ChallengeTitleSort("Title ^", false));
+			m_sorts.Add(new ChallengeTitleSort("Title v", true));
+			m_sorts.Add(new ChallengeScoreSort("Score ^", false));
+			m_sorts.Add(new ChallengeScoreSort("Score v", true));
+			m_sorts.Add(new ChallengeDateSort("Date ^", false));
+			m_sorts.Add(new ChallengeDateSort("Date v", true));
+			m_sorts.Add(new ChallengeClearMarkSort("Badge ^", false));
+			m_sorts.Add(new ChallengeClearMarkSort("Badge v", true));
+		}
+
+		CheckedLoad(m_lua = g_application->LoadScript("songselect/sortwheel"));
+		m_SetLuaTable();
+
+		Initialized = true;
+		m_selection = g_gameConfig.GetInt(GameConfigKeys::LastSortChal);
+		AdvanceSelection(0);
+		return true;
+	}
+
+	void SetSelection(ChallengeSort *s)
+	{
+		m_selection = std::find(m_sorts.begin(), m_sorts.end(), s) - m_sorts.begin();
+		m_selectionWheel->SetSort(s);
+
+		lua_getglobal(m_lua, "set_selection");
+		lua_pushnumber(m_lua, m_selection + 1);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on set_selection: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void Render(float deltaTime)
+	{
+		lua_getglobal(m_lua, "render");
+		lua_pushnumber(m_lua, deltaTime);
+		lua_pushboolean(m_lua, Active);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+
+	void AdvanceSelection(int offset)
+	{
+		int newSelection = (m_selection + offset) % (int)m_sorts.size();
+		if (newSelection < 0)
+		{
+			newSelection = m_sorts.size() + newSelection;
+		}
+
+		SetSelection(m_sorts.at(newSelection));
+	}
+
+private:
+	void m_PushStringToArray(int index, const char *data)
+	{
+		lua_pushinteger(m_lua, index);
+		lua_pushstring(m_lua, data);
+		lua_settable(m_lua, -3);
+	}
+
+	void m_SetLuaTable()
+	{
+		lua_newtable(m_lua);
+		{
+			for (size_t i = 0; i < m_sorts.size(); i++)
+			{
+				m_PushStringToArray(i + 1, m_sorts[i]->GetName().c_str());
+			}
+		}
+		lua_setglobal(m_lua, "sorts");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+	}
+
+	Ref<ChallengeSelectionWheel> m_selectionWheel;
+	Vector<ChallengeSort *> m_sorts;
+	int m_selection = 0;
+	lua_State *m_lua = nullptr;
+};
+
 
 class ChallengeSelect_Impl : public ChallengeSelect
 {
 private:
 	Timer m_dbUpdateTimer;
-	MapDatabase* m_mapDatabase;
+	MapDatabase* m_mapDatabase = nullptr;
 
 	// Map selection wheel
 	Ref<ChallengeSelectionWheel> m_selectionWheel;
+	Ref<ChallengeSortSolection> m_sortSelection;
 	Ref<TextInput> m_searchInput;
 
 	float m_advanceChal = 0.0f;
+	float m_advanceScroll = 0.0f;
 	float m_sensMult = 1.0f;
 	MouseLockHandle m_lockMouse;
 	bool m_suspended = true;
@@ -361,8 +487,10 @@ public:
 		//m_selectionWheel->OnItemsChanged.Add(m_filterSelection.get(), &FilterSelection::OnSongsChanged);
 		m_mapDatabase->StartSearching();
 
-		// TODO add sort wheel
 		m_selectionWheel->SetSort(new ChallengeSort("Title ^", false));
+		m_sortSelection = Ref<ChallengeSortSolection>(new ChallengeSortSolection(m_selectionWheel));
+		if (!m_sortSelection->Init())
+			return false;
 
 		m_selectionWheel->SelectItemByItemId(g_gameConfig.GetInt(GameConfigKeys::LastSelectedChal));
 
@@ -424,9 +552,8 @@ public:
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
 		//if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
-		if (buttonCode == Input::Button::BT_S && !IsSuspended() && !m_transitionedToGame)
+		if (buttonCode == Input::Button::BT_S && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
 		{
-			bool autoplay = (g_gameWindow->GetModifierKeys() & ModifierKeys::Ctrl) == ModifierKeys::Ctrl;
 			ChallengeIndex *folder = m_selectionWheel->GetSelection();
 			if (folder)
 			{
@@ -434,48 +561,53 @@ public:
 				ChallengeIndex* chal = GetCurrentSelectedChallenge();
 				if (m_manager.StartChallenge(this, chal))
 					m_transitionedToGame = true;
-				/*
-				Game *game = Game::Create(chart, Game::FlagsFromSettings());
-				if (!game)
-				{
-					Log("Failed to start game", Logger::Severity::Error);
-					return;
-				}
-				game->GetScoring().autoplay = autoplay;
-
-				// Transition to game
-				g_transition->TransitionTo(game);
-				m_transitionedToGame = true;
-				*/
 			}
 		}
 		else
 		{
-			switch (buttonCode)
+			if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
 			{
-			/*
+				m_sortSelection->Active = false;
+			}
+			else if (m_sortSelection->Active)
+			{
+				switch (buttonCode)
+				{
+				case Input::Button::Back:
+					m_sortSelection->Active = false;
+					break;
+				default:
+					break;
+				}
+			}
+			else
+			{
+				switch (buttonCode)
+				{
+					/*
 
-			case Input::Button::FX_1:
-				if (g_input.GetButton(Input::Button::FX_0))
-				{
-					m_settDiag.Open();
+					case Input::Button::FX_1:
+						if (g_input.GetButton(Input::Button::FX_0))
+						{
+							m_settDiag.Open();
+						}
+						break;
+					case Input::Button::FX_0:
+						if (g_input.GetButton(Input::Button::FX_1))
+						{
+							m_settDiag.Open();
+						}
+						break;
+					*/
+				case Input::Button::BT_S:
+					break;
+				case Input::Button::Back:
+					m_suspended = true;
+					g_application->RemoveTickable(this);
+					break;
+				default:
+					break;
 				}
-				break;
-			case Input::Button::FX_0:
-				if (g_input.GetButton(Input::Button::FX_1))
-				{
-					m_settDiag.Open();
-				}
-				break;
-			*/
-			case Input::Button::BT_S:
-				break;
-			case Input::Button::Back:
-				m_suspended = true;
-				g_application->RemoveTickable(this);
-				break;
-			default:
-				break;
 			}
 		}
 	}
@@ -492,17 +624,18 @@ public:
 
 		m_timeSinceButtonReleased[buttonCode] = 0;
 
-		/*
 		switch (buttonCode)
 		{
+			/*
 		case Input::Button::FX_0:
 			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_sortSelection->Active)
 			{
 				m_filterSelection->Active = !m_filterSelection->Active;
 			}
 			break;
+			*/
 		case Input::Button::FX_1:
-			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_filterSelection->Active)
+			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) /*&& !m_filterSelection->Active*/)
 			{
 				m_sortSelection->Active = !m_sortSelection->Active;
 			}
@@ -510,7 +643,6 @@ public:
 			default:
 			break;
 		}
-		*/
 	}
 
 	void m_OnMouseScroll(int32 steps)
@@ -521,20 +653,20 @@ public:
 
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
 
-		/*
 		if (m_sortSelection->Active)
 		{
 			m_sortSelection->AdvanceSelection(steps);
 		}
+		/*
 		else if (m_filterSelection->Active)
 		{
 			m_filterSelection->AdvanceSelection(steps);
 		}
+		*/
 		else
 		{
-		*/
 			m_selectionWheel->AdvanceSelection(steps);
-		//}
+		}
 	}
 
 	virtual void OnKeyPressed(SDL_Scancode code)
@@ -556,7 +688,8 @@ public:
 				m_filterSelection->AdvanceSelection(-1);
 			}
 		}
-		else if (m_sortSelection->Active)
+		*/
+		if (m_sortSelection->Active)
 		{
 			if (code == SDL_SCANCODE_DOWN)
 			{
@@ -568,7 +701,6 @@ public:
 			}
 		}
 		else
-		*/
 		{
 			if (code == SDL_SCANCODE_DOWN)
 			{
@@ -667,7 +799,7 @@ public:
 
 		m_selectionWheel->Render(deltaTime);
 		//m_filterSelection->Render(deltaTime);
-		//m_sortSelection->Render(deltaTime);
+		m_sortSelection->Render(deltaTime);
 
 		//m_settDiag.Render(deltaTime);
 
@@ -710,11 +842,13 @@ public:
 
 		// Song navigation using laser inputs
 		/// TODO: Investigate strange behaviour further and clean up.
-		float diff_input = g_input.GetInputLaserDir(0) * m_sensMult;
+		float scroll_input = g_input.GetInputLaserDir(0) * m_sensMult;
 		float song_input = g_input.GetInputLaserDir(1) * m_sensMult;
 
+		m_advanceScroll += scroll_input;
 		m_advanceChal += song_input;
 
+		int advanceScrollActual = (int)Math::Floor(m_advanceScroll * Math::Sign(m_advanceScroll)) * Math::Sign(m_advanceScroll);
 		int advanceChalActual = (int)Math::Floor(m_advanceChal * Math::Sign(m_advanceChal)) * Math::Sign(m_advanceChal);
 
 		/*
@@ -725,20 +859,21 @@ public:
 			if (advanceSongActual != 0)
 				m_filterSelection->AdvanceSelection(advanceSongActual);
 		}
-		else if (m_sortSelection->Active)
+		*/
+		if (m_sortSelection->Active)
 		{
-			if (advanceDiffActual != 0)
-				m_sortSelection->AdvanceSelection(advanceDiffActual);
-			if (advanceSongActual != 0)
-				m_sortSelection->AdvanceSelection(advanceSongActual);
+			if (advanceScrollActual != 0)
+				m_sortSelection->AdvanceSelection(advanceScrollActual);
+			if (advanceChalActual != 0)
+				m_sortSelection->AdvanceSelection(advanceChalActual);
 		}
 		else
-		*/
 		{
 			if (advanceChalActual != 0)
 				m_selectionWheel->AdvanceSelection(advanceChalActual);
 		}
 
+		m_advanceScroll -= advanceScrollActual;
 		m_advanceChal -= advanceChalActual;
 	}
 

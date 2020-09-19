@@ -829,6 +829,8 @@ public:
 			m_sorts.Add(new ScoreSort("Score v", true));
 			m_sorts.Add(new DateSort("Date ^", false));
 			m_sorts.Add(new DateSort("Date v", true));
+			m_sorts.Add(new ClearMarkSort("Badge ^", false));
+			m_sorts.Add(new ClearMarkSort("Badge v", true));
 			m_sorts.Add(new ArtistSort("Artist ^", false));
 			m_sorts.Add(new ArtistSort("Artist v", true));
 			m_sorts.Add(new EffectorSort("Effector ^", false));

@@ -104,9 +104,70 @@ class EffectorSort : public TitleSort
 		{ 
 			return m_dir? SortType::EFFECTOR_DESC : SortType::EFFECTOR_ASC;
 		};
+};
+
+class ClearMarkSort : public TitleSort
+{
+	public:
+		ClearMarkSort(String name, bool dir) : TitleSort(name, dir) {};
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
+				SongSelectIndex>& collection) override;
+		SortType GetType() const override
+		{ 
+			return m_dir? SortType::EFFECTOR_DESC : SortType::EFFECTOR_ASC;
+		};
 	private:
-		Map<uint32, uint64> m_dateMap;
+		Map<uint32, uint64> m_clearMap;
 };
 
 using ChallengeSort = ItemSort<ChallengeSelectIndex>;
 
+class ChallengeTitleSort : public ChallengeSort
+{
+	public:
+		ChallengeTitleSort(String name, bool dir) : ChallengeSort(name, dir) {};
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
+				ChallengeSelectIndex>& collection) override;
+		virtual bool CompareChallenges(const ChallengeSelectIndex& song_a,
+				const ChallengeSelectIndex& song_b);
+		SortType GetType() const override
+		{ 
+			return m_dir? SortType::TITLE_DESC : SortType::TITLE_ASC;
+		};
+};
+
+class ChallengeDateSort : public ChallengeTitleSort
+{
+	public:
+		ChallengeDateSort(String name, bool dir) : ChallengeTitleSort(name, dir) {};
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
+				ChallengeSelectIndex>& collection) override;
+		SortType GetType() const override
+		{ 
+			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
+		};
+};
+
+class ChallengeScoreSort : public ChallengeTitleSort
+{
+	public:
+		ChallengeScoreSort(String name, bool dir) : ChallengeTitleSort(name, dir) {};
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
+				ChallengeSelectIndex>& collection) override;
+		SortType GetType() const override
+		{ 
+			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
+		};
+};
+
+class ChallengeClearMarkSort : public ChallengeTitleSort
+{
+	public:
+		ChallengeClearMarkSort(String name, bool dir) : ChallengeTitleSort(name, dir) {};
+		void SortInplace(Vector<uint32>& vec, const Map<int32,
+				ChallengeSelectIndex>& collection) override;
+		SortType GetType() const override
+		{ 
+			return m_dir? SortType::DATE_DESC : SortType::DATE_ASC;
+		};
+};
