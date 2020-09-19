@@ -1359,6 +1359,8 @@ void Application::SetScriptPath(lua_State *s)
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
+std::set<String> g_luaErrorsSeen;
+
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
 	lua_State *s = luaL_newstate();
@@ -1392,7 +1394,21 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
+	else
+		g_luaErrorsSeen.clear();
 	return s;
+}
+
+
+// TODO add option for this
+void Application::ShowLuaError(const String& error)
+{
+	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
+		return;
+	g_luaErrorsSeen.insert(error);
+
+	Logf("Lua error: %s", Logger::Severity::Error, *error);
+	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
 }
 
 void Application::ReloadScript(const String &name, lua_State *L)
@@ -1411,6 +1427,8 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		lua_close(L);
 		assert(false);
 	}
+	else
+		g_luaErrorsSeen.clear();
 }
 
 void Application::ReloadSkin()

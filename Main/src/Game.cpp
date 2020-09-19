@@ -1415,8 +1415,9 @@ public:
 		g_transition->OnLoadingComplete.RemoveAll(this);
 		g_transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 
-		if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
-			(m_manualExit && m_demo))
+		if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore)
+			&& m_multiplayer == nullptr && m_challengeManager == nullptr)
+			|| (m_manualExit && m_demo))
 		{
 			g_application->RemoveTickable(this);
 		}
@@ -1445,6 +1446,11 @@ public:
 				g_transition->TransitionTo(ScoreScreen::Create(
 					this, m_multiplayer->GetUserId(),
 					m_multiplayer->GetFinalStats(), m_multiplayer));
+			}
+			else if (m_challengeManager != nullptr)
+			{
+				g_transition->TransitionTo(ScoreScreen::Create(
+					this, m_challengeManager));
 			}
 			else
 			{

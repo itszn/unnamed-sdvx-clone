@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ChallengeSelect.hpp"
+#include "ChallengeResult.hpp"
 #include "TitleScreen.hpp"
 #include "Application.hpp"
 #include <Shared/Profiling.hpp>
@@ -936,6 +937,8 @@ bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
 	m_chal = chal;
 	m_running = true;
 	m_finishedCurrentChart = false;
+	m_failedEarly = false;
+	m_seenResults = false;
 	m_scores.clear();
 	m_reqs.clear();
 	m_opts.clear();
@@ -987,51 +990,83 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 	assert(m_chartsPlayed > 0);
 
 	OverallChallengeResult res = { 0 };
+
+	if (!passed)
+	{
+		res.failString = "Not All Charts Passed Challenge Goals";
+	}
+
 	res.averagePercent = m_totalPercentage / m_chartsPlayed;
-	if (res.averagePercent < m_globalOpts.average_percentage.Get(0))
+	if (passed && res.averagePercent < m_globalOpts.average_percentage.Get(0))
+	{
 		passed = false;
+		res.failString = Utility::Sprintf("Average Percentage of %u%% < Min of %u%%",
+			res.averagePercent, m_globalOpts.average_percentage.Get(0));
+	}
 	res.averageGauge = m_totalGauge / m_chartsPlayed;
-	if (res.averageGauge < m_globalOpts.average_gauge.Get(0.0))
+	if (passed && res.averageGauge < m_globalOpts.average_gauge.Get(0.0))
+	{
+		res.failString = Utility::Sprintf("Average Guage of %d%% < Min of %d%%",
+			(int)(res.averageGauge * 100), (int)(m_globalOpts.average_gauge.Get(0) * 100));
 		passed = false;
+	}
 
-	res.averageErrors = m_totalErrors / m_chartsPlayed;
-	if (res.averageErrors > m_globalOpts.average_errors.Get(INT_MAX))
-		passed = false;
 	res.overallErrors = m_totalErrors;
-	if (res.overallErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
+	if (passed && res.overallErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
+	{
+		res.failString = Utility::Sprintf("Total of %u Error > Max of %u",
+			res.overallErrors, m_globalOpts.max_overall_errors.Get(INT_MAX));
 		passed = false;
+	}
+	res.averageErrors = m_totalErrors / m_chartsPlayed;
+	if (passed && res.averageErrors > m_globalOpts.average_errors.Get(INT_MAX))
+	{
+		res.failString = Utility::Sprintf("Average of %u Error > Max of %u",
+			res.averageErrors, m_globalOpts.average_errors.Get(INT_MAX));
+		passed = false;
+	}
 
-	res.averageNears = m_totalNears / m_chartsPlayed;
-	if (res.averageNears > m_globalOpts.average_nears.Get(INT_MAX))
-		passed = false;
 	res.overallNears = m_totalNears;
-	if (res.overallNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
+	if (passed && res.overallNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
+	{
+		res.failString = Utility::Sprintf("Total of %u Good > Max of %u",
+			res.overallNears, m_globalOpts.max_overall_nears.Get(INT_MAX));
 		passed = false;
+	}
+	res.averageNears = m_totalNears / m_chartsPlayed;
+	if (passed && res.averageNears > m_globalOpts.average_nears.Get(INT_MAX))
+	{
+		res.failString = Utility::Sprintf("Average of %u Good > Max of %u",
+			res.averageNears, m_globalOpts.average_nears.Get(INT_MAX));
+		passed = false;
+	}
 
-	res.averageCrits = m_totalCrits / m_chartsPlayed;
-	if (res.averageCrits < m_globalOpts.average_crits.Get(0))
-		passed = false;
 	res.overallCrits = m_totalCrits;
-	if (res.overallCrits < m_globalOpts.min_overall_crits.Get(0))
+	if (passed && res.overallCrits < m_globalOpts.min_overall_crits.Get(0))
+	{
+		res.failString = Utility::Sprintf("Total of %u Crit < Min of %u",
+			res.overallCrits, m_globalOpts.min_overall_crits.Get(INT_MAX));
 		passed = false;
+	}
+	res.averageCrits = m_totalCrits / m_chartsPlayed;
+	if (passed && res.averageCrits < m_globalOpts.average_crits.Get(0))
+	{
+		res.failString = Utility::Sprintf("Average of %u Crit < Min of %u",
+			res.averageNears, m_globalOpts.average_crits.Get(INT_MAX));
+		passed = false;
+	}
 
 	res.passed = passed;
 
 	m_overallResults = res;
 
-	if (!passed)
-	{
-		g_gameWindow->ShowMessageBox("Challenge Failed", "Sorry, you failed the challenge", 0);
-	}
-	else
-	{
-		g_gameWindow->ShowMessageBox("Challenge Passed", "Congrats! You passed the challenge", 0);
-	}
+	// TODO update database if passed
 
-	m_running = false;
-	m_chal = nullptr;
-	m_currentChart = nullptr;
-	return true;
+	ChallengeResultScreen* resScreen = ChallengeResultScreen::Create(this);
+	g_transition->TransitionTo(resScreen);
+
+	m_seenResults = true;
+	return false;
 }
 
 // Returns if it is all done or not
@@ -1043,11 +1078,20 @@ bool ChallengeManager::ReturnToSelect()
 	if (!m_finishedCurrentChart)
 		return false;
 
+	if (m_seenResults)
+	{
+		// We all all done here
+		m_running = false;
+		m_chal = nullptr;
+		m_currentChart = nullptr;
+		return true;
+	}
+
 	m_chartsPlayed++;
 
-	if (!m_passedCurrentChart)
+	if (!m_passedCurrentChart || m_failedEarly)
 	{
-		return m_finishedAllCharts(false);
+		return m_finishedAllCharts(m_passedCurrentChart);
 	}
 
 	m_chartIndex++;
@@ -1099,6 +1143,11 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 {
 	assert(m_running);
 
+	if (clearMark == ClearMark::NotPlayed)
+	{
+
+	}
+
 	m_finishedCurrentChart = true;
 	const Scoring& scoring = game->GetScoring();
 
@@ -1107,7 +1156,9 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	uint32 finalScore = scoring.CalculateCurrentScore();
 	res.score = finalScore;
-	uint32 percentage = (finalScore - 8000000) / 10000;
+	res.flags = game->GetFlags();
+	uint32 percentage = (uint32)std::max(((int)finalScore - 8000000) / 10000, 0);
+	res.percent = percentage;
 
 	res.crits = scoring.GetPerfects();
 	m_totalCrits += res.crits;
@@ -1120,38 +1171,78 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 	m_totalPercentage += percentage;
 
 	res.badge = clearMark;
-	if (req.clear.Get(false) && clearMark >= ClearMark::NormalClear)
-		req.clear.MarkPassed();
+	if (req.clear.Get(false))
+	{
+		if (clearMark >= ClearMark::NormalClear)
+			req.clear.MarkPassed();
+		else if (res.failString == "")
+			res.failString = "Chart was not cleared";
+	}
 
-	if (req.min_percentage.HasValue() && percentage >= *req.min_percentage)
-		req.min_percentage.MarkPassed();
+	if (req.min_percentage.HasValue())
+	{
+		if (percentage >= *req.min_percentage)
+			req.min_percentage.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("Percentage of %u%% < Min of %u%%",
+				percentage, *req.min_percentage);
+	}
 
 	res.gauge = scoring.currentGauge;
-	if (req.min_gauge.HasValue() && res.gauge >= *req.min_gauge)
-		req.min_gauge.MarkPassed();
+	if (req.min_gauge.HasValue())
+	{
+		if (res.gauge >= *req.min_gauge)
+			req.min_gauge.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("Gauge of %d%% < Min of %d%%",
+				(int)(res.gauge * 100), (int)(*req.min_gauge * 100));
+	}
 
-	if (req.max_errors.HasValue() && res.errors <= *req.max_errors)
-		req.max_errors.MarkPassed();
+	if (req.max_errors.HasValue())
+	{
+		if (res.errors <= *req.max_errors)
+			req.max_errors.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("%u Errors > Max of %u",
+				res.errors, *req.max_errors);
+	}
 
-	if (req.max_nears.HasValue() && res.nears <= *req.max_nears)
-		req.max_nears.MarkPassed();
-
-	if (req.min_crits.HasValue() && res.crits >= *req.min_crits)
-		req.min_crits.MarkPassed();
+	if (req.max_nears.HasValue())
+	{
+		if (res.nears <= *req.max_nears)
+			req.max_nears.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("%u Nears > Max of %u",
+				res.nears, *req.max_nears);
+	}
 
 	res.maxCombo = scoring.maxComboCounter;
-	if (req.min_chain.HasValue() && res.maxCombo >= *req.min_chain)
-		req.min_chain.MarkPassed();
+	if (req.min_chain.HasValue())
+	{
+		if (res.maxCombo >= *req.min_chain)
+			req.min_chain.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("%u Chain < Min of %u",
+				res.maxCombo, *req.min_chain);
+	}
+
+	if (req.min_crits.HasValue())
+	{
+		if (res.crits >= *req.min_crits)
+			req.min_crits.MarkPassed();
+		else if (res.failString == "")
+			res.failString = Utility::Sprintf("%u Crits < Min of %u",
+				res.crits, *req.min_crits);
+	}
 
 	res.passed = req.Passed();
-
-	// Now check if we crossed any failing thresholds
-	if (m_totalErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
-		res.passed = false;
-	if (m_totalNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
-		res.passed = false;
-
 	m_passedCurrentChart = res.passed;
+
+	// Now check if we crossed any global failing thresholds
+	if (m_totalErrors > m_globalOpts.max_overall_errors.Get(INT_MAX))
+		m_failedEarly = true;
+	if (m_totalNears > m_globalOpts.max_overall_nears.Get(INT_MAX))
+		m_failedEarly = true;
 
 	m_results.push_back(res);
 }

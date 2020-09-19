@@ -2,6 +2,7 @@
 
 #include "ApplicationTickable.hpp"
 #include "AsyncLoadable.hpp"
+#include "Game.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 template<typename T>
@@ -183,19 +184,45 @@ struct ChallengeRequirements
 struct ChallengeResult
 {
 	bool passed;
+	String failString;
 	ClearMark badge;
 	float gauge;
 	GameFlags flags;
 	uint32 score;
+	uint32 percent;
 	uint32 maxCombo;
 	uint32 crits;
 	uint32 nears;
 	uint32 errors;
+	// Stuff that doesn't matter to the challenge but the score screen
+	// will display to the user
+	struct {
+		// TODO we might be able to grab this dynamically
+		uint32 difficulty;
+		MapTime beatmapDuration;
+		MapTime medianHitDelta;
+		MapTime medianHitDeltaAbs;
+		float meanHitDelta;
+		float meanHitDeltaAbs;
+		uint32 earlies;
+		uint32 lates;
+		HitWindow hitWindow = HitWindow::NORMAL;
+		float gaugeSamples[256];
+		uint32 speedMod;
+		uint32 speedModValue;
+		bool showCover;
+		float suddenCutoff;
+		float hiddenCutoff;
+		float suddenFade;
+		float hiddenFade;
+		Vector<SimpleHitStat> simpleNoteHitStats;
+	} scorescreenInfo;
 };
 
 struct OverallChallengeResult
 {
 	bool passed;
+	String failString;
 	uint32 averagePercent;
 	uint32 averageScore;
 	float averageGauge;
@@ -216,6 +243,7 @@ private:
 	unsigned int m_chartIndex = 0;
 	unsigned int m_chartsPlayed = 0;
 	bool m_running = false;
+	bool m_seenResults = false;
 	Vector<uint32> m_scores;
 	ChallengeRequirements m_globalReqs;
 	Vector<ChallengeRequirements> m_reqs;
@@ -223,10 +251,11 @@ private:
 	Vector<ChallengeOptions> m_opts;
 
 	Vector<ChallengeResult> m_results;
-	OverallChallengeResult m_overall_res;
+	OverallChallengeResult m_overallResults;
 
 	ChallengeOptions m_currentOptions;
 	bool m_passedCurrentChart;
+	bool m_failedEarly;
 	bool m_finishedCurrentChart;
 
 	uint64 m_totalNears = 0;
@@ -243,7 +272,10 @@ public:
 	const ChallengeOptions& GetCurrentOptions() { return m_currentOptions; }
 	bool ReturnToSelect();
 	const Vector<ChallengeResult>& GetResults() { return m_results; }
+	const OverallChallengeResult& GetOverallResults() { return m_overallResults; }
 	const Vector<ChartIndex*>& GetCharts() { return m_chal->charts; }
+	const ChallengeIndex* GetChallenge() { return m_chal; }
+	ChallengeResult& GetCurrentResultForUpdating() { return m_results[m_chartIndex]; }
 
 
 private:
