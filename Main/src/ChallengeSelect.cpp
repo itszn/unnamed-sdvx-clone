@@ -989,7 +989,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 {
 	assert(m_chartsPlayed > 0);
 
-	OverallChallengeResult res = { 0 };
+	OverallChallengeResult res;
 
 	if (!passed)
 	{
