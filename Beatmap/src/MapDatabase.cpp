@@ -1221,6 +1221,35 @@ public:
 		m_database.Exec("END");
 	}
 
+	void UpdateChallengeResult(ChallengeIndex* chal, uint32 clearMark, uint32 bestScore)
+	{
+		assert(chal != nullptr);
+		assert(m_challenges.Contains(chal->id));
+
+		chal->clearMark = clearMark;
+		chal->bestScore = bestScore;
+
+		const constexpr char* updateQuery = "UPDATE Challenges SET "
+			"clear_mark=?, best_score=?"
+			" WHERE rowid=?";
+
+		DBStatement statement = m_database.Query(updateQuery);
+
+		m_database.Exec("BEGIN");
+
+		statement.BindInt(1, clearMark);
+		statement.BindInt(2, bestScore);
+		statement.BindInt(3, chal->id);
+		if (!statement.Step())
+		{
+			Log("Failed to execute query for UpdateChallengeResult", Logger::Severity::Warning);
+		}
+
+		statement.Rewind();
+
+		m_database.Exec("END");
+	}
+
 	void UpdateOrAddPracticeSetup(PracticeSetupIndex* practiceSetup)
 	{
 		if (!m_charts.Contains(practiceSetup->chartId))
@@ -2232,6 +2261,10 @@ void MapDatabase::AddScore(ScoreIndex* score)
 void MapDatabase::UpdatePracticeSetup(PracticeSetupIndex* practiceSetup)
 {
 	m_impl->UpdateOrAddPracticeSetup(practiceSetup);
+}
+void MapDatabase::UpdateChallengeResult(ChallengeIndex* chal, uint32 clearMark, uint32 bestScore)
+{
+	m_impl->UpdateChallengeResult(chal, clearMark, bestScore);
 }
 ChartIndex* MapDatabase::GetRandomChart()
 {

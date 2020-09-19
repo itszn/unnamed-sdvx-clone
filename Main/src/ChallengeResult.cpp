@@ -226,6 +226,9 @@ public:
 		m_PushBoolToTable("isSelf", true);
 		m_PushBoolToTable("passed", ores.passed);
 		m_PushStringToTable("failReason", *ores.failString);
+		m_PushStringToTable("grade", ToDisplayString(ToGradeMark(ores.averageScore)));
+		m_PushIntToTable("badge", static_cast<int>(ores.clearMark));
+		m_PushIntToTable("avgScore", ores.averageScore);
 		m_PushIntToTable("avgPercentage", ores.averagePercent);
 		m_PushIntToTable("avgGauge", ores.averageGauge);
 		m_PushIntToTable("avgErrors", ores.averageErrors);

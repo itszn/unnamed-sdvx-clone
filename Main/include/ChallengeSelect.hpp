@@ -223,6 +223,7 @@ struct OverallChallengeResult
 {
 	bool passed;
 	String failString;
+	ClearMark clearMark;
 	uint32 averagePercent;
 	uint32 averageScore;
 	float averageGauge;
@@ -238,6 +239,7 @@ struct OverallChallengeResult
 class ChallengeManager
 {
 private:
+	class ChallengeSelect* m_challengeSelect;
 	ChallengeIndex* m_chal = nullptr;
 	ChartIndex* m_currentChart = nullptr;
 	unsigned int m_chartIndex = 0;
@@ -266,7 +268,7 @@ private:
 	float m_totalGauge = 0.0;
 public:
 	bool RunningChallenge() { return m_running; }
-	bool StartChallenge(ChallengeIndex* chal);
+	bool StartChallenge(class ChallengeSelect* sel, ChallengeIndex* chal);
 	friend class Game;
 	void ReportScore(Game*, ClearMark);
 	const ChallengeOptions& GetCurrentOptions() { return m_currentOptions; }
@@ -315,6 +317,9 @@ class ChallengeSelect : public IAsyncLoadableApplicationTickable
 {
 protected:
 	ChallengeSelect() = default;
+
+	friend class ChallengeManager;
+	virtual MapDatabase* GetMapDatabase() = 0;
 public:
 	virtual ~ChallengeSelect() = default;
 	static ChallengeSelect* Create();

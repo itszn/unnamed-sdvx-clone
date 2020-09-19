@@ -126,10 +126,13 @@ check_or_create_cache = function(song, full)
         for _, chart in ipairs(song.charts) do
           names = names .. " [" .. chart.title .. "]"
         end
-        if song.missing_chart and false then
-          names = names .. " COULD NOT FIND ALL CHARTS!"
+        if song.missing_chart then
+          names = names .. " *COULD NOT FIND ALL CHARTS!*"
         end
         songCache[song.id]["chart_names"] = gfx.CreateLabel(names, 20, 0)
+    end
+    if song.topBadge ~= 0 and not songCache[song.id]["percent"] then
+      songCache[song.id]["percent"] = gfx.CreateLabel(string.format("%u%% Complete", (song.bestScore - 8000000)//10000), 35, 0)
     end
     if full then
       if not songCache[song.id]["jackets"] then
@@ -205,6 +208,9 @@ draw_song = function(song, x, y, w, h, selected)
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
     gfx.DrawLabel(songCache[song.id]["title"], x+10, y + 5, w-10)
+    if (song.missing_chart) then
+      gfx.FillColor(255,20,20)
+    end
     gfx.DrawLabel(songCache[song.id]["chart_names"], x+20, y + 50, w-10)
 
     --gfx.DrawLabel(songCache[song.id]["artist"], x+20, y + 50, w-10)
@@ -316,11 +322,12 @@ draw_selected = function(song, x, y, w, h)
     local imageXPos = ((width/2) - (imageSize/2)) + x+xMargin
     if aspectRatio == "PortraitWidescreen" then
       --Unless its portrait widesreen..
-      imageSize = math.floor((height/2)*2)
+      imageSize = math.floor((height/2)*2)-10
       imageXPos = x+xMargin+xPadding
     end
 
     local square_size = math.ceil(math.sqrt(#song.charts))
+    local origImageSize = imageSize
     imageSize = math.floor(imageSize / square_size)
     local bottom_off = math.ceil((square_size*square_size - #song.charts) * imageSize/2)
 
@@ -329,6 +336,9 @@ draw_selected = function(song, x, y, w, h)
     local img_row = 0;
     local img_col = 0;
     for i, chart in ipairs(song.charts) do
+        if songCache[song.id]["jackets"][i] == jacketFallback then
+          songCache[song.id]["jackets"][i] = gfx.LoadImageJob(chart.jacketPath, jacketFallback, 200,200)
+        end
         gfx.BeginPath()
         local xoff = img_col * imageSize
         if math.ceil(i / square_size) == square_size then
@@ -342,6 +352,10 @@ draw_selected = function(song, x, y, w, h)
         end
     end
 
+    local num_img_rows = img_row + 1
+    if img_col == 0 then
+      num_img_rows = img_row
+    end
 
     --if songCache[song.id][selectedDiff] then
     --    gfx.BeginPath()
@@ -359,27 +373,74 @@ draw_selected = function(song, x, y, w, h)
     --  draw_diffs(song.difficulties,(w/2)-(imageSize/2),(ypos+yPadding+imageSize),imageSize,math.floor(height/6))
     --end
     -- effector / bpm should take up 1/3 of height, full width
+
+    local gradeImg = nil
+    for i,v in ipairs(grades) do
+      if v.max > song.bestScore then
+        gfx.BeginPath()
+        gradeImg = v.image
+        break
+      end
+    end
+
     if aspectRatio == "PortraitWidescreen" then
       gfx.FontSize(40)
       gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
-      gfx.DrawLabel(songCache[song.id]["title"], xpos+xPadding+imageSize, y+yMargin+yPadding, width-imageSize-20)
+      gfx.DrawLabel(songCache[song.id]["title"], xpos+xPadding+origImageSize+10, y+yMargin+yPadding, width-origImageSize-30)
       gfx.FontSize(30)
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+xPadding+imageSize+3, y+yMargin+yPadding + 45, width-imageSize-20)
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+xPadding+imageSize+3, y+yMargin+yPadding + 45, width-imageSize-20)
       --gfx.FontSize(20)
       --gfx.DrawLabel(songCache[song.id]["bpm"], xpos+xPadding+imageSize+3, y+yMargin+yPadding + 85, width-imageSize-20)
       --gfx.FastText(string.format("Effector: %s", diff.effector), xpos+xPadding+imageSize+3, y+yMargin+yPadding + 115)
+      if song.topBadge ~= 0 then
+        gfx.BeginPath()
+        gfx.ImageRect(width-40, height-50, 50, 50, badges[song.topBadge], 1, 0)
+        local iar = 0
+        if gradeImg ~= nil then
+          gfx.BeginPath()
+          local iw,ih = gfx.ImageSize(gradeImg)
+          iar = iw/ih
+          gfx.ImageRect(width-40-iar*50, height-50, iar * 50, 50, gradeImg, 1, 0)
+        end
+        gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE)
+        gfx.DrawLabel(songCache[song.id]["percent"], width, height-65, 150)
+      end
     else
+      local starty = (height/10)*6;
+      if num_img_rows < square_size then
+        starty = starty - imageSize*(square_size - num_img_rows)
+
+      end
       gfx.FontSize(40)
       gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
-      gfx.DrawLabel(songCache[song.id]["title"], xpos+10, (height/10)*6, width-20)
+      gfx.DrawLabel(songCache[song.id]["title"], xpos+10, starty, width-20)
       gfx.FontSize(30)
-      gfx.DrawLabel(songCache[song.id]["desc"], xpos+10, (height/10)*6 + 45, width-20)
+      gfx.DrawLabel(songCache[song.id]["desc"], xpos+10, starty + 45, width-20)
+
+
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+10, (height/10)*6 + 45, width-20)
       --gfx.FillColor(255,255,255)
       --gfx.FontSize(20)
       --gfx.DrawLabel(songCache[song.id]["bpm"], xpos+10, (height/10)*6 + 85)
-      --gfx.FastText(string.format("Effector: %s", diff.effector),xpos+10, (height/10)*6 + 115)
+      if song.topBadge ~= 0 then
+        gfx.BeginPath()
+        gfx.ImageRect(width-25, height-40, 50, 50, badges[song.topBadge], 1, 0)
+        local iar = 0
+        local iw, ih = 0;
+        if gradeImg ~= nil then
+          gfx.BeginPath()
+          iw,ih = gfx.ImageSize(gradeImg)
+          iar = iw/ih
+          gfx.ImageRect(xpos + 10, height-40, iar * 50, 50, gradeImg, 1, 0)
+        end
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE )
+        local ledge = iar * 50 + 20
+        local redge = 50
+        local maxLen = width - ledge - redge
+        local center = ledge + (maxLen/2)
+        gfx.DrawLabel(songCache[song.id]["percent"], center, height-16, maxLen)
+      end
     end
     --if aspectRatio == "PortraitWidescreen" then
     --  draw_scores(diff, xpos+xPadding+imageSize+3,  (height/3)*2, width-imageSize-20, (height/3)-yPadding)

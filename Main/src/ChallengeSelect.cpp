@@ -223,8 +223,12 @@ private:
 		m_PushStringToTable("title", *(chal->title));
 		m_PushStringToTable("requirement_text", *(chal->reqText));
 		m_PushIntToTable("id", chal->id);
-		m_PushIntToTable("rating", chal->clearMark);
-		m_PushIntToTable("missing_chart", chal->missingChart);
+		m_PushIntToTable("topBadge", chal->clearMark);
+		m_PushIntToTable("bestScore", chal->bestScore);
+		m_PushStringToTable("grade", ToDisplayString(ToGradeMark(chal->bestScore)));
+		lua_pushstring(m_lua, "missing_chart");
+		lua_pushboolean(m_lua, chal->missingChart);
+		lua_settable(m_lua, -3);
 
 		int chartIndex = 0;
 		lua_pushstring(m_lua, "charts");
@@ -428,7 +432,7 @@ public:
 			{
 				// TODO start the chal logic
 				ChallengeIndex* chal = GetCurrentSelectedChallenge();
-				if (m_manager.StartChallenge(chal))
+				if (m_manager.StartChallenge(this, chal))
 					m_transitionedToGame = true;
 				/*
 				Game *game = Game::Create(chart, Game::FlagsFromSettings());
@@ -778,7 +782,11 @@ public:
 	{
 		return m_selectionWheel->GetSelection();
 	}
-	
+
+	MapDatabase* GetMapDatabase() override
+	{
+		return m_mapDatabase;
+	}
 };
 
 ChallengeSelect* ChallengeSelect::Create()
@@ -918,12 +926,14 @@ ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 	return out;
 }
 
-bool ChallengeManager::StartChallenge(ChallengeIndex* chal)
+bool ChallengeManager::StartChallenge(ChallengeSelect* sel, ChallengeIndex* chal)
 {
 	assert(!m_running);
 
 	if (chal->missingChart)
 		return false;
+
+	m_challengeSelect = sel;
 
 	// Force reload from file in case it was changed
 	chal->ReloadSettings();
@@ -997,6 +1007,8 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 		res.failString = "Not All Charts Passed Challenge Goals";
 	}
 
+	res.averageScore = m_totalScore / m_chartsPlayed;
+
 	res.averagePercent = m_totalPercentage / m_chartsPlayed;
 	if (passed && res.averagePercent < m_globalOpts.average_percentage.Get(0))
 	{
@@ -1060,6 +1072,34 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 	res.passed = passed;
 
 	m_overallResults = res;
+
+	ClearMark clearMark = ClearMark::Played;
+	if (res.passed)
+	{
+		clearMark = ClearMark::NormalClear;
+		if (res.overallErrors == 0)
+			clearMark = ClearMark::FullCombo;
+		if (res.overallErrors == 0 && res.overallNears == 0)
+			clearMark = ClearMark::Perfect;
+	}
+
+	res.clearMark = clearMark;
+
+	uint32 bestClear = static_cast<int>(clearMark);
+
+	if (bestClear < m_chal->clearMark)
+		bestClear = m_chal->clearMark;
+
+	uint32 bestScore = res.averageScore;
+
+	// If incomplete update score to include 0 for non finished charts
+	if (m_chartsPlayed < m_chal->charts.size())
+		bestScore = m_totalScore / m_chal->charts.size();
+
+	if (m_chal->bestScore > 0 && bestScore < (uint32)m_chal->bestScore)
+		bestScore = m_chal->bestScore;
+
+	m_challengeSelect->GetMapDatabase()->UpdateChallengeResult(m_chal, bestClear, bestScore);
 
 	// TODO update database if passed
 

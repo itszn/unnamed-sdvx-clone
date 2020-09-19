@@ -207,6 +207,7 @@ public:
 	void AddScore(ScoreIndex* score);
 
 	void UpdatePracticeSetup(PracticeSetupIndex* practiceSetup);
+	void UpdateChallengeResult(ChallengeIndex*, uint32 clearMark, uint32 bestScore);
 	
 	void RemoveSearchPath(const String& path);
 	void UpdateChartOffset(const ChartIndex* chart);
