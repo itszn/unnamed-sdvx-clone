@@ -264,16 +264,304 @@ private:
 };
 
 /*
+	Filter selection element
+*/
+class ChallengeFilterSelection
+{
+public:
+	ChallengeFilterSelection(Ref<ChallengeSelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel)
+	{
+	}
+
+	bool Init()
+	{
+		ChallengeFilter *lvFilter = new ChallengeFilter();
+		ChallengeFilter* flFilter = new ChallengeFilter();
+
+		AddFilter(lvFilter, FilterType::Level);
+		AddFilter(flFilter, FilterType::Folder);
+		for (size_t i = 1; i <= 12; i++)
+		{
+			AddFilter(new ChallengeLevelFilter(i), FilterType::Level);
+		}
+		CheckedLoad(m_lua = g_application->LoadScript("songselect/filterwheel"));
+		if (m_selectingFolders)
+			ToggleSelectionMode();
+		return true;
+	}
+	void ReloadScript()
+	{
+		g_application->ReloadScript("songselect/filterwheel", m_lua);
+	}
+	void Render(float deltaTime)
+	{
+		lua_getglobal(m_lua, "render");
+		lua_pushnumber(m_lua, deltaTime);
+		lua_pushboolean(m_lua, Active);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+	~ChallengeFilterSelection()
+	{
+		g_gameConfig.Set(GameConfigKeys::LevelFilterChal, m_currentLevelSelection);
+
+		for (auto filter : m_levelFilters)
+		{
+			delete filter;
+		}
+		for (auto filter : m_folderFilters)
+		{
+			if (filter->GetType() == FilterType::Folder)
+			{
+				FolderFilter *f = (FolderFilter *)filter;
+				delete f;
+			}
+			else
+			{
+				delete filter;
+			}
+		}
+		m_levelFilters.clear();
+		m_folderFilters.clear();
+
+		if (m_lua)
+			g_application->DisposeLua(m_lua);
+	}
+
+	bool Active = false;
+
+	bool IsAll()
+	{
+		bool isFiltered = false;
+		for (size_t i = 0; i < 2; i++)
+		{
+			if (!m_currentFilters[i]->IsAll())
+				return true;
+		}
+		return false;
+	}
+
+	void AddFilter(ChallengeFilter *filter, FilterType type)
+	{
+		if (type == FilterType::Level)
+			m_levelFilters.Add(filter);
+		else
+			m_folderFilters.Add(filter);
+	}
+
+	void SelectFilter(ChallengeFilter *filter, FilterType type)
+	{
+		uint8 t = type == FilterType::Folder ? 0 : 1;
+		int index = 0;
+		if (type != FilterType::Level)
+		{
+			index = std::find(m_folderFilters.begin(), m_folderFilters.end(), filter) - m_folderFilters.begin();
+		}
+		else
+		{
+			index = std::find(m_levelFilters.begin(), m_levelFilters.end(), filter) - m_levelFilters.begin();
+		}
+
+		lua_getglobal(m_lua, "set_selection");
+		lua_pushnumber(m_lua, index + 1);
+		lua_pushboolean(m_lua, type == FilterType::Folder);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error on set_selection: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_selection", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+		m_currentFilters[t] = filter;
+		m_selectionWheel->SetFilter(m_currentFilters);
+	}
+
+	void SetFiltersByIndex(uint32 level, uint32 folder)
+	{
+		if (level >= m_levelFilters.size())
+		{
+			Log("LevelFilter out of range.", Logger::Severity::Error);
+		}
+		else
+		{
+			m_currentLevelSelection = level;
+			SelectFilter(m_levelFilters[level], FilterType::Level);
+		}
+
+		if (folder >= m_folderFilters.size())
+		{
+			Log("FolderFilter out of range.", Logger::Severity::Error);
+		}
+		else
+		{
+			m_currentFolderSelection = folder;
+			SelectFilter(m_folderFilters[folder], FilterType::Folder);
+		}
+	}
+
+	void AdvanceSelection(int32 offset)
+	{
+		if (m_selectingFolders)
+		{
+			m_currentFolderSelection = ((int)m_currentFolderSelection + offset) % (int)m_folderFilters.size();
+			if (m_currentFolderSelection < 0)
+				m_currentFolderSelection = m_folderFilters.size() + m_currentFolderSelection;
+			SelectFilter(m_folderFilters[m_currentFolderSelection], FilterType::Folder);
+		}
+		else
+		{
+			m_currentLevelSelection = ((int)m_currentLevelSelection + offset) % (int)m_levelFilters.size();
+			if (m_currentLevelSelection < 0)
+				m_currentLevelSelection = m_levelFilters.size() + m_currentLevelSelection;
+			SelectFilter(m_levelFilters[m_currentLevelSelection], FilterType::Level);
+		}
+	}
+
+	void SetMapDB(MapDatabase *db)
+	{
+		m_mapDB = db;
+		UpdateFilters();
+		m_SetLuaTable();
+	}
+
+	void ToggleSelectionMode()
+	{
+		m_selectingFolders = !m_selectingFolders;
+		lua_getglobal(m_lua, "set_mode");
+		lua_pushboolean(m_lua, m_selectingFolders);
+		if (lua_pcall(m_lua, 1, 0, 0) != 0)
+		{
+			Logf("Lua error on set_mode: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_mode", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
+	}
+	void OnSongsChanged()
+	{
+		UpdateFilters();
+	}
+
+	// Check if any new folders or collections should be added and add them
+	void UpdateFilters()
+	{
+		/*
+		for (std::string p : Path::GetSubDirs(Path::Absolute(g_gameConfig.GetString(GameConfigKeys::SongFolder))))
+		{
+			if (m_folders.find(p) == m_folders.end())
+			{
+				FolderFilter *filter = new FolderFilter(p, m_mapDB);
+				if (filter->GetFiltered(Map<int32, SongSelectIndex>()).size() > 0)
+				{
+					AddFilter(filter, FilterType::Folder);
+					m_folders.insert(p);
+				}
+				else
+				{
+					delete filter;
+				}
+			}
+		}
+
+		//sort the new folderfilter vector
+		m_folderFilters.Sort([](const SongFilter *a, const SongFilter *b) {
+			String aupper = a->GetName();
+			aupper.ToUpper();
+			String bupper = b->GetName();
+			bupper.ToUpper();
+			return aupper.compare(bupper) < 0;
+		});
+		*/
+
+		//set the selection index to match the selected filter
+		m_currentFolderSelection = std::find(m_folderFilters.begin(), m_folderFilters.end(), m_currentFilters[0]) - m_folderFilters.begin();
+		m_SetLuaTable();
+		SelectFilter(m_currentFilters[0], FilterType::Folder);
+	}
+
+	String GetStatusText()
+	{
+		return Utility::Sprintf("%s / %s", m_currentFilters[0]->GetName(), m_currentFilters[1]->GetName());
+	}
+
+private:
+	void m_PushStringToTable(const char *name, const char *data)
+	{
+		lua_pushstring(m_lua, name);
+		lua_pushstring(m_lua, data);
+		lua_settable(m_lua, -3);
+	}
+	void m_PushStringToArray(int index, const char *data)
+	{
+		lua_pushinteger(m_lua, index);
+		lua_pushstring(m_lua, data);
+		lua_settable(m_lua, -3);
+	}
+
+	void m_SetLuaTable()
+	{
+		lua_newtable(m_lua);
+		{
+			lua_pushstring(m_lua, "level");
+			lua_newtable(m_lua); //level filters
+			{
+				for (size_t i = 0; i < m_levelFilters.size(); i++)
+				{
+					m_PushStringToArray(i + 1, m_levelFilters[i]->GetName().c_str());
+				}
+			}
+			lua_settable(m_lua, -3);
+
+			lua_pushstring(m_lua, "folder");
+			lua_newtable(m_lua); //folder filters
+			{
+				for (size_t i = 0; i < m_folderFilters.size(); i++)
+				{
+					m_PushStringToArray(i + 1, m_folderFilters[i]->GetName().c_str());
+				}
+			}
+			lua_settable(m_lua, -3);
+		}
+		lua_setglobal(m_lua, "filters");
+
+		lua_getglobal(m_lua, "tables_set");
+		if (lua_isfunction(m_lua, -1))
+		{
+			if (lua_pcall(m_lua, 0, 0, 0) != 0)
+			{
+				Logf("Lua error on tables_set: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+				g_gameWindow->ShowMessageBox("Lua Error on tables_set", lua_tostring(m_lua, -1), 0);
+			}
+		}
+	}
+
+	Ref<ChallengeSelectionWheel> m_selectionWheel;
+	Vector<ChallengeFilter *> m_folderFilters;
+	Vector<ChallengeFilter *> m_levelFilters;
+	int32 m_currentFolderSelection = 0;
+	int32 m_currentLevelSelection = 0;
+	bool m_selectingFolders = true;
+	ChallengeFilter *m_currentFilters[2] = {nullptr};
+	MapDatabase *m_mapDB;
+	lua_State *m_lua = nullptr;
+	std::unordered_set<std::string> m_folders;
+	std::unordered_set<std::string> m_collections;
+};
+
+
+/*
 	Sorting selection element
 */
-class ChallengeSortSolection
+class ChallengeSortSelection
 {
 public:
 	bool Active = false;
 	bool Initialized = false;
 
-	ChallengeSortSolection(Ref<ChallengeSelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) {}
-	~ChallengeSortSolection()
+	ChallengeSortSelection(Ref<ChallengeSelectionWheel> selectionWheel) : m_selectionWheel(selectionWheel) {}
+	~ChallengeSortSelection()
 	{
 		g_gameConfig.Set(GameConfigKeys::LastSortChal, m_selection);
 		for (ChallengeSort *s : m_sorts)
@@ -396,7 +684,8 @@ private:
 
 	// Map selection wheel
 	Ref<ChallengeSelectionWheel> m_selectionWheel;
-	Ref<ChallengeSortSolection> m_sortSelection;
+	Ref<ChallengeSortSelection> m_sortSelection;
+	Ref<ChallengeFilterSelection> m_filterSelection;
 	Ref<TextInput> m_searchInput;
 
 	float m_advanceChal = 0.0f;
@@ -429,6 +718,7 @@ public:
 	{
 		m_selectSound = g_audio->CreateSample("audio/menu_click.wav");
 		m_selectionWheel = Ref<ChallengeSelectionWheel>(new ChallengeSelectionWheel(this));
+		m_filterSelection = Ref<ChallengeFilterSelection>(new ChallengeFilterSelection(m_selectionWheel));
 		m_mapDatabase = new MapDatabase(true);
 
 		// Add database update hook before triggering potential update
@@ -478,6 +768,9 @@ public:
 
 		if (!m_selectionWheel->Init())
 			return false;
+		if (!m_filterSelection->Init())
+			return false;
+		m_filterSelection->SetMapDB(m_mapDatabase);
 
 		m_mapDatabase->OnChallengesAdded.Add(m_selectionWheel.get(), &ChallengeSelectionWheel::OnItemsAdded);
 		m_mapDatabase->OnChallengesUpdated.Add(m_selectionWheel.get(), &ChallengeSelectionWheel::OnItemsUpdated);
@@ -487,8 +780,11 @@ public:
 		//m_selectionWheel->OnItemsChanged.Add(m_filterSelection.get(), &FilterSelection::OnSongsChanged);
 		m_mapDatabase->StartSearching();
 
+		//m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilterChal), g_gameConfig.GetInt(GameConfigKeys::FolderFilter));
+		m_filterSelection->SetFiltersByIndex(g_gameConfig.GetInt(GameConfigKeys::LevelFilterChal), 0);
+
 		m_selectionWheel->SetSort(new ChallengeSort("Title ^", false));
-		m_sortSelection = Ref<ChallengeSortSolection>(new ChallengeSortSolection(m_selectionWheel));
+		m_sortSelection = Ref<ChallengeSortSelection>(new ChallengeSortSelection(m_selectionWheel));
 		if (!m_sortSelection->Init())
 			return false;
 
@@ -530,7 +826,7 @@ public:
 		//m_filterSelection->AdvanceSelection(0);
 		if (search.empty())
 		{
-			m_selectionWheel->ClearFilter();
+			m_filterSelection->AdvanceSelection(0);
 		}
 		else
 		{
@@ -551,8 +847,7 @@ public:
 
 		m_timeSinceButtonPressed[buttonCode] = 0;
 
-		//if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
-		if (buttonCode == Input::Button::BT_S && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
+		if (buttonCode == Input::Button::BT_S && !m_filterSelection->Active && !m_sortSelection->Active && !IsSuspended() && !m_transitionedToGame)
 		{
 			ChallengeIndex *folder = m_selectionWheel->GetSelection();
 			if (folder)
@@ -568,6 +863,20 @@ public:
 			if (m_sortSelection->Active && buttonCode == Input::Button::BT_S)
 			{
 				m_sortSelection->Active = false;
+			}
+			else if (m_filterSelection->Active)
+			{
+				switch (buttonCode)
+				{
+				case Input::Button::BT_S:
+					m_filterSelection->ToggleSelectionMode();
+					break;
+				case Input::Button::Back:
+					m_filterSelection->Active = false;
+					break;
+				default:
+					break;
+				}
 			}
 			else if (m_sortSelection->Active)
 			{
@@ -626,16 +935,14 @@ public:
 
 		switch (buttonCode)
 		{
-			/*
 		case Input::Button::FX_0:
 			if (m_timeSinceButtonPressed[Input::Button::FX_0] < m_timeSinceButtonPressed[Input::Button::FX_1] && !g_input.GetButton(Input::Button::FX_1) && !m_sortSelection->Active)
 			{
 				m_filterSelection->Active = !m_filterSelection->Active;
 			}
 			break;
-			*/
 		case Input::Button::FX_1:
-			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) /*&& !m_filterSelection->Active*/)
+			if (m_timeSinceButtonPressed[Input::Button::FX_1] < m_timeSinceButtonPressed[Input::Button::FX_0] && !g_input.GetButton(Input::Button::FX_0) && !m_filterSelection->Active)
 			{
 				m_sortSelection->Active = !m_sortSelection->Active;
 			}
@@ -657,12 +964,10 @@ public:
 		{
 			m_sortSelection->AdvanceSelection(steps);
 		}
-		/*
 		else if (m_filterSelection->Active)
 		{
 			m_filterSelection->AdvanceSelection(steps);
 		}
-		*/
 		else
 		{
 			m_selectionWheel->AdvanceSelection(steps);
@@ -676,7 +981,6 @@ public:
 		//if (m_settDiag.IsActive())
 		//	return;
 
-		/*
 		if (m_filterSelection->Active)
 		{
 			if (code == SDL_SCANCODE_DOWN)
@@ -688,8 +992,7 @@ public:
 				m_filterSelection->AdvanceSelection(-1);
 			}
 		}
-		*/
-		if (m_sortSelection->Active)
+		else if (m_sortSelection->Active)
 		{
 			if (code == SDL_SCANCODE_DOWN)
 			{
@@ -730,7 +1033,7 @@ public:
 			else if (code == SDL_SCANCODE_F9)
 			{
 				m_selectionWheel->ReloadScript();
-				//m_filterSelection->ReloadScript();
+				m_filterSelection->ReloadScript();
 				g_application->ReloadScript("songselect/background", m_lua);
 			}
 			else if (code == SDL_SCANCODE_F12)
@@ -798,7 +1101,7 @@ public:
 		}
 
 		m_selectionWheel->Render(deltaTime);
-		//m_filterSelection->Render(deltaTime);
+		m_filterSelection->Render(deltaTime);
 		m_sortSelection->Render(deltaTime);
 
 		//m_settDiag.Render(deltaTime);
@@ -851,16 +1154,14 @@ public:
 		int advanceScrollActual = (int)Math::Floor(m_advanceScroll * Math::Sign(m_advanceScroll)) * Math::Sign(m_advanceScroll);
 		int advanceChalActual = (int)Math::Floor(m_advanceChal * Math::Sign(m_advanceChal)) * Math::Sign(m_advanceChal);
 
-		/*
 		if (m_filterSelection->Active)
 		{
-			if (advanceDiffActual != 0)
-				m_filterSelection->AdvanceSelection(advanceDiffActual);
-			if (advanceSongActual != 0)
-				m_filterSelection->AdvanceSelection(advanceSongActual);
+			if (advanceScrollActual != 0)
+				m_filterSelection->AdvanceSelection(advanceScrollActual);
+			if (advanceChalActual != 0)
+				m_filterSelection->AdvanceSelection(advanceChalActual);
 		}
-		*/
-		if (m_sortSelection->Active)
+		else if (m_sortSelection->Active)
 		{
 			if (advanceScrollActual != 0)
 				m_sortSelection->AdvanceSelection(advanceScrollActual);
@@ -904,7 +1205,7 @@ public:
 		{
 			g_gameConfig.SetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod, SpeedMods::XMod);
 			g_gameConfig.Set(GameConfigKeys::ModSpeed, g_gameConfig.GetFloat(GameConfigKeys::AutoResetToSpeed));
-			//m_filterSelection->SetFiltersByIndex(0, 0);
+			m_filterSelection->SetFiltersByIndex(0, 0);
 		}
 		if (m_lastChalIndex != -1)
 		{

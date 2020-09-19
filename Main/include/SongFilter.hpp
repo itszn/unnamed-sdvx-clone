@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "SongSelect.hpp"
+#include "ChallengeSelect.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 enum FilterType
@@ -75,4 +76,19 @@ private:
 	String m_collection;
 	MapDatabase* m_mapDatabase;
 
+};
+
+using ChallengeFilter = Filter<ChallengeSelectIndex>;
+
+class ChallengeLevelFilter : public ChallengeFilter
+{
+public:
+	~ChallengeLevelFilter() = default;
+	ChallengeLevelFilter(uint16 level) : m_level(level) {}
+	Map<int32, ChallengeSelectIndex> GetFiltered(const Map<int32, ChallengeSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Level; }
+private:
+	uint16 m_level;
 };

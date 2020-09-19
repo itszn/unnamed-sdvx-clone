@@ -131,6 +131,7 @@ DefineEnum(GameConfigKeys,
 		   LastSort,
 		   LastSortChal,
 		   LevelFilter,
+		   LevelFilterChal,
 		   FolderFilter,
 
 		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
