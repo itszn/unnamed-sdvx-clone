@@ -318,12 +318,12 @@ void AudioPlayback::SetFXTrackEnabled(bool enabled)
 	}
 	m_fxtrackEnabled = enabled;
 }
-void AudioPlayback::SetSwitchableTrackEnabled(int index, bool enabled)
+void AudioPlayback::SetSwitchableTrackEnabled(size_t index, bool enabled)
 {
 	if (m_fxtrack)
 		return;
 
-	assert(0 <= index && index < m_switchables.size());
+	assert(index < m_switchables.size());
 
 	int32 disableTrack = -1;
 	int32 enableTrack = -1;
