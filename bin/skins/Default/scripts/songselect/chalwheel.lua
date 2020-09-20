@@ -134,7 +134,7 @@ check_or_create_cache = function(song, full)
         songCache[song.id]["chart_names"] = gfx.CreateLabel(names, 20, 0)
     end
     if song.topBadge ~= 0 and not songCache[song.id]["percent"] then
-      songCache[song.id]["percent"] = gfx.CreateLabel(string.format("%u%% Complete", (song.bestScore - 8000000)//10000), 35, 0)
+      songCache[song.id]["percent"] = gfx.CreateLabel(string.format("%u%% Complete", math.max(0,(song.bestScore - 8000000)//10000)), 35, 0)
     end
     if full then
       if not songCache[song.id]["jackets"] then

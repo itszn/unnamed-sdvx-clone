@@ -26,13 +26,14 @@ private:
 	Sample m_applause;
 	lua_State* m_lua = nullptr;
 	bool m_startPressed;
-	bool m_showStats;
 
 	String m_jacketPath;
 	Texture m_jacketImage;
 
 	ScoreIndex m_scoredata;
 	bool m_restored = false;
+	float m_scroll = 0.0;
+	float m_sensMult = 1.0f;
 
 	bool m_removed = false;
 	bool m_hasScreenshot = false;
@@ -258,13 +259,15 @@ public:
 	{
 		if(!loader.Finalize())
 			return false;
-
 		m_lua = g_application->LoadScript("challengeresult");
 		if (!m_lua)
 			return false;
 
 		updateLuaData();
 		g_input.OnButtonPressed.Add(this, &ChallengeResultScreen_Impl::m_OnButtonPressed);
+		g_gameWindow->OnMouseScroll.Add(this, &ChallengeResultScreen_Impl::m_OnMouseScroll);
+
+		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 
 		return true;
 	}
@@ -273,6 +276,10 @@ public:
 		return true;
 	}
 
+	void m_OnMouseScroll(int32 steps)
+	{
+		m_scroll += steps;
+	}
 
 	virtual void OnKeyPressed(SDL_Scancode code) override
 	{
@@ -299,6 +306,14 @@ public:
 			}
 			lua_settop(m_lua, 0);
 		}
+		if (code == SDL_SCANCODE_DOWN)
+		{
+			m_scroll += 1;
+		}
+		else if (code == SDL_SCANCODE_UP)
+		{
+			m_scroll -= 1;
+		}
 	}
 	virtual void OnKeyReleased(SDL_Scancode code) override
 	{
@@ -307,7 +322,7 @@ public:
 	{
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
-		lua_pushboolean(m_lua, m_showStats);
+		lua_pushnumber(m_lua, m_scroll);
 		if (lua_pcall(m_lua, 2, 0, 0) != 0)
 		{
 			g_application->ShowLuaError(lua_tostring(m_lua, -1));
@@ -318,7 +333,10 @@ public:
 	virtual void Tick(float deltaTime) override
 	{
 		// TODO auto screenshot for course
-		m_showStats = g_input.GetButton(Input::Button::FX_0);
+
+		// Scroll using knobs
+		m_scroll += g_input.GetInputLaserDir(0) * m_sensMult;
+		m_scroll += g_input.GetInputLaserDir(1) * m_sensMult;
 	}
 
 	void OnSuspend() override

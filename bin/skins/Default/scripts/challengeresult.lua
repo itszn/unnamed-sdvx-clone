@@ -55,6 +55,8 @@ local showIcons = game.GetSkinSetting("show_result_icons")
 local showStatsHit = true
 
 local showChartInfo = 0
+local scroll = 0.0
+local scrolloff = 0.0
 
 function waveParam(period, offset)
     local t = currTime
@@ -119,7 +121,8 @@ result_set = function()
 
     passed = result.passed
     for i,chart in ipairs(result.charts) do
-        chart.chartTitle = chart.title
+        chart.index = i
+        chart.chartTitle = string.format("#%u %s", i, chart.title)
 
         if chart.duration ~= nil then
             chart.chartDuration = chart.duration
@@ -817,7 +820,7 @@ draw_challenge_title = function(chart, x, y, w, h)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER)
     
     gfx.FontSize(27)
-    drawScaledText(chart.title, x+w/2, centerLineY-10, w/2-5)
+    drawScaledText(chart.chartTitle, x+w/2, centerLineY-10, w/2-5)
     
     drawLine(x+30, centerLineY, x+w-30,centerLineY, 1, 64, 64, 64)
 end
@@ -1219,13 +1222,14 @@ draw_guide = function(x, y, w, h, full)
     local fxLText = "FX-L: cycle left"
     
     local fxRText = "FX-R: cycle right"
+    local scrollText = "Knobs: scroll results"
     
     gfx.FontSize(20)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_BOTTOM)
     
     gfx.BeginPath()
     gfx.FillColor(255, 255, 255, 96)
-    gfx.Text(string.format("%s, %s", fxLText, fxRText), x+5, y+h)
+    gfx.Text(string.format("%s, %s, %s", fxLText, fxRText, scrollText), x+5, y+h)
 end
 
 draw_icons = function(chart, x, y, w, h)    
@@ -1239,7 +1243,8 @@ draw_icons = function(chart, x, y, w, h)
     icon_x = draw_mir_ran_icon(chart, icon_x, y, h)
 end
 
-render = function(deltaTime)
+render = function(deltaTime, newScroll)
+    scroll = newScroll + scrolloff
     currTime = currTime + deltaTime
     
     -- Note: these keys are also used for viewing other players' scores on multiplayer.
@@ -1319,16 +1324,61 @@ render = function(deltaTime)
        ystart = 55
     end
 
+
+
     -- Result
     if #charts > 0 then
         if showChartInfo == 0 then
-            for i,chart in ipairs(result.charts) do
-                local yloc = ystart + (i-1) * 250
+            ystart = ystart + 50
+
+            local boxh = 770 - ystart
+
+            if scroll < 0 then
+                scrolloff = scrolloff - scroll
+                scroll = 0
+            end
+
+            local scrollh = 10 * 250
+
+            -- Check if we can scroll further down
+            local overBottom = scrollh - 100*scroll - boxh
+            if overBottom < 0 and scroll > 0 then
+                local scrollend = (scrollh - boxh)/100
+                if scrollend < 0 then
+                    scrollend = 0
+                end
+                scrolloff = scrolloff - (scroll - scrollend)
+                scroll = scrollend
+            end
+
+            -- Draw scroll bar
+            if scrollh > boxh then
+                gfx.BeginPath()
+                gfx.Rect(495, ystart, 5, boxh)
+                gfx.FillColor(30,30,30)
+                gfx.Fill()
+
+                gfx.BeginPath()
+                local barStart = (100*scroll) / scrollh -- Start percent of visible area
+                local barh = (boxh / scrollh) * boxh
+                gfx.Rect(495, ystart + (barStart*boxh)//1, 5, barh//1)
+                gfx.FillColor(80,80,80)
+                gfx.Fill()
+            end
+
+            gfx.Scissor(0, ystart, 500, boxh)
+
+            ystart = ystart - 100*scroll
+            --for i,chart in ipairs(charts) do
+            for i=1,10 do
+                local chart = charts[1]
+                local yloc = ystart + (i-1) * 250 - 40
                 draw_challenge_title(chart, 0, yloc, 500, 70)
                 yloc = yloc + 72
                 draw_challenge_chart_info(chart, -15, yloc + 5, 300, 310, false)
                 draw_challenge_basic_hitstat(chart, 40 + 220, yloc, 200, 310)
             end
+            gfx.ResetScissor()
         else
             local chart = charts[showChartInfo]
 
