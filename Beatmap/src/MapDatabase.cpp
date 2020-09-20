@@ -799,8 +799,6 @@ public:
 					chal->clearMark = 0;
 					chal->bestScore = 0;
 				}
-				// TODO fill this with some more info
-				chal->reqText = "Clear All Charts\nGet 125% average";
 				chal->hash = e.hash;
 				chal->missingChart = false;
 				chal->lwt = e.lwt;
@@ -808,6 +806,7 @@ public:
 
 				String chartMeta = "";
 				// Grab the charts
+				chal->totalNumCharts = chal->settings["charts"].size();
 				for (auto& el : chal->settings["charts"].items())
 				{
 					assert(el.value().is_string());
@@ -833,6 +832,7 @@ public:
 					Logf("Could not find chart %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
 					chal->missingChart = true;
 				}
+				chal->GenerateDescription();
 
 				String chartString = chal->settings["charts"].dump();
 
@@ -883,14 +883,6 @@ public:
 				auto itChal = m_challenges.find(e.id);
 				assert(itChal != m_challenges.end());
 
-				// TODO if we have seperate score entries for challenges, delete them here
-				/*
-				for (auto s : itChal->second->scores)
-				{
-					delete s;
-				}
-				itChal->second->scores.clear();
-				*/
 				delete itChal->second;
 				m_challenges.erase(e.id);
 
@@ -1023,7 +1015,7 @@ public:
 					addedChartEvents.Add(folder);
 				}
 			}
-			else if(e.type == Event::Chart && e.type == Event::Chart && e.action == Event::Updated)
+			else if(e.type == Event::Chart && e.action == Event::Updated)
 			{
 				update.BindString(1, e.path);
 				update.BindString(2, e.mapData->title);
@@ -1706,6 +1698,7 @@ private:
 			chal->charts.clear();
 
 			nlohmann::json charts = nlohmann::json::parse(chartsString, nullptr, false);
+			chal->totalNumCharts = charts.size();
 			if (!charts.is_discarded() && charts.is_array())
 			{
 				for (auto& el : charts.items())
@@ -2302,6 +2295,211 @@ nlohmann::json ChallengeIndex::LoadJson(const String& path)
 	jsonBuf.resize(chalFile.GetSize());
 	chalFile.Read(jsonBuf.data(), jsonBuf.size());
 	return ChallengeIndex::LoadJson(jsonBuf, path);
+}
+
+int32 jsonIntValue(nlohmann::json j, const String& k, int32 def)
+{
+	if (j[k].is_string())
+	{
+		// Get the intergral from the string
+		String str;
+		j[k].get_to(str);
+		// XXX should we actually like validate the string?
+		return atoi(*str);
+	}
+	return j.value(k, def);
+}
+
+// TODO(itszn) this might be able to be cleaned up a bit
+void ChallengeIndex::GenerateDescription()
+{
+	String desc = "";
+	if (!settings.contains("global"))
+	{
+		reqText = "No requirements";
+		return;
+	}
+
+	const auto& j = settings["global"];
+	if (j.value("clear", false))
+	{
+		if (j.value("excessive_gauge", false))
+			desc += "- Hard clear all charts";
+		else
+			desc += "- Clear all charts";
+
+		if (j.contains("min_percentage"))
+		{
+			desc += Utility::Sprintf(" with %d%% completition\n",
+				jsonIntValue(j, "min_percentage", 100));
+		}
+		else
+		{
+			desc += "\n";
+
+		}
+	}
+	else if (j.contains("min_percentage"))
+	{
+		desc += Utility::Sprintf("- Get %d%% completition on each chart\n",
+			jsonIntValue(j, "min_percentage", 100));
+	}
+	if (j.contains("min_average_percentage"))
+	{
+		desc += Utility::Sprintf("- Get %d%% completition overall\n",
+			jsonIntValue(j, "min_average_percentage", 100));
+	}
+	if (j.contains("min_gauge"))
+	{
+		desc += Utility::Sprintf("- Get %d%% gauge on each chart\n", (int)(j.value("min_gauge", 0.7) * 100));
+	}
+	if (j.contains("min_avg_gauge"))
+	{
+		desc += Utility::Sprintf("- Get %d%% gauge overall\n", (int)(j.value("min_gauge", 0.7) * 100));
+	}
+
+	if (j.contains("max_errors"))
+	{
+		desc += Utility::Sprintf("- Get less than %d errors per chart\n",
+			jsonIntValue(j, "max_errors", 0) + 1);
+	}
+	if (j.contains("max_overall_errors"))
+	{
+		desc += Utility::Sprintf("- Get less than %d errors total\n",
+			jsonIntValue(j, "max_overall_errors", 0) + 1);
+	}
+	if (j.contains("max_average_errors"))
+	{
+		desc += Utility::Sprintf("- Get less than %d errors total\n",
+			jsonIntValue(j, "max_average_errors", 0)*totalNumCharts + 1);
+	}
+
+	if (j.contains("max_nears"))
+	{
+		desc += Utility::Sprintf("- Get less than %d nears per chart\n",
+			jsonIntValue(j, "max_nears", 0) + 1);
+	}
+	if (j.contains("max_overall_nears"))
+	{
+		desc += Utility::Sprintf("- Get less than %d nears total\n",
+			jsonIntValue(j, "max_overall_nears", 0) + 1);
+	}
+	if (j.contains("max_average_nears"))
+	{
+		desc += Utility::Sprintf("- Get less than %d nears total\n",
+			jsonIntValue(j, "max_average_nears", 0)*totalNumCharts + 1);
+	}
+
+	if (j.contains("min_crits"))
+	{
+		desc += Utility::Sprintf("- Get at least %d crits per chart\n",
+			jsonIntValue(j, "min_crits", 0));
+	}
+	if (j.contains("min_overall_crits"))
+	{
+		desc += Utility::Sprintf("- Get at least %d crits total\n",
+			jsonIntValue(j, "min_overall_crits", 0));
+	}
+	if (j.contains("min_average_crits"))
+	{
+		desc += Utility::Sprintf("- Get at least %d crits total\n",
+			jsonIntValue(j, "max_average_crits", 0)*totalNumCharts);
+	}
+
+	if (j.contains("min_chain"))
+	{
+		desc += Utility::Sprintf("- Get a chain at least %d long in each chart\n",
+			jsonIntValue(j, "min_chain", 0));
+	}
+
+	// If no overrides don't do anything
+	if (!settings.contains("overrides"))
+	{
+		this->reqText = desc;
+		return;
+	}
+
+	desc += "\n";
+
+	const auto& o = settings["overrides"];
+	unsigned int maxNum = std::min<size_t>(std::min<size_t>((size_t)totalNumCharts, charts.size()), o.size());
+	for (unsigned int i = 0; i < maxNum; i++)
+	{
+		desc += charts[i]->title + ":\n";
+		const auto& j = o[i];
+		if (j.contains("clear") || j.contains("excessive_gauge"))
+		{
+			if (j.contains("clear") && !j.value("clear",false))
+				desc += "  > Ignore clear requirement for this chart\n";
+			else
+			{
+				// Special cases for hard and clear overrides
+				if (j.contains("excessive_gauge"))
+				{
+					if (j.value("excessive_gauge", false))
+						desc += "  - *Hard* clear this chart\n";
+					else
+						desc += "  - *Normal* clear this chart\n";
+				}
+				else
+				{
+					if (settings["global"].value("excessive_gauge", false))
+						desc += "  - Hard clear this chart\n";
+					else
+						desc += "  - Clear this chart\n";
+				}
+			}
+		}
+		if (j.contains("min_percentage"))
+		{
+			if (j["min_percentage"].is_null())
+				desc += "  > Ignore completion % requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get %d%% completition\n",
+					jsonIntValue(j, "min_percentage", 100));
+		}
+		if (j.contains("min_gauge"))
+		{
+			if (j["min_gauge"].is_null())
+				desc += "  > Ignore gauge requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get %d%% gauge\n", (int)(j.value("min_gauge", 0.7) * 100));
+		}
+		if (j.contains("max_errors"))
+		{
+			if (j["max_errors"].is_null())
+				desc += "  > Ignore max errors requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get less than %d errors\n",
+					jsonIntValue(j, "max_errors", 0) + 1);
+		}
+		if (j.contains("max_nears"))
+		{
+			if (j["max_nears"].is_null())
+				desc += "  > Ignore max nears requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get less than %d nears\n",
+					jsonIntValue(j, "max_nears", 0) + 1);
+		}
+		if (j.contains("min_crits"))
+		{
+			if (j["min_crits"].is_null())
+				desc += "  > Ignore min crits requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get at least %d crits\n",
+					jsonIntValue(j, "min_crits", 0));
+		}
+		if (j.contains("min_chain"))
+		{
+			if (j["min_chain"].is_null())
+				desc += "  > Ignore min chain requirement for this chart\n";
+			else
+				desc += Utility::Sprintf("  - Get a chain at least %d long\n",
+					jsonIntValue(j, "min_chain", 0));
+		}
+	}
+
+	this->reqText = desc;
 }
 
 bool ChallengeIndex::BasicValidate(const nlohmann::json& settings, const String& path)

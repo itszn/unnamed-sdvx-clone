@@ -267,7 +267,7 @@ public:
 		}
 	}
 
-	void SelectItemBySortIndex(uint32 sortIndex)
+	virtual void SelectItemBySortIndex(uint32 sortIndex)
 	{
 		uint32 vecLen = m_sortVec.size();
 		if (vecLen == 0)

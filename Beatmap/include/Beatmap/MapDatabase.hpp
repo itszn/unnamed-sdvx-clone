@@ -104,6 +104,7 @@ struct ChallengeIndex
 {
 	int32 id;
 	Vector<ChartIndex*> charts;
+	int32 totalNumCharts; // Note: This is not the number found
 	nlohmann::json settings;
 	String title;
 	int32 clearMark;
@@ -134,6 +135,7 @@ struct ChallengeIndex
 	static nlohmann::json LoadJson(const String& path);
 	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
 	static bool BasicValidate(const nlohmann::json& v, const String& path);
+	void GenerateDescription();
 };
 
 struct PracticeSetupIndex

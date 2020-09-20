@@ -17,17 +17,19 @@ local doffset = 0
 local soffset = 0
 local diffColors = {{0,0,255}, {0,255,0}, {255,0,0}, {255, 0, 255}}
 local timer = 0
+local scrollmul = 0
+local scrollmulOffset = 0 -- bc we have min/max the game doesn't know we have to account for extra
 local effector = 0
 local searchText = gfx.CreateLabel("",5,0)
 local searchIndex = 1
 local jacketFallback = gfx.CreateSkinImage("song_select/loading.png", 0)
 local showGuide = game.GetSkinSetting("show_guide")
 local legendTable = {
-  {["labelSingleLine"] =  gfx.CreateLabel("DIFFICULTY SELECT",16, 0), ["labelMultiLine"] =  gfx.CreateLabel("DIFFICULTY\nSELECT",16, 0), ["image"] = gfx.CreateSkinImage("legend/knob-left.png", 0)},
-  {["labelSingleLine"] =  gfx.CreateLabel("MUSIC SELECT",16, 0),      ["labelMultiLine"] =  gfx.CreateLabel("MUSIC\nSELECT",16, 0),      ["image"] = gfx.CreateSkinImage("legend/knob-right.png", 0)},
-  {["labelSingleLine"] =  gfx.CreateLabel("FILTER MUSIC",16, 0),      ["labelMultiLine"] =  gfx.CreateLabel("FILTER\nMUSIC",16, 0),      ["image"] = gfx.CreateSkinImage("legend/FX-L.png", 0)},
-  {["labelSingleLine"] =  gfx.CreateLabel("SORT MUSIC",16, 0),        ["labelMultiLine"] =  gfx.CreateLabel("SORT\nMUSIC",16, 0),        ["image"] = gfx.CreateSkinImage("legend/FX-R.png", 0)},
-  {["labelSingleLine"] =  gfx.CreateLabel("MUSIC MODS",16, 0),        ["labelMultiLine"] =  gfx.CreateLabel("MUSIC\nMODS",16, 0),        ["image"] = gfx.CreateSkinImage("legend/FX-LR.png", 0)},
+  {["labelSingleLine"] =  gfx.CreateLabel("SCROLL INFO",16, 0), ["labelMultiLine"] =  gfx.CreateLabel("SCROLL\nINFO",16, 0), ["image"] = gfx.CreateSkinImage("legend/knob-left.png", 0)},
+  {["labelSingleLine"] =  gfx.CreateLabel("CHALL SELECT",16, 0),      ["labelMultiLine"] =  gfx.CreateLabel("CHALLENGE\nSELECT",16, 0),      ["image"] = gfx.CreateSkinImage("legend/knob-right.png", 0)},
+  {["labelSingleLine"] =  gfx.CreateLabel("FILTER CHALLS",16, 0),      ["labelMultiLine"] =  gfx.CreateLabel("FILTER\nCHALLENGES",16, 0),      ["image"] = gfx.CreateSkinImage("legend/FX-L.png", 0)},
+  {["labelSingleLine"] =  gfx.CreateLabel("SORT CHALLS",16, 0),        ["labelMultiLine"] =  gfx.CreateLabel("SORT\nCHALLENGES",16, 0),        ["image"] = gfx.CreateSkinImage("legend/FX-R.png", 0)},
+  {["labelSingleLine"] =  gfx.CreateLabel("GAME SETTINGS",16, 0),        ["labelMultiLine"] =  gfx.CreateLabel("GAME\nSETTINGS",16, 0),        ["image"] = gfx.CreateSkinImage("legend/FX-LR.png", 0)},
   {["labelSingleLine"] =  gfx.CreateLabel("PLAY",16, 0),              ["labelMultiLine"] =  gfx.CreateLabel("PLAY",16, 0),               ["image"] = gfx.CreateSkinImage("legend/start.png", 0)}
 }
 local grades = {
@@ -146,6 +148,9 @@ check_or_create_cache = function(song, full)
         local desc = "Charts:\n"
         for _, chart in ipairs(song.charts) do
           desc = desc .. "  " .. chart.title .. "\n"
+        end
+        if song.missing_chart then
+          desc = desc .. "  *COULD NOT FIND ALL CHARTS!*\n"
         end
         desc = desc .. "\nGoal:\n" .. song.requirement_text
         songCache[song.id]["desc"] = gfx.CreateLabel(desc, 20, 0)
@@ -382,12 +387,27 @@ draw_selected = function(song, x, y, w, h)
         break
       end
     end
+    if scrollmul < 0 then
+      scrollmulOffset = scrollmulOffset - scrollmul
+      scrollmul = 0
+    end
+    local descw, desch = gfx.LabelSize(songCache[song.id]["desc"])
+    local boxh, boxw = 0
+    local starty, startx = 0
 
     if aspectRatio == "PortraitWidescreen" then
       gfx.FontSize(40)
       gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
-      gfx.DrawLabel(songCache[song.id]["title"], xpos+xPadding+origImageSize+10, y+yMargin+yPadding, width-origImageSize-30)
+      starty = y+yMargin+yPadding
+      startx = xpos+xPadding+origImageSize+10
+      gfx.DrawLabel(songCache[song.id]["title"], startx, starty, width-origImageSize-30)
       gfx.FontSize(30)
+
+      -- Scroll box info
+      starty = starty + 50
+      boxh = height - starty
+      boxw = width-startx-200
+
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+xPadding+imageSize+3, y+yMargin+yPadding + 45, width-imageSize-20)
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+xPadding+imageSize+3, y+yMargin+yPadding + 45, width-imageSize-20)
       --gfx.FontSize(20)
@@ -404,10 +424,10 @@ draw_selected = function(song, x, y, w, h)
           gfx.ImageRect(width-40-iar*50, height-50, iar * 50, 50, gradeImg, 1, 0)
         end
         gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE)
-        gfx.DrawLabel(songCache[song.id]["percent"], width, height-65, 150)
+        gfx.DrawLabel(songCache[song.id]["percent"], width, height-65, 190)
       end
     else
-      local starty = (height/10)*6;
+      starty = (height/10)*6;
       if num_img_rows < square_size then
         starty = starty - imageSize*(square_size - num_img_rows)
 
@@ -415,9 +435,12 @@ draw_selected = function(song, x, y, w, h)
       gfx.FontSize(40)
       gfx.TextAlign(gfx.TEXT_ALIGN_TOP + gfx.TEXT_ALIGN_LEFT)
       gfx.DrawLabel(songCache[song.id]["title"], xpos+10, starty, width-20)
-      gfx.FontSize(30)
-      gfx.DrawLabel(songCache[song.id]["desc"], xpos+10, starty + 45, width-20)
 
+      -- Scroll box info
+      boxh = height - starty - 45 - 50
+      boxw = width-20
+      startx = xpos + 10
+      starty = starty + 45
 
       --gfx.DrawLabel(songCache[song.id]["artist"], xpos+10, (height/10)*6 + 45, width-20)
       --gfx.FillColor(255,255,255)
@@ -441,6 +464,42 @@ draw_selected = function(song, x, y, w, h)
         local center = ledge + (maxLen/2)
         gfx.DrawLabel(songCache[song.id]["percent"], center, height-16, maxLen)
       end
+    end
+
+    -- Render desc scrolling box
+    do
+      gfx.BeginPath()
+      gfx.Rect(startx, starty, boxw, boxh)
+      gfx.FillColor(50,50,50)
+      gfx.Fill()
+
+      local overBottom = desch - 100*scrollmul - boxh
+      if overBottom < 0 and scrollmul > 0 then
+        local scrollend = (desch - boxh)/100
+        if scrollend < 0 then
+          scrollend = 0
+        end
+        scrollmulOffset = scrollmulOffset - (scrollmul - scrollend)
+        scrollmul = scrollend
+      end
+
+      -- Draw scroll bar
+      if desch > boxh then
+        gfx.BeginPath()
+        local barStart = (100*scrollmul) / desch -- Start percent of visible desc
+        local barh = (boxh / desch) * boxh
+        gfx.Rect(startx + boxw - 5, starty + (barStart*boxh)//1, 5, barh//1)
+        gfx.FillColor(20,20,20)
+        gfx.Fill()
+      end
+
+      gfx.Scissor(startx, starty, boxw, boxh)
+
+      gfx.BeginPath()
+      gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP )
+      gfx.DrawLabel(songCache[song.id]["desc"], startx+5, starty - (100*scrollmul)//1, boxw)
+
+      gfx.ResetScissor()
     end
     --if aspectRatio == "PortraitWidescreen" then
     --  draw_scores(diff, xpos+xPadding+imageSize+3,  (height/3)*2, width-imageSize-20, (height/3)-yPadding)
@@ -604,12 +663,14 @@ render = function(deltaTime)
     gfx.ForceRender()
 end
 
-set_index = function(newIndex)
+set_index = function(newIndex, scrollamt)
     if newIndex ~= selectedIndex then
         game.PlaySample("menu_click")
+        scrollmulOffset = 0
     end
     ioffset = ioffset + selectedIndex - newIndex
     selectedIndex = newIndex
+    scrollmul = scrollamt + scrollmulOffset
 end;
 
 local badgeRates = {

@@ -22,12 +22,12 @@
 #include <Audio/Audio.hpp>
 
 
-// TODO Move TextInput out of songselect.cpp and add search support here
-// TODO add game settings dialog
-
 using ChalItemSelectionWheel = ItemSelectionWheel<ChallengeSelectIndex, ChallengeIndex>;
 class ChallengeSelectionWheel : public ChalItemSelectionWheel
 {
+protected:
+	friend class ChallengeSelect_Impl;
+	float m_scrollAmount = 0.0;
 public:
 	ChallengeSelectionWheel(IApplicationTickable* owner) : ChalItemSelectionWheel(owner)
 	{
@@ -59,6 +59,21 @@ public:
 	{
 		g_application->ReloadScript("songselect/chalwheel", m_lua);
 		m_SetLuaItemIndex();
+	}
+
+	void m_SetLuaItemIndex() override
+	{
+		if (m_lua == nullptr)
+			return;
+		lua_getglobal(m_lua, "set_index");
+		lua_pushinteger(m_lua, (uint64)m_currentlySelectedLuaSortIndex + 1);
+		lua_pushnumber(m_lua, m_scrollAmount);
+		if (lua_pcall(m_lua, 2, 0, 0) != 0)
+		{
+			Logf("Lua error on set_index: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
+			g_gameWindow->ShowMessageBox("Lua Error on set_index", lua_tostring(m_lua, -1), 0);
+			assert(false);
+		}
 	}
 
 	void Render(float deltaTime) override
@@ -96,6 +111,13 @@ public:
 
 		m_SetAllItems(); //for force calculation
 		m_SetCurrentItems(); //for displaying the correct chal
+	}
+
+	void SelectItemBySortIndex(uint32 sortIndex) override
+	{
+		// TODO(itszn) is there a better place to reset this at?
+		m_scrollAmount = 0.0;
+		ChalItemSelectionWheel::SelectItemBySortIndex(sortIndex);
 	}
 
 	void SetSearchFieldLua(Ref<TextInput> search) override
@@ -1020,6 +1042,16 @@ public:
 			{
 				m_selectionWheel->AdvancePage(-1);
 			}
+			else if (code == SDL_SCANCODE_LEFT)
+			{
+				m_selectionWheel->m_scrollAmount -= 1.0;
+				m_selectionWheel->m_SetLuaItemIndex();
+			}
+			else if (code == SDL_SCANCODE_RIGHT)
+			{
+				m_selectionWheel->m_scrollAmount += 1.0;
+				m_selectionWheel->m_SetLuaItemIndex();
+			}
 			else if (code == SDL_SCANCODE_F5)
 			{
 				m_mapDatabase->StartSearching();
@@ -1150,6 +1182,7 @@ public:
 		int advanceScrollActual = (int)Math::Floor(m_advanceScroll * Math::Sign(m_advanceScroll)) * Math::Sign(m_advanceScroll);
 		int advanceChalActual = (int)Math::Floor(m_advanceChal * Math::Sign(m_advanceChal)) * Math::Sign(m_advanceChal);
 
+
 		if (m_filterSelection->Active)
 		{
 			if (advanceScrollActual != 0)
@@ -1166,6 +1199,13 @@ public:
 		}
 		else
 		{
+			if (m_advanceScroll != 0)
+			{
+				m_selectionWheel->m_scrollAmount += m_advanceScroll;
+				m_selectionWheel->m_SetLuaItemIndex();
+				advanceScrollActual = 0;
+				m_advanceScroll = 0;
+			}
 			if (advanceChalActual != 0)
 				m_selectionWheel->AdvanceSelection(advanceChalActual);
 		}
