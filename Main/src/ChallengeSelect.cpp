@@ -702,6 +702,8 @@ private:
 	Map<Input::Button, float> m_timeSinceButtonReleased;
 	lua_State* m_lua = nullptr;
 
+	GameplaySettingsDialog m_settDiag;
+
 	// Select sound
 	Sample m_selectSound;
 
@@ -712,7 +714,7 @@ private:
 
 	ChallengeManager m_manager;
 public:
-	ChallengeSelect_Impl() {}
+	ChallengeSelect_Impl() : m_settDiag() {}
 
 	bool AsyncLoad() override
 	{
@@ -797,6 +799,9 @@ public:
 
 		m_sensMult = g_gameConfig.GetFloat(GameConfigKeys::SongSelSensMult);
 
+		if (!m_settDiag.Init())
+			return false;
+
 		return true;
 	}
 
@@ -838,8 +843,7 @@ public:
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
-		//if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
-		if (m_suspended)
+		if (m_suspended || m_settDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -893,21 +897,18 @@ public:
 			{
 				switch (buttonCode)
 				{
-					/*
-
-					case Input::Button::FX_1:
-						if (g_input.GetButton(Input::Button::FX_0))
-						{
-							m_settDiag.Open();
-						}
-						break;
-					case Input::Button::FX_0:
-						if (g_input.GetButton(Input::Button::FX_1))
-						{
-							m_settDiag.Open();
-						}
-						break;
-					*/
+				case Input::Button::FX_1:
+					if (g_input.GetButton(Input::Button::FX_0))
+					{
+						m_settDiag.Open();
+					}
+					break;
+				case Input::Button::FX_0:
+					if (g_input.GetButton(Input::Button::FX_1))
+					{
+						m_settDiag.Open();
+					}
+					break;
 				case Input::Button::BT_S:
 					break;
 				case Input::Button::Back:
@@ -924,8 +925,7 @@ public:
 	void m_OnButtonReleased(Input::Button buttonCode)
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
-		//if (m_suspended || m_settDiag.IsActive())
-		if (m_suspended)
+		if (m_suspended || m_settDiag.IsActive())
 			return;
 
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Keyboard && m_searchInput->active)
@@ -954,8 +954,7 @@ public:
 
 	void m_OnMouseScroll(int32 steps)
 	{
-		//if (m_suspended || m_collDiag.IsActive() || m_settDiag.IsActive())
-		if (m_suspended)
+		if (m_suspended || m_settDiag.IsActive())
 			return;
 
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->IsOpen())
@@ -978,8 +977,8 @@ public:
 	{
 		//if (m_multiplayer && m_multiplayer->GetChatOverlay()->OnKeyPressedConsume(code))
 
-		//if (m_settDiag.IsActive())
-		//	return;
+		if (m_settDiag.IsActive())
+			return;
 
 		if (m_filterSelection->Active)
 		{
@@ -1038,7 +1037,7 @@ public:
 			}
 			else if (code == SDL_SCANCODE_F12)
 			{
-				//Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);
+				Path::ShowInFileBrowser(m_selectionWheel->GetSelection()->path);
 			}
 			else if (code == SDL_SCANCODE_TAB)
 			{
@@ -1050,16 +1049,15 @@ public:
 			}
 			else if (code == SDL_SCANCODE_DELETE)
 			{
-				/*
-				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
-				String name = chart->title + " [" + chart->diff_shortname + "]";
-				bool res = g_gameWindow->ShowYesNoMessage("Delete chart?", "Are you sure you want to delete " + name + "\nThis will only delete "+chart->path+"\nThis cannot be undone...");
+				ChallengeIndex* chal = m_selectionWheel->GetSelection();
+				String name = chal->title;
+
+				bool res = g_gameWindow->ShowYesNoMessage("Delete challenge?", "Are you sure you want to delete " + name + "\nThis will only delete "+chal->path+"\nThis cannot be undone...");
 				if (!res)
 					return;
-				Path::Delete(chart->path);
+				Path::Delete(chal->path);
 				m_mapDatabase->StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
-				*/
 			}
 		}
 	}
@@ -1082,7 +1080,7 @@ public:
 			TickNavigation(deltaTime);
 			m_searchInput->Tick();
 			m_selectionWheel->SetSearchFieldLua(m_searchInput);
-			//m_settDiag.Tick(deltaTime);
+			m_settDiag.Tick(deltaTime);
 		}
 		//if (m_multiplayer)
 		//	m_multiplayer->GetChatOverlay()->Tick(deltaTime);
@@ -1104,7 +1102,7 @@ public:
 		m_filterSelection->Render(deltaTime);
 		m_sortSelection->Render(deltaTime);
 
-		//m_settDiag.Render(deltaTime);
+		m_settDiag.Render(deltaTime);
 
 		//if (m_multiplayer)
 		//	m_multiplayer->GetChatOverlay()->Render(deltaTime);
@@ -1136,12 +1134,10 @@ public:
 			m_timeSinceButtonReleased[(Input::Button)i] += deltaTime;
 		}
 
-		/*
 		if (m_settDiag.IsActive())
 		{
 			return;
 		}
-		*/
 
 		// Song navigation using laser inputs
 		/// TODO: Investigate strange behaviour further and clean up.
