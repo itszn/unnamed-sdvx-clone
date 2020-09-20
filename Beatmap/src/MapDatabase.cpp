@@ -373,8 +373,12 @@ public:
 		}
 		else
 		{
-			// Load initial folder tree
-			m_LoadInitialData();
+			// NOTE: before we loaded the database here. This was redundant since we always do StartSearching
+			//       Plus we don't do this when doing an update so if it was a problem to not do it here we would
+			//       have already noticed it being broken in a launch where the db is updated
+			//       Also with challenges we can't do this until the constructor is done so we can access the
+			//       MapDatabase wrapper while loading challenges
+			//m_LoadInitialData();
 		}
 	}
 	~MapDatabase_Impl()
@@ -826,7 +830,7 @@ public:
 
 				String chartMeta = "";
 				// Grab the charts
-				chal->FindCharts(this, chal->settings["charts"]);
+				chal->FindCharts(&m_outer, chal->settings["charts"]);
 				chal->GenerateDescription();
 
 				String chartString = chal->settings["charts"].dump();
@@ -1693,7 +1697,7 @@ private:
 			chal->charts.clear();
 
 			nlohmann::json charts = nlohmann::json::parse(chartsString, nullptr, false);
-			chal->FindCharts(this, charts);
+			chal->FindCharts(&m_outer, charts);
 
 			if (chal->charts.size() == 0)
 			{
@@ -2235,381 +2239,15 @@ void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
 	if (m_impl != NULL)
 		m_impl->SetChartUpdateBehavior(transferScores);
 }
-
-nlohmann::json ChallengeIndex::LoadJson(const Buffer& jsonBuf, const String& path)
+ChartIndex* MapDatabase::FindFirstChartByPath(const String& s)
 {
-	String jsonData((char*)jsonBuf.data(), jsonBuf.size());
-	Logf("JSON loaded: %s", Logger::Severity::Debug, *jsonData);
-
-	try
-	{
-		return nlohmann::json::parse(*jsonData);
-	}
-	catch (const std::exception& e)
-	{
-		Logf("Encountered JSON error with %s: %s", Logger::Severity::Warning, path, e.what());
-	}
-	return nlohmann::json();
+	return m_impl->FindFirstChartByPath(s);
 }
-
-nlohmann::json ChallengeIndex::LoadJson(const String& path)
+ChartIndex* MapDatabase::FindFirstChartByHash(const String& s)
 {
-	File chalFile;
-	if (!chalFile.OpenRead(path))
-		return false;
-
-	Buffer jsonBuf;
-	jsonBuf.resize(chalFile.GetSize());
-	chalFile.Read(jsonBuf.data(), jsonBuf.size());
-	return ChallengeIndex::LoadJson(jsonBuf, path);
+	return m_impl->FindFirstChartByHash(s);
 }
-
-int32 jsonIntValue(nlohmann::json j, const String& k, int32 def)
+ChartIndex* MapDatabase::FindFirstChartByNameAndLevel(const String& s, int32 level)
 {
-	if (j[k].is_string())
-	{
-		// Get the intergral from the string
-		String str;
-		j[k].get_to(str);
-		// XXX should we actually like validate the string?
-		return atoi(*str);
-	}
-	return j.value(k, def);
-}
-
-// TODO(itszn) this might be able to be cleaned up a bit
-void ChallengeIndex::GenerateDescription()
-{
-	String desc = "";
-	if (!settings.contains("global"))
-	{
-		reqText = "No requirements";
-		return;
-	}
-
-	const auto& j = settings["global"];
-	if (j.value("clear", false))
-	{
-		if (j.value("excessive_gauge", false))
-			desc += "- Hard clear all charts";
-		else
-			desc += "- Clear all charts";
-
-		if (j.contains("min_percentage"))
-		{
-			desc += Utility::Sprintf(" with %d%% completition\n",
-				jsonIntValue(j, "min_percentage", 100));
-		}
-		else
-		{
-			desc += "\n";
-
-		}
-	}
-	else if (j.contains("min_percentage"))
-	{
-		desc += Utility::Sprintf("- Get %d%% completition on each chart\n",
-			jsonIntValue(j, "min_percentage", 100));
-	}
-	if (j.contains("min_average_percentage"))
-	{
-		desc += Utility::Sprintf("- Get %d%% completition overall\n",
-			jsonIntValue(j, "min_average_percentage", 100));
-	}
-	if (j.contains("min_gauge"))
-	{
-		desc += Utility::Sprintf("- Get %d%% gauge on each chart\n", (int)(j.value("min_gauge", 0.7) * 100));
-	}
-	if (j.contains("min_avg_gauge"))
-	{
-		desc += Utility::Sprintf("- Get %d%% gauge overall\n", (int)(j.value("min_gauge", 0.7) * 100));
-	}
-
-	if (j.contains("max_errors"))
-	{
-		desc += Utility::Sprintf("- Get less than %d errors per chart\n",
-			jsonIntValue(j, "max_errors", 0) + 1);
-	}
-	if (j.contains("max_overall_errors"))
-	{
-		desc += Utility::Sprintf("- Get less than %d errors total\n",
-			jsonIntValue(j, "max_overall_errors", 0) + 1);
-	}
-	if (j.contains("max_average_errors"))
-	{
-		desc += Utility::Sprintf("- Get less than %d errors total\n",
-			jsonIntValue(j, "max_average_errors", 0)*totalNumCharts + 1);
-	}
-
-	if (j.contains("max_nears"))
-	{
-		desc += Utility::Sprintf("- Get less than %d nears per chart\n",
-			jsonIntValue(j, "max_nears", 0) + 1);
-	}
-	if (j.contains("max_overall_nears"))
-	{
-		desc += Utility::Sprintf("- Get less than %d nears total\n",
-			jsonIntValue(j, "max_overall_nears", 0) + 1);
-	}
-	if (j.contains("max_average_nears"))
-	{
-		desc += Utility::Sprintf("- Get less than %d nears total\n",
-			jsonIntValue(j, "max_average_nears", 0)*totalNumCharts + 1);
-	}
-
-	if (j.contains("min_crits"))
-	{
-		desc += Utility::Sprintf("- Get at least %d crits per chart\n",
-			jsonIntValue(j, "min_crits", 0));
-	}
-	if (j.contains("min_overall_crits"))
-	{
-		desc += Utility::Sprintf("- Get at least %d crits total\n",
-			jsonIntValue(j, "min_overall_crits", 0));
-	}
-	if (j.contains("min_average_crits"))
-	{
-		desc += Utility::Sprintf("- Get at least %d crits total\n",
-			jsonIntValue(j, "max_average_crits", 0)*totalNumCharts);
-	}
-
-	if (j.contains("min_chain"))
-	{
-		desc += Utility::Sprintf("- Get a chain at least %d long in each chart\n",
-			jsonIntValue(j, "min_chain", 0));
-	}
-
-	// If no overrides don't do anything
-	if (!settings.contains("overrides"))
-	{
-		this->reqText = desc;
-		return;
-	}
-
-	desc += "\n";
-
-	const auto& o = settings["overrides"];
-	unsigned int maxNum = std::min<size_t>(std::min<size_t>((size_t)totalNumCharts, charts.size()), o.size());
-	for (unsigned int i = 0; i < maxNum; i++)
-	{
-		desc += charts[i]->title + ":\n";
-		const auto& j = o[i];
-		if (j.contains("clear") || j.contains("excessive_gauge"))
-		{
-			if (j.contains("clear") && !j.value("clear",false))
-				desc += "  > Ignore clear requirement for this chart\n";
-			else
-			{
-				// Special cases for hard and clear overrides
-				if (j.contains("excessive_gauge"))
-				{
-					if (j.value("excessive_gauge", false))
-						desc += "  - *Hard* clear this chart\n";
-					else
-						desc += "  - *Normal* clear this chart\n";
-				}
-				else
-				{
-					if (settings["global"].value("excessive_gauge", false))
-						desc += "  - Hard clear this chart\n";
-					else
-						desc += "  - Clear this chart\n";
-				}
-			}
-		}
-		if (j.contains("min_percentage"))
-		{
-			if (j["min_percentage"].is_null())
-				desc += "  > Ignore completion % requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get %d%% completition\n",
-					jsonIntValue(j, "min_percentage", 100));
-		}
-		if (j.contains("min_gauge"))
-		{
-			if (j["min_gauge"].is_null())
-				desc += "  > Ignore gauge requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get %d%% gauge\n", (int)(j.value("min_gauge", 0.7) * 100));
-		}
-		if (j.contains("max_errors"))
-		{
-			if (j["max_errors"].is_null())
-				desc += "  > Ignore max errors requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get less than %d errors\n",
-					jsonIntValue(j, "max_errors", 0) + 1);
-		}
-		if (j.contains("max_nears"))
-		{
-			if (j["max_nears"].is_null())
-				desc += "  > Ignore max nears requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get less than %d nears\n",
-					jsonIntValue(j, "max_nears", 0) + 1);
-		}
-		if (j.contains("min_crits"))
-		{
-			if (j["min_crits"].is_null())
-				desc += "  > Ignore min crits requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get at least %d crits\n",
-					jsonIntValue(j, "min_crits", 0));
-		}
-		if (j.contains("min_chain"))
-		{
-			if (j["min_chain"].is_null())
-				desc += "  > Ignore min chain requirement for this chart\n";
-			else
-				desc += Utility::Sprintf("  - Get a chain at least %d long\n",
-					jsonIntValue(j, "min_chain", 0));
-		}
-	}
-
-	this->reqText = desc;
-}
-
-void ChallengeIndex::FindCharts(MapDatabase_Impl* db, const nlohmann::json& chartsToFind)
-{
-	totalNumCharts = 0;
-
-	if (chartsToFind.is_discarded() || !chartsToFind.is_array())
-	{
-		Logf("Unable to understand charts for challenge %s", Logger::Severity::Warning, path);
-		return;
-	}
-
-	totalNumCharts = chartsToFind.size();
-	for (auto& el : chartsToFind.items())
-	{
-		ChartIndex* chart = nullptr;
-		if (el.value().is_string())
-		{
-			String val;
-			String kshMatch = ".ksh";
-			el.value().get_to(val);
-
-			// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c/876704#876704
-			if (std::mismatch(kshMatch.rbegin(), kshMatch.rend(), val.rbegin()).first == kshMatch.rend())
-			{
-				// Look up as path
-				chart = db->FindFirstChartByPath(val);
-				if (chart == nullptr)
-					Logf("Could not find chart by path %s for challenge %s", Logger::Severity::Warning, *val, *path);
-			}
-			else
-			{
-				chart = db->FindFirstChartByHash(val);
-				if (chart == nullptr)
-					Logf("Could not find chart by *hash* %s for challenge %s. If you are using a path, make sure it ends with `.ksh`", Logger::Severity::Warning, *val, *path);
-			}
-		}
-		else if (el.value().is_object())
-		{
-			const auto& o = el.value();
-			if (!o.contains("name") || !o["name"].is_string() || !o.contains("level") || !o["level"].is_number_integer())
-			{
-				Logf("Found invalid name+level `%s` for challenge %s in database", Logger::Severity::Warning, o.dump().c_str(), *path);
-				missingChart = true;
-				continue;
-			}
-			String name;
-			o["name"].get_to(name);
-			int32 level = o.value("level", 0);
-			chart = db->FindFirstChartByNameAndLevel(name, level);
-			if (chart == nullptr)
-				Logf("Could not find chart %s for challenge %s", Logger::Severity::Warning, o.dump().c_str(), *path);
-		}
-		else
-		{
-			if (!el.value().is_discarded())
-				Logf("Found non string/object chart entry `%s` for challenge %s in database", Logger::Severity::Warning, el.value().dump().c_str(), *path);
-			else
-				Logf("Found invalid json chart entry for challenge %s in database", Logger::Severity::Warning, *path);
-			missingChart = true;
-			continue;
-		}
-
-		if (chart)
-			charts.push_back(chart);
-		else
-			missingChart = true;
-	}
-
-}
-
-bool ChallengeIndex::BasicValidate(const nlohmann::json& settings, const String& path)
-{
-	if (settings.is_discarded() || !settings.is_object())
-		return false;
-
-	if (!settings.contains("title") || !settings["title"].is_string())
-	{
-		Logf("Encountered error loading challenge %s: missing or invalid title", Logger::Severity::Warning, *path);
-		return false;
-	}
-	if (!settings.contains("level") || !settings["level"].is_number_integer())
-	{
-		Logf("Encountered error loading challenge %s: missing or invalid level", Logger::Severity::Warning, *path);
-		return false;
-	}
-
-	if (!settings.contains("charts") || !settings["charts"].is_array())
-	{
-		Logf("Encountered error loading challenge %s: missing or invalid chart array", Logger::Severity::Warning, *path);
-		return false;
-	}
-	if (settings["charts"].size() == 0)
-	{
-		Logf("Encountered error loading challenge %s: Must have at least one chart", Logger::Severity::Warning, *path);
-		return false;
-	}
-	for (auto& el : settings["charts"].items())
-	{
-		if (el.value().is_string()) {}
-		else if (el.value().is_object())
-		{
-			const auto& v = el.value();
-			if (!v.contains("name") || !v["name"].is_string())
-			{
-				Logf("Encountered error loading challenge %s: Chart entry `%s`: \"name\" must be a string", Logger::Severity::Warning, *path, v.dump().c_str());
-				return false;
-			}
-			if (!v.contains("level") || !v["level"].is_number_integer())
-			{
-				Logf("Encountered error loading challenge %s: Chart entry `%s`: \"level\" must be an integer", Logger::Severity::Warning, *path, v.dump().c_str());
-				return false;
-			}
-		}
-		else
-		{
-			Logf("Encountered error loading challenge %s: Chart entry `%s`: must be string for hash/path or object for name+level", Logger::Severity::Warning, *path, el.value().dump().c_str());
-			return false;
-		}
-	}
-
-	if (settings.contains("global") && !settings["global"].is_object())
-	{
-		Logf("Encountered error loading challenge %s: global must be an object", Logger::Severity::Warning, *path);
-		return false;
-	}
-
-	if (settings.contains("overrides"))
-	{
-		if (!settings["overrides"].is_array())
-		{
-			Logf("Encountered error loading challenge %s: overrides must be an array", Logger::Severity::Warning, *path);
-			return false;
-		}
-		for (auto& el : settings["overrides"].items())
-		{
-			if (!el.value().is_object())
-			{
-				Logf("Encountered error loading challenge %s: Override entries must be objects", Logger::Severity::Warning, *path);
-				return false;
-			}
-		}
-	}
-	return true;
-
+	return m_impl->FindFirstChartByNameAndLevel(s, level);
 }

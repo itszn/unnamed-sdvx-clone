@@ -132,7 +132,7 @@ struct ChallengeIndex
 
 	// This will validate the overall objects/arrays but not option types
 	bool BasicValidate() const { return BasicValidate(settings, path); };
-	void FindCharts(class MapDatabase_Impl*, const nlohmann::json& v);
+	void FindCharts(class MapDatabase*, const nlohmann::json& v);
 	static nlohmann::json LoadJson(const String& path);
 	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
 	static bool BasicValidate(const nlohmann::json& v, const String& path);
@@ -196,6 +196,9 @@ public:
 	Map<int32, FolderIndex*> FindFoldersByFolder(const String& folder);
 	Map<int32, FolderIndex*> FindFoldersByCollection(const String& collection);
 	Map<int32, ChallengeIndex*> FindChallenges(const String& search);
+	ChartIndex* FindFirstChartByPath(const String&);
+	ChartIndex* FindFirstChartByHash(const String&);
+	ChartIndex* FindFirstChartByNameAndLevel(const String&, int32 level);
 	FolderIndex* GetFolder(int32 idx);
 	Vector<String> GetCollections();
 	Vector<String> GetCollectionsForMap(int32 mapid);
