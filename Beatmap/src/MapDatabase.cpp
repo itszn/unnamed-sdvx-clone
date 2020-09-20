@@ -807,7 +807,7 @@ public:
 
 				if (e.json.is_discarded() || e.json.is_null())
 				{
-					Logf("Tried to process invalid json in Challenge Add event", Logger::Severity::Warning);
+					Log("Tried to process invalid json in Challenge Add event", Logger::Severity::Warning);
 					continue;
 				}
 				chal->settings = e.json;

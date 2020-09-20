@@ -1557,7 +1557,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 
 	res.clearMark = clearMark;
 
-	uint32 bestClear = static_cast<int>(clearMark);
+	int32 bestClear = static_cast<int>(clearMark);
 
 	if (bestClear < m_chal->clearMark)
 		bestClear = m_chal->clearMark;
