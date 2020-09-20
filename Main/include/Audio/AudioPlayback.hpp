@@ -75,7 +75,7 @@ public:
 	void SetFXTrackEnabled(bool enabled);
 	
 	// Switch audio track
-	void SetSwitchableTrackEnabled(int index, bool enabled);
+	void SetSwitchableTrackEnabled(size_t index, bool enabled);
 	void ResetSwitchableTracks();
 
 	BeatmapPlayback& GetBeatmapPlayback();
