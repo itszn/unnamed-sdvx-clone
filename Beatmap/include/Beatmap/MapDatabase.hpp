@@ -132,6 +132,7 @@ struct ChallengeIndex
 
 	// This will validate the overall objects/arrays but not option types
 	bool BasicValidate() const { return BasicValidate(settings, path); };
+	void FindCharts(class MapDatabase_Impl*, const nlohmann::json& v);
 	static nlohmann::json LoadJson(const String& path);
 	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
 	static bool BasicValidate(const nlohmann::json& v, const String& path);

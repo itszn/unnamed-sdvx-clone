@@ -464,13 +464,33 @@ public:
 		return std::move(changes);
 	}
 
-	// TODO(itszn) make this not case sensitive
+	// TODO(itszn) make sure this is not case sensitive
 	ChartIndex* FindFirstChartByPath(const String& searchString)
 	{
-		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE path LIKE \"%" + searchString + "%\"";
+		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE path LIKE ? LIMIT 1";
 
-		Map<int32, FolderIndex*> res;
 		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, "%"+searchString+"%");
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChartIndex** chart = m_charts.Find(id);
+			if (!chart)
+				return nullptr;
+			return *chart;
+		}
+
+		return nullptr;
+	}
+
+	// TODO(itszn) make sure this is not case sensitive
+	ChartIndex* FindFirstChartByNameAndLevel(const String& name, uint32 level)
+	{
+		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE title LIKE ? and level=? LIMIT 1";
+
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, "%"+name+"%");
+		search.BindInt(2, level);
 		while(search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
@@ -806,32 +826,7 @@ public:
 
 				String chartMeta = "";
 				// Grab the charts
-				chal->totalNumCharts = chal->settings["charts"].size();
-				for (auto& el : chal->settings["charts"].items())
-				{
-					assert(el.value().is_string());
-					String hash;
-					el.value().get_to(hash);
-					ChartIndex* chart = FindFirstChartByHash(hash);
-					if (chart)
-					{
-						chal->charts.push_back(chart);
-						chartMeta += chart->title + "," + chart->artist + ",";
-						continue;
-					}
-					chart = FindFirstChartByPath(hash);
-					if (chart)
-					{
-						chal->charts.push_back(chart);
-						chartMeta += chart->title + "," + chart->artist + ",";
-						continue;
-					}
-
-					// TODO alternate search by name and level
-
-					Logf("Could not find chart %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
-					chal->missingChart = true;
-				}
+				chal->FindCharts(this, chal->settings["charts"]);
 				chal->GenerateDescription();
 
 				String chartString = chal->settings["charts"].dump();
@@ -1698,35 +1693,7 @@ private:
 			chal->charts.clear();
 
 			nlohmann::json charts = nlohmann::json::parse(chartsString, nullptr, false);
-			chal->totalNumCharts = charts.size();
-			if (!charts.is_discarded() && charts.is_array())
-			{
-				for (auto& el : charts.items())
-				{
-					if (!el.value().is_string())
-					{
-						Logf("Found non string chart entry for challenge %s in database", Logger::Severity::Warning, chal->path);
-						continue;
-					}
-					String hash;
-					el.value().get_to(hash);
-					ChartIndex* chart = FindFirstChartByHash(hash);
-					if (chart)
-					{
-						chal->charts.push_back(chart);
-						continue;
-					}
-					chart = FindFirstChartByPath(hash);
-					if (chart)
-					{
-						chal->charts.push_back(chart);
-						continue;
-					}
-					Logf("Could not find chart hash %s for challenge %s", Logger::Severity::Warning, *(chal->path),*hash);
-					chal->missingChart = true;
-					// TODO alternate search by name and level
-				}
-			}
+			chal->FindCharts(this, charts);
 
 			if (chal->charts.size() == 0)
 			{
@@ -2272,7 +2239,7 @@ void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
 nlohmann::json ChallengeIndex::LoadJson(const Buffer& jsonBuf, const String& path)
 {
 	String jsonData((char*)jsonBuf.data(), jsonBuf.size());
-	Logf("JSON loaded: %s", Logger::Severity::Info, *jsonData);
+	Logf("JSON loaded: %s", Logger::Severity::Debug, *jsonData);
 
 	try
 	{
@@ -2502,6 +2469,75 @@ void ChallengeIndex::GenerateDescription()
 	this->reqText = desc;
 }
 
+void ChallengeIndex::FindCharts(MapDatabase_Impl* db, const nlohmann::json& chartsToFind)
+{
+	totalNumCharts = 0;
+
+	if (chartsToFind.is_discarded() || !chartsToFind.is_array())
+	{
+		Logf("Unable to understand charts for challenge %s", Logger::Severity::Warning, path);
+		return;
+	}
+
+	totalNumCharts = chartsToFind.size();
+	for (auto& el : chartsToFind.items())
+	{
+		ChartIndex* chart = nullptr;
+		if (el.value().is_string())
+		{
+			String val;
+			String kshMatch = ".ksh";
+			el.value().get_to(val);
+
+			// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c/876704#876704
+			if (std::mismatch(kshMatch.rbegin(), kshMatch.rend(), val.rbegin()).first == kshMatch.rend())
+			{
+				// Look up as path
+				chart = db->FindFirstChartByPath(val);
+				if (chart == nullptr)
+					Logf("Could not find chart by path %s for challenge %s", Logger::Severity::Warning, *val, *path);
+			}
+			else
+			{
+				chart = db->FindFirstChartByHash(val);
+				if (chart == nullptr)
+					Logf("Could not find chart by *hash* %s for challenge %s. If you are using a path, make sure it ends with `.ksh`", Logger::Severity::Warning, *val, *path);
+			}
+		}
+		else if (el.value().is_object())
+		{
+			const auto& o = el.value();
+			if (!o.contains("name") || !o["name"].is_string() || !o.contains("level") || !o["level"].is_number_integer())
+			{
+				Logf("Found invalid name+level `%s` for challenge %s in database", Logger::Severity::Warning, o.dump().c_str(), *path);
+				missingChart = true;
+				continue;
+			}
+			String name;
+			o["name"].get_to(name);
+			int32 level = o.value("level", 0);
+			chart = db->FindFirstChartByNameAndLevel(name, level);
+			if (chart == nullptr)
+				Logf("Could not find chart %s for challenge %s", Logger::Severity::Warning, o.dump().c_str(), *path);
+		}
+		else
+		{
+			if (!el.value().is_discarded())
+				Logf("Found non string/object chart entry `%s` for challenge %s in database", Logger::Severity::Warning, el.value().dump().c_str(), *path);
+			else
+				Logf("Found invalid json chart entry for challenge %s in database", Logger::Severity::Warning, *path);
+			missingChart = true;
+			continue;
+		}
+
+		if (chart)
+			charts.push_back(chart);
+		else
+			missingChart = true;
+	}
+
+}
+
 bool ChallengeIndex::BasicValidate(const nlohmann::json& settings, const String& path)
 {
 	if (settings.is_discarded() || !settings.is_object())
@@ -2530,9 +2566,24 @@ bool ChallengeIndex::BasicValidate(const nlohmann::json& settings, const String&
 	}
 	for (auto& el : settings["charts"].items())
 	{
-		if (!el.value().is_string())
+		if (el.value().is_string()) {}
+		else if (el.value().is_object())
 		{
-			Logf("Encountered error loading challenge %s: Chart hashes must be strings", Logger::Severity::Warning, *path);
+			const auto& v = el.value();
+			if (!v.contains("name") || !v["name"].is_string())
+			{
+				Logf("Encountered error loading challenge %s: Chart entry `%s`: \"name\" must be a string", Logger::Severity::Warning, *path, v.dump().c_str());
+				return false;
+			}
+			if (!v.contains("level") || !v["level"].is_number_integer())
+			{
+				Logf("Encountered error loading challenge %s: Chart entry `%s`: \"level\" must be an integer", Logger::Severity::Warning, *path, v.dump().c_str());
+				return false;
+			}
+		}
+		else
+		{
+			Logf("Encountered error loading challenge %s: Chart entry `%s`: must be string for hash/path or object for name+level", Logger::Severity::Warning, *path, el.value().dump().c_str());
 			return false;
 		}
 	}
