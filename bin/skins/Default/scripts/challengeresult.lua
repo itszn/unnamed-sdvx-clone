@@ -1338,7 +1338,7 @@ render = function(deltaTime, newScroll)
                 scroll = 0
             end
 
-            local scrollh = 10 * 250
+            local scrollh = #charts * 250
 
             -- Check if we can scroll further down
             local overBottom = scrollh - 100*scroll - boxh
@@ -1369,9 +1369,7 @@ render = function(deltaTime, newScroll)
             gfx.Scissor(0, ystart, 500, boxh)
 
             ystart = ystart - 100*scroll
-            --for i,chart in ipairs(charts) do
-            for i=1,10 do
-                local chart = charts[1]
+            for i,chart in ipairs(charts) do
                 local yloc = ystart + (i-1) * 250 - 40
                 draw_challenge_title(chart, 0, yloc, 500, 70)
                 yloc = yloc + 72
