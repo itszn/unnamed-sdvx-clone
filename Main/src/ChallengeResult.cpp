@@ -39,6 +39,8 @@ private:
 	bool m_hasScreenshot = false;
 	bool m_hasRendered = false;
 
+	LuaBindable* m_bindable = nullptr;
+
     ChallengeManager* m_manager = NULL;
 
 	void m_PushBoolToTable(const char* name, bool data)
@@ -79,17 +81,13 @@ public:
 	{
 		m_manager = man;
 
-		// TODO grab data from manager
-
 		m_startPressed = false;
-
-		// TODO get jackets
-		//m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
-		//m_jacketImage = game->GetJacketImage();
-
 	}
 	~ChallengeResultScreen_Impl()
 	{
+		if (m_bindable)
+			delete m_bindable;
+
 		g_input.OnButtonPressed.RemoveAll(this);
 
 		if (m_lua)
@@ -263,6 +261,11 @@ public:
 		if (!m_lua)
 			return false;
 
+		m_bindable = new LuaBindable(m_lua, "Challenge");
+		m_bindable->AddFunction("GetJSON", this, &ChallengeResultScreen_Impl::LGetCurrentChallengeJSON);
+		m_bindable->Push();
+		lua_settop(m_lua, 0);
+
 		updateLuaData();
 		g_input.OnButtonPressed.Add(this, &ChallengeResultScreen_Impl::m_OnButtonPressed);
 		g_gameWindow->OnMouseScroll.Add(this, &ChallengeResultScreen_Impl::m_OnMouseScroll);
@@ -274,6 +277,16 @@ public:
 	bool Init() override
 	{
 		return true;
+	}
+
+	int LGetCurrentChallengeJSON(lua_State* L)
+	{
+		ChallengeIndex* chal = m_manager->GetChallenge();
+		if (chal == nullptr)
+			TCPSocket::PushJsonValue(L, "{}"_json);
+		else
+			TCPSocket::PushJsonValue(L, chal->GetSettings());
+		return 1;
 	}
 
 	void m_OnMouseScroll(int32 steps)

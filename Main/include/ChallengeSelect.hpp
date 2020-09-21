@@ -277,7 +277,7 @@ public:
 	const Vector<ChallengeResult>& GetResults() { return m_results; }
 	const OverallChallengeResult& GetOverallResults() { return m_overallResults; }
 	const Vector<ChartIndex*>& GetCharts() { return m_chal->charts; }
-	const ChallengeIndex* GetChallenge() { return m_chal; }
+	ChallengeIndex* GetChallenge() { return m_chal; }
 	ChallengeResult& GetCurrentResultForUpdating() { return m_results[m_chartIndex]; }
 
 

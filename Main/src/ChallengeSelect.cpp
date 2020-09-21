@@ -28,6 +28,7 @@ class ChallengeSelectionWheel : public ChalItemSelectionWheel
 protected:
 	friend class ChallengeSelect_Impl;
 	float m_scrollAmount = 0.0;
+	LuaBindable* m_bindable = nullptr;
 public:
 	ChallengeSelectionWheel(IApplicationTickable* owner) : ChalItemSelectionWheel(owner)
 	{
@@ -39,6 +40,11 @@ public:
 		m_lua = g_application->LoadScript("songselect/chalwheel");
 		if (!m_lua)
 			return false;
+
+		m_bindable = new LuaBindable(m_lua, "Challenge");
+		m_bindable->AddFunction("GetJSON", this, &ChallengeSelectionWheel::LGetCurrentChallengeJSON);
+		m_bindable->Push();
+		lua_settop(m_lua, 0);
 
 		lua_newtable(m_lua);
 		{
@@ -53,6 +59,16 @@ public:
 		}
 		lua_setglobal(m_lua, "chalwheel");
 		return true;
+	}
+
+	int LGetCurrentChallengeJSON(lua_State* L)
+	{
+		ChallengeIndex* chal = this->GetSelection();
+		if (chal == nullptr)
+			TCPSocket::PushJsonValue(L, "{}"_json);
+		else
+			TCPSocket::PushJsonValue(L, chal->GetSettings());
+		return 1;
 	}
 
 	void ReloadScript() override
@@ -98,6 +114,8 @@ public:
 
 	~ChallengeSelectionWheel()
 	{
+		if (m_bindable != nullptr)
+			delete m_bindable;
 		g_gameConfig.Set(GameConfigKeys::LastSelectedChal, m_currentlySelectedItemId);
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
@@ -720,6 +738,7 @@ private:
 	bool m_showScores = false;
 
 
+
 	Map<Input::Button, float> m_timeSinceButtonPressed;
 	Map<Input::Button, float> m_timeSinceButtonReleased;
 	lua_State* m_lua = nullptr;
@@ -781,11 +800,10 @@ public:
 
 	bool AsyncFinalize() override
 	{
-		m_lua = g_application->LoadScript("songselect/background");
-		if (!m_lua)
-		{
+		CheckedLoad(m_lua = g_application->LoadScript("songselect/background"));
 
-		}
+		lua_settop(m_lua, 0);
+
 		g_input.OnButtonPressed.Add(this, &ChallengeSelect_Impl::m_OnButtonPressed);
 		g_input.OnButtonReleased.Add(this, &ChallengeSelect_Impl::m_OnButtonReleased);
 		g_gameWindow->OnMouseScroll.Add(this, &ChallengeSelect_Impl::m_OnMouseScroll);
@@ -1259,6 +1277,7 @@ public:
 	{
 		return m_mapDatabase;
 	}
+
 };
 
 ChallengeSelect* ChallengeSelect::Create()
