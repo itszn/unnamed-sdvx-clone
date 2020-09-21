@@ -138,9 +138,9 @@ struct ChallengeIndex
 	static bool BasicValidate(const nlohmann::json& v, const String& path);
 	void GenerateDescription();
 private:
-	static String ChallengeIndex::ChallengeDescriptionVal(const nlohmann::json&, const String&, const String&, bool, int, int);
-	static String ChallengeIndex::ChallengeDescriptionVal(const nlohmann::json&, const String&, bool, int mult=1, int add=0);
-	static const Map<String, std::pair<String, String>> ChallengeIndex::ChallengeDescriptionStrings;
+	static String ChallengeDescriptionVal(const nlohmann::json&, const String&, const String&, bool, int, int);
+	static String ChallengeDescriptionVal(const nlohmann::json&, const String&, bool, int mult=1, int add=0);
+	static const Map<String, std::pair<String, String>> ChallengeDescriptionStrings;
 };
 
 struct PracticeSetupIndex
