@@ -1139,6 +1139,10 @@ public:
 	virtual void Render(float deltaTime)
 	{
 		if (m_suspended && m_hasRestored) return;
+
+		if (m_manager.RunningChallenge())
+			return;
+
 		lua_getglobal(m_lua, "render");
 		lua_pushnumber(m_lua, deltaTime);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
@@ -1582,17 +1586,23 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 
 	int32 bestClear = static_cast<int>(clearMark);
 
+	bool goodScore = false;
+
 	if (bestClear < m_chal->clearMark)
 		bestClear = m_chal->clearMark;
+	else
+		goodScore = true;
 
 	uint32 bestScore = res.averageScore;
 
 	if (m_chal->bestScore > 0 && bestScore < (uint32)m_chal->bestScore)
 		bestScore = m_chal->bestScore;
+	else
+		goodScore = true;
 
 	m_challengeSelect->GetMapDatabase()->UpdateChallengeResult(m_chal, bestClear, bestScore);
 
-	// TODO update database if passed
+	m_overallResults.goodScore = goodScore;
 
 	ChallengeResultScreen* resScreen = ChallengeResultScreen::Create(this);
 	g_transition->TransitionTo(resScreen);

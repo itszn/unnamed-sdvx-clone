@@ -89,6 +89,7 @@ public:
 			delete m_bindable;
 
 		g_input.OnButtonPressed.RemoveAll(this);
+		g_gameWindow->OnMouseScroll.RemoveAll(this);
 
 		if (m_lua)
 			g_application->DisposeLua(m_lua);
@@ -345,7 +346,17 @@ public:
 	}
 	virtual void Tick(float deltaTime) override
 	{
-		// TODO auto screenshot for course
+		if (!m_hasScreenshot && m_hasRendered && !IsSuspended())
+		{
+			AutoScoreScreenshotSettings screensetting = g_gameConfig.GetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot);
+			if (screensetting == AutoScoreScreenshotSettings::Always
+				|| (screensetting == AutoScoreScreenshotSettings::Highscore
+					&& m_manager->GetOverallResults().goodScore))
+			{
+				Capture();
+			}
+			m_hasScreenshot = true;
+		}
 
 		// Scroll using knobs
 		m_scroll += g_input.GetInputLaserDir(0) * m_sensMult;

@@ -224,6 +224,7 @@ struct OverallChallengeResult
 {
 	bool passed;
 	String failString;
+	bool goodScore; // If this is a best clear or best score
 	ClearMark clearMark;
 	uint32 averagePercent;
 	uint32 averageScore;
