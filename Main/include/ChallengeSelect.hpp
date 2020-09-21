@@ -94,6 +94,7 @@ struct ChallengeOptions{
 #define CHALLENGE_OPTIONS_ALL(v) \
 	v(bool, mirror) \
 	v(bool, excessive) \
+	v(bool, use_sdvx_complete_percentage) \
 	v(uint32, min_modspeed) \
 	v(uint32, max_modspeed) \
 	v(float, hidden_min) \
@@ -189,7 +190,7 @@ struct ChallengeResult
 	float gauge;
 	GameFlags flags;
 	uint32 score;
-	uint32 percent;
+	float percent;
 	uint32 maxCombo;
 	uint32 crits;
 	uint32 nears;
@@ -264,7 +265,7 @@ private:
 	uint64 m_totalErrors = 0;
 	uint64 m_totalCrits = 0;
 	uint64 m_totalScore = 0;
-	uint64 m_totalPercentage = 0;
+	float m_totalPercentage = 0;
 	float m_totalGauge = 0.0;
 public:
 	bool RunningChallenge() { return m_running; }

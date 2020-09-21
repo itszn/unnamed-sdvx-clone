@@ -1395,6 +1395,8 @@ ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 	out.max_overall_nears =  m_getOptionAsPositiveInteger(j, "max_overall_nears");
 	out.average_crits =      m_getOptionAsPositiveInteger(j, "min_average_crits");
 	out.min_overall_crits =  m_getOptionAsPositiveInteger(j, "min_overall_crits");
+
+	out.use_sdvx_complete_percentage = m_getOptionAsBool(j, "use_sdvx_complete_percentage");
 	return out;
 }
 
@@ -1479,16 +1481,18 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 		res.failString = "Not All Charts Passed Challenge Goals";
 	}
 
-	res.averageScore = m_totalScore / m_chartsPlayed;
+	uint32 numCharts = m_chal->totalNumCharts;
 
-	res.averagePercent = m_totalPercentage / m_chartsPlayed;
+	res.averageScore = m_totalScore / numCharts;
+
+	res.averagePercent = static_cast<uint32>(m_totalPercentage / numCharts);
 	if (passed && res.averagePercent < m_globalOpts.average_percentage.Get(0))
 	{
 		passed = false;
 		res.failString = Utility::Sprintf("Average Percentage of %u%% < Min of %u%%",
 			res.averagePercent, m_globalOpts.average_percentage.Get(0));
 	}
-	res.averageGauge = m_totalGauge / m_chartsPlayed;
+	res.averageGauge = m_totalGauge / numCharts;
 	if (passed && res.averageGauge < m_globalOpts.average_gauge.Get(0.0))
 	{
 		res.failString = Utility::Sprintf("Average Guage of %d%% < Min of %d%%",
@@ -1503,7 +1507,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 			res.overallErrors, m_globalOpts.max_overall_errors.Get(INT_MAX));
 		passed = false;
 	}
-	res.averageErrors = m_totalErrors / m_chartsPlayed;
+	res.averageErrors = m_totalErrors / numCharts;
 	if (passed && res.averageErrors > m_globalOpts.average_errors.Get(INT_MAX))
 	{
 		res.failString = Utility::Sprintf("Average of %u Error > Max of %u",
@@ -1518,7 +1522,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 			res.overallNears, m_globalOpts.max_overall_nears.Get(INT_MAX));
 		passed = false;
 	}
-	res.averageNears = m_totalNears / m_chartsPlayed;
+	res.averageNears = m_totalNears / numCharts;
 	if (passed && res.averageNears > m_globalOpts.average_nears.Get(INT_MAX))
 	{
 		res.failString = Utility::Sprintf("Average of %u Good > Max of %u",
@@ -1533,7 +1537,7 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 			res.overallCrits, m_globalOpts.min_overall_crits.Get(INT_MAX));
 		passed = false;
 	}
-	res.averageCrits = m_totalCrits / m_chartsPlayed;
+	res.averageCrits = m_totalCrits / numCharts;
 	if (passed && res.averageCrits < m_globalOpts.average_crits.Get(0))
 	{
 		res.failString = Utility::Sprintf("Average of %u Crit < Min of %u",
@@ -1563,10 +1567,6 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 		bestClear = m_chal->clearMark;
 
 	uint32 bestScore = res.averageScore;
-
-	// If incomplete update score to include 0 for non finished charts
-	if (m_chartsPlayed < m_chal->charts.size())
-		bestScore = m_totalScore / m_chal->charts.size();
 
 	if (m_chal->bestScore > 0 && bestScore < (uint32)m_chal->bestScore)
 		bestScore = m_chal->bestScore;
@@ -1670,8 +1670,33 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 	uint32 finalScore = scoring.CalculateCurrentScore();
 	res.score = finalScore;
 	res.flags = game->GetFlags();
-	uint32 percentage = (uint32)std::max(((int)finalScore - 8000000) / 10000, 0);
+	float percentage = std::max((finalScore - 8000000.0f) / 10000.0f, 0.0f);
+
+	if (m_globalOpts.use_sdvx_complete_percentage.Get(false))
+	{
+		// In skill analyzer mode any clear is 100%
+		if (percentage < 100.0 && clearMark >= ClearMark::NormalClear)
+		{
+			percentage = 100.0;
+		}
+		else if (clearMark < ClearMark::NormalClear)
+		{
+			bool canFail = (game->GetFlags() & GameFlags::Hard) != GameFlags::None;
+			if (canFail)
+			{
+				// If we failed part way though we can use our distance as our percentage
+				// we can use the max possible score at crash to tell how far we got
+				percentage = game->GetScoring().currentMaxScore / 100000.0f;
+			}
+			else
+			{
+				// In the case where we failed effective rate, make a PUC be 100%
+				percentage = finalScore / 100000.0f;
+			}
+		}
+	}
 	res.percent = percentage;
+
 
 	res.crits = scoring.GetPerfects();
 	m_totalCrits += res.crits;
@@ -1694,11 +1719,11 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	if (req.min_percentage.HasValue())
 	{
-		if (percentage >= *req.min_percentage)
+		if (static_cast<uint32>(percentage) >= *req.min_percentage)
 			req.min_percentage.MarkPassed();
 		else if (res.failString == "")
 			res.failString = Utility::Sprintf("Percentage of %u%% < Min of %u%%",
-				percentage, *req.min_percentage);
+				static_cast<uint32>(percentage), *req.min_percentage);
 	}
 
 	res.gauge = scoring.currentGauge;

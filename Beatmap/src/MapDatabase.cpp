@@ -487,13 +487,15 @@ public:
 		return nullptr;
 	}
 
-	// TODO(itszn) make sure this is not case sensitive
-	ChartIndex* FindFirstChartByNameAndLevel(const String& name, uint32 level)
+	ChartIndex* FindFirstChartByNameAndLevel(const String& name, uint32 level, bool exact=true)
 	{
 		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE title LIKE ? and level=? LIMIT 1";
 
 		DBStatement search = m_database.Query(stmt);
-		search.BindString(1, "%"+name+"%");
+		if (exact)
+			search.BindString(1, name);
+		else
+			search.BindString(1, "%"+name+"%");
 		search.BindInt(2, level);
 		while(search.StepRow())
 		{
@@ -503,6 +505,10 @@ public:
 				return nullptr;
 			return *chart;
 		}
+
+		// Try non exact now
+		if (exact)
+			return FindFirstChartByNameAndLevel(name, level, false);
 
 		return nullptr;
 	}
