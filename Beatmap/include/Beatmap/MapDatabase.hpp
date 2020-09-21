@@ -137,6 +137,10 @@ struct ChallengeIndex
 	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
 	static bool BasicValidate(const nlohmann::json& v, const String& path);
 	void GenerateDescription();
+private:
+	static String ChallengeIndex::ChallengeDescriptionVal(const nlohmann::json&, const String&, const String&, bool, int, int);
+	static String ChallengeIndex::ChallengeDescriptionVal(const nlohmann::json&, const String&, bool, int mult=1, int add=0);
+	static const Map<String, std::pair<String, String>> ChallengeIndex::ChallengeDescriptionStrings;
 };
 
 struct PracticeSetupIndex
