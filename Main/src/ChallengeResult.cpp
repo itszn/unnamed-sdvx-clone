@@ -239,7 +239,8 @@ public:
 		m_PushIntToTable("overallCrits", ores.overallCrits);
 
 		m_PushStringToTable("title", m_manager->GetChallenge()->title);
-		m_PushStringToTable("reqText", m_manager->GetChallenge()->reqText);
+		m_PushIntToTable("level", m_manager->GetChallenge()->level);
+		m_PushStringToTable("requirement_text", m_manager->GetChallenge()->reqText);
 
 		lua_setglobal(m_lua, "result");
 
