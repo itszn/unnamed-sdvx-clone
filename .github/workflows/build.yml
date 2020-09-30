@@ -36,7 +36,7 @@ jobs:
               run: |
                 cp ./bin/libiconv.dll ./bin/libiconv-2.dll
                 mkdir -f .\bin\crash_dumps\
-                cp "$(..\vswhere.exe -find **/IDE/msdia140.dll)" .
+                cp "$(vswhere.exe -find **/IDE/msdia140.dll)" .
                 .\third_party\breakpad\dump_syms.exe .\bin\usc-game.pdb > .\bin\crash_dumps\usc-game.syms
                 mv .\bin\usc-game.pdb .\bin\crash_dumps\.
             - name: Upload artifact
