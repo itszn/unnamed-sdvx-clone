@@ -480,6 +480,8 @@ public:
 		WString test = Utility::ConvertToWString(searchString);
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE";
 
+		char* x = 0;
+		*x = 1;
 
 		//search.spl
 		Vector<String> terms = searchString.Explode(" ");
