@@ -33,7 +33,11 @@ jobs:
             - name: Tests
               run: rm ./bin/Tests.*
             - name: Post Build Stuff
-              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll
+              run: |
+                cp ./bin/libiconv.dll ./bin/libiconv-2.dll
+                mkdir -f .\bin\crash_dumps\
+                .\third_party\breakpad\dump_syms.exe .\bin\usc-game.pdb > .\bin\crash_dumps\usc-game.syms
+                mv .\bin\usc-game.pdb .\bin\crash_dumps\.
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
