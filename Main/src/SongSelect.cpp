@@ -200,7 +200,15 @@ void PreviewPlayer::Restore()
 		m_nextStream->Play();
 	if (m_currentStream)
 		m_currentStream->Play();
-	}
+}
+
+void PreviewPlayer::StopCurrent()
+{
+	if (m_nextStream)
+		m_nextStream.reset();
+	if (m_currentStream)
+		m_currentStream.reset();
+}
 
 
 const float PreviewPlayer::m_fadeDuration = 0.5f;
@@ -1363,6 +1371,8 @@ private:
 	CollectionDialog m_collDiag;
 	GameplaySettingsDialog m_settDiag;
 
+	int m_shiftDown = 0;
+
 	bool m_hasCollDiag = false;
 	bool m_transitionedToGame = false;
 	int32 m_lastMapIndex = -1;
@@ -1913,21 +1923,52 @@ public:
 			{
 				m_settDiag.onPressPractice.Call();
 			}
+			else if (code == SDL_SCANCODE_LSHIFT || code == SDL_SCANCODE_RSHIFT )
+			{
+				m_shiftDown |= (code == SDL_SCANCODE_LSHIFT? 1 : 2);
+			}
 			else if (code == SDL_SCANCODE_DELETE)
 			{
+				m_previewParams = {"", 0, 0};
+
+				m_previewPlayer.FadeTo(Ref<AudioStream>());
+				m_previewPlayer.StopCurrent();
+
 				ChartIndex* chart = m_selectionWheel->GetSelectedChart();
-				String name = chart->title + " [" + chart->diff_shortname + "]";
-				bool res = g_gameWindow->ShowYesNoMessage("Delete chart?", "Are you sure you want to delete " + name + "\nThis will only delete "+chart->path+"\nThis cannot be undone...");
-				if (!res)
-					return;
-				Path::Delete(chart->path);
+				FolderIndex* folder = m_mapDatabase->GetFolder(chart->folderId);
+
+				bool deleteFolder = m_shiftDown !=0 || folder->charts.size() == 1;
+
+				if (deleteFolder)
+				{
+					bool res = g_gameWindow->ShowYesNoMessage("Delete chart folder?",
+						"Are you sure you want to delete " + folder->path + " and all its difficulties\nThis cannot be undone");
+					if (!res)
+						return;
+					Path::DeleteDir(folder->path);
+				}
+				else
+				{
+					String name = chart->title + " [" + chart->diff_shortname + "]";
+					bool res = g_gameWindow->ShowYesNoMessage("Delete chart difficulty?",
+						"Are you sure you want to delete " + name + "\nThis will only delete " + chart->path + "\nThis cannot be undone...");
+					if (!res)
+						return;
+					Path::Delete(chart->path);
+				}
+				// Seems to have an issue here where it can get stuck in the other thread
 				m_mapDatabase->StartSearching();
 				OnSearchTermChanged(m_searchInput->input);
+				// TODO if last chart in folder then remove whole folder
 			}
 		}
 	}
 	void OnKeyReleased(SDL_Scancode code) override
 	{
+		if (code == SDL_SCANCODE_LSHIFT)
+		{
+			m_shiftDown &= ~(code == SDL_SCANCODE_LSHIFT? 1 : 2);
+		}
 	}
 	void Tick(float deltaTime) override
 	{
