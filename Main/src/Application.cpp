@@ -885,12 +885,15 @@ bool Application::m_Init()
 void Application::m_MainLoop()
 {
 	Timer appTimer;
-	m_lastRenderTime = 0.0f;
+	m_deltaTime = 0.5f;
+	Timer frameTimer;
 	while (true)
 	{
+		m_appTime = appTimer.SecondsAsFloat();
+		frameTimer.Restart();
 		//run discord callbacks
 		Discord_RunCallbacks();
-
+		
 		// Process changes in the list of items
 		bool restoreTop = false;
 		for (auto &ch : g_tickableChanges)
@@ -962,41 +965,42 @@ void Application::m_MainLoop()
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
-		float timeSinceRender = currentTime - m_lastRenderTime;
-		if (timeSinceRender > targetRenderTime)
-		{
-			// Calculate actual deltatime for timing calculations
-			currentTime = appTimer.SecondsAsFloat();
-			float actualDeltaTime = currentTime - m_lastRenderTime;
-			g_avgRenderDelta = g_avgRenderDelta * 0.98f + actualDeltaTime * 0.02f; // Calculate avg
 
-			m_deltaTime = actualDeltaTime;
-			m_lastRenderTime = currentTime;
+		g_avgRenderDelta = g_avgRenderDelta * 0.98f + m_deltaTime * 0.02f; // Calculate avg
 
-			// Set time in render state
-			m_renderStateBase.time = currentTime;
 
-			// Also update window in render loop
-			if (!g_gameWindow->Update())
-				return;
+		// Set time in render state
+		m_renderStateBase.time = currentTime;
 
-			m_Tick();
-			timeSinceRender = 0.0f;
+		// Also update window in render loop
+		if (!g_gameWindow->Update())
+			return;
 
-			// Garbage collect resources
-			ResourceManagers::TickAll();
-		}
+		m_Tick();
+
+		// Garbage collect resources
+		ResourceManagers::TickAll();
 
 		// Tick job sheduler
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
 
-		if (timeSinceRender < targetRenderTime)
+		//This FPS limiter seems unstable over 500fps
+		float frameTime = frameTimer.SecondsAsFloat();
+		if (frameTime < targetRenderTime)
 		{
-			float timeLeft = (targetRenderTime - timeSinceRender);
-			uint32 sleepMicroSecs = (uint32)(timeLeft * 1000000.0f * 0.75f);
+			float timeLeft = (targetRenderTime - frameTime);
+			uint32 wantedSleep = timeLeft * 1000000.0f;
+			uint32 sleepMicroSecs = (uint32)(wantedSleep * m_fpsTargetSleepMult);
+			uint32 sleepStart = frameTimer.Microseconds();
 			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+			float actualSleep = frameTimer.Microseconds() - sleepStart;
+
+			m_fpsTargetSleepMult += ((float)wantedSleep - actualSleep) / 500000.f;
+			m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+
 		}
+		m_deltaTime = frameTimer.SecondsAsFloat();
 	}
 }
 
@@ -1059,6 +1063,11 @@ void Application::m_Tick()
 			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
 			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
 			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+			// Visualize m_fpsTargetSleepMult for debugging 
+			//nvgBeginPath(g_guiState.vg);
+			//float h = m_fpsTargetSleepMult * g_resolution.y;
+			//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
+			//nvgFill(g_guiState.vg);
 		}
 		nvgEndFrame(g_guiState.vg);
 		m_renderQueueBase.Process();
