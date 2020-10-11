@@ -951,7 +951,7 @@ void Application::m_MainLoop()
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
-		float targetRenderTime = 0.0f;
+		uint32 targetRenderTime = 0;
 		for (auto tickable : g_tickables)
 		{
 			int32 tempTarget = 0;
@@ -961,7 +961,7 @@ void Application::m_MainLoop()
 			}
 		}
 		if (targetFPS > 0)
-			targetRenderTime = 1.0f / (float)targetFPS;
+			targetRenderTime = 1000000 / targetFPS;
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
@@ -986,20 +986,28 @@ void Application::m_MainLoop()
 		g_jobSheduler->Update();
 
 		//This FPS limiter seems unstable over 500fps
-		float frameTime = frameTimer.SecondsAsFloat();
+		uint32 frameTime = frameTimer.Microseconds();
 		if (frameTime < targetRenderTime)
 		{
-			float timeLeft = (targetRenderTime - frameTime);
-			uint32 wantedSleep = timeLeft * 1000000.0f;
-			uint32 sleepMicroSecs = (uint32)(wantedSleep * m_fpsTargetSleepMult);
-			uint32 sleepStart = frameTimer.Microseconds();
-			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
-			float actualSleep = frameTimer.Microseconds() - sleepStart;
+			uint32 timeLeft = (targetRenderTime - frameTime);
+			uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
+			if (sleepMicroSecs > 1000)
+			{
+				uint32 sleepStart = frameTimer.Microseconds();
+				std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+				float actualSleep = frameTimer.Microseconds() - sleepStart;
 
-			m_fpsTargetSleepMult += ((float)wantedSleep - actualSleep) / 500000.f;
-			m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+				m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
+				m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+			}
 
+			do {
+				std::this_thread::yield();
+			} while (frameTimer.Microseconds() < targetRenderTime);
 		}
+		// Swap buffers
+		g_gl->SwapBuffers();
+		
 		m_deltaTime = frameTimer.SecondsAsFloat();
 	}
 }
@@ -1072,8 +1080,6 @@ void Application::m_Tick()
 		nvgEndFrame(g_guiState.vg);
 		m_renderQueueBase.Process();
 		glCullFace(GL_FRONT);
-		// Swap buffers
-		g_gl->SwapBuffers();
 	}
 
 	if (m_needSkinReload)
