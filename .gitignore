@@ -59,6 +59,6 @@ Makefile
 # Document build files
 docs/build
 
-#CLion directories
+# CLion directories
 .idea
 cmake-build-*
