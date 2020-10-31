@@ -27,7 +27,7 @@ jobs:
             - name: cmake
               run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: Setup MSBuild.exe
-              uses: microsoft/Setup-MSBuild@v1.0.1
+              uses: microsoft/Setup-MSBuild@v1.0.2
             - name: MSBuild
               run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
             - name: Tests
