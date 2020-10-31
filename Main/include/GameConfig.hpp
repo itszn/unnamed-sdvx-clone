@@ -118,6 +118,7 @@ DefineEnum(GameConfigKeys,
 		   Controller_Sensitivity,
 		   InputBounceGuard,
 		   SongSelSensMult,
+		   InvertLaserInput,
 
 		   // In-Game Abort
 		   RestartPlayMethod,
@@ -182,6 +183,12 @@ DefineEnum(ScoreDisplayModes,
 		   Additive,
 		   Subtractive,
 		   Average)
+
+DefineEnum(LaserAxisOption,
+	       None,
+	       Left,
+	       Right,
+	       Both)
 
 #ifdef Always
 #undef Always
