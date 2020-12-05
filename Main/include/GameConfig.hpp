@@ -158,6 +158,9 @@ DefineEnum(GameConfigKeys,
 		   MultiplayerPassword,
 		   MultiplayerUsername,
 
+		   IRBaseURL,
+		   IRToken,
+
 		   EnableFancyHighwayRoll,
 
 		   GameplaySettingsDialogLastTab,

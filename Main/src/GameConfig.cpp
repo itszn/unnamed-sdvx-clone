@@ -206,6 +206,10 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::EnableFancyHighwayRoll, true);
 
+	// IR
+	Set(GameConfigKeys::IRBaseURL, "");
+	Set(GameConfigKeys::IRToken, "");
+
 	//Gameplay
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);

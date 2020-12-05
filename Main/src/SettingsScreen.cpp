@@ -194,12 +194,16 @@ private:
 	int m_multiplayerPasswordLen = 0;
 	char m_multiplayerUsername[1024];
 	int m_multiplayerUsernameLen = 0;
+	char m_irBaseURL[1024];
+	int m_irBaseURLLen = 0;
+	char m_irToken[1024];
+	int m_irTokenLen = 0;
 	const Vector<GameConfigKeys>* m_activeBTKeys = &m_keyboardKeys;
 	const Vector<GameConfigKeys>* m_activeLaserKeys = &m_keyboardLaserKeys;
 	bool m_useBTGamepad = false;
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
-	
+
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 	String m_skinBeforeSkinSettings = "";
@@ -282,6 +286,16 @@ private:
 		multiplayerUsername.TrimBack(' ');
 		g_gameConfig.Set(GameConfigKeys::MultiplayerUsername, multiplayerUsername);
 
+		String irBaseURL = String(m_irBaseURL, m_irBaseURLLen);
+		irBaseURL.TrimBack('\n');
+		irBaseURL.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::IRBaseURL, irBaseURL);
+
+		String irToken = String(m_irToken, m_irTokenLen);
+		irToken.TrimBack('\n');
+		irToken.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::IRToken, irToken);
+
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
 		{
 			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
@@ -349,7 +363,7 @@ private:
 	template<typename EnumClass>
 	bool EnumSetting(GameConfigKeys key, String label)
 	{
-		
+
 		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
 		Vector<const char*> names;
 		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
@@ -401,7 +415,7 @@ private:
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
-		
+
 		if (prevSelection != selection) {
 			String newValue = options[selection];
 			value = newValue;
@@ -433,7 +447,7 @@ public:
 	//TODO: Controller support and the rest of the options and better layout
 	bool Init()
 	{
-		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
+		m_gamePads = g_gameWindow->GetGamepadDeviceNames();
 		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
@@ -484,7 +498,7 @@ public:
 			{
 				nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
 			}
-			
+
 			nk_sdl_font_stash_end();
 			nk_font_atlas_cleanup(atlas);
 			//nk_style_load_all_cursors(m_nctx, atlas->cursors);
@@ -520,6 +534,14 @@ public:
 		strcpy(m_multiplayerUsername, multiplayerUsername.c_str());
 		m_multiplayerUsernameLen = multiplayerUsername.length();
 
+		String irBaseURL = g_gameConfig.GetString(GameConfigKeys::IRBaseURL);
+		strcpy(m_irBaseURL, irBaseURL.c_str());
+		m_irBaseURLLen = irBaseURL.length();
+
+		String irToken = g_gameConfig.GetString(GameConfigKeys::IRToken);
+		strcpy(m_irToken, irToken.c_str());
+		m_irTokenLen = irToken.length();
+
 		return true;
 	}
 
@@ -535,7 +557,7 @@ public:
 
 		m_useBTGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller;
 		m_useLaserGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller;
-		
+
 		if (m_useBTGamepad) m_activeBTKeys = &m_controllerKeys;
 		else if (m_altBinds) m_activeBTKeys = &m_altKeyboardKeys;
 		else m_activeBTKeys = &m_keyboardKeys;
@@ -597,7 +619,7 @@ public:
 			nk_spacing(m_nctx, 1);
 
 			if (nk_button_label(m_nctx, "Skin Settings")
-				|| (m_skinBeforeSkinSettings != "" && 
+				|| (m_skinBeforeSkinSettings != "" &&
 					m_skinBeforeSkinSettings != g_gameConfig.GetString(GameConfigKeys::Skin))
 				)
 			{
@@ -685,12 +707,12 @@ public:
 
 			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset", -1000, 1000);
 			IntSetting(GameConfigKeys::InputOffset, "Input Offset", -1000, 1000);
-			
+
 			if (nk_button_label(m_nctx, "Calibrate offsets")) {
 				CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
 				g_transition->TransitionTo(cscreen);
 			}
-			
+
 			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier", 0.0f, 20.0f, 0.1f);
 			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 
@@ -875,7 +897,7 @@ public:
 		nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
 
 		nk_layout_row_dynamic(m_nctx, 30, 2);
-		
+
 		// Color
 		if (nk_button_color(m_nctx, leftColor)) m_laserColorPaletteVisible = !m_laserColorPaletteVisible;
 		if (nk_button_color(m_nctx, rightColor)) m_laserColorPaletteVisible = !m_laserColorPaletteVisible;
@@ -965,6 +987,20 @@ public:
 
 			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
+
+			nk_label(m_nctx, "IR Base URL:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_irBaseURL, &m_irBaseURLLen, 1024, nk_filter_default));
+
+			nk_label(m_nctx, "IR Token:", nk_text_alignment::NK_TEXT_LEFT);
+
+			//hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
+			int i = 0;
+			int old_len = m_irTokenLen;
+			char tokenBuffer[1024];
+            for (i = 0; i < m_irTokenLen; ++i) tokenBuffer[i] = '*';
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, tokenBuffer, &m_irTokenLen, 1024, nk_filter_default));
+            if (old_len < m_irTokenLen)
+                        memcpy(&m_irToken[old_len], &tokenBuffer[old_len], (nk_size)(m_irTokenLen - old_len));
 			nk_tree_pop(m_nctx);
 		}
 		else
@@ -1213,7 +1249,7 @@ public:
 		if (m_state)
 		{
 			float sens = 6.0 / m_delta;
-			
+
 			g_application->FastText("Turn left knob one revolution clockwise", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText("then press start.", g_resolution.x / 2, g_resolution.y / 2 + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), g_resolution.x / 2, g_resolution.y / 2 + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
