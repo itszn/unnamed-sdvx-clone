@@ -509,6 +509,14 @@ public:
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
 
+		lua_pushstring(m_lua, "irUsed");
+		lua_pushboolean(m_lua, m_irUsed);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "irSuccess");
+		lua_pushboolean(m_lua, m_irSuccess);
+		lua_settable(m_lua, -3);
+
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
 		m_PushStringToTable("mission", m_mission);
