@@ -147,6 +147,64 @@ private:
 		}
 	}
 
+	void m_PushIRScores()
+	{
+		lua_pushstring(m_lua, "irScores");
+		lua_newtable(m_lua);
+		int scoreIndex = 1;
+
+		//we don't need to display the server record separately if we just set it
+		//we also don't need to display the server record separately if our PB is the server record
+		if(!m_irResponseJson["body"]["isServerRecord"] && m_irResponseJson["body"]["serverRecord"]["score"] != m_irResponseJson["body"]["score"]["score"])
+		{
+			auto& record = m_irResponseJson["body"]["serverRecord"];
+
+			m_PushIRScoreToTable(scoreIndex++, record, false);
+		}
+
+		//scores above ours
+		for (auto& scoreA : m_irResponseJson["body"]["adjacentAbove"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreA.value(), false);
+
+
+		//our score
+		auto& ours = m_irResponseJson["body"]["score"];
+
+		m_PushIRScoreToTable(scoreIndex++, ours, true);
+
+		//scores below ours
+		for (auto& scoreB : m_irResponseJson["body"]["adjacentBelow"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreB.value(), false);
+
+		lua_settable(m_lua, -3);
+	}
+
+	void m_PushIRScoreToTable(int i, nlohmann::json& score, bool yours)
+	{
+		lua_pushinteger(m_lua, i);
+		lua_newtable(m_lua);
+		m_PushIntToTable("score", score["score"]);
+		m_PushIntToTable("crit", score["crit"]);
+		m_PushIntToTable("near", score["near"]);
+		m_PushIntToTable("error", score["error"]);
+		m_PushIntToTable("lamp", score["lamp"]);
+		m_PushIntToTable("ranking", score["ranking"]);
+		m_PushIntToTable("timestamp", score["timestamp"]);
+		m_PushStringToTable("username", score["username"]);
+
+		if(yours)
+		{
+			lua_pushstring(m_lua, "yours");
+			lua_pushboolean(m_lua, true);
+			lua_settable(m_lua, -3);
+			lua_pushstring(m_lua, "justSet");
+			lua_pushboolean(m_lua, m_irResponseJson["body"]["isPB"]);
+			lua_settable(m_lua, -3);
+		}
+
+		lua_settable(m_lua, -3);
+	}
+
 public:
 
 	void loadScoresFromGame(class Game* game)
@@ -595,89 +653,11 @@ public:
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
-
-			//note: ir scores are currently kept just to singleplayer for simplicity, but there's (probably) no reason why they can't be in multiplayer too
-			if(m_irState == IR::ResponseState["Success"])
-			{
-				lua_pushstring(m_lua, "irScores");
-				lua_newtable(m_lua);
-				scoreIndex = 1;
-
-				//we don't need to display the server record separately if we just set it
-				//we also don't need to display the server record separately if our PB is the server record
-				if(!m_irResponseJson["body"]["isServerRecord"] && m_irResponseJson["body"]["serverRecord"]["score"] != m_irResponseJson["body"]["score"]["score"])
-				{
-					auto& record = m_irResponseJson["body"]["serverRecord"];
-
-					lua_pushinteger(m_lua, scoreIndex++);
-					lua_newtable(m_lua);
-					m_PushIntToTable("score", record["score"]);
-					m_PushIntToTable("crit", record["crit"]);
-					m_PushIntToTable("near", record["near"]);
-					m_PushIntToTable("error", record["error"]);
-					m_PushIntToTable("lamp", record["lamp"]);
-					m_PushIntToTable("ranking", record["ranking"]);
-					m_PushIntToTable("timestamp", record["timestamp"]);
-					m_PushStringToTable("username", record["username"]);
-					lua_settable(m_lua, -3);
-				}
-
-				//scores above ours
-				for (auto& scoreA : m_irResponseJson["body"]["adjacentAbove"].items())
-				{
-					lua_pushinteger(m_lua, scoreIndex++);
-					lua_newtable(m_lua);
-					m_PushIntToTable("score", scoreA.value()["score"]);
-					m_PushIntToTable("crit", scoreA.value()["crit"]);
-					m_PushIntToTable("near", scoreA.value()["near"]);
-					m_PushIntToTable("error", scoreA.value()["error"]);
-					m_PushIntToTable("lamp", scoreA.value()["lamp"]);
-					m_PushIntToTable("ranking", scoreA.value()["ranking"]);
-					m_PushIntToTable("timestamp", scoreA.value()["timestamp"]);
-					m_PushStringToTable("username", scoreA.value()["username"]);
-					lua_settable(m_lua, -3);
-				}
-
-				//our score
-				auto& ours = m_irResponseJson["body"]["score"];
-
-				lua_pushinteger(m_lua, scoreIndex++);
-				lua_newtable(m_lua);
-				m_PushIntToTable("score", ours["score"]);
-				m_PushIntToTable("crit", ours["crit"]);
-				m_PushIntToTable("near", ours["near"]);
-				m_PushIntToTable("error", ours["error"]);
-				m_PushIntToTable("lamp", ours["lamp"]);
-				m_PushIntToTable("ranking", ours["ranking"]);
-				m_PushIntToTable("timestamp", ours["timestamp"]);
-				m_PushStringToTable("username", ours["username"]);
-				lua_pushstring(m_lua, "yours");
-				lua_pushboolean(m_lua, true);
-				lua_settable(m_lua, -3);
-				lua_pushstring(m_lua, "justSet");
-				lua_pushboolean(m_lua, m_irResponseJson["body"]["isPB"]);
-				lua_settable(m_lua, -3);
-				lua_settable(m_lua, -3);
-
-				//scores below ours
-				for (auto& scoreB : m_irResponseJson["body"]["adjacentBelow"].items())
-				{
-					lua_pushinteger(m_lua, scoreIndex++);
-					lua_newtable(m_lua);
-					m_PushIntToTable("score", scoreB.value()["score"]);
-					m_PushIntToTable("crit", scoreB.value()["crit"]);
-					m_PushIntToTable("near", scoreB.value()["near"]);
-					m_PushIntToTable("error", scoreB.value()["error"]);
-					m_PushIntToTable("lamp", scoreB.value()["lamp"]);
-					m_PushIntToTable("ranking", scoreB.value()["ranking"]);
-					m_PushIntToTable("timestamp", scoreB.value()["timestamp"]);
-					m_PushStringToTable("username", scoreB.value()["username"]);
-					lua_settable(m_lua, -3);
-				}
-
-				lua_settable(m_lua, -3);
-			}
 		}
+
+		//ir scores moved to be in multiplayer too, not yet tested
+		if(m_irState == IR::ResponseState["Success"])
+			m_PushIRScores();
 
 		if (isSelf)
 		{
