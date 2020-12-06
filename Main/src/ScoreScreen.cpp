@@ -17,6 +17,8 @@
 #include "MultiplayerScreen.hpp"
 #include "ChatOverlay.hpp"
 #include "IR.hpp"
+#include <future>
+#include <chrono>
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -39,8 +41,10 @@ private:
 	float* m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
-	bool m_irUsed;
-	bool m_irSuccess;
+	int m_irState = IR::ResponseState["Unused"];
+
+	cpr::AsyncResponse m_irResponse;
+	nlohmann::json m_irResponseJson;
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
@@ -327,6 +331,15 @@ public:
 			}
 		}
 
+		//this has been moved to the top so that it is instantiated in time for IR submission
+
+		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
+
+		// Used for jacket images
+		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
+		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
+		m_jacketImage = game->GetJacketImage();
+
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
 		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
@@ -395,8 +408,8 @@ public:
 
 			if(g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
 			{
-				m_irUsed = true;
-				m_irSuccess = IR::PostScore(newScore);
+				m_irState = IR::ResponseState["Pending"];
+				m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
 			}
 
 		 	chart->scores.Add(newScore);
@@ -407,13 +420,6 @@ public:
 		}
 
 		m_startPressed = false;
-
-		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
-
-		// Used for jacket images
-		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
-		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
-		m_jacketImage = game->GetJacketImage();
 
 
 		if (m_challengeManager != nullptr)
@@ -440,6 +446,7 @@ public:
 			res.scorescreenInfo.speedModValue = g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed);
 			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples, sizeof(res.scorescreenInfo.gaugeSamples));
 		}
+
 	}
 	~ScoreScreen_Impl()
 	{
@@ -509,13 +516,17 @@ public:
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
 
-		lua_pushstring(m_lua, "irUsed");
-		lua_pushboolean(m_lua, m_irUsed);
-		lua_settable(m_lua, -3);
+		m_PushIntToTable("irState", m_irState);
 
-		lua_pushstring(m_lua, "irSuccess");
-		lua_pushboolean(m_lua, m_irSuccess);
-		lua_settable(m_lua, -3);
+		//description (for displaying any errors, etc)
+		if(m_irState >= 20)
+		{
+			if(m_irState == IR::ResponseState["RequestFailure"])
+				m_PushStringToTable("irDescription", "The request to the IR failed.");
+			else
+				m_PushStringToTable("irDescription", m_irResponseJson["description"]);
+		}
+
 
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
@@ -584,6 +595,88 @@ public:
 				lua_settable(m_lua, -3);
 			}
 			lua_settable(m_lua, -3);
+
+			//note: ir scores are currently kept just to singleplayer for simplicity, but there's (probably) no reason why they can't be in multiplayer too
+			if(m_irState == IR::ResponseState["Success"])
+			{
+				lua_pushstring(m_lua, "irScores");
+				lua_newtable(m_lua);
+				scoreIndex = 1;
+
+				//we don't need to display the server record separately if we just set it
+				//we also don't need to display the server record separately if our PB is the server record
+				if(!m_irResponseJson["body"]["isServerRecord"] && m_irResponseJson["body"]["serverRecord"]["score"] != m_irResponseJson["body"]["score"]["score"])
+				{
+					auto& record = m_irResponseJson["body"]["serverRecord"];
+
+					lua_pushinteger(m_lua, scoreIndex++);
+					lua_newtable(m_lua);
+					m_PushIntToTable("score", record["score"]);
+					m_PushIntToTable("crit", record["crit"]);
+					m_PushIntToTable("near", record["near"]);
+					m_PushIntToTable("error", record["error"]);
+					m_PushIntToTable("lamp", record["lamp"]);
+					m_PushIntToTable("ranking", record["ranking"]);
+					m_PushIntToTable("timestamp", record["timestamp"]);
+					m_PushStringToTable("username", record["username"]);
+					lua_settable(m_lua, -3);
+				}
+
+				//scores above ours
+				for (auto& scoreA : m_irResponseJson["body"]["adjacentAbove"].items())
+				{
+					lua_pushinteger(m_lua, scoreIndex++);
+					lua_newtable(m_lua);
+					m_PushIntToTable("score", scoreA.value()["score"]);
+					m_PushIntToTable("crit", scoreA.value()["crit"]);
+					m_PushIntToTable("near", scoreA.value()["near"]);
+					m_PushIntToTable("error", scoreA.value()["error"]);
+					m_PushIntToTable("lamp", scoreA.value()["lamp"]);
+					m_PushIntToTable("ranking", scoreA.value()["ranking"]);
+					m_PushIntToTable("timestamp", scoreA.value()["timestamp"]);
+					m_PushStringToTable("username", scoreA.value()["username"]);
+					lua_settable(m_lua, -3);
+				}
+
+				//our score
+				auto& ours = m_irResponseJson["body"]["score"];
+
+				lua_pushinteger(m_lua, scoreIndex++);
+				lua_newtable(m_lua);
+				m_PushIntToTable("score", ours["score"]);
+				m_PushIntToTable("crit", ours["crit"]);
+				m_PushIntToTable("near", ours["near"]);
+				m_PushIntToTable("error", ours["error"]);
+				m_PushIntToTable("lamp", ours["lamp"]);
+				m_PushIntToTable("ranking", ours["ranking"]);
+				m_PushIntToTable("timestamp", ours["timestamp"]);
+				m_PushStringToTable("username", ours["username"]);
+				lua_pushstring(m_lua, "yours");
+				lua_pushboolean(m_lua, true);
+				lua_settable(m_lua, -3);
+				lua_pushstring(m_lua, "justSet");
+				lua_pushboolean(m_lua, m_irResponseJson["body"]["isPB"]);
+				lua_settable(m_lua, -3);
+				lua_settable(m_lua, -3);
+
+				//scores below ours
+				for (auto& scoreB : m_irResponseJson["body"]["adjacentBelow"].items())
+				{
+					lua_pushinteger(m_lua, scoreIndex++);
+					lua_newtable(m_lua);
+					m_PushIntToTable("score", scoreB.value()["score"]);
+					m_PushIntToTable("crit", scoreB.value()["crit"]);
+					m_PushIntToTable("near", scoreB.value()["near"]);
+					m_PushIntToTable("error", scoreB.value()["error"]);
+					m_PushIntToTable("lamp", scoreB.value()["lamp"]);
+					m_PushIntToTable("ranking", scoreB.value()["ranking"]);
+					m_PushIntToTable("timestamp", scoreB.value()["timestamp"]);
+					m_PushStringToTable("username", scoreB.value()["username"]);
+					lua_settable(m_lua, -3);
+				}
+
+				lua_settable(m_lua, -3);
+			}
 		}
 
 		if (isSelf)
@@ -760,6 +853,43 @@ public:
 
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
+
+		if (m_irState == IR::ResponseState["Pending"])
+		{
+			try {
+
+
+				if(m_irResponse.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+				{
+					cpr::Response response = m_irResponse.get();
+
+		        	if(response.status_code != 200)
+					{
+						Logf("Submitting score to IR failed with code: %d", Logger::Severity::Error, response.status_code);
+						m_irState = IR::ResponseState["RequestFailure"];
+					}
+					else
+					{
+						try {
+							m_irResponseJson = nlohmann::json::parse(response.text);
+
+							Log(m_irResponseJson.dump(), Logger::Severity::Error);
+
+							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
+							else m_irState = m_irResponseJson["statusCode"];
+
+						} catch(nlohmann::json::parse_error& e) {
+							Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);
+						}
+					}
+
+					updateLuaData();
+				}
+
+			} catch(std::future_error& e) {
+				Logf("future_error when submitting score to IR: %s", Logger::Severity::Error, e.what());
+			}
+		}
 	}
 
 	void OnSuspend() override
