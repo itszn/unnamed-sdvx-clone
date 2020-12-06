@@ -62,6 +62,7 @@ local speedModValue = ""
 
 local prevFXLeft = false
 local prevFXRight = false
+local prevBTD = false
 
 local hitDeltaScale = game.GetSkinSetting("hit_graph_delta_scale")
 
@@ -69,6 +70,7 @@ local showGuide = game.GetSkinSetting("show_result_guide")
 local showIcons = game.GetSkinSetting("show_result_icons")
 local showStatsHit = game.GetSkinSetting("show_detailed_results")
 local showHiScore = game.GetSkinSetting("show_result_hiscore")
+local irOrHiScore = game.GetSkinSetting("ir_or_hiscore")
 local prevShowHiScore = not showHiScore
 
 function waveParam(period, offset)
@@ -364,12 +366,102 @@ draw_score = function(score, x, y, w, h, pre)
     gfx.Text(string.format("%04d", score % 10000), center+h/70, y)
 end
 
+draw_highscores_or_ir = function(ir, full)
+    if ir then
+        draw_ir(full)
+    else
+        draw_highscores(full)
+    end
+end
+
+draw_ir = function(full)
+    if result.irState == ir.Unused then return end
+
+    gfx.FillColor(255,255,255)
+    gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
+    gfx.LoadSkinFont("NotoSans-Regular.ttf")
+    gfx.FontSize(30)
+    gfx.Text("IR (BT-D: High Scores)",510,30)
+
+    if result.irState == ir.Pending then
+        gfx.FontSize(15)
+        gfx.FillColor(170, 170, 170)
+        gfx.Text("Loading... please wait.", 510, 60)
+        return
+    end
+
+    if result.irState ~= ir.Success then
+        gfx.FontSize(15)
+        gfx.FillColor(255, 0, 0)
+        gfx.Text("Error:", 510, 60)
+        gfx.Text(string.format("%s (%d)", result.irDescription, result.irState), 510, 80)
+        return
+    end
+
+    gfx.StrokeWidth(1)
+
+    for i,s in ipairs(result.irScores) do
+        gfx.Save()
+        gfx.TextAlign(gfx.TEXT_ALIGN_LEFT + gfx.TEXT_ALIGN_TOP)
+        gfx.BeginPath()
+        local ypos =  45 + (i - 1) * 80
+        if ypos > desh then
+            break
+        end
+        gfx.Translate(510, ypos)
+        gfx.RoundedRectVarying(0, 0, 260, 70,0,0,25,0)
+        gfx.FillColor(15,15,15)
+
+        if s.yours then
+            gfx.StrokeColor(255, 127, 0)
+        else
+            gfx.StrokeColor(0, 127, 255)
+        end
+
+        gfx.Fill()
+        gfx.Stroke()
+        gfx.BeginPath()
+        gfx.FillColor(255,255,255)
+        gfx.FontSize(25)
+        gfx.Text(string.format("#%d", s.ranking), 5, 5)
+
+        if s.lamp ~= nil and 1 <= s.lamp and s.lamp <= 5 then
+            gfx.BeginPath()
+            gfx.ImageRect(37, 7, 36, 36, badgeImages[s.lamp], 1, 0)
+
+            if full then
+                gfx.BeginPath()
+                gfx.FontSize(15)
+                gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_BOTTOM)
+                gfx.Text("todo", 55, 52)
+            end
+        end
+
+        draw_score(s.score, 55, 42, 215, 60)
+
+        gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_TOP)
+        gfx.LoadSkinFont("NotoSans-Regular.ttf")
+        gfx.FontSize(20)
+
+        if s.yours and s.justSet then
+            gfx.Text(string.format("%s, Now", s.username), 130, 45)
+        else
+            gfx.Text(string.format("%s, %s", s.username, os.date("%Y-%m-%d %H:%M:%S", s.timestamp)), 130, 45)
+        end
+        gfx.Restore()
+    end
+end
+
 draw_highscores = function(full)
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     gfx.FontSize(30)
-    gfx.Text("High Scores",510,30)
+    if result.irState == ir.Unused then
+        gfx.Text("High Scores",510,30)
+    else
+        gfx.Text("High Scores (BT-D: IR)",510,30)
+    end
     gfx.StrokeWidth(1)
     for i,s in ipairs(highScores) do
         gfx.Save()
@@ -807,7 +899,7 @@ draw_mir_ran_icon = function(x, y, s)
 end
 
 draw_ir_icon = function(x, y, s)
-    if not result.irUsed then return x end
+    if result.irState == ir.Unused then return x end
 
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
     gfx.FillColor(255, 255, 255)
@@ -819,7 +911,10 @@ draw_ir_icon = function(x, y, s)
     gfx.BeginPath()
     gfx.FontSize(20)
 
-    if result.irSuccess then
+    if result.irState == ir.Pending then
+        gfx.FillColor(100, 100, 100)
+        gfx.Text("...", x + s/2, y + s*0.7)
+    elseif result.irState == ir.Success then
         gfx.FillColor(0, 255, 0)
         gfx.Text("OK", x + s/2, y + s*0.7)
     else
@@ -1126,6 +1221,19 @@ render = function(deltaTime)
     local fxLeft = game.GetButton(4)
     local fxRight = game.GetButton(5)
 
+    if result.irState ~= ir.Unused then
+        local btD = game.GetButton(3)
+
+        if prevBTD ~= btD then
+            prevBTD = btD
+
+            if btD then
+                if result.uid == nil then irOrHiScore = not irOrHiScore end
+                game.PlaySample("menu_click")
+            end
+        end
+    end
+
     if prevFXLeft ~= fxLeft then
         prevFXLeft = fxLeft
 
@@ -1210,7 +1318,7 @@ render = function(deltaTime)
     end
 
     if showHiScore then
-        draw_highscores(showStatsHit)
+        draw_highscores_or_ir(irOrHiScore, showStatsHit)
     end
 
     -- Applause SFX
