@@ -4,8 +4,6 @@
 
 static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSettings& map)
 {
-    json["token"] = g_gameConfig.GetString(GameConfigKeys::IRToken);
-
     json["score"] = {
         {"score", score.score},
         {"crit", score.crit},
@@ -13,8 +11,7 @@ static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSe
         {"miss", score.miss},
         {"gauge", score.gauge},
         {"gameflags", score.gameflags},
-        {"timestamp", score.timestamp},
-        {"chartHash", score.chartHash},
+        {"timestamp", score.timestamp},,
         {"windows", {
             {"perfect", score.hitWindowPerfect},
             {"good", score.hitWindowGood},
@@ -24,6 +21,7 @@ static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSe
     };
 
     json["chart"] = {
+        {"chartHash", score.chartHash}, //this looks nasty in code but makes sense from a protocol perspective
         {"title", map.title},
         {"artist", map.artist},
         {"effector", map.effector},
@@ -46,8 +44,11 @@ namespace IR {
         Log(json.dump(), Logger::Severity::Warning);
 
         return cpr::PostAsync(cpr::Url{host},
-                              cpr::Body{json.dump()},
-                              cpr::Header{{"Content-Type", "application/json"}});
+                              cpr::Header{
+                                  {"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}, //would like to use cpr::Bearer but was added in a more recent version of cpr
+                                  {"Content-Type", "application/json"}
+                              },
+                              cpr::Body{json.dump()});
     }
 
     //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
