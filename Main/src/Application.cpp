@@ -23,6 +23,7 @@
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "ShadedMesh.hpp"
+#include "IR.hpp"
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -656,7 +657,7 @@ bool Application::m_Init()
 		(const wchar_t*)nullptr,
 		&custom_info
 	);
-#endif 
+#endif
 #endif
 
 	// Must have command line
@@ -2396,6 +2397,16 @@ void Application::SetLuaBindings(lua_State *state)
 		lua_newtable(state);
 		pushFuncToTable("Absolute", lPathAbsolute);
 		lua_setglobal(state, "path");
+	}
+
+	//ir
+	{
+		lua_newtable(state);
+
+		for(auto& el : IR::ResponseState.items())
+			pushIntToTable(el.key().c_str(), el.value());
+
+		lua_setglobal(state, "ir");
 	}
 
 	//http
