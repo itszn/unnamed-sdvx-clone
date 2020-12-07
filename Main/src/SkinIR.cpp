@@ -162,6 +162,20 @@ int SkinIR::lChartTracked(struct lua_State* L)
 	return 0;
 }
 
+int SkinIR::lRecord(struct lua_State* L)
+{
+    String hash = luaL_checkstring(L, 2);
+	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	AsyncRequest* r = new AsyncRequest();
+	r->r = IR::Record(hash);
+	r->callback = callback;
+	r->L = L;
+	m_mutex.lock();
+	m_requests.push(r);
+	m_mutex.unlock();
+	return 0;
+}
+
 
 void SkinIR::ProcessCallbacks()
 {
@@ -196,6 +210,7 @@ void SkinIR::PushFunctions(lua_State * L)
 	auto bindable = new LuaBindable(L, "IR");
 	bindable->AddFunction("Heartbeat", this, &SkinIR::lHeartbeat);
     bindable->AddFunction("ChartTracked", this, &SkinIR::lChartTracked);
+    bindable->AddFunction("Record", this, &SkinIR::lRecord);
 	bindable->Push();
 	lua_settop(L, 0);
 	m_boundStates.Add(L, bindable);

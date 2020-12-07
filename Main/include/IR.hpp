@@ -22,6 +22,7 @@ namespace IR
     cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map);
     cpr::AsyncResponse Heartbeat();
     cpr::AsyncResponse ChartTracked(String chartHash);
+    cpr::AsyncResponse Record(String chartHash);
 
     bool ValidateReturn(nlohmann::json& json);
     bool ValidatePostScoreReturn(nlohmann::json& json);

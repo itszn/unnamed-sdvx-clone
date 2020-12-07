@@ -72,6 +72,14 @@ namespace IR {
                              CommonHeader());
     }
 
+    cpr::AsyncResponse Record(String chartHash)
+    {
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/charts/" + chartHash + "/record";
+
+        return cpr::GetAsync(cpr::Url{host},
+                             CommonHeader());
+    }
+
     bool ValidateReturn(nlohmann::json& json)
     {
         if(json.find("statusCode") == json.end()) return false;

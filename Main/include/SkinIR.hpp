@@ -15,6 +15,7 @@ public:
 	~SkinIR();
     int lHeartbeat(struct lua_State* L);
     int lChartTracked(struct lua_State* L);
+    int lRecord(struct lua_State* L);
 	void ProcessCallbacks();
 	void PushFunctions(struct lua_State* L);
 	void ClearState(struct lua_State* L);
