@@ -72,15 +72,27 @@ namespace IR {
                              CommonHeader());
     }
 
-    //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
-    //e.g., this function returning true does not mean that body will exist, because status may not be 20.
-    //it also does not validate each score's structure at this time - possible todo?
-    bool ValidatePostScoreReturn(nlohmann::json& json)
+    bool ValidateReturn(nlohmann::json& json)
     {
         if(json.find("statusCode") == json.end()) return false;
         if(json["statusCode"] < 20 || json["statusCode"] > 59) return false;
 
         if(json.find("description") == json.end()) return false;
+
+        if(json["statusCode"] == 20)
+        {
+            if(json.find("body") == json.end()) return false;
+        }
+
+        return true;
+    }
+
+    //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
+    //e.g., this function returning true does not mean that body will exist, because status may not be 20.
+    //it also does not validate each score's structure at this time - possible todo?
+    bool ValidatePostScoreReturn(nlohmann::json& json)
+    {
+        if(!ValidateReturn(json)) return false;
 
         if(json["statusCode"] == 20)
         {
