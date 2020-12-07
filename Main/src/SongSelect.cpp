@@ -435,7 +435,7 @@ private:
 			m_PushIntToTable("level", diff->level);
 			m_PushIntToTable("difficulty", diff->diff_index);
 			m_PushIntToTable("id", diff->id);
-			m_PushStringToTable("hash", diff->hash);
+			m_PushStringToTable("hash", diff->hash.c_str());
 			m_PushStringToTable("effector", diff->effector.c_str());
 			m_PushStringToTable("illustrator", diff->illustrator.c_str());
 			m_PushIntToTable("topBadge", static_cast<int>(Scoring::CalculateBestBadge(diff->scores)));
