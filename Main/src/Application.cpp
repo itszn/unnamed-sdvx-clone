@@ -2409,10 +2409,19 @@ void Application::SetLuaBindings(lua_State *state)
 	{
 		lua_newtable(state);
 
+		lua_pushstring(state, "States");
+		lua_newtable(state);
+
 		for(auto& el : IR::ResponseState.items())
 			pushIntToTable(el.key().c_str(), el.value());
 
-		lua_setglobal(state, "IRState");
+		lua_settable(state, -3);
+
+		lua_pushstring(state, "Active");
+		lua_pushboolean(state, g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "");
+		lua_settable(state, -3);
+
+		lua_setglobal(state, "IRData");
 
 		m_skinIR.PushFunctions(state);
 	}
