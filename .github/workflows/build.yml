@@ -32,9 +32,6 @@ jobs:
               run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
             - name: Tests
               run: rm ./bin/Tests.*
-            - name: Post Build Stuff
-              run: |
-                cp ./bin/libiconv.dll ./bin/libiconv-2.dll
             - name: Get Symbols 
               continue-on-error: true
               run: |
