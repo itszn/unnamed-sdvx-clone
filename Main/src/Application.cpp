@@ -22,6 +22,7 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
+#include "SkinIR.hpp"
 #include "ShadedMesh.hpp"
 #include "IR.hpp"
 
@@ -1021,6 +1022,9 @@ void Application::m_Tick()
 	// Process async lua http callbacks
 	m_skinHttp.ProcessCallbacks();
 
+	// likewise for IR
+	m_skinIR.ProcessCallbacks();
+
 	// Tick all items
 	for (auto &tickable : g_tickables)
 	{
@@ -1434,6 +1438,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	DisposeGUI(L);
 	m_skinHttp.ClearState(L);
+	m_skinIR.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1514,6 +1519,7 @@ void Application::DisposeLua(lua_State *state)
 {
 	DisposeGUI(state);
 	m_skinHttp.ClearState(state);
+	m_skinIR.ClearState(state);
 	lua_close(state);
 }
 void Application::SetGaugeColor(int i, Color c)
@@ -2406,7 +2412,9 @@ void Application::SetLuaBindings(lua_State *state)
 		for(auto& el : IR::ResponseState.items())
 			pushIntToTable(el.key().c_str(), el.value());
 
-		lua_setglobal(state, "ir");
+		lua_setglobal(state, "IRState");
+
+		m_skinIR.PushFunctions(state);
 	}
 
 	//http
