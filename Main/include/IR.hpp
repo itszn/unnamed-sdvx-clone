@@ -20,6 +20,7 @@ namespace IR
         {"RequestFailure", 60}};
 
     cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map);
+    cpr::AsyncResponse Heartbeat();
 
     bool ValidatePostScoreReturn(nlohmann::json& json);
 }

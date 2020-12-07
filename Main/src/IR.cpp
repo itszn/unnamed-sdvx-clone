@@ -11,7 +11,7 @@ static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSe
         {"miss", score.miss},
         {"gauge", score.gauge},
         {"gameflags", score.gameflags},
-        {"timestamp", score.timestamp},,
+        {"timestamp", score.timestamp},
         {"windows", {
             {"perfect", score.hitWindowPerfect},
             {"good", score.hitWindowGood},
@@ -32,6 +32,14 @@ static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSe
     };
 }
 
+static cpr::Header CommonHeader()
+{
+    return cpr::Header{
+        {"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}, //would like to use cpr::Bearer but was added in a more recent version of cpr
+        {"Content-Type", "application/json"}
+    };
+}
+
 namespace IR {
     cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map)
     {
@@ -44,11 +52,16 @@ namespace IR {
         Log(json.dump(), Logger::Severity::Warning);
 
         return cpr::PostAsync(cpr::Url{host},
-                              cpr::Header{
-                                  {"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}, //would like to use cpr::Bearer but was added in a more recent version of cpr
-                                  {"Content-Type", "application/json"}
-                              },
+                              CommonHeader(),
                               cpr::Body{json.dump()});
+    }
+
+    cpr::AsyncResponse Heartbeat()
+    {
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL);
+
+        return cpr::GetAsync(cpr::Url{host},
+                             CommonHeader());
     }
 
     //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
