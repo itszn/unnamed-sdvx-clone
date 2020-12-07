@@ -8,6 +8,42 @@
 //especially since that'd then require the skin to specify the authorization headers, json Content-Type, etc.
 //this approach makes it easier for the skin creator
 
+void SkinIR::m_PushArray(lua_State* L, nlohmann::json& json)
+{
+    lua_newtable(L);
+    int index = 1;
+
+    for(auto& el : json.items())
+    {
+        lua_pushinteger(L, index++);
+        m_PushJSON(L, el.value());
+        lua_settable(L, -3);
+    }
+}
+
+void SkinIR::m_PushObject(lua_State* L, nlohmann::json& json)
+{
+    lua_newtable(L);
+
+
+    for(auto& el : json.items())
+    {
+        lua_pushstring(L, el.key().c_str());
+        m_PushJSON(L, el.value());
+        lua_settable(L, -3);
+    }
+}
+
+void SkinIR::m_PushJSON(lua_State* L, nlohmann::json& json)
+{
+    if(json.is_array()) m_PushArray(L, json);
+    else if(json.is_object()) m_PushObject(L, json);
+    else if(json.is_boolean()) lua_pushboolean(L, json);
+    else if(json.is_string()) lua_pushstring(L, json.get_ref<const std::string&>().c_str());
+    else if(json.is_number()) lua_pushnumber(L, json);
+    else if(json.is_null()) lua_pushnil(L);
+}
+
 void SkinIR::m_requestLoop()
 {
 	while (m_running)
@@ -40,37 +76,16 @@ void SkinIR::m_requestLoop()
 	}
 }
 
-//TODO: change
 void SkinIR::m_PushResponse(lua_State * L, const cpr::Response & r)
 {
-	auto pushString = [L](String key, String value)
-	{
-		lua_pushstring(L, *key);
-		lua_pushstring(L, *value);
-		lua_settable(L, -3);
-	};
-	auto pushNumber = [L](String key, double value)
-	{
-		lua_pushstring(L, *key);
-		lua_pushnumber(L, value);
-		lua_settable(L, -3);
-	};
+    try {
+        nlohmann::json json = nlohmann::json::parse(r.text);
 
-	lua_newtable(L);
-	pushString("url", r.url);
-	pushString("text", r.text);
-	pushNumber("status", r.status_code);
-	pushNumber("elapsed", r.elapsed);
-	pushString("error", r.error.message.c_str());
-	pushString("cookies", r.cookies.GetEncoded().c_str());
-	lua_pushstring(L, "header");
-	lua_newtable(L);
-	for (auto& i : r.header)
-	{
-		pushString(i.first, i.second);
-	}
-	lua_settable(L, -3);
+        m_PushJSON(L, json);
 
+    } catch(nlohmann::json::parse_error& e) {
+        Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);
+    }
 }
 
 
@@ -114,8 +129,16 @@ int SkinIR::lHeartbeat(struct lua_State* L)
 
 int SkinIR::lChartTracked(struct lua_State* L)
 {
-    //todo
-    return 0;
+    String hash = luaL_checkstring(L, 2);
+	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	AsyncRequest* r = new AsyncRequest();
+	r->r = IR::ChartTracked(hash);
+	r->callback = callback;
+	r->L = L;
+	m_mutex.lock();
+	m_requests.push(r);
+	m_mutex.unlock();
+	return 0;
 }
 
 
@@ -151,6 +174,7 @@ void SkinIR::PushFunctions(lua_State * L)
 {
 	auto bindable = new LuaBindable(L, "IR");
 	bindable->AddFunction("Heartbeat", this, &SkinIR::lHeartbeat);
+    bindable->AddFunction("ChartTracked", this, &SkinIR::lChartTracked);
 	bindable->Push();
 	lua_settop(L, 0);
 	m_boundStates.Add(L, bindable);

@@ -64,6 +64,14 @@ namespace IR {
                              CommonHeader());
     }
 
+    cpr::AsyncResponse ChartTracked(String chartHash)
+    {
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/charts/" + chartHash;
+
+        return cpr::GetAsync(cpr::Url{host},
+                             CommonHeader());
+    }
+
     //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
     //e.g., this function returning true does not mean that body will exist, because status may not be 20.
     //it also does not validate each score's structure at this time - possible todo?

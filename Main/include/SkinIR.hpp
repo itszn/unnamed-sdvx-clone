@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "Shared/Thread.hpp"
 #include "LuaRequests.hpp"
+#include "json.hpp"
 
 //mostly based on SkinHttp, explained in .cpp
 
@@ -28,4 +29,7 @@ private:
 
 	void m_requestLoop();
 	void m_PushResponse(struct lua_State* L, const cpr::Response& r);
+    void m_PushJSON(struct lua_State* L, nlohmann::json& json);
+    void m_PushArray(struct lua_State* L, nlohmann::json& json);
+    void m_PushObject(struct lua_State* L, nlohmann::json& json);
 };
