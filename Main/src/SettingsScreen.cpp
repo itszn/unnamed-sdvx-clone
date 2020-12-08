@@ -676,6 +676,7 @@ public:
 			EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start = Back:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
+			EnumSetting<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, "Invert laser input:");
 
 			if (m_gamePads.size() > 0)
 			{
@@ -1025,7 +1026,7 @@ public:
 			m_gamepad = g_gameWindow->OpenGamepad(m_gamepadIndex);
 			if (!m_gamepad)
 			{
-				Logf("Failed to open gamepad: %s", Logger::Severity::Error, m_gamepadIndex);
+				Logf("Failed to open gamepad: %d", Logger::Severity::Error, m_gamepadIndex);
 				g_gameWindow->ShowMessageBox("Warning", "Could not open selected gamepad.\nEnsure the controller is connected and in the correct mode (if applicable) and selected in the previous menu.", 1);
 				return false;
 			}
