@@ -87,25 +87,28 @@ void SkinIR::m_PushResponse(lua_State * L, const cpr::Response & r)
             {"description", "The request to the IR failed."}
         });
     }
-    try {
-        nlohmann::json json = nlohmann::json::parse(r.text);
+    else
+    {
+        try {
+            nlohmann::json json = nlohmann::json::parse(r.text);
 
-        if(!IR::ValidateReturn(json))
-        {
+            if(!IR::ValidateReturn(json))
+            {
+                m_PushJSON(L, nlohmann::json{
+                    {"statusCode", 60},
+                    {"description", "The IR response was malformed."}
+                });
+            }
+            else m_PushJSON(L, json);
+
+        } catch(nlohmann::json::parse_error& e) {
+            Log("Parsing JSON returned from IR failed.", Logger::Severity::Warning);
+
             m_PushJSON(L, nlohmann::json{
                 {"statusCode", 60},
                 {"description", "The IR response was malformed."}
             });
         }
-        else m_PushJSON(L, json);
-
-    } catch(nlohmann::json::parse_error& e) {
-        Log("Parsing JSON returned from IR failed.", Logger::Severity::Warning);
-
-        m_PushJSON(L, nlohmann::json{
-            {"statusCode", 60},
-            {"description", "The IR response was malformed."}
-        });
     }
 }
 
