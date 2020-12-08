@@ -375,7 +375,7 @@ draw_highscores_or_ir = function(ir, full)
 end
 
 draw_ir = function(full)
-    if result.irState == IRState.Unused then return end
+    if not IRData.Active then return end
 
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
@@ -383,14 +383,14 @@ draw_ir = function(full)
     gfx.FontSize(30)
     gfx.Text("IR (BT-D: High Scores)",510,30)
 
-    if result.irState == IRState.Pending then
+    if result.irState == IRData.States.Pending then
         gfx.FontSize(15)
         gfx.FillColor(170, 170, 170)
         gfx.Text("Loading... please wait.", 510, 60)
         return
     end
 
-    if result.irState ~= IRState.Success then
+    if result.irState ~= IRData.States.Success then
         gfx.FontSize(15)
         gfx.FillColor(255, 0, 0)
         gfx.Text("Error:", 510, 60)
@@ -457,11 +457,13 @@ draw_highscores = function(full)
     gfx.TextAlign(gfx.TEXT_ALIGN_LEFT)
     gfx.LoadSkinFont("NotoSans-Regular.ttf")
     gfx.FontSize(30)
-    if result.irState == IRState.Unused then
+
+    if not IRData.Active then
         gfx.Text("High Scores",510,30)
     else
         gfx.Text("High Scores (BT-D: IR)",510,30)
     end
+
     gfx.StrokeWidth(1)
     for i,s in ipairs(highScores) do
         gfx.Save()
@@ -899,7 +901,7 @@ draw_mir_ran_icon = function(x, y, s)
 end
 
 draw_ir_icon = function(x, y, s)
-    if result.irState == IRState.Unused then return x end
+    if not IRData.Active then return x end
 
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
     gfx.FillColor(255, 255, 255)
@@ -911,10 +913,10 @@ draw_ir_icon = function(x, y, s)
     gfx.BeginPath()
     gfx.FontSize(20)
 
-    if result.irState == IRState.Pending then
+    if result.irState == IRData.States.Pending then
         gfx.FillColor(100, 100, 100)
         gfx.Text("...", x + s/2, y + s*0.7)
-    elseif result.irState == IRState.Success then
+    elseif result.irState == IRData.States.Success then
         gfx.FillColor(0, 255, 0)
         gfx.Text("OK", x + s/2, y + s*0.7)
     else
@@ -1221,7 +1223,7 @@ render = function(deltaTime)
     local fxLeft = game.GetButton(4)
     local fxRight = game.GetButton(5)
 
-    if result.irState ~= IRState.Unused then
+    if IRData.Active then
         local btD = game.GetButton(3)
 
         if prevBTD ~= btD then
