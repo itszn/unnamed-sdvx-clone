@@ -226,8 +226,11 @@ draw_scores_ir = function(difficulty, x, y, w, h)
             if v.max > highScore.score then
                 gfx.BeginPath()
                 iw,ih = gfx.ImageSize(v.image)
-                iar = iw / ih;
-                gfx.ImageRect(x+xOffset,y+h/2 +5, iar * (h/2-10),h/2-10, v.image, 1, 0)
+                iarr = ih / iw
+                oldheight = h/2 - 10
+                newheight =  iarr * (h/2-10)
+                centreoffset = (oldheight - newheight)/2 + 3 -- +3 is stupid but ehhh
+                gfx.ImageRect(x+xOffset, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
                 break
             end
         end
@@ -270,8 +273,11 @@ draw_scores_ir = function(difficulty, x, y, w, h)
             if v.max > irRecord.record.score then
                 gfx.BeginPath()
                 iw,ih = gfx.ImageSize(v.image)
-                iar = iw / ih;
-                gfx.ImageRect(x+xOffset+w/2,y+h/2 +5, iar * (h/2-10),h/2-10, v.image, 1, 0)
+                iarr = ih / iw
+                oldheight = h/2 - 10
+                newheight =  iarr * (h/2-10)
+                centreoffset = (oldheight - newheight)/2 + 3 -- +3 is stupid but ehhh
+                gfx.ImageRect(x+xOffset, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
                 break
             end
         end
