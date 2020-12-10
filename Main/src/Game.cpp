@@ -274,7 +274,7 @@ public:
 		}
 				
 		m_endTime = m_beatmap->GetLastObjectTime();
-		m_gaugeSampleRate = m_endTime / 256;
+		m_gaugeSampleRate = Math::Max(1, m_endTime / 256);
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 
