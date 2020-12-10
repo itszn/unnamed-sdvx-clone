@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "SongSelect.hpp"
+#include "ChallengeSelect.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 enum FilterType
@@ -11,21 +12,21 @@ enum FilterType
 	Collection
 };
 
-class SongFilter
+template<class ItemIndex>
+class Filter
 {
 public:
-	SongFilter() = default;
-	virtual ~SongFilter() = default;
-
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) { return source; }
+	Filter() = default;
+	virtual ~Filter() = default;
 	virtual String GetName() const { return m_name; }
 	virtual bool IsAll() const { return true; }
 	virtual FilterType GetType() const { return FilterType::All; }
-
+	virtual Map<int32, ItemIndex> GetFiltered(const Map<int32, ItemIndex>& source) { return source; }
 private:
 	String m_name = "All";
-
 };
+
+using SongFilter = Filter<SongSelectIndex>;
 
 class LevelFilter : public SongFilter
 {
@@ -75,4 +76,19 @@ private:
 	String m_collection;
 	MapDatabase* m_mapDatabase;
 
+};
+
+using ChallengeFilter = Filter<ChallengeSelectIndex>;
+
+class ChallengeLevelFilter : public ChallengeFilter
+{
+public:
+	~ChallengeLevelFilter() = default;
+	ChallengeLevelFilter(uint16 level) : m_level(level) {}
+	Map<int32, ChallengeSelectIndex> GetFiltered(const Map<int32, ChallengeSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Level; }
+private:
+	uint16 m_level;
 };

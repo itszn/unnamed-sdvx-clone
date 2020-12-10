@@ -1374,6 +1374,8 @@ void Application::SetScriptPath(lua_State *s)
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
+std::set<String> g_luaErrorsSeen;
+
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
 	lua_State *s = luaL_newstate();
@@ -1384,6 +1386,20 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
+
+	// If we can't find this file, copy it from the default skin
+	if (!Path::FileExists(path))
+	{
+		String defaultPath = Path::Absolute("skins/Default/scripts/" + name + ".lua");
+		if (Path::FileExists(defaultPath))
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing " + name + ".lua", "No " + name + ".lua file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/"+name+".lua\" from the default skin to your current skin?");
+			if (copyDefault)
+				Path::Copy(defaultPath, path);
+		}
+	}
+
 	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
@@ -1393,7 +1409,21 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
+	else
+		g_luaErrorsSeen.clear();
 	return s;
+}
+
+
+// TODO add option for this
+void Application::ShowLuaError(const String& error)
+{
+	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
+		return;
+	g_luaErrorsSeen.insert(error);
+
+	Logf("Lua error: %s", Logger::Severity::Error, *error);
+	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
 }
 
 void Application::ReloadScript(const String &name, lua_State *L)
@@ -1412,6 +1442,8 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		lua_close(L);
 		assert(false);
 	}
+	else
+		g_luaErrorsSeen.clear();
 }
 
 void Application::ReloadSkin()

@@ -128,8 +128,11 @@ DefineEnum(GameConfigKeys,
 		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
 
 		   LastSelected,
+		   LastSelectedChal,
 		   LastSort,
+		   LastSortChal,
 		   LevelFilter,
+		   LevelFilterChal,
 		   FolderFilter,
 
 		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)

@@ -323,6 +323,7 @@ void AudioPlayback::SetSwitchableTrackEnabled(size_t index, bool enabled)
 	if (m_fxtrack)
 		return;
 
+
 	assert(index < m_switchables.size());
 
 	int32 disableTrack = -1;

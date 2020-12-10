@@ -39,7 +39,7 @@ void HitWindow::SaveConfig() const
 	g_gameConfig.Set(GameConfigKeys::HitWindowHold, hold);
 }
 
-void HitWindow::ToLuaTable(lua_State* L)
+void HitWindow::ToLuaTable(lua_State* L) const
 {
 	auto pushIntToTable = [&](const char* name, int data)
 	{

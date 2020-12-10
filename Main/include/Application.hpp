@@ -71,6 +71,7 @@ public:
 	void SetScriptPath(lua_State* L);
 	lua_State* LoadScript(const String& name, bool noError = false);
 	void ReloadScript(const String& name, lua_State* L);
+	void ShowLuaError(const String& error);
 	void LoadGauge(bool hard);
 	void DrawGauge(float rate, float x, float y, float w, float h, float deltaTime);
 	int FastText(String text, float x, float y, int size, int align, const Color& color = Color::White);

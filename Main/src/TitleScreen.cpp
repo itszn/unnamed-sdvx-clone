@@ -18,6 +18,7 @@
 #include "Shared/LuaBindable.hpp"
 #include "DownloadScreen.hpp"
 #include "MultiplayerScreen.hpp"
+#include "ChallengeSelect.hpp"
 
 class TitleScreen_Impl : public TitleScreen
 {
@@ -56,6 +57,12 @@ private:
 	int lMultiplayer(lua_State* L)
 	{
 		g_transition->TransitionTo(new MultiplayerScreen());
+		return 0;
+	}
+
+	int lChallengeSelect(lua_State* L)
+	{
+		g_transition->TransitionTo(ChallengeSelect::Create());
 		return 0;
 	}
 
@@ -136,6 +143,7 @@ public:
 		m_luaBinds->AddFunction("Update", this, &TitleScreen_Impl::lUpdate);
 
 		m_luaBinds->AddFunction("Multiplayer", this, &TitleScreen_Impl::lMultiplayer);
+		m_luaBinds->AddFunction("Challenges", this, &TitleScreen_Impl::lChallengeSelect);
 
 		m_luaBinds->Push();
 		lua_settop(m_lua, 0);
