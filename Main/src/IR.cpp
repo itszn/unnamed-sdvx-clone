@@ -7,8 +7,8 @@ static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSe
     json["score"] = {
         {"score", score.score},
         {"crit", score.crit},
-        {"almost", score.almost},
-        {"miss", score.miss},
+        {"near", score.almost},
+        {"error", score.miss},
         {"gauge", score.gauge},
         {"gameflags", score.gameflags},
         {"timestamp", score.timestamp},
