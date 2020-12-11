@@ -13,7 +13,6 @@
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
 #include "Input.hpp"
-#include <queue>
 #include <SDL2/SDL.h>
 #include "nanovg.h"
 #include "CalibrationScreen.hpp"
@@ -120,11 +119,7 @@ class SettingsScreen_Impl : public SettingsScreen
 {
 private:
 	nk_context* m_nctx;
-	nk_font_atlas m_nfonts;
 
-	const char* m_speedMods[3] = { "XMod", "MMod", "CMod" };
-	const char* m_laserModes[3] = { "Keyboard", "Mouse", "Controller" };
-	const char* m_buttonModes[2] = { "Keyboard", "Controller" };
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
@@ -204,6 +199,8 @@ private:
 	bool m_useBTGamepad = false;
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
+	
+	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 	String m_skinBeforeSkinSettings = "";
 
@@ -261,6 +258,9 @@ private:
 
 		g_gameConfig.Set(GameConfigKeys::Laser0Color, m_laserColors[0]);
 		g_gameConfig.Set(GameConfigKeys::Laser1Color, m_laserColors[1]);
+
+		m_hitWindow.Validate();
+		m_hitWindow.SaveConfig();
 
 		String songsPath = String(m_songsPath, m_pathlen);
 		songsPath.TrimBack('\n');
@@ -502,6 +502,8 @@ public:
 		m_laserColors[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 		m_laserColors[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
 
+		m_hitWindow = HitWindow::FromConfig();
+
 		String songspath = g_gameConfig.GetString(GameConfigKeys::SongFolder);
 		strcpy(m_songsPath, songspath.c_str());
 		m_pathlen = songspath.length();
@@ -623,8 +625,10 @@ public:
 			pads.Add(s.GetData());
 		}
 
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", (treesOpen & 1) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 1);
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetBTBind((*m_activeBTKeys)[0]);
@@ -672,6 +676,7 @@ public:
 			EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start = Back:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
+			EnumSetting<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, "Invert laser input:");
 
 			if (m_gamePads.size() > 0)
 			{
@@ -719,13 +724,19 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~1));
+		}
 	}
 
 	// Game settings
 	void RenderSettingsGame()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", (treesOpen & 2) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 2);
 			EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod:");
 			FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", 0.25f, 20, 0.05f);
 			FloatSetting(GameConfigKeys::ModSpeed, "ModSpeed", 50, 1500, 0.5f);
@@ -740,6 +751,55 @@ public:
 			ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
 			EnumSetting<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, "Automatically capture score screenshots:");
 
+			{
+				nk_label(m_nctx, "Timing Window:", nk_text_alignment::NK_TEXT_LEFT);
+				nk_layout_row_dynamic(m_nctx, 30, 3);
+
+				const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.perfect, 1, 1);
+				if (hitWindowPerfect != m_hitWindow.perfect)
+				{
+					m_hitWindow.perfect = hitWindowPerfect;
+					if (m_hitWindow.good < m_hitWindow.perfect)
+						m_hitWindow.good = m_hitWindow.perfect;
+					if (m_hitWindow.hold < m_hitWindow.perfect)
+						m_hitWindow.hold = m_hitWindow.perfect;
+				}
+
+				const int hitWindowGood = nk_propertyi_sdl_text(m_nctx, "Near", 0, m_hitWindow.good, HitWindow::NORMAL.good, 1, 1);
+				if (hitWindowGood != m_hitWindow.good)
+				{
+					m_hitWindow.good = hitWindowGood;
+					if (m_hitWindow.good < m_hitWindow.perfect)
+						m_hitWindow.perfect = m_hitWindow.good;
+					if (m_hitWindow.hold < m_hitWindow.good)
+						m_hitWindow.hold = m_hitWindow.good;
+				}
+
+				const int hitWindowHold = nk_propertyi_sdl_text(m_nctx, "Hold", 0, m_hitWindow.hold, HitWindow::NORMAL.hold, 1, 1);
+				if (hitWindowHold != m_hitWindow.hold)
+				{
+					m_hitWindow.hold = hitWindowHold;
+					if (m_hitWindow.hold < m_hitWindow.perfect)
+						m_hitWindow.perfect = m_hitWindow.hold;
+					if (m_hitWindow.hold < m_hitWindow.good)
+						m_hitWindow.good = m_hitWindow.hold;
+				}
+
+				nk_layout_row_dynamic(m_nctx, 30, 2);
+
+				if (nk_button_label(m_nctx, "Set to NORMAL (default)"))
+				{
+					m_hitWindow = HitWindow::NORMAL;
+				}
+
+				if (nk_button_label(m_nctx, "Set to HARD"))
+				{
+					m_hitWindow = HitWindow::HARD;
+				}
+
+				nk_layout_row_dynamic(m_nctx, 30, 1);
+			}
+
 			nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_pathlen, 1024, nk_filter_default));
 
@@ -747,13 +807,20 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~2));
+		}
 	}
 
 	// Display settings
 	void RenderSettingsDisplay()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Display", (treesOpen & 4) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 4);
+			ToggleSetting(GameConfigKeys::EnableHiddenSudden, "Enable Hidden / Sudden Mode");
 			nk_layout_row_dynamic(m_nctx, 75, 2);
 			if (nk_group_begin(m_nctx, "Hidden", NK_WINDOW_NO_SCROLLBAR))
 			{
@@ -788,9 +855,12 @@ public:
 			RenderSettingsLaserColor();
 
 			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInGame, "Show practice info during gameplay");
-			ToggleSetting(GameConfigKeys::DisplayPracticeInfoInResult, "Show practice info on the result");
 
 			nk_tree_pop(m_nctx);
+		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~4));
 		}
 	}
 
@@ -852,8 +922,10 @@ public:
 	// System (audio/visual) settings
 	void RenderSettingsSystem()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "System", (treesOpen & 8) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 8);
 			nk_layout_row_dynamic(m_nctx, 30, 1);
 			PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
 			ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
@@ -873,12 +945,18 @@ public:
 
 			nk_tree_pop(m_nctx);
 		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~8));
+		}
 	}
 
 	void RenderSettingsOnline()
 	{
-		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", NK_MINIMIZED))
+		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
+		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Online", (treesOpen & 16) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 16);
 			nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default));
 
@@ -888,6 +966,10 @@ public:
 			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
 			nk_tree_pop(m_nctx);
+		}
+		else
+		{
+			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen & (~16));
 		}
 	}
 
@@ -944,7 +1026,7 @@ public:
 			m_gamepad = g_gameWindow->OpenGamepad(m_gamepadIndex);
 			if (!m_gamepad)
 			{
-				Logf("Failed to open gamepad: %s", Logger::Severity::Error, m_gamepadIndex);
+				Logf("Failed to open gamepad: %d", Logger::Severity::Error, m_gamepadIndex);
 				g_gameWindow->ShowMessageBox("Warning", "Could not open selected gamepad.\nEnsure the controller is connected and in the correct mode (if applicable) and selected in the previous menu.", 1);
 				return false;
 			}

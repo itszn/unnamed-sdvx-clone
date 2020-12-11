@@ -33,6 +33,10 @@
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
 #include <Windows.h>
+#ifdef CRASHDUMP
+#include "exception_handler.h"
+#include "client_info.h"
+#endif
 #endif
 #include "archive.h"
 #include "archive_entry.h"
@@ -619,7 +623,8 @@ bool Application::m_Init()
 {
 	ProfilerScope $("Application Setup");
 
-	Logf("Version: %d.%d.%d", Logger::Severity::Info, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	String version = Utility::Sprintf("%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+	Logf("Version: %s", Logger::Severity::Info, version.c_str());
 
 #ifdef EMBEDDED
 	Log("Embeedded version.");
@@ -628,6 +633,31 @@ bool Application::m_Init()
 #ifdef GIT_COMMIT
 	Logf("Git commit: %s", Logger::Severity::Info, GIT_COMMIT);
 #endif // GIT_COMMIT
+
+#ifdef _WIN32
+#ifdef CRASHDUMP
+	google_breakpad::CustomInfoEntry kCustomInfoEntries[]{
+		google_breakpad::CustomInfoEntry(L"version", std::wstring(version.begin(), version.end()).c_str()),
+#ifdef GIT_COMMIT
+		google_breakpad::CustomInfoEntry(L"git", L"" GIT_COMMIT),
+#else
+		CustomInfoEntry("git", ""),
+#endif
+	};
+	google_breakpad::CustomClientInfo custom_info = {kCustomInfoEntries, 2};
+	//CustomClientInfo custom_info
+	auto handler = new google_breakpad::ExceptionHandler(
+		L".\\crash_dumps",
+		NULL,
+		NULL,
+		NULL,
+		google_breakpad::ExceptionHandler::HANDLER_ALL,
+		MiniDumpNormal,
+		(const wchar_t*)nullptr,
+		&custom_info
+	);
+#endif 
+#endif
 
 	// Must have command line
 	assert(m_commandLine.size() >= 1);
@@ -848,18 +878,22 @@ bool Application::m_Init()
 	Path::CreateDir(Path::Absolute("screenshots"));
 	Path::CreateDir(Path::Absolute("songs"));
 	Path::CreateDir(Path::Absolute("replays"));
+	Path::CreateDir(Path::Absolute("crash_dumps"));
 
 	return true;
 }
 void Application::m_MainLoop()
 {
 	Timer appTimer;
-	m_lastRenderTime = 0.0f;
+	m_deltaTime = 0.5f;
+	Timer frameTimer;
 	while (true)
 	{
+		m_appTime = appTimer.SecondsAsFloat();
+		frameTimer.Restart();
 		//run discord callbacks
 		Discord_RunCallbacks();
-
+		
 		// Process changes in the list of items
 		bool restoreTop = false;
 		for (auto &ch : g_tickableChanges)
@@ -917,7 +951,7 @@ void Application::m_MainLoop()
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
-		float targetRenderTime = 0.0f;
+		uint32 targetRenderTime = 0;
 		for (auto tickable : g_tickables)
 		{
 			int32 tempTarget = 0;
@@ -927,45 +961,54 @@ void Application::m_MainLoop()
 			}
 		}
 		if (targetFPS > 0)
-			targetRenderTime = 1.0f / (float)targetFPS;
+			targetRenderTime = 1000000 / targetFPS;
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
-		float timeSinceRender = currentTime - m_lastRenderTime;
-		if (timeSinceRender > targetRenderTime)
-		{
-			// Calculate actual deltatime for timing calculations
-			currentTime = appTimer.SecondsAsFloat();
-			float actualDeltaTime = currentTime - m_lastRenderTime;
-			g_avgRenderDelta = g_avgRenderDelta * 0.98f + actualDeltaTime * 0.02f; // Calculate avg
 
-			m_deltaTime = actualDeltaTime;
-			m_lastRenderTime = currentTime;
+		g_avgRenderDelta = g_avgRenderDelta * 0.98f + m_deltaTime * 0.02f; // Calculate avg
 
-			// Set time in render state
-			m_renderStateBase.time = currentTime;
 
-			// Also update window in render loop
-			if (!g_gameWindow->Update())
-				return;
+		// Set time in render state
+		m_renderStateBase.time = currentTime;
 
-			m_Tick();
-			timeSinceRender = 0.0f;
+		// Also update window in render loop
+		if (!g_gameWindow->Update())
+			return;
 
-			// Garbage collect resources
-			ResourceManagers::TickAll();
-		}
+		m_Tick();
+
+		// Garbage collect resources
+		ResourceManagers::TickAll();
 
 		// Tick job sheduler
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
 
-		if (timeSinceRender < targetRenderTime)
+		//This FPS limiter seems unstable over 500fps
+		uint32 frameTime = frameTimer.Microseconds();
+		if (frameTime < targetRenderTime)
 		{
-			float timeLeft = (targetRenderTime - timeSinceRender);
-			uint32 sleepMicroSecs = (uint32)(timeLeft * 1000000.0f * 0.75f);
-			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+			uint32 timeLeft = (targetRenderTime - frameTime);
+			uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
+			if (sleepMicroSecs > 1000)
+			{
+				uint32 sleepStart = frameTimer.Microseconds();
+				std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+				float actualSleep = frameTimer.Microseconds() - sleepStart;
+
+				m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
+				m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+			}
+
+			do {
+				std::this_thread::yield();
+			} while (frameTimer.Microseconds() < targetRenderTime);
 		}
+		// Swap buffers
+		g_gl->SwapBuffers();
+		
+		m_deltaTime = frameTimer.SecondsAsFloat();
 	}
 }
 
@@ -1028,12 +1071,15 @@ void Application::m_Tick()
 			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
 			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
 			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+			// Visualize m_fpsTargetSleepMult for debugging 
+			//nvgBeginPath(g_guiState.vg);
+			//float h = m_fpsTargetSleepMult * g_resolution.y;
+			//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
+			//nvgFill(g_guiState.vg);
 		}
 		nvgEndFrame(g_guiState.vg);
 		m_renderQueueBase.Process();
 		glCullFace(GL_FRONT);
-		// Swap buffers
-		g_gl->SwapBuffers();
 	}
 
 	if (m_needSkinReload)
@@ -1328,6 +1374,8 @@ void Application::SetScriptPath(lua_State *s)
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
+std::set<String> g_luaErrorsSeen;
+
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
 	lua_State *s = luaL_newstate();
@@ -1338,6 +1386,20 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
+
+	// If we can't find this file, copy it from the default skin
+	if (!Path::FileExists(path))
+	{
+		String defaultPath = Path::Absolute("skins/Default/scripts/" + name + ".lua");
+		if (Path::FileExists(defaultPath))
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing " + name + ".lua", "No " + name + ".lua file could be found, suggested solution:\n"
+				"Would you like to copy \"scripts/"+name+".lua\" from the default skin to your current skin?");
+			if (copyDefault)
+				Path::Copy(defaultPath, path);
+		}
+	}
+
 	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
@@ -1347,7 +1409,21 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
+	else
+		g_luaErrorsSeen.clear();
 	return s;
+}
+
+
+// TODO add option for this
+void Application::ShowLuaError(const String& error)
+{
+	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
+		return;
+	g_luaErrorsSeen.insert(error);
+
+	Logf("Lua error: %s", Logger::Severity::Error, *error);
+	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
 }
 
 void Application::ReloadScript(const String &name, lua_State *L)
@@ -1366,6 +1442,8 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		lua_close(L);
 		assert(false);
 	}
+	else
+		g_luaErrorsSeen.clear();
 }
 
 void Application::ReloadSkin()

@@ -89,3 +89,5 @@ private:
 	static const char* c_sep;
 
 };
+
+bool ParseKShootCourse(BinaryStream& input, Map<String, String>& settings, Vector<String>& charts);

@@ -74,9 +74,10 @@ function setButtons()
 		buttons = {}
 		buttons[1] = {"Start", Menu.Start}
 		buttons[2] = {"Multiplayer", Menu.Multiplayer}
-		buttons[3] = {"Get Songs", Menu.DLScreen}
-		buttons[4] = {"Settings", Menu.Settings}
-		buttons[5] = {"Exit", Menu.Exit}
+        buttons[3] = {"Challenges", Menu.Challenges}
+		buttons[4] = {"Get Songs", Menu.DLScreen}
+		buttons[5] = {"Settings", Menu.Settings}
+		buttons[6] = {"Exit", Menu.Exit}
 	end
 end
 

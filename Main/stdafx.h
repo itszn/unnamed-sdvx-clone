@@ -26,6 +26,8 @@
 #include <memory>
 #include <functional>
 
+#include <queue>
+
 // TODO: reference additional headers your program requires here
 #include <Shared/Shared.hpp>
 
@@ -42,6 +44,12 @@
 #include <Graphics/MeshGenerators.hpp>
 #include <Graphics/Font.hpp>
 using namespace Graphics;
+
+extern "C"
+{
+#include "lua.h"
+#include "lauxlib.h"
+}
 
 #include "BasicDefinitions.hpp"
 

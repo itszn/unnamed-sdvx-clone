@@ -4,8 +4,10 @@
 #include <Beatmap/MapDatabase.hpp>
 #include "json.hpp"
 #include "GameFailCondition.hpp"
+#include "HitStat.hpp"
 
 class MultiplayerScreen;
+class ChallengeManager;
 
 enum class GameFlags : uint32
 {
@@ -31,6 +33,8 @@ struct ScoreReplay
 	int32 maxScore = 0;
 	size_t nextHitStat = 0;
 	Vector<SimpleHitStat> replay;
+
+	HitWindow hitWindow = HitWindow::NORMAL;
 };
 
 GameFlags operator|(const GameFlags& a, const GameFlags& b);
@@ -50,6 +54,7 @@ public:
 	virtual ~Game() = default;
 	static Game* Create(ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(MultiplayerScreen*, ChartIndex* chart, PlayOptions&& options);
+	static Game* Create(ChallengeManager*, ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(const String& mapPath, PlayOptions&& options);
 	static Game* CreatePractice(ChartIndex* chart, PlayOptions&& options);
 	static GameFlags FlagsFromSettings();
@@ -110,6 +115,8 @@ public:
 	// Current playback speed
 	// Warning: this returns 0 when the song is not playing (ex: end of the game).
 	virtual float GetPlaybackSpeed() = 0;
+
+	virtual const PlayOptions& GetPlayOptions() const = 0;
 
 	// Get lua state
 	virtual struct lua_State* GetLuaState() = 0;
