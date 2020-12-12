@@ -725,6 +725,8 @@ end
 songs_changed = function(withAll)
 	if not withAll then return end
 
+    recordCache = {}
+
 	local diffs = {}
 	for i = 1, #songwheel.allSongs do
 		local song = songwheel.allSongs[i]
