@@ -997,13 +997,17 @@ public:
 			int i = 0;
 			int old_len = m_irTokenLen;
 			char tokenBuffer[1024];
-            for (i = 0; i < m_irTokenLen; ++i) tokenBuffer[i] = '*';
+			for (i = 0; i < m_irTokenLen; ++i) tokenBuffer[i] = '*';
+
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, tokenBuffer, &m_irTokenLen, 1024, nk_filter_default));
-            if (old_len < m_irTokenLen)
-                        memcpy(&m_irToken[old_len], &tokenBuffer[old_len], (nk_size)(m_irTokenLen - old_len));
+
+			if (old_len < m_irTokenLen)
+			{
+				memcpy(&m_irToken[old_len], &tokenBuffer[old_len], (nk_size)(m_irTokenLen - old_len));
+			}
 
 			ToggleSetting(GameConfigKeys::IRLowBandwidth, "IR Low Bandwidth (disables sending replays)");
-			
+
 			nk_tree_pop(m_nctx);
 		}
 		else

@@ -2,7 +2,7 @@
 #include "IR.hpp"
 #include "GameConfig.hpp"
 
-static void PopulateScoreJSON(nlohmann::json& json, ScoreIndex& score, BeatmapSettings& map)
+static void PopulateScoreJSON(nlohmann::json& json, const ScoreIndex& score, const BeatmapSettings& map)
 {
     json["score"] = {
         {"score", score.score},
@@ -41,7 +41,7 @@ static cpr::Header CommonHeader()
 }
 
 namespace IR {
-    cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map)
+    cpr::AsyncResponse PostScore(const ScoreIndex& score, const BeatmapSettings& map)
     {
         String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/scores";
 
@@ -98,7 +98,7 @@ namespace IR {
                                              {"replay", cpr::File{replayPath}}});
     }
 
-    bool ValidateReturn(nlohmann::json& json)
+    bool ValidateReturn(const nlohmann::json& json)
     {
         if(json.find("statusCode") == json.end()) return false;
         if(json["statusCode"] < 20 || json["statusCode"] > 59) return false;
@@ -116,7 +116,7 @@ namespace IR {
     //note: this only confirms that the response is well-formed - responses other than 20 will not have most information, so this needs to be beared in mind too
     //e.g., this function returning true does not mean that body will exist, because status may not be 20.
     //it also does not validate each score's structure at this time - possible todo?
-    bool ValidatePostScoreReturn(nlohmann::json& json)
+    bool ValidatePostScoreReturn(const nlohmann::json& json)
     {
         if(!ValidateReturn(json)) return false;
 

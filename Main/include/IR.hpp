@@ -20,13 +20,13 @@ namespace IR
         {"ServerError", 50},
         {"RequestFailure", 60}};
 
-    cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map);
+    cpr::AsyncResponse PostScore(const ScoreIndex& score, const BeatmapSettings& map);
     cpr::AsyncResponse Heartbeat();
     cpr::AsyncResponse ChartTracked(String chartHash);
     cpr::AsyncResponse Record(String chartHash);
     cpr::AsyncResponse Leaderboard(String chartHash, String mode, int n);
     cpr::AsyncResponse PostReplay(String identifier, String replayPath);
 
-    bool ValidateReturn(nlohmann::json& json);
-    bool ValidatePostScoreReturn(nlohmann::json& json);
+    bool ValidateReturn(const nlohmann::json& json);
+    bool ValidatePostScoreReturn(const nlohmann::json& json);
 }

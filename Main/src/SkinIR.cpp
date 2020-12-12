@@ -8,7 +8,7 @@
 //especially since that'd then require the skin to specify the authorization headers, json Content-Type, etc.
 //this approach makes it easier for the skin creator
 
-void SkinIR::m_PushArray(lua_State* L, nlohmann::json& json)
+void SkinIR::m_PushArray(lua_State* L, const nlohmann::json& json)
 {
     lua_newtable(L);
     int index = 1;
@@ -21,7 +21,7 @@ void SkinIR::m_PushArray(lua_State* L, nlohmann::json& json)
     }
 }
 
-void SkinIR::m_PushObject(lua_State* L, nlohmann::json& json)
+void SkinIR::m_PushObject(lua_State* L, const nlohmann::json& json)
 {
     lua_newtable(L);
 
@@ -34,7 +34,7 @@ void SkinIR::m_PushObject(lua_State* L, nlohmann::json& json)
     }
 }
 
-void SkinIR::m_PushJSON(lua_State* L, nlohmann::json& json)
+void SkinIR::m_PushJSON(lua_State* L, const nlohmann::json& json)
 {
     if(json.is_array()) m_PushArray(L, json);
     else if(json.is_object()) m_PushObject(L, json);
