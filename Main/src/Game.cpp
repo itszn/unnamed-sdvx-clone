@@ -27,6 +27,7 @@
 
 #include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
+#include <SDL2/SDL.h>
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -1240,6 +1241,14 @@ public:
 		
 		// Enable laser slams and roll ignore behaviour
 		m_camera.SetFancyHighwayTilt(g_gameConfig.GetBool(GameConfigKeys::EnableFancyHighwayRoll));
+
+		SDL_DisplayMode current;
+		int displayIndex = g_gameWindow->GetDisplayIndex();
+		int error = SDL_GetCurrentDisplayMode(displayIndex, &current);
+		if (error)
+			Logf("Could not get display mode info for display %d: %s", Logger::Severity::Warning, displayIndex, SDL_GetError());
+		else
+			m_camera.SetSlamShakeGuardDuration(current.refresh_rate);
 
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)

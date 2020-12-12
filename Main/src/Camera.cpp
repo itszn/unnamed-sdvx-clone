@@ -219,12 +219,11 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	// Ensures the red laser's slam shake is prioritised
 	if (m_shakeEffect.amplitudeToBeAdded != 0)
 	{
 		m_shakeEffect.amplitude += m_shakeEffect.amplitudeToBeAdded;
 		m_shakeEffect.amplitudeToBeAdded = 0;
-		m_shakeEffect.guard = 1 / 60.f;
+		m_shakeEffect.guard = m_shakeEffect.guardDuration;
 	}
 	m_shakeOffset = m_shakeEffect.amplitude;
 	if (fabsf(m_shakeEffect.amplitude) > 0)
@@ -315,6 +314,11 @@ float Camera::GetSlamAmount(uint32 index)
 {
 	assert(index <= 1);
 	return m_slamRoll[index];
+}
+
+void Camera::SetSlamShakeGuardDuration(int refreshRate)
+{
+	m_shakeEffect.guardDuration = 1.f / refreshRate;
 }
 
 void Camera::SetManualTilt(bool manualTilt)

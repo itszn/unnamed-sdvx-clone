@@ -1,7 +1,9 @@
 #pragma once
 
 /*
-	Camera shake effect
+	Camera shake effect.
+	VVD scales slam shakes using the following formula: slamLength (0 to 1) * 15px @ 1080p. Unsure if this is scaled down @ 720p.
+	Slam shakes decay at a rate of 3px per frame.
 */
 struct CameraShake
 {
@@ -9,6 +11,7 @@ struct CameraShake
 	float amplitudeToBeAdded = 0;
 	// Prevent slams from cancelling each other out if applied in a short time
 	float guard = 0;
+	float guardDuration = 1 / 60.f;
 	CameraShake() = default;
 };
 
@@ -72,6 +75,7 @@ public:
 	void SetManualTiltInstant(bool instant);
 	// Enables/disables laser slams and roll ignore
 	void SetFancyHighwayTilt(bool fancyHighwaySetting);
+	void SetSlamShakeGuardDuration(int refreshRate);
 	
 	/*
 	Gets roll ignore timer for a laser
