@@ -277,7 +277,7 @@ draw_scores_ir = function(difficulty, x, y, w, h)
                 oldheight = h/2 - 10
                 newheight =  iarr * (h/2-10)
                 centreoffset = (oldheight - newheight)/2 + 3 -- +3 is stupid but ehhh
-                gfx.ImageRect(x+xOffset, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
+                gfx.ImageRect(x+xOffset+w/2, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
                 break
             end
         end
