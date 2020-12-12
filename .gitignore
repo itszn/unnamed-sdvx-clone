@@ -62,7 +62,7 @@ Makefile
 # Document build files
 docs/build
 
-#CLion directories and files
+# CLion directories and files
 .idea
 cmake-build-*
 .cmake
