@@ -151,8 +151,6 @@ function record_handler_factory(hash)
         else
             recordCache[hash] = {good=false, reason="Failed"}
         end
-
-            game.Log(log_table(res), game.LOGGER_ERROR)
     end)
 end
 
@@ -248,7 +246,7 @@ draw_scores_ir = function(difficulty, x, y, w, h)
 	end
 
     irRecord = get_record(difficulty.hash)
-    game.Log(log_table(irRecord), game.LOGGER_ERROR)
+
     if not irRecord.good then
         recordLabel = gfx.CreateLabel(irRecord.reason, 40, 0)
         gfx.FillColor(255, 255, 255)
