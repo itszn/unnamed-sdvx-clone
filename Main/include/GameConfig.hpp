@@ -160,6 +160,7 @@ DefineEnum(GameConfigKeys,
 
 		   IRBaseURL,
 		   IRToken,
+		   IRLowBandwidth,
 
 		   EnableFancyHighwayRoll,
 

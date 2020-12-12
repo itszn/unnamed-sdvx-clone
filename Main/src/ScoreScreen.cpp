@@ -866,12 +866,16 @@ public:
 							{
 								m_irState = m_irResponseJson["statusCode"];
 
-								//server wants us to send replay
-								if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+								//if we are allowed to send replays
+								if(!g_gameConfig.GetBool(GameConfigKeys::IRLowBandwidth))
 								{
-									//don't really care about the return of this, if it fails it's not the end of the world
-									IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
-								}
+									//and server wants us to send replay
+									if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+									{
+										//don't really care about the return of this, if it fails it's not the end of the world
+										IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
+									}
+								}			
 							}
 
 
