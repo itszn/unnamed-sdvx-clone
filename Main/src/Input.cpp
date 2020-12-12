@@ -39,6 +39,27 @@ void Input::Init(Graphics::Window& wnd)
 	m_backComboHold = g_gameConfig.GetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo) == ButtonComboModeSettings::Hold;
 	m_backComboInstant = g_gameConfig.GetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo) == ButtonComboModeSettings::Instant;
 
+	switch (g_gameConfig.GetEnum<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput)) {
+	
+	case LaserAxisOption::Left:
+		m_laserDirections[0] = -1.0f;
+		m_laserDirections[1] = 1.0f;
+		break;
+	case LaserAxisOption::Right:
+		m_laserDirections[0] = 1.0f;
+		m_laserDirections[1] = -1.0f;
+		break;
+	case LaserAxisOption::Both:
+		m_laserDirections[0] = -1.0f;
+		m_laserDirections[1] = -1.0f;
+		break;
+	default:
+		m_laserDirections[0] = 1.0f;
+		m_laserDirections[1] = 1.0f;
+		break;
+	}
+
+
 	// Init controller mapping
 	if(m_laserDevice == InputDevice::Controller || m_buttonDevice == InputDevice::Controller)
 	{
@@ -173,8 +194,11 @@ void Input::Update(float deltaTime)
 		}
 	}
 
-	m_absoluteLaserStates[0] = fmodf(m_absoluteLaserStates[0] + m_laserStates[0], Math::pi * 2);
-	m_absoluteLaserStates[1] = fmodf(m_absoluteLaserStates[1] + m_laserStates[1], Math::pi * 2);
+	for (size_t i = 0; i < 2; i++)
+	{
+		m_laserStates[i] *= m_laserDirections[i];
+		m_absoluteLaserStates[i] = fmodf(m_absoluteLaserStates[i] + m_laserStates[i], Math::pi * 2);
+	}
 
 
 	//back combo checks

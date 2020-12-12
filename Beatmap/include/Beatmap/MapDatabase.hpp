@@ -1,5 +1,6 @@
 #pragma once
 #include "Beatmap.hpp"
+#include "json.hpp"
 
 struct SimpleHitStat
 {
@@ -30,6 +31,11 @@ struct ScoreIndex
 	String userName;
 	String userId;
 	bool localScore;
+
+	int32 hitWindowPerfect;
+	int32 hitWindowGood;
+	int32 hitWindowHold;
+	int32 hitWindowMiss;
 };
 
 
@@ -93,6 +99,50 @@ struct FolderIndex
 	Vector<ChartIndex*> charts;
 };
 
+
+struct ChallengeIndex 
+{
+	int32 id;
+	Vector<ChartIndex*> charts;
+	int32 totalNumCharts; // Note: This is not the number found
+	nlohmann::json settings;
+	String title;
+	int32 clearMark;
+	int32 bestScore;
+	String reqText;
+	String path;
+	String hash;
+	int32 level;
+	uint64 lwt;
+	bool missingChart;
+
+	// Access settings and check if they are actually loaded
+	const nlohmann::json& GetSettings()
+	{
+		if (settings.is_null() || settings.is_discarded())
+			ReloadSettings();
+		return settings;
+	}
+	void ReloadSettings()
+	{
+		settings = LoadJson(path);
+		if (!BasicValidate()) // Only keep if valid
+			settings = nlohmann::json();
+	}
+
+	// This will validate the overall objects/arrays but not option types
+	bool BasicValidate() const { return BasicValidate(settings, path); };
+	void FindCharts(class MapDatabase*, const nlohmann::json& v);
+	static nlohmann::json LoadJson(const String& path);
+	static nlohmann::json LoadJson(const Buffer& buffer, const String& path);
+	static bool BasicValidate(const nlohmann::json& v, const String& path);
+	void GenerateDescription();
+private:
+	static String ChallengeDescriptionVal(const nlohmann::json&, const String&, const String&, bool, int, int);
+	static String ChallengeDescriptionVal(const nlohmann::json&, const String&, bool, int mult=1, int add=0);
+	static const Map<String, std::pair<String, String>> ChallengeDescriptionStrings;
+};
+
 struct PracticeSetupIndex
 {
 	int32 id = -1;
@@ -149,6 +199,10 @@ public:
 	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash);
 	Map<int32, FolderIndex*> FindFoldersByFolder(const String& folder);
 	Map<int32, FolderIndex*> FindFoldersByCollection(const String& collection);
+	Map<int32, ChallengeIndex*> FindChallenges(const String& search);
+	ChartIndex* FindFirstChartByPath(const String&);
+	ChartIndex* FindFirstChartByHash(const String&);
+	ChartIndex* FindFirstChartByNameAndLevel(const String&, int32 level);
 	FolderIndex* GetFolder(int32 idx);
 	Vector<String> GetCollections();
 	Vector<String> GetCollectionsForMap(int32 mapid);
@@ -163,6 +217,7 @@ public:
 	void AddScore(ScoreIndex* score);
 
 	void UpdatePracticeSetup(PracticeSetupIndex* practiceSetup);
+	void UpdateChallengeResult(ChallengeIndex*, uint32 clearMark, uint32 bestScore);
 	
 	void RemoveSearchPath(const String& path);
 	void UpdateChartOffset(const ChartIndex* chart);
@@ -179,6 +234,11 @@ public:
 	// Called when all maps are cleared
 	// (newMapList)
 	Delegate<Map<int32, FolderIndex*>> OnFoldersCleared;
+
+	Delegate<Vector<ChallengeIndex*>> OnChallengesRemoved;
+	Delegate<Vector<ChallengeIndex*>> OnChallengesAdded;
+	Delegate<Vector<ChallengeIndex*>> OnChallengesUpdated;
+	Delegate<Map<int32, ChallengeIndex*>> OnChallengesCleared;
 
 	Delegate<int> OnDatabaseUpdateStarted;
 	Delegate<int, int> OnDatabaseUpdateProgress;

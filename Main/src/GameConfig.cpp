@@ -2,6 +2,7 @@
 #include "GameConfig.hpp"
 
 #include "Shared/Log.hpp"
+#include "HitStat.hpp"
 
 inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {
@@ -65,6 +66,10 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::ShowFps, false);
 	Set(GameConfigKeys::ForcePortrait, false);
 	Set(GameConfigKeys::SkipScore, true);
+
+	Set(GameConfigKeys::HitWindowPerfect, HitWindow::NORMAL.perfect);
+	Set(GameConfigKeys::HitWindowGood, HitWindow::NORMAL.good);
+	Set(GameConfigKeys::HitWindowHold, HitWindow::NORMAL.hold);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);
@@ -83,6 +88,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Laser1Color, 330.0f);
 	Set(GameConfigKeys::SongSelSensMult, 1.0f);
 
+	Set(GameConfigKeys::EnableHiddenSudden, false);
 	Set(GameConfigKeys::HiddenCutoff, 0.0f);
 	Set(GameConfigKeys::HiddenFade, 0.2f);
 	Set(GameConfigKeys::SuddenCutoff, 1.0f);
@@ -96,7 +102,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::PracticeSetupNavEnabled, true);
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
-	Set(GameConfigKeys::DisplayPracticeInfoInResult, true);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
@@ -107,6 +112,7 @@ void GameConfig::InitDefaults()
 	SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
 	SetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, InputDevice::Keyboard);
 	SetEnum<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, ButtonComboModeSettings::Hold);
+	SetEnum<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, LaserAxisOption::None);
 
 	// Default keyboard bindings
 	Set(GameConfigKeys::Key_BTS, SDL_SCANCODE_1); // Start button on Dao controllers
@@ -169,13 +175,18 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::DisableNonButtonInputsDuringPlay, false);
 
 	Set(GameConfigKeys::LastSelected, 0);
+	Set(GameConfigKeys::LastSelectedChal, 0);
 	Set(GameConfigKeys::LastSort, 0);
+	Set(GameConfigKeys::LastSortChal, 0);
 	Set(GameConfigKeys::LevelFilter, 0);
+	Set(GameConfigKeys::LevelFilterChal, 0);
 	Set(GameConfigKeys::FolderFilter, 0);
 
 	Set(GameConfigKeys::AutoResetSettings, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
+
+	Set(GameConfigKeys::SettingsTreesOpen, 1);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 

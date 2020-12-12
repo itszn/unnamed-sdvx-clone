@@ -24,6 +24,9 @@ DefineEnum(GameConfigKeys,
 		   LogLevel,
 
 		   // Game settings
+		   HitWindowPerfect,
+		   HitWindowGood,
+		   HitWindowHold,
 		   HiSpeed,
 		   SpeedMod,
 		   ModSpeed,
@@ -43,6 +46,7 @@ DefineEnum(GameConfigKeys,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
 
+		   EnableHiddenSudden,
 		   HiddenCutoff,
 		   HiddenFade,
 		   SuddenCutoff,
@@ -59,7 +63,6 @@ DefineEnum(GameConfigKeys,
 		   PracticeSetupNavEnabled,
 		   RevertToSetupAfterScoreScreen,
 		   DisplayPracticeInfoInGame,
-		   DisplayPracticeInfoInResult,
 
 		   // Input device setting per element
 		   LaserInputDevice,
@@ -115,6 +118,7 @@ DefineEnum(GameConfigKeys,
 		   Controller_Sensitivity,
 		   InputBounceGuard,
 		   SongSelSensMult,
+		   InvertLaserInput,
 
 		   // In-Game Abort
 		   RestartPlayMethod,
@@ -124,13 +128,18 @@ DefineEnum(GameConfigKeys,
 		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
 
 		   LastSelected,
+		   LastSelectedChal,
 		   LastSort,
+		   LastSortChal,
 		   LevelFilter,
+		   LevelFilterChal,
 		   FolderFilter,
 
 		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
 		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
+
+		   SettingsTreesOpen,
 
 		   EditorPath,
 		   EditorParamsFormat,
@@ -177,6 +186,12 @@ DefineEnum(ScoreDisplayModes,
 		   Additive,
 		   Subtractive,
 		   Average)
+
+DefineEnum(LaserAxisOption,
+	       None,
+	       Left,
+	       Right,
+	       Both)
 
 #ifdef Always
 #undef Always

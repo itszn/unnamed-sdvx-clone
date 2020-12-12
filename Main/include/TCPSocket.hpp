@@ -4,7 +4,6 @@
 #include "cpr/cpr.h"
 #include "json.hpp"
 #include <stack>
-#include <queue>
 
 #ifdef _WIN32
 /* See http://stackoverflow.com/questions/12765743/getaddrinfo-on-win32 */
@@ -92,12 +91,14 @@ public:
 		return m_open;
 	}
 
+	// TODO(itszn) move this somewhere else
+	static void PushJsonValue(lua_State* L, const nlohmann::json& val);
+	static void PushJsonObject(lua_State* L, const nlohmann::json& packet);
+
 private:
 	void m_processPacket(char* data, size_t length, TCPPacketMode mode);
 	void m_eraseBuffer(size_t end);
 
-	void m_pushJsonObject(lua_State* L, const nlohmann::json& packet);
-	void m_pushJsonValue(lua_State* L, const nlohmann::json& val);
 
 	bool m_readyToRead();
 
