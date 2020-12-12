@@ -2,7 +2,7 @@
 
 /*
 	Camera shake effect.
-	VVD scales slam shakes using the following formula: slamLength (0 to 1) * 15px @ 1080p. Unsure if this is scaled down @ 720p.
+	VVD scales slam shakes using the following formula: slamLength (0 to 1) * 15px.
 	Slam shakes decay at a rate of 3px per frame.
 */
 struct CameraShake
