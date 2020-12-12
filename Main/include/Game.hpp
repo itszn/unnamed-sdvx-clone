@@ -136,4 +136,6 @@ public:
 
 	virtual int GetRetryCount() const = 0;
 	virtual String GetMissionStr() const = 0;
+
+	virtual void SetGauge(float) = 0;
 };

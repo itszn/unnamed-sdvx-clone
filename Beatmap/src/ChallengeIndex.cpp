@@ -91,6 +91,9 @@ const Map<String, std::pair<String, String>> ChallengeIndex::ChallengeDescriptio
 	{"min_overall_crits", {
 		"Get at least %d crits total", ""
 	}},
+	{"gauge_carry_over", {
+		"Gauge does not reset", ""
+	}},
 };
 
 // Generate a description for a challenge requirement
@@ -172,10 +175,16 @@ void ChallengeIndex::GenerateDescription()
 	if (j.value("clear", false))
 	{
 		if (j.value("excessive_gauge", false))
-			desc += "- " + ChallengeDescriptionStrings.Find("excessive clear")->first + "\n";
+			desc += "- " + ChallengeDescriptionStrings.Find("excessive clear")->first;
 		else
-			desc += "- " + ChallengeDescriptionStrings.Find("clear")->first + "\n";
+			desc += "- " + ChallengeDescriptionStrings.Find("clear")->first;
+
+		if (j.value("gauge_carry_over", false))
+			desc += " (" + ChallengeDescriptionStrings.Find("gauge_carry_over")->first + ")";
+
+		desc += "\n";
 	}
+
 	desc += ChallengeDescriptionVal(j, String("min_percentage"),         false);
 	desc += ChallengeDescriptionVal(j, String("min_average_percentage"), false);
 	desc += ChallengeDescriptionVal(j, String("min_gauge"),              false, /*mult=*/100);

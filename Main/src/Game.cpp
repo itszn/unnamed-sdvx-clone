@@ -2672,6 +2672,10 @@ public:
 	{
 		return m_lua;
 	}
+	virtual void SetGauge(float g) override
+	{
+		m_scoring.currentGauge = g;
+	}
 	virtual bool IsStorableScore() override
 	{
 		if (m_scoring.autoplay) return false;

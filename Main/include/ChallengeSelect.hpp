@@ -94,6 +94,7 @@ struct ChallengeOptions{
 #define CHALLENGE_OPTIONS_ALL(v) \
 	v(bool, mirror) \
 	v(bool, excessive) \
+	v(bool, gauge_carry_over) \
 	v(bool, use_sdvx_complete_percentage) \
 	v(uint32, min_modspeed) \
 	v(uint32, max_modspeed) \
@@ -268,6 +269,7 @@ private:
 	uint64 m_totalScore = 0;
 	float m_totalPercentage = 0;
 	float m_totalGauge = 0.0;
+	float m_lastGauge = -1.0;
 public:
 	bool RunningChallenge() { return m_running; }
 	bool StartChallenge(class ChallengeSelect* sel, ChallengeIndex* chal);

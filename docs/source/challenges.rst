@@ -11,7 +11,7 @@ USC challenges are stored in files with extension ".chal". These are JSON files 
 
   {
       "title": "Some title",
-      "level": 11 // Level is from 1-12 (inf)
+      "level": 11, // Level is from 1-12 (inf)
       "charts": [ /* see Chart section below */ ],
       "global": {
             /* See Settings section below */
@@ -21,7 +21,7 @@ USC challenges are stored in files with extension ".chal". These are JSON files 
 
 The file must contain :code:`title`, :code:`level`, :code:`charts`, and :code:`global`. :code:`overrides` is optional
 
-**Note:** comments are used for these docs, but the actual JSON file does not allow comments! Additionally strict JSON spec must be followed so no extra commas at the end of a list are allowed!
+**IMPORTANT NOTE:** comments are used for these docs, but the actual JSON file does not allow comments! Additionally strict JSON spec must be followed so no extra commas at the end of a list are allowed!
 
 Charts
 ******
@@ -109,7 +109,11 @@ These options can't be overridden per chart
 
 **use_sdvx_complete_percentage** (bool default false)
 
- | If true failed charts will use partial completion based on how far through the cart the player was. If false, the percent will always be based only on score
+ | If true, failed charts will use partial completion based on how far through the cart the player was. If false, the percent will always be based only on score
+
+**gauge_carry_over** (bool default false)
+
+ | If true, gauge will not reset on the next chart. (ie if you have a 32% after chart 1, chart 2 starts with 32%)
 
 
 Overrideable Requirements

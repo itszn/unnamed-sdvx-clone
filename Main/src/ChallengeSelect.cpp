@@ -1399,6 +1399,7 @@ ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 	ChallengeOptions out;
 	out.mirror =       m_getOptionAsBool(j,            "mirror");
 	out.excessive =    m_getOptionAsBool(j,            "excessive_gauge");
+	out.gauge_carry_over =    m_getOptionAsBool(j,	   "gauge_carry_over");
 	out.min_modspeed = m_getOptionAsPositiveInteger(j, "min_modspeed");
 	out.max_modspeed = m_getOptionAsPositiveInteger(j, "max_modspeed");
 	out.allow_cmod =   m_getOptionAsBool(j,            "allow_cmod");
@@ -1460,6 +1461,7 @@ bool ChallengeManager::StartChallenge(ChallengeSelect* sel, ChallengeIndex* chal
 	m_totalScore = 0;
 	m_totalPercentage = 0;
 	m_totalGauge = 0.0;
+	m_lastGauge = -1.0; // Negative means no saved yet
 
 	m_globalReqs.Reset();
 	m_globalOpts.Reset();
@@ -1677,6 +1679,18 @@ bool ChallengeManager::m_setupNextChart()
 		return false;
 	}
 
+	// Negative means we have not saved a gauge yet
+	if (m_currentOptions.gauge_carry_over.Get(false) && m_lastGauge >= 0)
+	{
+		auto setGauge = [=](void *screen) {
+			if (screen == nullptr)
+				return;
+			game->SetGauge(m_lastGauge);
+		};
+		auto handle = g_transition->OnLoadingComplete.AddLambda(std::move(setGauge));
+		g_transition->RemoveOnComplete(handle);
+	}
+
 	g_transition->TransitionTo(game);
 	return true;
 }
@@ -1736,6 +1750,8 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	m_totalScore += finalScore;
 	m_totalPercentage += percentage;
+	m_lastGauge = scoring.currentGauge;
+	m_totalGauge += m_lastGauge;
 
 	res.badge = clearMark;
 	if (req.clear.Get(false))
