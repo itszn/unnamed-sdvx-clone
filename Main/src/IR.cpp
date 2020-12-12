@@ -43,7 +43,7 @@ static cpr::Header CommonHeader()
 namespace IR {
     cpr::AsyncResponse PostScore(ScoreIndex& score, BeatmapSettings& map)
     {
-        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/score/submit";
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/scores";
 
         nlohmann::json json;
 
