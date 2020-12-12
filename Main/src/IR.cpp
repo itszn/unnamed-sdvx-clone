@@ -49,8 +49,6 @@ namespace IR {
 
         PopulateScoreJSON(json, score, map);
 
-        Log(json.dump(), Logger::Severity::Warning);
-
         return cpr::PostAsync(cpr::Url{host},
                               CommonHeader(),
                               cpr::Body{json.dump()});
@@ -78,6 +76,16 @@ namespace IR {
 
         return cpr::GetAsync(cpr::Url{host},
                              CommonHeader());
+    }
+
+    cpr::AsyncResponse PostReplay(String identifier, String replayPath)
+    {
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/replays";
+
+        return cpr::PostAsync(cpr::Url{host},
+                              cpr::Header{{"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}}, //can't give the json header here so whatever
+                              cpr::Multipart{{"identifier", identifier},
+                                             {"replay", cpr::File{replayPath}}});
     }
 
     bool ValidateReturn(nlohmann::json& json)

@@ -43,6 +43,9 @@ private:
 	uint32 m_timedHits[2];
 	int m_irState = IR::ResponseState["Unused"];
 
+	//promote this to higher scope so i can use it in tick
+	String m_replayPath;
+
 	cpr::AsyncResponse m_irResponse;
 	nlohmann::json m_irResponseJson;
 
@@ -432,10 +435,10 @@ public:
 			}
 
 			Path::CreateDir(Path::Absolute("replays/" + hash));
-			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+			m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
 			File replayFile;
 
-			if (replayFile.OpenWrite(replayPath))
+			if (replayFile.OpenWrite(m_replayPath))
 			{
 				FileWriter fw(replayFile);
 				fw.SerializeObject(m_simpleHitStats);
@@ -452,7 +455,7 @@ public:
 			newScore->gauge = m_finalGaugeValue;
 			newScore->gameflags = (uint32)m_flags;
 			newScore->timestamp = Shared::Time::Now().Data();
-			newScore->replayPath = replayPath;
+			newScore->replayPath = m_replayPath;
 			newScore->chartHash = hash;
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 			newScore->localScore = true;
@@ -834,6 +837,7 @@ public:
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 
+		//handle ir score submission request
 		if (m_irState == IR::ResponseState["Pending"])
 		{
 			try {
@@ -853,10 +857,19 @@ public:
 						try {
 							m_irResponseJson = nlohmann::json::parse(response.text);
 
-							Log(m_irResponseJson.dump(), Logger::Severity::Error);
-
 							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
-							else m_irState = m_irResponseJson["statusCode"];
+							else
+							{
+								m_irState = m_irResponseJson["statusCode"];
+
+								//server wants us to send replay
+								if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+								{
+									//don't really care about the return of this, if it fails it's not the end of the world
+									IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
+								}
+							}
+
 
 						} catch(nlohmann::json::parse_error& e) {
 							Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);

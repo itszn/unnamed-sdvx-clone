@@ -16,6 +16,7 @@ namespace IR
         {"Unauthorized", 41},
         {"ChartRefused", 42},
         {"Forbidden", 43},
+        {"NotFound", 44},
         {"ServerError", 50},
         {"RequestFailure", 60}};
 
@@ -23,6 +24,7 @@ namespace IR
     cpr::AsyncResponse Heartbeat();
     cpr::AsyncResponse ChartTracked(String chartHash);
     cpr::AsyncResponse Record(String chartHash);
+    cpr::AsyncResponse PostReplay(String identifier, String replayPath);
 
     bool ValidateReturn(nlohmann::json& json);
     bool ValidatePostScoreReturn(nlohmann::json& json);
