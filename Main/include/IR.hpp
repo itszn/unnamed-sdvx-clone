@@ -24,6 +24,7 @@ namespace IR
     cpr::AsyncResponse Heartbeat();
     cpr::AsyncResponse ChartTracked(String chartHash);
     cpr::AsyncResponse Record(String chartHash);
+    cpr::AsyncResponse Leaderboard(String chartHash, String mode, int n);
     cpr::AsyncResponse PostReplay(String identifier, String replayPath);
 
     bool ValidateReturn(nlohmann::json& json);

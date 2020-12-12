@@ -179,6 +179,22 @@ int SkinIR::lRecord(struct lua_State* L)
 	return 0;
 }
 
+int SkinIR::lLeaderboard(struct lua_State* L)
+{
+    String hash = luaL_checkstring(L, 2);
+    String mode = luaL_checkstring(L, 3);
+    int n = luaL_checkinteger(L, 4);
+	int callback = luaL_ref(L, LUA_REGISTRYINDEX);
+	AsyncRequest* r = new AsyncRequest();
+	r->r = IR::Leaderboard(hash, mode, n);
+	r->callback = callback;
+	r->L = L;
+	m_mutex.lock();
+	m_requests.push(r);
+	m_mutex.unlock();
+	return 0;
+}
+
 
 void SkinIR::ProcessCallbacks()
 {
@@ -214,6 +230,7 @@ void SkinIR::PushFunctions(lua_State * L)
 	bindable->AddFunction("Heartbeat", this, &SkinIR::lHeartbeat);
     bindable->AddFunction("ChartTracked", this, &SkinIR::lChartTracked);
     bindable->AddFunction("Record", this, &SkinIR::lRecord);
+    bindable->AddFunction("Leaderboard", this, &SkinIR::lLeaderboard);
 	bindable->Push();
 	lua_settop(L, 0);
 	m_boundStates.Add(L, bindable);

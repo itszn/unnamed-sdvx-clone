@@ -78,6 +78,16 @@ namespace IR {
                              CommonHeader());
     }
 
+    cpr::AsyncResponse Leaderboard(String chartHash, String mode, int n)
+    {
+        String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/charts/" + chartHash + "/leaderboard";
+
+        return cpr::GetAsync(cpr::Url{host},
+                             cpr::Header{{"Authorization", "Bearer " + g_gameConfig.GetString(GameConfigKeys::IRToken)}}, //can't give the json header here so whatever
+                             cpr::Parameters{{"mode", mode},
+                                             {"n", std::to_string(n)}});
+    }
+
     cpr::AsyncResponse PostReplay(String identifier, String replayPath)
     {
         String host = g_gameConfig.GetString(GameConfigKeys::IRBaseURL) + "/replays";
