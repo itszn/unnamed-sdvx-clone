@@ -146,6 +146,8 @@ function record_handler_factory(hash)
             recordCache[hash] = {good=false, reason="Untracked"}
         elseif res.statusCode == 20 and res.body ~= nil then
             recordCache[hash] = {good=true, record=res.body.record}
+        elseif res.statusCode == 44 then
+            recordCache[hash] = {good=true, record=nil}
         else
             recordCache[hash] = {good=false, reason="Failed"}
         end
