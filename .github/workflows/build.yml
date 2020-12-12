@@ -4,6 +4,7 @@ jobs:
     windows_build:
         name: Windows build
         runs-on: windows-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1
@@ -51,6 +52,7 @@ jobs:
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1
@@ -82,6 +84,7 @@ jobs:
     macos_build:
         name: macOS build
         runs-on: macos-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1
