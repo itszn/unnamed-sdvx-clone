@@ -7,9 +7,12 @@
 *.exe
 *.a
 
+# Memory dump files
+*.dmp
+
 # Game files
 bin/songs/*
-maps.db
+maps.db*
 bin/Main.cfg
 bin/screenshots
 bin/log*
@@ -59,6 +62,10 @@ Makefile
 # Document build files
 docs/build
 
-#CLion directories
+#CLion directories and files
 .idea
 cmake-build-*
+.cmake
+
+# Codeblocks CMake generator files
+*.cbp
