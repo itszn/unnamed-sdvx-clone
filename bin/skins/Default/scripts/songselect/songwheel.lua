@@ -266,7 +266,7 @@ draw_scores_ir = function(difficulty, x, y, w, h)
 
         if irRecord.record.lamp ~= 0 then
             gfx.BeginPath()
-            gfx.ImageRect(x+xOffset+w-h/2, y+h/2 +5, (h/2-10), h/2-10, badges[2], 1, 0)
+            gfx.ImageRect(x+xOffset+w-h/2, y+h/2 +5, (h/2-10), h/2-10, badges[irRecord.record.lamp], 1, 0)
         end
 
         for i,v in ipairs(grades) do
