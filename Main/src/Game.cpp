@@ -2178,7 +2178,7 @@ public:
 			if(!SkipIntro() && !m_isPracticeSetup)
 				SkipOutro();
 		}
-		else if(code == SDL_SCANCODE_PAGEUP && !IsMultiplayerGame() && IsChallenge())
+		else if(code == SDL_SCANCODE_PAGEUP && !IsMultiplayerGame() && !IsChallenge())
 		{
 			m_audioPlayback.Advance(5000);
 		}
