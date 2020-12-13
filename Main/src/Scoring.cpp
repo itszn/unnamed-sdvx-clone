@@ -645,7 +645,6 @@ void Scoring::m_UpdateTicks()
 		{
 			ScoreTick* tick = ticks[i];
 			MapTime delta = currentTime - ticks[i]->time + m_inputOffset;
-			bool shouldMiss = abs(delta) > tick->GetHitWindow(hitWindow);
 			bool processed = false;
 			if (delta >= 0)
 			{
@@ -714,22 +713,6 @@ void Scoring::m_UpdateTicks()
 						}
 						processed = true;
 					}
-				}
-			}
-			else if (tick->HasFlag(TickFlags::Slam) && !shouldMiss)
-			{
-				LaserObjectState* laserObject = (LaserObjectState*)tick->object;
-				// Check if slam hit
-				float dirSign = Math::Sign(laserObject->GetDirection());
-				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-				if (dirSign == inputSign)
-				{
-					m_TickHit(tick, buttonCode);
-					HitStat* stat = new HitStat(tick->object);
-					stat->time = currentTime;
-					stat->rating = ScoreHitRating::Perfect;
-					hitStats.Add(stat);
-					processed = true;
 				}
 			}
 
