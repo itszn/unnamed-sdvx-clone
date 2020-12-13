@@ -186,8 +186,6 @@ public:
 	// 1 = Late
 	uint32 timedHits[2] = { 0 };
 
-
-
 	// Amount of gauge to gain on a short note
 	float shortGaugeGain = 0.0f;
 
@@ -211,8 +209,6 @@ public:
 	bool autoplay = false;
 	// Autoplay but for buttons
 	bool autoplayButtons = false;
-
-	float laserDistanceLeniency = 1.0f / 12.0f;
 
 	// Actual positions of the laser
 	float laserPositions[2];
@@ -291,7 +287,9 @@ private:
 	// Input values for laser [-1,1]
 	float m_laserInput[2] = { 0.0f };
 	// Decides if the coming tick should be auto completed
-	float m_autoLaserTime[2] = { 0,0 };
+	float m_autoLaserTime[2] = { 0.0f };
+	const float m_laserDistanceLeniency = 21 / 128.f;
+	const float m_autoLaserDuration = 5 / 60.f;
 	
 	// Saves the time when a button was hit, used to decide if a button was held before a hold object was active
 	MapTime m_buttonHitTime[6] = { 0, 0, 0, 0, 0, 0 };
@@ -299,12 +297,6 @@ private:
 	// Saves the time when a button was hit or released for bounce guarding
 	MapTime m_buttonGuardTime[6] = { 0, 0, 0, 0, 0, 0 };
 
-	// Max number of ticks to assist
-	float m_assistLevel = 1.5f;
-	float m_assistPunish = 1.5f;
-	float m_assistChangePeriod = 50.0f;
-	float m_assistChangeExponent = 1.0f;
-	float m_assistTime = 0.0f;
 	// Offet to use for calculating judge (ms)
 	uint32 m_inputOffset = 0;
 	int32 m_bounceGuard = 0;
