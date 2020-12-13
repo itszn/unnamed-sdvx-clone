@@ -699,7 +699,7 @@ void Scoring::m_UpdateTicks()
 					{
 						// Check laser input
 						float laserDelta = fabs(laserPositions[laserObject->index] - laserTargetPositions[laserObject->index]);
-						if (laserDelta <= m_laserDistanceLeniency)
+						if (autoplay || laserDelta <= m_laserDistanceLeniency)
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
