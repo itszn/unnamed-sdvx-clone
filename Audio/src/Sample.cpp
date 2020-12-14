@@ -121,6 +121,11 @@ public:
 	{
 		return 0;
 	}
+	void PreRenderDSPs(Vector<DSP *> &DSPs) override {}
+	uint64 GetSamplePos() const override
+	{
+		return m_playbackPointer;
+	}
 };
 
 Sample SampleRes::Create(Audio *audio, const String &path)

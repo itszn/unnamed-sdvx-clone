@@ -9,7 +9,6 @@ protected:
 	DSP() = default; // Abstract
 	DSP(const DSP &) = delete;
 
-	inline void SetSampleRate(uint32 sampleRate) { m_sampleRate = sampleRate; }
 	uint32 GetStartSample() const;
 	uint32 GetCurrentSample() const;
 
@@ -18,14 +17,13 @@ protected:
 	uint32 m_sampleRate = 0;
 
 	class AudioBase *m_audioBase = nullptr;
-	class Audio_Impl *m_audio = nullptr;
 
 public:
 	virtual ~DSP();
 
-	void SetAudio(class Audio_Impl *audio);
 	void SetAudioBase(class AudioBase *audioBase);
 	inline void RemoveAudioBase() { m_audioBase = nullptr; }
+	inline void SetSampleRate(uint32 sampleRate) { m_sampleRate = sampleRate; }
 
 	// Process <numSamples> amount of samples in stereo float format
 	virtual void Process(float *out, uint32 numSamples) = 0;
@@ -34,6 +32,7 @@ public:
 	float mix = 1.0f;
 	uint32 priority = 0;
 	uint32 startTime = 0;
+	uint32 endTime = 0;
 	int32 chartOffset = 0;
 	int32 lastTimingPoint = 0;
 };
@@ -54,6 +53,9 @@ public:
 	// Get the sample rate of this audio stream
 	virtual uint32 GetSampleRate() const = 0;
 
+	// Get the exact playback position in samples
+	virtual uint64 GetSamplePos() const = 0;
+
 	// Get the sample rate of the audio connected to this
 	uint32 GetAudioSampleRate() const;
 
@@ -61,6 +63,7 @@ public:
 	virtual float *GetPCM() = 0;
 	// Gets pcm sample count
 	virtual uint64 GetSampleCount() const = 0;
+	virtual void PreRenderDSPs(Vector<DSP *> &DSPs) = 0;
 
 	void ProcessDSPs(float *out, uint32 numSamples);
 	// Adds a signal processor to the audio

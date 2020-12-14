@@ -97,6 +97,11 @@ double AudioStreamBase::m_getPositionSeconds(bool allowFreezeSkip /*= true*/) co
 		return ret;
 	}
 }
+uint64 AudioStreamBase::GetSamplePos() const
+{
+	return m_samplePos;
+}
+
 int32 AudioStreamBase::GetPosition() const
 {
 	return (int32)(m_getPositionSeconds() * 1000.0);
@@ -130,6 +135,10 @@ void AudioStreamBase::m_restartTiming()
 	m_offsetCorrection = 0.0f;
 	m_deltaSum = 0;
 	m_deltaSamples = 0;
+}
+void AudioStreamBase::PreRenderDSPs(Vector<DSP *> &DSPs)
+{
+	PreRenderDSPs_Internal(DSPs);
 }
 void AudioStreamBase::Process(float *out, uint32 numSamples)
 {

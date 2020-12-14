@@ -56,6 +56,7 @@ protected:
 	virtual float *GetPCM_Internal() = 0;
 	virtual uint32 GetSampleRate_Internal() const = 0;
 	virtual uint64 GetSampleCount_Internal() const = 0;
+	virtual void PreRenderDSPs_Internal(Vector<DSP *> &DSPs){};
 	// Internal sample rate
 	virtual int32 GetStreamRate_Internal() = 0;
 	// Implementation specific decode
@@ -69,9 +70,11 @@ public:
 	virtual bool HasEnded() const override;
 	double SamplesToSeconds(int64 s) const;
 	virtual int32 GetPosition() const override;
+	virtual uint64 GetSamplePos() const override;
 	virtual void SetPosition(int32 pos) override;
 	virtual float *GetPCM() override;
 	virtual uint64 GetSampleCount() const override;
 	virtual uint32 GetSampleRate() const override;
+	virtual void PreRenderDSPs(Vector<DSP *> &DSPs) override;
 	virtual void Process(float *out, uint32 numSamples) override;
 };

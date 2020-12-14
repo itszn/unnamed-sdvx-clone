@@ -4,6 +4,7 @@
 #include <Beatmap/Beatmap.hpp>
 #include <Audio/Audio.hpp>
 #include <Audio/DSP.hpp>
+#include <Shared/Profiling.hpp>
 
 AudioPlayback::AudioPlayback()
 {
@@ -72,6 +73,15 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 	if (m_fxtrack)
 	{
 		// Prevent loading switchables if fx track is in use.
+		return true;
+	}
+
+	bool preRenderEffects = true; //TODO: Game setting
+	if (preRenderEffects)
+	{
+		m_fxtrack = AudioStream::Clone(g_audio, m_music);
+		assert(m_fxtrack);
+		m_PreRenderDSPTrack();
 		return true;
 	}
 
@@ -187,7 +197,9 @@ void AudioPlayback::SetEffect(uint32 index, HoldObjectState *object, class Beatm
 
 	Ref<AudioStream> audioTrack = m_GetDSPTrack();
 
-	dsp = m_buttonEffects[index].CreateDSP(*this, audioTrack->GetAudioSampleRate());
+	dsp = m_buttonEffects[index].CreateDSP(m_playback->GetCurrentTimingPoint(),
+										   GetLaserFilterInput(),
+										   audioTrack->GetAudioSampleRate());
 	if (!dsp)
 		return;
 
@@ -265,7 +277,9 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 
 			Ref<AudioStream> audioTrack = m_GetDSPTrack();
 
-			m_laserDSP = m_laserEffect.CreateDSP(*this, audioTrack->GetAudioSampleRate());
+			m_laserDSP = m_laserEffect.CreateDSP(m_playback->GetCurrentTimingPoint(),
+												 GetLaserFilterInput(),
+												 audioTrack->GetAudioSampleRate());
 			if (!m_laserDSP)
 			{
 				Logf("Failed to create laser DSP with type %d", Logger::Severity::Warning, m_laserEffect.type);
@@ -498,6 +512,34 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 	default:
 		break;
 	}
+}
+
+void AudioPlayback::m_PreRenderDSPTrack()
+{
+	ProfilerScope $("Pre-rendering FX effects");
+	Vector<DSP *> DSPs;
+	for (auto chartObj : m_playback->GetBeatmap().GetLinearObjects())
+	{
+		if (chartObj->type == ObjectType::Hold)
+		{
+			HoldObjectState *holdObj = (HoldObjectState *)chartObj;
+			if (holdObj->effectType != EffectType::None)
+			{
+				//Add DSP
+				GameAudioEffect effect = m_beatmap->GetEffect(holdObj->effectType);
+				DSP *dsp = effect.CreateDSP(*m_playback->GetTimingPointAt(chartObj->time),
+											1.0f,
+											m_fxtrack->GetAudioSampleRate());
+
+				effect.SetParams(dsp, *this, holdObj);
+				dsp->startTime = chartObj->time;
+				dsp->endTime = dsp->startTime + holdObj->duration;
+				dsp->SetAudioBase(m_fxtrack.get());
+				DSPs.Add(dsp);
+			}
+		}
+	}
+	m_fxtrack->PreRenderDSPs(DSPs);
 }
 
 GameAudioEffect::GameAudioEffect(const AudioEffect &other)
