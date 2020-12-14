@@ -74,10 +74,11 @@ void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP *> &DSPs)
             continue;
 
         uint32 numSamples = endSamplePos - m_playPos;
-        float buffer[numSamples * 2];
+        float *buffer = new float[numSamples * 2];
         memcpy(buffer, m_pcm + m_playPos * 2, numSamples * 2 * sizeof(float));
         dsp->Process(buffer, numSamples);
         memcpy(m_pcm + m_playPos * 2, buffer, numSamples * 2 * sizeof(float));
+        delete[] buffer;
     }
     m_playPos = originalPlayPos;
     m_samplePos = m_playPos;
