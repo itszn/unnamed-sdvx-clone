@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "AudioStreamPcm.hpp"
 
 bool AudioStreamPcm::Init(Audio *audio, const String &path, bool preload)
