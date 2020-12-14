@@ -5,18 +5,18 @@
 // Fixed point format for resampling
 const uint64 AudioStreamBase::fp_sampleStep = 1ull << 48;
 
-BinaryStream& AudioStreamBase::m_reader()
+BinaryStream &AudioStreamBase::m_reader()
 {
-	return m_preloaded ? (BinaryStream&)m_memoryReader : (BinaryStream&)m_fileReader;
+	return m_preloaded ? (BinaryStream &)m_memoryReader : (BinaryStream &)m_fileReader;
 }
-bool AudioStreamBase::Init(Audio* audio, const String& path, bool preload)
+bool AudioStreamBase::Init(Audio *audio, const String &path, bool preload)
 {
 	m_audio = audio;
 
-	if(!m_file.OpenRead(path))
+	if (!m_file.OpenRead(path))
 		return false;
 
-	if(preload)
+	if (preload)
 	{
 		m_data.resize(m_file.GetSize());
 		m_file.Read(m_data.data(), m_data.size());
@@ -39,8 +39,8 @@ void AudioStreamBase::m_initSampling(uint32 sampleRate)
 	double stepCheck = (double)m_sampleStepIncrement / (double)fp_sampleStep;
 	// TODO: for practice mode: m_sampleStepIncrement *= playback_speed;
 	m_numChannels = 2;
-	m_readBuffer = new float*[m_numChannels];
-	for(uint32 c = 0; c < m_numChannels; c++)
+	m_readBuffer = new float *[m_numChannels];
+	for (uint32 c = 0; c < m_numChannels; c++)
 	{
 		m_readBuffer[c] = new float[m_bufferSize];
 	}
@@ -48,11 +48,11 @@ void AudioStreamBase::m_initSampling(uint32 sampleRate)
 
 void AudioStreamBase::Play()
 {
-	if(!m_playing)
+	if (!m_playing)
 	{
 		m_playing = true;
 	}
-	if(m_paused)
+	if (m_paused)
 	{
 		m_paused = false;
 		m_restartTiming();
@@ -60,7 +60,7 @@ void AudioStreamBase::Play()
 }
 void AudioStreamBase::Pause()
 {
-	if(!m_paused)
+	if (!m_paused)
 	{
 		// Store time the stream was paused
 		m_streamTimeOffset = m_streamTimer.SecondsAsDouble();
@@ -78,21 +78,21 @@ bool AudioStreamBase::HasEnded() const
 }
 uint64 AudioStreamBase::m_secondsToSamples(double s) const
 {
-	return (uint64)(s * (double)const_cast<AudioStreamBase*>(this)->GetStreamRate_Internal());
+	return (uint64)(s * (double)const_cast<AudioStreamBase *>(this)->GetStreamRate_Internal());
 }
 double AudioStreamBase::SamplesToSeconds(int64 s) const
 {
-	return (double)s / (double)const_cast<AudioStreamBase*>(this)->GetStreamRate_Internal();
+	return (double)s / (double)const_cast<AudioStreamBase *>(this)->GetStreamRate_Internal();
 }
 double AudioStreamBase::m_getPositionSeconds(bool allowFreezeSkip /*= true*/) const
 {
 	double samplePosTime = SamplesToSeconds(m_samplePos);
-	if(m_paused || m_samplePos < 0)
+	if (m_paused || m_samplePos < 0)
 		return samplePosTime;
 	else
 	{
 		double ret = m_streamTimeOffset + m_streamTimer.SecondsAsDouble() - m_offsetCorrection;
-		if(allowFreezeSkip && (ret - samplePosTime) > 0.2f) // Prevent time from running of when the application freezes
+		if (allowFreezeSkip && (ret - samplePosTime) > 0.2f) // Prevent time from running of when the application freezes
 			return samplePosTime;
 		return ret;
 	}
@@ -110,13 +110,17 @@ void AudioStreamBase::SetPosition(int32 pos)
 	m_ended = false;
 	m_lock.unlock();
 }
-float* AudioStreamBase::GetPCM()
+float *AudioStreamBase::GetPCM()
 {
 	return GetPCM_Internal();
 }
 uint32 AudioStreamBase::GetSampleRate() const
 {
 	return GetSampleRate_Internal();
+}
+uint64 AudioStreamBase::GetSampleCount() const
+{
+	return GetSampleCount_Internal();
 }
 void AudioStreamBase::m_restartTiming()
 {
@@ -127,23 +131,23 @@ void AudioStreamBase::m_restartTiming()
 	m_deltaSum = 0;
 	m_deltaSamples = 0;
 }
-void AudioStreamBase::Process(float* out, uint32 numSamples)
+void AudioStreamBase::Process(float *out, uint32 numSamples)
 {
-	if(!m_playing || m_paused)
+	if (!m_playing || m_paused)
 		return;
 
 	m_lock.lock();
 
 	uint32 outCount = 0;
-	while(outCount < numSamples)
+	while (outCount < numSamples)
 	{
-		if(m_remainingBufferData > 0)
+		if (m_remainingBufferData > 0)
 		{
 			uint32 idxStart = (m_currentBufferSize - m_remainingBufferData);
 			uint32 readOffset = 0; // Offset from the start to read from
-			for(uint32 i = 0; outCount < numSamples && readOffset < m_remainingBufferData; i++)
+			for (uint32 i = 0; outCount < numSamples && readOffset < m_remainingBufferData; i++)
 			{
-				if(m_samplePos < 0)
+				if (m_samplePos < 0)
 				{
 					out[outCount * 2] = 0.0f;
 					out[outCount * 2 + 1] = 0.0f;
@@ -157,10 +161,10 @@ void AudioStreamBase::Process(float* out, uint32 numSamples)
 
 				// Increment source sample with resampling
 				m_sampleStep += static_cast<uint64>(m_sampleStepIncrement * PlaybackSpeed);
-				while(m_sampleStep >= fp_sampleStep)
+				while (m_sampleStep >= fp_sampleStep)
 				{
 					m_sampleStep -= fp_sampleStep;
-					if(m_samplePos >= 0)
+					if (m_samplePos >= 0)
 						readOffset++;
 					m_samplePos++;
 				}
@@ -168,11 +172,11 @@ void AudioStreamBase::Process(float* out, uint32 numSamples)
 			m_remainingBufferData -= readOffset;
 		}
 
-		if(outCount >= numSamples)
+		if (outCount >= numSamples)
 			break;
 
 		// Read more data
-		if(DecodeData_Internal() <= 0)
+		if (DecodeData_Internal() <= 0)
 		{
 			// Ended
 			Log("Audio stream ended", Logger::Severity::Info);
@@ -188,11 +192,11 @@ void AudioStreamBase::Process(float* out, uint32 numSamples)
 		m_samplePos = GetStreamPosition_Internal() - (int64)m_remainingBufferData;
 	}
 
-	if(m_samplePos > 0)
+	if (m_samplePos > 0)
 	{
-		if((uint64)m_samplePos >= m_samplesTotal)
+		if ((uint64)m_samplePos >= m_samplesTotal)
 		{
-			if(!m_ended)
+			if (!m_ended)
 			{
 				// Ended
 				Log("Audio stream ended", Logger::Severity::Info);
@@ -205,14 +209,14 @@ void AudioStreamBase::Process(float* out, uint32 numSamples)
 		m_deltaSamples += 1;
 
 		double avgDelta = m_deltaSum / (double)m_deltaSamples;
-		if(abs(timingDelta - avgDelta) > 0.2)
+		if (abs(timingDelta - avgDelta) > 0.2)
 		{
 			Logf("Timing restart, delta = %f", Logger::Severity::Info, avgDelta);
 			m_restartTiming();
 		}
 		else
 		{
-			if(fabs(avgDelta) > 0.001f)
+			if (fabs(avgDelta) > 0.001f)
 			{
 				// Fine tune timing
 				double step = abs(avgDelta) * 0.1f;
