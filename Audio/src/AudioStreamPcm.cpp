@@ -74,9 +74,9 @@ void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP *> &DSPs)
     auto originalPlayPos = m_playPos;
     for (auto &&dsp : DSPs)
     {
-        m_playPos = (dsp->startTime * m_sampleRate) / 1000;
+        m_playPos = ((uint64)dsp->startTime * (uint64)m_sampleRate) / 1000;
         m_samplePos = m_playPos;
-        int64 endSamplePos = (dsp->endTime * m_sampleRate) / 1000;
+        int64 endSamplePos = ((uint64)dsp->endTime * (uint64)m_sampleRate) / 1000;
         endSamplePos = Math::Min(endSamplePos, (int64)m_samplesTotal);
         if (m_playPos >= endSamplePos)
         {
