@@ -535,10 +535,13 @@ void AudioPlayback::m_PreRenderDSPTrack()
 				dsp->startTime = chartObj->time;
 				dsp->endTime = dsp->startTime + holdObj->duration;
 				dsp->SetAudioBase(m_fxtrack.get());
+				dsp->priority = GameAudioEffect::GetDefaultEffectPriority(effect.type);
+				Logf("Added %s at %dms", Logger::Severity::Debug, dsp->GetName(), dsp->startTime);
 				DSPs.Add(dsp);
 			}
 		}
 	}
+	DSPs.Sort(DSP::Sorter);
 	m_fxtrack->PreRenderDSPs(DSPs);
 }
 

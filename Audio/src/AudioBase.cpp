@@ -19,6 +19,15 @@ DSP::~DSP()
 	assert(!m_audioBase);
 }
 
+bool DSP::Sorter(DSP *&a, DSP *&b)
+{
+	if (a->priority == b->priority)
+	{
+		return a->startTime < b->startTime;
+	}
+	return a->priority < b->priority;
+}
+
 void DSP::SetAudioBase(class AudioBase *audioBase)
 {
 	if (!audioBase)

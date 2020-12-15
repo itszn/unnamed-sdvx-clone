@@ -20,6 +20,7 @@ protected:
 
 public:
 	virtual ~DSP();
+	static bool Sorter(DSP *&a, DSP *&b);
 
 	void SetAudioBase(class AudioBase *audioBase);
 	inline void RemoveAudioBase() { m_audioBase = nullptr; }

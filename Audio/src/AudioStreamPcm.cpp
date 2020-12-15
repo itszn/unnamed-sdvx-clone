@@ -32,7 +32,9 @@ uint32 AudioStreamPcm::GetSampleRate_Internal() const
 int32 AudioStreamPcm::DecodeData_Internal()
 {
     uint32 samplesPerRead = 128;
-    for (uint32 i = 0; i < samplesPerRead; i++)
+    int32 retVal = samplesPerRead;
+    bool earlyOut = false;
+    for (size_t i = 0; i < samplesPerRead; i++)
     {
         if (m_playPos < 0)
         {
@@ -41,20 +43,26 @@ int32 AudioStreamPcm::DecodeData_Internal()
             m_playPos++;
             continue;
         }
-        else if (m_playPos >= (int64)m_samplesTotal)
+        else if ((uint64)m_playPos >= m_samplesTotal)
         {
-            m_currentBufferSize = samplesPerRead;
-            m_remainingBufferData = samplesPerRead;
-            return i;
+            m_currentBufferSize = m_bufferSize;
+            m_remainingBufferData = m_bufferSize;
+            m_readBuffer[0][i] = 0;
+            m_readBuffer[1][i] = 0;
+            if (!earlyOut)
+            {
+                retVal = i;
+                earlyOut = true;
+            }
+            continue;
         }
-
         m_readBuffer[0][i] = m_pcm[m_playPos * 2];
         m_readBuffer[1][i] = m_pcm[m_playPos * 2 + 1];
         m_playPos++;
     }
     m_currentBufferSize = samplesPerRead;
     m_remainingBufferData = samplesPerRead;
-    return samplesPerRead;
+    return retVal;
 }
 
 uint64 AudioStreamPcm::GetSampleCount_Internal() const
@@ -71,13 +79,17 @@ void AudioStreamPcm::PreRenderDSPs_Internal(Vector<DSP *> &DSPs)
         int64 endSamplePos = (dsp->endTime * m_sampleRate) / 1000;
         endSamplePos = Math::Min(endSamplePos, (int64)m_samplesTotal);
         if (m_playPos >= endSamplePos)
+        {
+            Logf("Effect %s at %dms not rendered", Logger::Severity::Debug, dsp->GetName(), dsp->startTime);
             continue;
+        }
 
         uint32 numSamples = endSamplePos - m_playPos;
         float *buffer = new float[numSamples * 2];
         memcpy(buffer, m_pcm + m_playPos * 2, numSamples * 2 * sizeof(float));
         dsp->Process(buffer, numSamples);
         memcpy(m_pcm + m_playPos * 2, buffer, numSamples * 2 * sizeof(float));
+        Logf("Rendered %s at %dms with %d samples", Logger::Severity::Debug, dsp->GetName(), dsp->startTime, numSamples);
         delete[] buffer;
     }
     m_playPos = originalPlayPos;

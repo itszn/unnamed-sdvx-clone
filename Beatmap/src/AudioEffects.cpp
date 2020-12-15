@@ -12,17 +12,17 @@ EffectDuration::EffectDuration(float rate)
 	type = Rate;
 }
 
-EffectDuration EffectDuration::Lerp(const EffectDuration& lhs, const EffectDuration& rhs, float time)
+EffectDuration EffectDuration::Lerp(const EffectDuration &lhs, const EffectDuration &rhs, float time)
 {
 	assert(rhs.type == lhs.type);
-	if(lhs.type == Type::Rate)
+	if (lhs.type == Type::Rate)
 		return lhs.rate + (lhs.rate - rhs.rate) * time;
 	else
 		return (int32)(lhs.duration + (float)(lhs.duration - rhs.duration) * time);
 }
 uint32 EffectDuration::Absolute(double noteDuration)
 {
-	if(type == Time)
+	if (type == Time)
 		return duration;
 	else
 		return (uint32)(rate * noteDuration);
@@ -49,7 +49,7 @@ static AudioEffect CreateDefault(EffectType type)
 	Interpolation::CubicBezier lpfEasingCurve = Interpolation::EaseOutCubic;
 
 	// Set defaults based on effect type
-	switch(type)
+	switch (type)
 	{
 		// These are assumed to mostly be laser effect types (at least when used with the defaults)
 	case EffectType::PeakingFilter:
@@ -122,35 +122,52 @@ public:
 	{
 		// Preload all default effect settings
 		effects.resize((size_t)EffectType::_Length);
-		for(auto e : Enum_EffectType::GetMap())
+		for (auto e : Enum_EffectType::GetMap())
 		{
 			effects[(size_t)e.first] = CreateDefault(e.first);
 		}
 	}
 };
 
-const AudioEffect& AudioEffect::GetDefault(EffectType type)
+const AudioEffect &AudioEffect::GetDefault(EffectType type)
 {
 	static DefaultEffectSettings defaults;
 	assert((size_t)type < defaults.effects.size());
 	return defaults.effects[(size_t)type];
 }
 
-void AudioEffect::SetDefaultEffectParams(int16* params)
+int AudioEffect::GetDefaultEffectPriority(EffectType type)
+{
+	const Map<EffectType, int> priorityMap = {
+		{EffectType::Retrigger, 0},
+		{EffectType::Echo, 1},
+		{EffectType::Gate, 2},
+		{EffectType::TapeStop, 3},
+		{EffectType::SideChain, 4},
+		{EffectType::Bitcrush, 5},
+	};
+
+	if (priorityMap.Contains(type))
+		return priorityMap.at(type);
+
+	return 99;
+}
+
+void AudioEffect::SetDefaultEffectParams(int16 *params)
 {
 	// Set defaults based on effect type
 	switch (type)
 	{
-		case EffectType::Bitcrush:
-			params[0] = bitcrusher.reduction.Sample(1);
-			break;
-		case EffectType::Wobble:
-			break;
-		case EffectType::Flanger:
-			params[0] = flanger.depth.Sample(1);
-			params[1] = flanger.offset.Sample(1);
-			break;
-		default:
-			break;
+	case EffectType::Bitcrush:
+		params[0] = bitcrusher.reduction.Sample(1);
+		break;
+	case EffectType::Wobble:
+		break;
+	case EffectType::Flanger:
+		params[0] = flanger.depth.Sample(1);
+		params[1] = flanger.offset.Sample(1);
+		break;
+	default:
+		break;
 	}
 }
