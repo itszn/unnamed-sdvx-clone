@@ -1,11 +1,13 @@
 Background & Foreground
 =======================
 How to use backgrounds and foregrounds and the functions available in the lua tables for
-background and foreground scritps.
+background and foreground scripts.
 
 Backgrounds and foregrounds work exactly the same with the exception that the foreground shader gets
-access to a texture built from the current framebuffer in the ``fb_tex`` uniform. The ``background`` and 
-``foreground`` scripts access their functions in the tables named as such but the functions are identical
+access to a texture built from the current framebuffer in the ``texFrameBuffer`` uniform.
+(For an example of a foreground shader, go to the folder `shader/examples/foreground` of the default skin.)
+
+The ``background`` and ``foreground`` scripts access their functions in the tables named as such but the functions are identical
 for both tables.
 
 To create a background you need to create a folder containing the following files::
