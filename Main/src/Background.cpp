@@ -47,17 +47,17 @@ public:
 		rq.Process();
 	}
 
+protected:
 	RenderState renderState;
 	Mesh fullscreenMesh;
 	Material fullscreenMaterial;
 	Map<String, Texture> textures;
-	Texture frameBufferTexture;
+	Texture frameBufferTexture = nullptr;
 	MaterialParameterSet fullscreenMaterialParams;
 	float clearTransition = 0.0f;
 	float offsyncTimer = 0.0f;
 	float speedMult = 1.0f;
-	bool foreground;
-	bool hasFbTex;
+	bool foreground = false;
 	bool errored = false;
 	Vector<String> defaultBGs;
 	LuaBindable *bindable = nullptr;
@@ -81,7 +81,16 @@ private:
 
 		CheckedLoad(fullscreenMaterial = LoadBackgroundMaterial(matPath));
 		fullscreenMaterial->opaque = false;
-		hasFbTex = fullscreenMaterial->HasUniform("fb_tex");
+
+		if (fullscreenMaterial->HasUniform("texFrameBuffer"))
+		{
+			frameBufferTexture = TextureRes::CreateFromFrameBuffer(g_gl, g_resolution);
+		}
+		else
+		{
+			frameBufferTexture = nullptr;
+		}
+		
 		return true;
 	}
 
@@ -234,10 +243,10 @@ public:
 		fullscreenMaterialParams.SetParameter("tilt", tilt);
 		fullscreenMaterialParams.SetParameter("screenCenter", screenCenter);
 		fullscreenMaterialParams.SetParameter("timing", timing);
-		if (foreground && hasFbTex)
+		if (foreground && frameBufferTexture)
 		{
 			frameBufferTexture->SetFromFrameBuffer();
-			fullscreenMaterialParams.SetParameter("fb_tex", frameBufferTexture);
+			fullscreenMaterialParams.SetParameter("texFrameBuffer", frameBufferTexture);
 		}
 
 		if (foreground)
