@@ -144,6 +144,10 @@ void CombinedFilterDSP::Process(float* out, uint32 numSamples)
 	peak.Process(out, numSamples);
 }
 
+LimiterDSP::LimiterDSP(uint32 sampleRate) : DSP()
+{
+	SetSampleRate(sampleRate);
+}
 void LimiterDSP::Process(float* out, uint32 numSamples)
 {
 	const float secondsPerSample = (float) m_audio->GetSecondsPerSample();
@@ -696,8 +700,9 @@ public:
 	}
 };
 
-PitchShiftDSP::PitchShiftDSP()
+PitchShiftDSP::PitchShiftDSP(uint32 sampleRate) : DSP()
 {
+	SetSampleRate(sampleRate);
 	m_impl = new PitchShiftDSP_Impl();
 }
 PitchShiftDSP::~PitchShiftDSP()

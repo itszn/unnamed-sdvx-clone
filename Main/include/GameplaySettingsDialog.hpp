@@ -7,6 +7,7 @@ class GameplaySettingsDialog: public BaseGameSettingsDialog
 {
 public:
     GameplaySettingsDialog(SongSelect* songSelectScreen);
+    GameplaySettingsDialog() {};
 
     void InitTabs() override;
     void OnAdvanceTab() override;
@@ -17,6 +18,6 @@ public:
     Delegate<> onPressComputeSongOffset;
 
 private:
-    SongSelect* songSelectScreen;
+    SongSelect* songSelectScreen = nullptr;
     Setting m_CreateSongOffsetSetting();
 };

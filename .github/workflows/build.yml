@@ -4,6 +4,7 @@ jobs:
     windows_build:
         name: Windows build
         runs-on: windows-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1
@@ -27,13 +28,18 @@ jobs:
             - name: cmake
               run: cmake -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -G "Visual Studio 16 2019" -A x64 .
             - name: Setup MSBuild.exe
-              uses: warrenbuckley/Setup-MSBuild@v1
+              uses: microsoft/Setup-MSBuild@v1.0.2
             - name: MSBuild
               run: msbuild USC.sln -p:Configuration=Release /m /verbosity:minimal
             - name: Tests
               run: rm ./bin/Tests.*
-            - name: Post Build Stuff
-              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll
+            - name: Get Symbols 
+              continue-on-error: true
+              run: |
+                mkdir -f .\bin\crash_dumps\
+                cp .\third_party\breakpad
+                .\third_party\breakpad\dump_syms.exe .\bin\usc-game.pdb > .\bin\crash_dumps\usc-game.syms
+                mv .\bin\usc-game.pdb .\bin\crash_dumps\.
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:
@@ -46,6 +52,7 @@ jobs:
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1
@@ -77,6 +84,7 @@ jobs:
     macos_build:
         name: macOS build
         runs-on: macos-latest
+        if: "!contains(github.event.head_commit.message, '[skip ci]')"
         steps:
             - name: Checkout repo
               uses: actions/checkout@v1

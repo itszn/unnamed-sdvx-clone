@@ -44,7 +44,7 @@ struct HitWindow
 	static HitWindow FromConfig();
 	void SaveConfig() const;
 
-	void ToLuaTable(struct lua_State* L);
+	void ToLuaTable(struct lua_State* L) const;
 
 	inline HitWindow& operator= (const HitWindow& that) noexcept { perfect = that.perfect; good = that.good; hold = that.hold; miss = that.miss; return *this; }
 

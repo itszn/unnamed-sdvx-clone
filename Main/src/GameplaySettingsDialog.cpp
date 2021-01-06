@@ -14,8 +14,11 @@ void GameplaySettingsDialog::InitTabs()
     offsetTab->name = "Offsets";
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::GlobalOffset, "Global Offset", {-200, 200}));
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::InputOffset, "Input Offset", {-200, 200}));
-    offsetTab->settings.push_back(m_CreateSongOffsetSetting());
-    offsetTab->settings.push_back(CreateButton("Compute Song Offset", [this](const auto&) { onPressComputeSongOffset.Call(); }));
+    if (songSelectScreen != nullptr)
+    {
+        offsetTab->settings.push_back(m_CreateSongOffsetSetting());
+        offsetTab->settings.push_back(CreateButton("Compute Song Offset", [this](const auto&) { onPressComputeSongOffset.Call(); }));
+    }
 
     Tab speedTab = std::make_unique<TabData>();
     speedTab->name = "HiSpeed";
@@ -30,8 +33,11 @@ void GameplaySettingsDialog::InitTabs()
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
     gameTab->settings.push_back(CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
-    gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
-    gameTab->settings.push_back(CreateButton("Practice", [this](const auto&) { onPressPractice.Call(); }));
+    if (songSelectScreen != nullptr)
+    {
+        gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
+        gameTab->settings.push_back(CreateButton("Practice", [this](const auto&) { onPressPractice.Call(); }));
+    }
 
     Tab hidsudTab = std::make_unique<TabData>();
     hidsudTab->name = "Hid/Sud";

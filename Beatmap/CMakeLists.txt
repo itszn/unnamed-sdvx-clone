@@ -37,3 +37,9 @@ target_link_libraries(Beatmap Shared)
 
 ## 3rd Party dependencies
 target_link_libraries(Beatmap sqlite3)
+target_link_libraries(Beatmap nlohmann_json)
+
+if(WIN32)
+    target_compile_options(Beatmap PRIVATE /Zi)
+endif()
+
