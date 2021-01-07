@@ -36,8 +36,8 @@ inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<Game
 
 GameConfig::GameConfig()
 {
-	// Default state
-	Clear();
+    //XXX We can't do clear here as it leads to UB with the initialization of hitstat static values
+    // This sould be ok as Clear will be called in the Load function
 }
 
 void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)

@@ -426,6 +426,7 @@ void Application::m_unpackSkins()
 
 bool Application::m_LoadConfig()
 {
+
 	File configFile;
 	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
 	{
@@ -433,6 +434,11 @@ bool Application::m_LoadConfig()
 		if (g_gameConfig.Load(reader))
 			return true;
 	}
+    else
+    {
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+    }
 
 	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
