@@ -33,9 +33,6 @@ Release
 *.ipdb
 lib/
 
-# Code analysis status file markers
-*.lastcodeanalysissucceeded
-
 # Profiling results
 *.vspx
 
