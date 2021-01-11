@@ -277,6 +277,12 @@ public:
 			std::random_device random_device;
 			std::mt19937 generator(random_device());
 			std::shuffle(m_randomVec.begin(), m_randomVec.end(), generator);
+			if (m_randomVec.back() == m_lastItemIndex) {
+				m_randomVec.pop_back();
+				if (m_randomVec.size() == 0) {
+					return;
+				}
+			}
 		}
 
 		uint32 selection = m_randomVec.back();
@@ -434,6 +440,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(true);
 
@@ -462,6 +471,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+		
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(isFiltered);
 
@@ -483,6 +495,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+		
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(true);
 
