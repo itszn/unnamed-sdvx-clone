@@ -1,4 +1,7 @@
 #pragma once
+#include <algorithm>
+#include <random>
+
 #include "stdafx.h"
 #include "SongSort.hpp"
 #include "SongFilter.hpp"
@@ -104,6 +107,8 @@ protected:
 	Map<int32, ItemSelectIndex> m_items;
 	Map<int32, ItemSelectIndex> m_itemFilter;
 	Vector<uint32> m_sortVec;
+	Vector<uint32> m_randomVec;
+
 	bool m_filterSet = false;
 	IApplicationTickable *m_owner;
 
@@ -179,6 +184,9 @@ public:
 			m_SetCurrentItems();
 		}
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -203,6 +211,9 @@ public:
 			m_SetCurrentItems();
 		}
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -214,6 +225,10 @@ public:
 		{
 			ItemSelectIndex index(i);
 		}
+
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		OnItemsChanged.Call();
 	}
 
@@ -236,6 +251,9 @@ public:
 		//set all items
 		m_SetAllItems();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -251,8 +269,20 @@ public:
 	{
 		if (m_SourceCollection().empty())
 			return;
-		uint32 selection = Random::IntRange(0, (int32)m_sortVec.size() - 1);
-		SelectItemBySortIndex(selection);
+
+		// If the randomized vector of charts has not been initialized or has
+		// been exhausted, we regenerate it from the current m_sortVec
+		if (m_randomVec.empty()) {
+			m_randomVec = m_sortVec;
+			std::random_device random_device;
+			std::mt19937 generator(random_device());
+			std::shuffle(m_randomVec.begin(), m_randomVec.end(), generator);
+		}
+
+		uint32 selection = m_randomVec.back();
+		m_randomVec.pop_back();
+
+		SelectItemByItemIndex(selection);
 	}
 
 	void SelectItemByItemId(uint32 id)
