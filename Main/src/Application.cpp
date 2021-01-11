@@ -426,6 +426,7 @@ void Application::m_unpackSkins()
 
 bool Application::m_LoadConfig()
 {
+
 	File configFile;
 	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
 	{
@@ -433,6 +434,11 @@ bool Application::m_LoadConfig()
 		if (g_gameConfig.Load(reader))
 			return true;
 	}
+    else
+    {
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+    }
 
 	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
@@ -653,10 +659,9 @@ bool Application::m_Init()
 		NULL,
 		google_breakpad::ExceptionHandler::HANDLER_ALL,
 		MiniDumpNormal,
-		(const wchar_t*)nullptr,
-		&custom_info
-	);
-#endif 
+		(const wchar_t *)nullptr,
+		&custom_info);
+#endif
 #endif
 
 	// Must have command line
@@ -684,8 +689,8 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Severity::Warning);
-	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
+	if (!m_LoadConfig())
+		Log("Failed to load config file", Logger::Severity::Warning);
 
 	// Job sheduler
 	g_jobSheduler = new JobSheduler();
@@ -739,7 +744,8 @@ bool Application::m_Init()
 	g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
 
 	int samplecount = g_gameConfig.GetInt(GameConfigKeys::AntiAliasing);
-	if (samplecount > 0) samplecount = 1 << samplecount;
+	if (samplecount > 0)
+		samplecount = 1 << samplecount;
 
 	g_gameWindow = new Graphics::Window(g_resolution, samplecount);
 
@@ -879,7 +885,7 @@ bool Application::m_Init()
 	Path::CreateDir(Path::Absolute("songs"));
 	Path::CreateDir(Path::Absolute("replays"));
 	Path::CreateDir(Path::Absolute("crash_dumps"));
-
+	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	return true;
 }
 void Application::m_MainLoop()
@@ -893,7 +899,7 @@ void Application::m_MainLoop()
 		frameTimer.Restart();
 		//run discord callbacks
 		Discord_RunCallbacks();
-		
+
 		// Process changes in the list of items
 		bool restoreTop = false;
 		for (auto &ch : g_tickableChanges)
@@ -968,7 +974,6 @@ void Application::m_MainLoop()
 
 		g_avgRenderDelta = g_avgRenderDelta * 0.98f + m_deltaTime * 0.02f; // Calculate avg
 
-
 		// Set time in render state
 		m_renderStateBase.time = currentTime;
 
@@ -1001,13 +1006,14 @@ void Application::m_MainLoop()
 				m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
 			}
 
-			do {
+			do
+			{
 				std::this_thread::yield();
 			} while (frameTimer.Microseconds() < targetRenderTime);
 		}
 		// Swap buffers
 		g_gl->SwapBuffers();
-		
+
 		m_deltaTime = frameTimer.SecondsAsFloat();
 	}
 }
@@ -1071,7 +1077,7 @@ void Application::m_Tick()
 			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
 			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
 			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
-			// Visualize m_fpsTargetSleepMult for debugging 
+			// Visualize m_fpsTargetSleepMult for debugging
 			//nvgBeginPath(g_guiState.vg);
 			//float h = m_fpsTargetSleepMult * g_resolution.y;
 			//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
@@ -1155,12 +1161,11 @@ void Application::m_Cleanup()
 	}
 
 	//clear fonts before freeing library
-	for (auto& f : g_guiState.fontCahce)
+	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
 	}
 	g_guiState.currentFont.reset();
-
 
 	Discord_Shutdown();
 
@@ -1192,7 +1197,6 @@ void Application::Shutdown()
 void Application::AddTickable(class IApplicationTickable *tickable, class IApplicationTickable *insertBefore)
 {
 	Log("Adding tickable", Logger::Severity::Debug);
-
 
 	TickableChange &change = g_tickableChanges.Add();
 	change.mode = TickableChange::Added;
@@ -1394,7 +1398,8 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		if (Path::FileExists(defaultPath))
 		{
 			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing " + name + ".lua", "No " + name + ".lua file could be found, suggested solution:\n"
-				"Would you like to copy \"scripts/"+name+".lua\" from the default skin to your current skin?");
+																										 "Would you like to copy \"scripts/" +
+																							  name + ".lua\" from the default skin to your current skin?");
 			if (copyDefault)
 				Path::Copy(defaultPath, path);
 		}
@@ -1414,9 +1419,8 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	return s;
 }
 
-
 // TODO add option for this
-void Application::ShowLuaError(const String& error)
+void Application::ShowLuaError(const String &error)
 {
 	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
 		return;
@@ -1449,7 +1453,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 void Application::ReloadSkin()
 {
 	//remove all tickables
-	for (auto* t : g_tickables)
+	for (auto *t : g_tickables)
 	{
 		t->m_Suspend();
 		delete t;
@@ -1482,31 +1486,30 @@ void Application::ReloadSkin()
 		g_transition = TransitionScreen::Create();
 	}
 
-//#ifdef EMBEDDED
-//	nvgDeleteGLES2(g_guiState.vg);
-//#else
-//	nvgDeleteGL3(g_guiState.vg);
-//#endif
-//
-//#ifdef EMBEDDED
-//#ifdef _DEBUG
-//	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
-//#else
-//	g_guiState.vg = nvgCreateGLES2(0);
-//#endif
-//#else
-//#ifdef _DEBUG
-//	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
-//#else
-//	g_guiState.vg = nvgCreateGL3(0);
-//#endif
-//#endif
+	//#ifdef EMBEDDED
+	//	nvgDeleteGLES2(g_guiState.vg);
+	//#else
+	//	nvgDeleteGL3(g_guiState.vg);
+	//#endif
+	//
+	//#ifdef EMBEDDED
+	//#ifdef _DEBUG
+	//	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+	//#else
+	//	g_guiState.vg = nvgCreateGLES2(0);
+	//#endif
+	//#else
+	//#ifdef _DEBUG
+	//	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+	//#else
+	//	g_guiState.vg = nvgCreateGL3(0);
+	//#endif
+	//#endif
 
 	//nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 
-
 	//push new titlescreen
-	TitleScreen* t = TitleScreen::Create();
+	TitleScreen *t = TitleScreen::Create();
 	AddTickable(t);
 }
 void Application::DisposeLua(lua_State *state)
@@ -1850,7 +1853,7 @@ void Application::m_OnFocusChanged(bool focused)
 	}
 }
 
-int Application::FastText(String inputText, float x, float y, int size, int align, const Color& color /* = Color::White */)
+int Application::FastText(String inputText, float x, float y, int size, int align, const Color &color /* = Color::White */)
 {
 	WString text = Utility::ConvertToWString(inputText);
 	String fontpath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));
