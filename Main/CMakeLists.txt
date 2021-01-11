@@ -54,7 +54,7 @@ target_compile_features(usc-game PUBLIC cxx_std_17)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
 target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
-target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
+target_compile_definitions(usc-game PRIVATE GIT_COMMIT="${GIT_DATE_HASH}")
 
 set_output_postfixes(usc-game)
 
