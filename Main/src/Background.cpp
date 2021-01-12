@@ -90,7 +90,7 @@ private:
 		{
 			frameBufferTexture = nullptr;
 		}
-		
+
 		return true;
 	}
 
@@ -174,13 +174,20 @@ public:
 
 		String matPath = "";
 		String fname = foreground ? "fg" : "bg";
-		if (defaultBGs.Contains(game->GetBeatmap()->GetMapSettings().foregroundPath))
+		String kshLayer = game->GetBeatmap()->GetMapSettings().foregroundPath;
+		String layer;
+
+		if (!kshLayer.Split(";", &layer, nullptr))
+		{
+			layer = kshLayer;
+		}
+		if (defaultBGs.Contains(layer))
 		{
 			//default bg: load from skin path
 			folderPath = "skins/" +
 						 g_application->GetCurrentSkin() + Path::sep +
 						 "backgrounds" + Path::sep +
-						 game->GetBeatmap()->GetMapSettings().foregroundPath +
+						 layer +
 						 Path::sep;
 			folderPath = Path::Absolute(folderPath);
 		}
@@ -188,7 +195,7 @@ public:
 		{
 			//if skin doesn't have it, try loading from chart folder
 			folderPath = game->GetChartRootPath() + Path::sep +
-						 game->GetBeatmap()->GetMapSettings().foregroundPath +
+						 layer +
 						 Path::sep;
 			folderPath = Path::Absolute(folderPath);
 		}
