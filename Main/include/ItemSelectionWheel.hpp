@@ -1,7 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <random>
-
 #include "stdafx.h"
 #include "SongSort.hpp"
 #include "SongFilter.hpp"
@@ -271,24 +268,22 @@ public:
 			return;
 
 		// If the randomized vector of charts has not been initialized or has
-		// been exhausted, we regenerate it from the current m_sortVec
+		// been exhausted, we copy the current m_sortVec
 		if (m_randomVec.empty()) {
 			m_randomVec = m_sortVec;
-			std::random_device random_device;
-			std::mt19937 generator(random_device());
-			std::shuffle(m_randomVec.begin(), m_randomVec.end(), generator);
-			if (m_randomVec.back() == m_lastItemIndex) {
-				m_randomVec.pop_back();
-				if (m_randomVec.size() == 0) {
-					return;
-				}
-			}
 		}
 
-		uint32 selection = m_randomVec.back();
+		uint32 itemIndex;
+		if (m_randomVec.size() == 1) {
+			itemIndex = m_randomVec.back();
+		} else {
+			uint32 selection = Random::IntRange(0, (int32)m_randomVec.size() - 1);
+			itemIndex = m_randomVec.at(selection);
+			m_randomVec[selection] = m_randomVec.back();
+		}
 		m_randomVec.pop_back();
 
-		SelectItemByItemIndex(selection);
+		SelectItemByItemIndex(itemIndex);
 	}
 
 	void SelectItemByItemId(uint32 id)
