@@ -104,6 +104,8 @@ protected:
 	Map<int32, ItemSelectIndex> m_items;
 	Map<int32, ItemSelectIndex> m_itemFilter;
 	Vector<uint32> m_sortVec;
+	Vector<uint32> m_randomVec;
+
 	bool m_filterSet = false;
 	IApplicationTickable *m_owner;
 
@@ -179,6 +181,9 @@ public:
 			m_SetCurrentItems();
 		}
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -203,6 +208,9 @@ public:
 			m_SetCurrentItems();
 		}
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -214,6 +222,10 @@ public:
 		{
 			ItemSelectIndex index(i);
 		}
+
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		OnItemsChanged.Call();
 	}
 
@@ -236,6 +248,9 @@ public:
 		//set all items
 		m_SetAllItems();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Filter will take care of sorting and setting lua
 		OnItemsChanged.Call();
 	}
@@ -251,8 +266,24 @@ public:
 	{
 		if (m_SourceCollection().empty())
 			return;
-		uint32 selection = Random::IntRange(0, (int32)m_sortVec.size() - 1);
-		SelectItemBySortIndex(selection);
+
+		// If the randomized vector of charts has not been initialized or has
+		// been exhausted, we copy the current m_sortVec
+		if (m_randomVec.empty()) {
+			m_randomVec = m_sortVec;
+		}
+
+		uint32 itemIndex;
+		if (m_randomVec.size() == 1) {
+			itemIndex = m_randomVec.back();
+		} else {
+			uint32 selection = Random::IntRange(0, (int32)m_randomVec.size() - 1);
+			itemIndex = m_randomVec.at(selection);
+			m_randomVec[selection] = m_randomVec.back();
+		}
+		m_randomVec.pop_back();
+
+		SelectItemByItemIndex(itemIndex);
 	}
 
 	void SelectItemByItemId(uint32 id)
@@ -404,6 +435,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(true);
 
@@ -432,6 +466,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+		
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(isFiltered);
 
@@ -453,6 +490,9 @@ public:
 		}
 		m_doSort();
 
+		// Clear the current queue of random charts
+		m_randomVec.clear();
+		
 		// Try to go back to selected song in new sort
 		SelectLastItemIndex(true);
 
