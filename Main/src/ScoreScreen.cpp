@@ -16,6 +16,7 @@
 #include <Beatmap/TinySHA1.hpp>
 #include "MultiplayerScreen.hpp"
 #include "ChatOverlay.hpp"
+#include "Gauge.hpp"
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -150,7 +151,7 @@ public:
 
 		m_score = scoring.CalculateCurrentScore();
 		m_maxCombo = scoring.maxComboCounter;
-		m_finalGaugeValue = scoring.currentGauge;
+		m_finalGaugeValue = scoring.GetTopGauge()->GetValue();
 		m_timedHits[0] = scoring.timedHits[0];
 		m_timedHits[1] = scoring.timedHits[1];
 		m_flags = game->GetFlags();

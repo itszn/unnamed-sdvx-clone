@@ -17,6 +17,7 @@
 #include <string>
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
+#include "Gauge.hpp"
 
 #define MULTIPLAYER_VERSION "v0.19"
 
@@ -960,7 +961,7 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 	packet["score"] = scoring.CalculateCurrentScore();
 	packet["combo"] = scoring.maxComboCounter;
 	packet["clear"] = static_cast<int>(clearState);
-	packet["gauge"] = scoring.currentGauge;
+	packet["gauge"] = scoring.GetTopGauge()->GetValue();
 	packet["early"] = scoring.timedHits[0];
 	packet["late"] = scoring.timedHits[1];
 	packet["miss"] = scoring.categorizedHits[0];

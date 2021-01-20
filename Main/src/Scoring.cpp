@@ -3,6 +3,7 @@
 #include <Beatmap/BeatmapPlayback.hpp>
 #include <math.h>
 #include "GameConfig.hpp"
+#include "Gauge.hpp"
 
 const float Scoring::idleLaserSpeed = 1.0f;
 
@@ -14,6 +15,7 @@ Scoring::~Scoring()
 	m_CleanupInput();
 	m_CleanupHitStats();
 	m_CleanupTicks();
+	m_CleanupGauges();
 }
 
 ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
@@ -137,47 +139,22 @@ void Scoring::Reset(const MapTimeRange& range)
 	// Recalculate maximum score
 	mapTotals = CalculateMapTotals();
 
-	// Recalculate gauge gain
-	currentGauge = 0.0f;
-	float total = 2.10f + 0.001f; //Add a little in case floats go under
-	bool manualTotal = m_playback->GetBeatmap().GetMapSettings().total > 99;
-	if (manualTotal)
-	{
-		total = (float)m_playback->GetBeatmap().GetMapSettings().total / 100.0f + 0.001f;
-	}
+	// Reset gauges
+	m_CleanupGauges();
+
+	uint16 total = m_playback->GetBeatmap().GetMapSettings().total;
+
 	if ((m_flags & GameFlags::Hard) != GameFlags::None)
 	{
-		total *= 12.f / 21.f;
-		currentGauge = 1.0f;
+		GaugeHard* gauge = new GaugeHard();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
 	}
-
-	if (mapTotals.numTicks == 0 && mapTotals.numSingles != 0)
+	else 
 	{
-		shortGaugeGain = total / (float)mapTotals.numSingles;
-	}
-	else if (mapTotals.numSingles == 0 && mapTotals.numTicks != 0)
-	{
-		tickGaugeGain = total / (float)mapTotals.numTicks;
-	}
-	else
-	{
-		shortGaugeGain = (total * 20) / (5.0f * ((float)mapTotals.numTicks + (4.0f * (float)mapTotals.numSingles)));
-		tickGaugeGain = shortGaugeGain / 4.0f;
-	}
-
-	if (manualTotal)
-	{
-		m_drainMultiplier = 1.0;
-	}
-	else
-	{
-		MapTime drainNormal, drainHalf;
-		drainNormal = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainNormal);
-		drainHalf = g_gameConfig.GetInt(GameConfigKeys::GaugeDrainHalf);
-
-		double secondsOver = ((double)m_endTime / 1000.0) - (double)drainNormal;
-		secondsOver = Math::Max(0.0, secondsOver);
-		m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
+		GaugeNormal* gauge = new GaugeNormal();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
 	}
 
 	m_heldObjects.clear();
@@ -448,6 +425,24 @@ bool Scoring::IsLaserHeld(uint32 laserIndex, bool includeSlams) const
 bool Scoring::IsLaserIdle(uint32 index) const
 {
 	return m_laserSegmentQueue.empty() && m_currentLaserSegments[0] == nullptr && m_currentLaserSegments[1] == nullptr;
+}
+
+bool Scoring::IsFailOut() const
+{
+	if (m_gaugeStack.size() > 0)
+	{
+		return m_gaugeStack.back()->FailOut();
+	}
+	return true;
+}
+
+Gauge* Scoring::GetTopGauge() const
+{
+	if (m_gaugeStack.size() > 0)
+	{
+		return m_gaugeStack.back();
+	}
+	return nullptr;
 }
 
 double Scoring::m_CalculateTicks(const TimingPoint* tp) const
@@ -820,18 +815,13 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 		stat->rating = tick->GetHitRatingFromDelta(hitWindow, delta);
 		OnButtonHit.Call((Input::Button)index, stat->rating, tick->object, delta);
 
-		if (stat->rating == ScoreHitRating::Perfect)
-		{
-			currentGauge += shortGaugeGain;
-		}
-		else
+		if (stat->rating == ScoreHitRating::Good)
 		{
 			if (Math::Sign(delta) < 0)
 				timedHits[0]++;
 			else
 				timedHits[1]++;
 
-			currentGauge += shortGaugeGain / 3.0f;
 		}
 		m_AddScore((uint32)stat->rating);
 	}
@@ -843,7 +833,6 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 		stat->rating = ScoreHitRating::Perfect;
 		stat->hold++;
-		currentGauge += tickGaugeGain;
 		m_AddScore(2);
 	}
 	else if (tick->HasFlag(TickFlags::Laser))
@@ -859,13 +848,12 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 			m_autoLaserTime[object->index] = m_assistTime;
 		}
 
-		currentGauge += tickGaugeGain;
 		m_AddScore(2);
 
 		stat->rating = ScoreHitRating::Perfect;
 		stat->hold++;
 	}
-
+	m_UpdateGauges(stat->rating, tick->flags);
 	m_OnTickProcessed(tick, index);
 
 	// Count hits per category (miss,perfect,etc.)
@@ -875,48 +863,94 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 {
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
 	stat->hasMissed = true;
-	float shortMissDrain = 0.02f * m_drainMultiplier;
-	if ((m_flags & GameFlags::Hard) != GameFlags::None)
-	{
-		// Thanks to Hibiki_ext in the discord for help with this
-		float drainMultiplier = Math::Clamp(1.0f - ((0.3f - currentGauge) * 2.f), 0.5f, 1.0f);
-		shortMissDrain = 0.09f * drainMultiplier * m_drainMultiplier;
-	}
+	m_UpdateGauges(ScoreHitRating::Miss, tick->flags);
+
 	if (tick->HasFlag(TickFlags::Button))
 	{
 		OnButtonMiss.Call((Input::Button)index, delta < 0 && abs(delta) > hitWindow.good, tick->object);
 		stat->rating = ScoreHitRating::Miss;
 		stat->delta = delta;
-		currentGauge -= shortMissDrain;
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
 		m_ReleaseHoldObject(index);
-		currentGauge -= shortMissDrain / 4.f;
 		stat->rating = ScoreHitRating::Miss;
 	}
 	else if (tick->HasFlag(TickFlags::Laser))
 	{
 		LaserObjectState* obj = (LaserObjectState*)tick->object;
 
-		if (tick->HasFlag(TickFlags::Slam))
-		{
-			currentGauge -= shortMissDrain;
-			m_autoLaserTime[obj->index] = -1;
-		}
-		else
-			currentGauge -= shortMissDrain / 4.f;
 		m_autoLaserTime[obj->index] = -1.f;
 		stat->rating = ScoreHitRating::Miss;
 	}
 
-	// All misses reset combo
-	currentGauge = std::max(0.0f, currentGauge);
 	m_ResetCombo();
 	m_OnTickProcessed(tick, index);
 
 	// All ticks count towards the 'miss' counter
 	categorizedHits[0]++;
+}
+
+void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
+{
+	if (m_gaugeStack.size() == 1 && m_gaugeStack.back()->FailOut())
+	{
+		return;
+	}
+
+
+	bool isLong = (flags & TickFlags::Hold) != TickFlags::None
+	|| (flags & TickFlags::Laser) != TickFlags::None
+	&& (flags & TickFlags::Slam) == TickFlags::None;
+
+	if (isLong)
+	{
+		if (rating == ScoreHitRating::Miss)
+		{
+			for (auto& g : m_gaugeStack)
+			{
+				g->LongMiss();
+			}
+		}
+		else if (rating == ScoreHitRating::Perfect)
+		{
+			for (auto& g : m_gaugeStack)
+			{
+				g->LongHit();
+			}
+		}
+	}
+	else 
+	{
+		if (rating == ScoreHitRating::Miss)
+		{
+			for (auto& g : m_gaugeStack)
+			{
+				g->ShortMiss();
+			}
+		}
+		else if (rating == ScoreHitRating::Good)
+		{
+			for (auto& g : m_gaugeStack)
+			{
+				g->NearHit();
+			}
+		}
+		else if (rating == ScoreHitRating::Perfect)
+		{
+			for (auto& g : m_gaugeStack)
+			{
+				g->CritHit();
+			}
+		}
+	}
+
+	while (m_gaugeStack.size() > 1 && m_gaugeStack.back()->FailOut())
+	{
+		///TODO: Fire event?
+		delete m_gaugeStack.back();
+		m_gaugeStack.pop_back();
+	}
 }
 
 void Scoring::m_CleanupTicks()
@@ -929,13 +963,22 @@ void Scoring::m_CleanupTicks()
 	}
 }
 
+void Scoring::m_CleanupGauges()
+{
+	while (!m_gaugeStack.empty())
+	{
+		if (m_gaugeStack.back())
+			delete m_gaugeStack.back();
+		m_gaugeStack.pop_back();
+	}
+}
+
 void Scoring::m_AddScore(uint32 score)
 {
 	assert(score > 0 && score <= 2);
 	if (score == 1 && comboState == 2)
 		comboState = 1;
 	currentHitScore += score;
-	currentGauge = std::min(1.0f, currentGauge);
 	currentComboCounter += 1;
 	maxComboCounter = Math::Max(maxComboCounter, currentComboCounter);
 	OnComboChanged.Call(currentComboCounter);

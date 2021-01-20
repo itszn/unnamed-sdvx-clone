@@ -7,6 +7,7 @@
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "lua.hpp"
+#include "Gauge.hpp"
 #include "Shared/LuaBindable.hpp"
 
 /* Background template for fullscreen effects */
@@ -229,7 +230,7 @@ public:
 			clearBorder = 0.30f;
 		}
 
-		bool cleared = game->GetScoring().currentGauge >= clearBorder;
+		bool cleared = game->GetScoring().GetTopGauge()->GetValue() >= clearBorder;
 
 		if (cleared)
 			clearTransition += deltaTime / tp.beatDuration * 1000;

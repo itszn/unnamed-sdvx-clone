@@ -20,6 +20,7 @@
 #include "SongFilter.hpp"
 #include "ItemSelectionWheel.hpp"
 #include <Audio/Audio.hpp>
+#include "Gauge.hpp"
 
 
 using ChalItemSelectionWheel = ItemSelectionWheel<ChallengeSelectIndex, ChallengeIndex>;
@@ -1755,7 +1756,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	m_totalScore += finalScore;
 	m_totalPercentage += percentage;
-	m_lastGauge = scoring.currentGauge;
+	m_lastGauge = scoring.GetTopGauge()->GetValue();
 	m_totalGauge += m_lastGauge;
 
 	res.badge = clearMark;
@@ -1776,7 +1777,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 				static_cast<uint32>(percentage), *req.min_percentage);
 	}
 
-	res.gauge = scoring.currentGauge;
+	res.gauge = scoring.GetTopGauge()->GetValue();
 	if (req.min_gauge.HasValue())
 	{
 		if (res.gauge >= *req.min_gauge)

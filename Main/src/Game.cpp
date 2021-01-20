@@ -24,6 +24,7 @@
 #include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
+#include "Gauge.hpp"
 
 #include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
@@ -1345,12 +1346,8 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
-		// If failed in multiplayer, stop giving rate, so its clear you failed
-		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
-			m_scoring.currentGauge = 0.0f;
-		}
-		// Stop playing if gauge is on hard and at 0%
-		if ((GetFlags() & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
+		// Stop playing if last gauge has reached its failstate
+		if (m_scoring.IsFailOut())
 		{
 			// In multiplayer we don't stop, but we send the final score
 			if (m_multiplayer == nullptr) {
@@ -1375,7 +1372,7 @@ public:
 				int32 gaugeSampleSlot = playbackPositionMs;
 				gaugeSampleSlot /= m_gaugeSampleRate;
 				gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
-				m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
+				m_gaugeSamples[gaugeSampleSlot] = 0.0f;
 			}
 		}
 
@@ -1405,7 +1402,10 @@ public:
 		}
 		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
-			m_scoring.currentGauge = 0.0f;
+			Gauge* gauge = m_scoring.GetTopGauge();
+
+			if (gauge) 
+				gauge->SetValue(0.0f);
 			FailCurrentRun();
 		}
 	}
@@ -1779,7 +1779,12 @@ public:
 
 		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge)
+		{
+			textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+		}
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
 			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
@@ -2305,6 +2310,11 @@ public:
 	}
 	ClearMark m_getClearState()
 	{
+		Gauge* g = m_scoring.GetTopGauge();
+
+		if (g == nullptr)
+			return ClearMark::NotPlayed;
+
 		if (m_manualExit)
 			return ClearMark::NotPlayed;
 
@@ -2316,7 +2326,7 @@ public:
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
 		scoreData.gameflags = (uint32) GetFlags();
-		scoreData.gauge = m_scoring.currentGauge;
+		scoreData.gauge = g->GetValue();
 		scoreData.score = m_scoring.CalculateCurrentScore();
 
 		return Scoring::CalculateBadge(scoreData);
@@ -2674,7 +2684,11 @@ public:
 	}
 	virtual void SetGauge(float g) override
 	{
-		m_scoring.currentGauge = g;
+		auto gauge = m_scoring.GetTopGauge();
+		if (gauge)
+		{
+			gauge->SetValue(g);
+		}
 	}
 	virtual bool IsStorableScore() override
 	{
@@ -2740,6 +2754,12 @@ public:
 	}
 	void SetGameplayLua(lua_State* L) override
 	{
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge == nullptr) //if gauge is null, assume something is wrong
+			return;
+
+
 		//set lua
 		lua_getglobal(L, "gameplay");
 
@@ -2810,7 +2830,7 @@ public:
 		lua_settable(L, -3);
 		// gauge
 		lua_pushstring(L, "gauge");
-		lua_pushnumber(L, m_scoring.currentGauge);
+		lua_pushnumber(L, gauge->GetValue());
 		lua_settable(L, -3);
 		// combo state
 		lua_pushstring(L, "comboState");
