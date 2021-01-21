@@ -242,6 +242,7 @@ private:
 	void m_TickHit(ScoreTick* tick, uint32 index, MapTime delta = 0);
 	void m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta);
 	void m_UpdateGauges(ScoreHitRating rating, TickFlags flags);
+	void m_UpdateGaugeSamples();
 	void m_CleanupTicks();
 	void m_CleanupGauges();
 

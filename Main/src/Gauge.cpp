@@ -2,6 +2,18 @@
 #include "Gauge.hpp"
 #include "GameConfig.hpp"
 
+void Gauge::InitSamples(MapTime length)
+{
+	m_samples.fill(0.0f);
+	m_sampleDuration = Math::Max((MapTime)1, length / (MapTime)m_samples.size());
+}
+
+void Gauge::Update(MapTime currentTime)
+{
+	int index = Math::Clamp(currentTime / m_sampleDuration, 0, (int)m_samples.size() - 1);
+	m_samples.at(index) = m_gauge;
+}
+
 bool GaugeNormal::Init(MapTotals mapTotals, uint16 total, MapTime length)
 {
 	m_gauge = 0.0f;
@@ -41,6 +53,7 @@ bool GaugeNormal::Init(MapTotals mapTotals, uint16 total, MapTime length)
 		m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
 	}
 	m_shortMissDrain = 0.02f * m_drainMultiplier;
+	InitSamples(length);
 	return true;
 }
 
@@ -120,6 +133,7 @@ bool GaugeHard::Init(MapTotals mapTotals, uint16 total, MapTime length)
 		m_drainMultiplier = 1.0 / (1.0 + (secondsOver / (double)(drainHalf - drainNormal)));
 	}
 	m_shortMissDrain = 0.09f * m_drainMultiplier;
+	InitSamples(length);
 	return true;
 }
 

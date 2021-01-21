@@ -971,7 +971,7 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 	packet["mean_delta"] = scoring.GetMeanHitDelta();
 	packet["median_delta"] = scoring.GetMedianHitDelta();
 
-	packet["graph"] = *(std::array<float, 256>*)game->GetGaugeSamples();
+	packet["graph"] = game->GetGaugeSamples();
 
 	m_tcp.SendJSON(packet);
 

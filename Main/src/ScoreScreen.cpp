@@ -36,7 +36,7 @@ private:
 	uint32 m_maxCombo;
 	uint32 m_categorizedHits[3];
 	float m_finalGaugeValue;
-	float* m_gaugeSamples;
+	std::array<float, 256> m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
 
@@ -75,7 +75,6 @@ private:
 
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
-	Texture m_graphTex;
 	GameFlags m_flags;
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
@@ -184,16 +183,7 @@ public:
 
 		m_hitWindow = scoring.hitWindow;
 
-		// Make texture for performance graph samples
-		m_graphTex = TextureRes::Create(g_gl);
-		m_graphTex->Init(Vector2i(256, 1), Graphics::TextureFormat::RGBA8);
-		Colori graphPixels[256];
-		for (uint32 i = 0; i < 256; i++)
-		{
-			graphPixels[i].x = 255.0f * Math::Clamp(m_gaugeSamples[i], 0.0f, 1.0f);
-		}
-		m_graphTex->SetData(Vector2i(256, 1), graphPixels);
-		m_graphTex->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
+
 	}
 
 	void loadScoresFromMultiplayer() {
@@ -229,17 +219,12 @@ public:
 
 		auto samples = data["graph"];
 
-		// Make texture for performance graph samples
-		m_graphTex = TextureRes::Create(g_gl);
-		m_graphTex->Init(Vector2i(256, 1), Graphics::TextureFormat::RGBA8);
+
 		Colori graphPixels[256];
 		for (uint32 i = 0; i < 256; i++)
 		{
 			m_gaugeSamples[i] = samples[i].get<float>();
-			graphPixels[i].x = 255.0f * Math::Clamp(m_gaugeSamples[i], 0.0f, 1.0f);
 		}
-		m_graphTex->SetData(Vector2i(256, 1), graphPixels);
-		m_graphTex->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
 
 		m_numPlayersSeen = m_stats->size();
 		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid",""));
@@ -430,7 +415,7 @@ public:
 			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 			res.scorescreenInfo.speedMod = static_cast<int>(speedMod);
 			res.scorescreenInfo.speedModValue = g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed);
-			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples, sizeof(res.scorescreenInfo.gaugeSamples));
+			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples.data(), sizeof(res.scorescreenInfo.gaugeSamples));
 		}
 	}
 	~ScoreScreen_Impl()

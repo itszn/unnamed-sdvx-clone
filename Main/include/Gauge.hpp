@@ -19,6 +19,13 @@ public:
 	virtual float GetValue() const {
 		return m_gauge;
 	};
+	virtual const std::array<float, 256>& GetSamples() const {
+		return m_samples;
+	}
+
+	virtual void Update(MapTime currentTime);
+
+
 	virtual bool GetClearState() const = 0;
 	virtual const char* GetName() const = 0;
 
@@ -27,7 +34,12 @@ public:
 		return false;
 	};
 protected:
+	virtual void InitSamples(MapTime length);
+
+	std::array<float, 256> m_samples;
 	float m_gauge = 0.0f;
+	MapTime m_sampleDuration = 1;
+
 };
 
 class GaugeNormal : public Gauge {

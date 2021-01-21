@@ -149,6 +149,7 @@ void Scoring::Reset(const MapTimeRange& range)
 		GaugeHard* gauge = new GaugeHard();
 		gauge->Init(mapTotals, total, m_endTime);
 		m_gaugeStack.push_back(gauge);
+
 	}
 	else 
 	{
@@ -188,6 +189,8 @@ void Scoring::Tick(float deltaTime)
 {
 	m_UpdateLasers(deltaTime);
 	m_UpdateTicks();
+	m_UpdateGaugeSamples();
+
 	if (autoplay || autoplayButtons)
 	{
 		for (size_t i = 0; i < 6; i++)
@@ -900,8 +903,8 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 
 
 	bool isLong = (flags & TickFlags::Hold) != TickFlags::None
-	|| (flags & TickFlags::Laser) != TickFlags::None
-	&& (flags & TickFlags::Slam) == TickFlags::None;
+	|| ((flags & TickFlags::Laser) != TickFlags::None
+	&& (flags & TickFlags::Slam) == TickFlags::None);
 
 	if (isLong)
 	{
@@ -945,6 +948,7 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 		}
 	}
 
+
 	while (m_gaugeStack.size() > 1 && m_gaugeStack.back()->FailOut())
 	{
 		///TODO: Fire event?
@@ -952,6 +956,18 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 		m_gaugeStack.pop_back();
 	}
 }
+
+void Scoring::m_UpdateGaugeSamples()
+{
+	auto currentTime = m_playback->GetLastTime();
+	for (auto& g : m_gaugeStack)
+	{
+		g->Update(currentTime);
+	}
+
+}
+
+
 
 void Scoring::m_CleanupTicks()
 {

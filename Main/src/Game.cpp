@@ -148,10 +148,6 @@ private:
 	// Currently visible gameplay objects
 	Vector<ObjectState*> m_currentObjectSet;
 
-	// Rate to sample gauge;
-	MapTime m_gaugeSampleRate;
-	float m_gaugeSamples[256] = { 0.0f };
-
 	// Combo gain animation
 	Timer m_comboAnimation;
 
@@ -284,7 +280,6 @@ public:
 		}
 				
 		m_endTime = m_beatmap->GetLastObjectTime();
-		m_gaugeSampleRate = Math::Max(1, m_endTime / 256);
 
 		if (IsMultiplayerGame())
 			m_hitWindow = HitWindow::NORMAL;
@@ -1365,15 +1360,6 @@ public:
 		if (!m_ended)
 		{
 			m_scoring.Tick(deltaTime);
-
-			// Update scoring gauge
-			if (delta >= 0)
-			{
-				int32 gaugeSampleSlot = playbackPositionMs;
-				gaugeSampleSlot /= m_gaugeSampleRate;
-				gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
-				m_gaugeSamples[gaugeSampleSlot] = 0.0f;
-			}
 		}
 
 		// Get the current timing point
@@ -2670,9 +2656,9 @@ public:
 	{
 		return m_scoring;
 	}
-	virtual float* GetGaugeSamples() override
+	virtual const std::array<float, 256>& GetGaugeSamples() override
 	{
-		return m_gaugeSamples;
+		return m_scoring.GetTopGauge()->GetSamples();
 	}
 	virtual GameFlags GetFlags() override
 	{

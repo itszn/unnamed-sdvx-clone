@@ -99,7 +99,7 @@ public:
 	virtual class BeatmapPlayback& GetPlayback() = 0;
 	virtual class Scoring& GetScoring() = 0;
 	// Samples of the gauge for the performance graph
-	virtual float* GetGaugeSamples() = 0;
+	virtual const std::array<float, 256>& GetGaugeSamples() = 0;
 	virtual GameFlags GetFlags() = 0;
 	// Map jacket image
 	virtual Texture GetJacketImage() = 0;
