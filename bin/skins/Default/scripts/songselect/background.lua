@@ -9,7 +9,10 @@ TEXT_ALIGN_BOTTOM	= 32;
 TEXT_ALIGN_BASELINE	= 64;
 local backgroundImage = gfx.CreateSkinImage("bg.png", 1);
 
+
 render = function(deltaTime)
+
+
     resx,resy = game.GetResolution();
     gfx.BeginPath();
     gfx.TextAlign(TEXT_ALIGN_CENTER + TEXT_ALIGN_MIDDLE);

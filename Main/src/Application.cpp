@@ -22,7 +22,9 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
+#include "SkinIR.hpp"
 #include "ShadedMesh.hpp"
+#include "IR.hpp"
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -1026,6 +1028,9 @@ void Application::m_Tick()
 	// Process async lua http callbacks
 	m_skinHttp.ProcessCallbacks();
 
+	// likewise for IR
+	m_skinIR.ProcessCallbacks();
+
 	// Tick all items
 	for (auto &tickable : g_tickables)
 	{
@@ -1437,6 +1442,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	DisposeGUI(L);
 	m_skinHttp.ClearState(L);
+	m_skinIR.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1516,6 +1522,7 @@ void Application::DisposeLua(lua_State *state)
 {
 	DisposeGUI(state);
 	m_skinHttp.ClearState(state);
+	m_skinIR.ClearState(state);
 	lua_close(state);
 }
 void Application::SetGaugeColor(int i, Color c)
@@ -2399,6 +2406,27 @@ void Application::SetLuaBindings(lua_State *state)
 		lua_newtable(state);
 		pushFuncToTable("Absolute", lPathAbsolute);
 		lua_setglobal(state, "path");
+	}
+
+	//ir
+	{
+		lua_newtable(state);
+
+		lua_pushstring(state, "States");
+		lua_newtable(state);
+
+		for(auto& el : IR::ResponseState.items())
+			pushIntToTable(el.key().c_str(), el.value());
+
+		lua_settable(state, -3);
+
+		lua_pushstring(state, "Active");
+		lua_pushboolean(state, g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "");
+		lua_settable(state, -3);
+
+		lua_setglobal(state, "IRData");
+
+		m_skinIR.PushFunctions(state);
 	}
 
 	//http

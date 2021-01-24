@@ -51,6 +51,8 @@ local badges = {
     gfx.CreateSkinImage("badges/perfect.png", 0)
 }
 
+local recordCache = {}
+
 gfx.LoadSkinFont("NotoSans-Regular.ttf");
 
 game.LoadSkinSample("menu_click")
@@ -128,7 +130,7 @@ check_or_create_cache = function(song, loadJacket)
     if not songCache[song.id]["bpm"] then
         songCache[song.id]["bpm"] = gfx.CreateLabel(string.format("BPM: %s",song.bpm), 20, 0)
     end
-	
+
 	if not songCache[song.id]["effector"] then
         songCache[song.id]["effector"] = gfx.CreateLabel(string.format("BPM: %s",song.bpm), 20, 0)
     end
@@ -138,7 +140,159 @@ check_or_create_cache = function(song, loadJacket)
     end
 end
 
+function record_handler_factory(hash)
+    return (function(res)
+        if res.statusCode == 42 then
+            recordCache[hash] = {good=false, reason="Untracked"}
+        elseif res.statusCode == 20 and res.body ~= nil then
+            recordCache[hash] = {good=true, record=res.body.record}
+        elseif res.statusCode == 44 then
+            recordCache[hash] = {good=true, record=nil}
+        else
+            recordCache[hash] = {good=false, reason="Failed"}
+        end
+    end)
+end
+
+function get_record(hash)
+    if recordCache[hash] then return recordCache[hash] end
+
+    recordCache[hash] = {good=false, reason="Loading..."}
+
+    IR.Record(hash, record_handler_factory(hash))
+
+    return recordCache[hash]
+end
+
+function log_table(table)
+    str = "{"
+    for k, v in pairs(table) do
+        str = str .. k .. ": "
+
+        t = type(v)
+
+        if t == "table" then
+            str = str .. log_table(v)
+        elseif t == "string" then
+            str = str .. "\"" .. v .. "\""
+        elseif t == "boolean" then
+            if v then
+                str = str .. "true"
+            else
+                str = str .. "false"
+            end
+        else
+            str = str .. v
+        end
+
+        str = str .. ", "
+    end
+
+    return str .. "}"
+end
+
+draw_scores_ir = function(difficulty, x, y, w, h)
+    -- draw the top score for this difficulty
+    local xOffset = 5
+    local height = h/3 - 10
+    local ySpacing = h/3
+    local yOffset = h/3
+    gfx.FontSize(30);
+    gfx.TextAlign(gfx.TEXT_ALIGN_BOTTOM + gfx.TEXT_ALIGN_CENTER);
+
+    gfx.FastText("HIGH SCORE", x +(w/4), y+(h/2))
+    gfx.FastText("IR RECORD", x + (3/4 * w), y + (h/2))
+
+    gfx.BeginPath()
+    gfx.Rect(x+xOffset,y+h/2,w/2-(xOffset*2),h/2)
+    gfx.FillColor(30,30,30,10)
+    gfx.StrokeColor(0,128,255)
+    gfx.StrokeWidth(1)
+    gfx.Fill()
+    gfx.Stroke()
+
+    gfx.BeginPath()
+    gfx.Rect(x + xOffset + w/2,y+h/2,w/2-(xOffset*2),h/2)
+    gfx.FillColor(30,30,30,10)
+    gfx.StrokeColor(0,128,255)
+    gfx.StrokeWidth(1)
+    gfx.Fill()
+    gfx.Stroke()
+
+    if difficulty.scores[1] ~= nil then
+		local highScore = difficulty.scores[1]
+        scoreLabel = gfx.CreateLabel(string.format("%08d",highScore.score), 40, 0)
+        for i,v in ipairs(grades) do
+            if v.max > highScore.score then
+                gfx.BeginPath()
+                iw,ih = gfx.ImageSize(v.image)
+                iarr = ih / iw
+                oldheight = h/2 - 10
+                newheight =  iarr * (h/2-10)
+                centreoffset = (oldheight - newheight)/2 + 3 -- +3 is stupid but ehhh
+                gfx.ImageRect(x+xOffset, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
+                break
+            end
+        end
+        if difficulty.topBadge ~= 0 then
+            gfx.BeginPath()
+            gfx.ImageRect(x+xOffset+w/2-h/2, y+h/2 +5, (h/2-10), h/2-10, badges[difficulty.topBadge], 1, 0)
+        end
+
+        gfx.FillColor(255,255,255)
+    	gfx.FontSize(40);
+        gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_CENTER);
+    	gfx.DrawLabel(scoreLabel, x+(w/4),y+(h/4)*3,w/2)
+	end
+
+    irRecord = get_record(difficulty.hash)
+
+    if not irRecord.good then
+        recordLabel = gfx.CreateLabel(irRecord.reason, 40, 0)
+        gfx.FillColor(255, 255, 255)
+        gfx.FontSize(40)
+        gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_CENTER);
+    	gfx.DrawLabel(recordLabel, x+(w * 3/4),y+(h/4)*3,w/2)
+    elseif irRecord.record == nil then --record not set, but can be tracked
+        recordLabel = gfx.CreateLabel(string.format("%08d", 0), 40, 0)
+        gfx.FillColor(170, 170, 170)
+        gfx.FontSize(40)
+        gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_CENTER);
+        gfx.DrawLabel(recordLabel, x+(w * 3/4),y+(h/4)*3,w/2)
+    else
+
+        recordScoreLabel = gfx.CreateLabel(string.format("%08d", irRecord.record.score), 26, 0)
+        recordPlayerLabel = gfx.CreateLabel(irRecord.record.username, 26, 0)
+
+        if irRecord.record.lamp ~= 0 then
+            gfx.BeginPath()
+            gfx.ImageRect(x+xOffset+w-h/2, y+h/2 +5, (h/2-10), h/2-10, badges[irRecord.record.lamp], 1, 0)
+        end
+
+        for i,v in ipairs(grades) do
+            if v.max > irRecord.record.score then
+                gfx.BeginPath()
+                iw,ih = gfx.ImageSize(v.image)
+                iarr = ih / iw
+                oldheight = h/2 - 10
+                newheight =  iarr * (h/2-10)
+                centreoffset = (oldheight - newheight)/2 + 3 -- +3 is stupid but ehhh
+                gfx.ImageRect(x+xOffset+w/2, y+h/2 + centreoffset, oldheight,  newheight, v.image, 1, 0) --this is nasty but it works for me
+                break
+            end
+        end
+
+        gfx.FillColor(255, 255, 255)
+        gfx.FontSize(40)
+        gfx.TextAlign(gfx.TEXT_ALIGN_MIDDLE + gfx.TEXT_ALIGN_CENTER);
+    	gfx.DrawLabel(recordPlayerLabel, x+(w * 3/4),y+(h/4)*2.55,w/2)
+        gfx.DrawLabel(recordScoreLabel, x+(w * 3/4),y+(h/4)*3.45,w/2)
+    end
+end
+
 draw_scores = function(difficulty, x, y, w, h)
+    if IRData.Active then return draw_scores_ir(difficulty, x, y, w, h) end
+
   -- draw the top score for this difficulty
 	local xOffset = 5
   local height = h/3 - 10
@@ -570,6 +724,8 @@ end
 
 songs_changed = function(withAll)
 	if not withAll then return end
+
+    recordCache = {}
 
 	local diffs = {}
 	for i = 1, #songwheel.allSongs do
