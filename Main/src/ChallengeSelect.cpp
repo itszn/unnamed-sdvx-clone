@@ -1669,6 +1669,11 @@ bool ChallengeManager::m_setupNextChart()
 	else
 		flags = GameFlags::None;
 
+	//TODO(itszn) should we have an option to force effective
+	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
+	if (gaugeType == GaugeTypes::Hard)
+		flags = flags | GameFlags::Hard;
+
 	if (m_currentOptions.mirror.Get(false))
 		flags = flags | GameFlags::Mirror;
 

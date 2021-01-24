@@ -1,4 +1,3 @@
-background.LoadTexture("mainTex", "bg.png")
 resx, resy = game.GetResolution()
 portrait = resy > resx
 desw = portrait and 720 or 1280 
