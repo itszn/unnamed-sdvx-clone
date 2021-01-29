@@ -386,16 +386,13 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	bool is_hard = packet["hard"];
 	bool is_mirror = packet.value("mirror", false);
 
-	GameFlags flags;
+	PlaybackOptions opts;
 	if (is_hard)
-		flags = GameFlags::Hard;
-	else
-		flags = GameFlags::None;
-	if (is_mirror)
-		flags = flags | GameFlags::Mirror;
+		opts.gaugeType = GaugeType::Hard;
+	opts.mirror = is_mirror;
 
 	// Create the game using the Create that takes the MultiplayerScreen class
-	Game* game = Game::Create(this, chart, flags);
+	Game* game = Game::Create(this, chart, opts);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Severity::Error);
@@ -954,7 +951,7 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 
 	clearState = HasFailed() ? ClearMark::Played : clearState;
 
-	uint32 flags = (uint32)game->GetFlags();
+	PlaybackOptions opts = game->GetPlaybackOptions();
 
 	nlohmann::json packet;
 	packet["topic"] = "room.score.final";
@@ -967,7 +964,8 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 	packet["miss"] = scoring.categorizedHits[0];
 	packet["near"] = scoring.categorizedHits[1];
 	packet["crit"] = scoring.categorizedHits[2];
-	packet["flags"] = flags;
+	//TODO(gauge refactor): options
+	//packet["flags"] = flags;
 	packet["mean_delta"] = scoring.GetMeanHitDelta();
 	packet["median_delta"] = scoring.GetMedianHitDelta();
 

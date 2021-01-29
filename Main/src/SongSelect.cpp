@@ -446,7 +446,8 @@ private:
 				lua_pushinteger(m_lua, ++scoreIndex);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+				//TODO(gauge refactor): options
+				//m_PushIntToTable("flags", score->gameflags);
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);
@@ -1089,7 +1090,7 @@ public:
 
 			ChartIndex* chart = GetCurrentSelectedChart();
 			if (chart == nullptr) return;
-			Game* game = Game::Create(chart, Game::FlagsFromSettings());
+			Game* game = Game::Create(chart, Game::PlaybackOptionsFromSettings());
 			if (!game)
 			{
 				Log("Failed to start game", Logger::Severity::Error);
@@ -1112,7 +1113,7 @@ public:
 			if (chart == nullptr) return;
 			m_mapDatabase->UpdateChartOffset(chart);
 
-			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
+			Game* practiceGame = Game::CreatePractice(chart, Game::PlaybackOptionsFromSettings());
 			if (!practiceGame)
 			{
 				Log("Failed to start practice", Logger::Severity::Error);
@@ -1258,7 +1259,7 @@ public:
 
 				ChartIndex* chart = GetCurrentSelectedChart();
 				m_mapDatabase->UpdateChartOffset(chart);
-				Game *game = Game::Create(chart, Game::FlagsFromSettings());
+				Game *game = Game::Create(chart, Game::PlaybackOptionsFromSettings());
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Severity::Error);
@@ -1464,8 +1465,8 @@ public:
 			else if (code == SDL_SCANCODE_F8 && m_multiplayer == nullptr) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
-
-				Game *game = Game::Create(chart, GameFlags::None);
+				PlaybackOptions opts;
+				Game *game = Game::Create(chart, opts);
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Severity::Error);

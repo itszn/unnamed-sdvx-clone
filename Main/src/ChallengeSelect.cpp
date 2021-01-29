@@ -1664,21 +1664,19 @@ bool ChallengeManager::m_setupNextChart()
 		m_currentOptions.max_modspeed = ChallengeOption<uint32>::IgnoreOption();
 	}
 
-	GameFlags flags;
+	PlaybackOptions opts;
 	if (m_currentOptions.excessive.Get(false))
-		flags = GameFlags::Hard;
-	else
-		flags = GameFlags::None;
+		opts.gaugeType = GaugeType::Hard;
+
 
 	//TODO(itszn) should we have an option to force effective
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
-		flags = flags | GameFlags::Hard;
+		opts.gaugeType = GaugeType::Hard;
 
-	if (m_currentOptions.mirror.Get(false))
-		flags = flags | GameFlags::Mirror;
+	opts.mirror = m_currentOptions.mirror.Get(false);
 
-	Game* game = Game::Create(this, m_currentChart, flags);
+	Game* game = Game::Create(this, m_currentChart, opts);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Severity::Error);
@@ -1718,7 +1716,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	uint32 finalScore = scoring.CalculateCurrentScore();
 	res.score = finalScore;
-	res.flags = game->GetFlags();
+	res.opts = game->GetPlaybackOptions();
 	float percentage = std::max((finalScore - 8000000.0f) / 10000.0f, 0.0f);
 
 	if (m_globalOpts.use_sdvx_complete_percentage.Get(false))
@@ -1730,7 +1728,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 		}
 		else if (clearMark < ClearMark::NormalClear)
 		{
-			bool canFail = (game->GetFlags() & GameFlags::Hard) != GameFlags::None;
+			bool canFail = game->GetPlaybackOptions().gaugeType == GaugeType::Hard;
 			if (canFail)
 			{
 				// If we failed part way though we can use our distance as our percentage

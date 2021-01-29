@@ -24,9 +24,9 @@ ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 		return ClearMark::Perfect;
 	if (score.miss == 0) //Full Combo
 		return ClearMark::FullCombo;
-	if (((GameFlags)score.gameflags & GameFlags::Hard) != GameFlags::None && score.gauge > 0) //Hard Clear
+	if (score.options.gaugeType == GaugeType::Hard && score.gauge > 0) //Hard Clear
 		return ClearMark::HardClear;
-	if (((GameFlags)score.gameflags & GameFlags::Hard) == GameFlags::None && score.gauge >= 0.70) //Normal Clear
+	if (score.options.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
 		return ClearMark::NormalClear;
 
 	return ClearMark::Played; //Failed
@@ -71,9 +71,9 @@ void Scoring::SetInput(Input* input)
 		m_input->OnButtonReleased.Add(this, &Scoring::m_OnButtonReleased);
 	}
 }
-void Scoring::SetFlags(GameFlags flags)
+void Scoring::SetOptions(PlaybackOptions opts)
 {
-	m_flags = flags;
+	m_options = opts;
 }
 void Scoring::SetEndTime(MapTime time)
 {
@@ -144,7 +144,7 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	uint16 total = m_playback->GetBeatmap().GetMapSettings().total;
 
-	if ((m_flags & GameFlags::Hard) != GameFlags::None)
+	if (m_options.gaugeType == GaugeType::Hard)
 	{
 		GaugeHard* gauge = new GaugeHard();
 		gauge->Init(mapTotals, total, m_endTime);

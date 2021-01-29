@@ -1185,7 +1185,8 @@ void Application::m_Cleanup()
 
 class Game *Application::LaunchMap(const String &mapPath)
 {
-	Game *game = Game::Create(mapPath, GameFlags::None);
+	PlaybackOptions opt;
+	Game *game = Game::Create(mapPath, opt);
 	g_transition->TransitionTo(game);
 	return game;
 }

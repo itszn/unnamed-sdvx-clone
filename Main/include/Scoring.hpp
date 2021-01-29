@@ -75,7 +75,7 @@ public:
 	// Needs to be set to handle input
 	void SetInput(Input* input);
 
-	void SetFlags(GameFlags flags);
+	void SetOptions(PlaybackOptions opts);
 	void SetEndTime(MapTime time);
 
 	inline void SetHitWindow(const HitWindow& window) { hitWindow = window; }
@@ -325,7 +325,7 @@ private:
 	Set<ObjectState*> m_heldObjects;
 	bool m_prevHoldHit[6];
 
-	GameFlags m_flags;
+	PlaybackOptions m_options;
 	MapTimeRange m_range;
 
 	// A stack of gauges which are all calculated at the same time.

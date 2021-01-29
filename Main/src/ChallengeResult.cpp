@@ -133,7 +133,8 @@ public:
 			m_PushIntToTable("score", cres.score);
 			m_PushIntToTable("percent", cres.percent);
 			m_PushFloatToTable("gauge", cres.gauge);
-			m_PushIntToTable("flags", (int)cres.flags);
+			//TODO(gauge refactor): add "options" table
+			//m_PushIntToTable("flags", (int)cres.flags);
 			m_PushIntToTable("misses", cres.errors);
 			m_PushIntToTable("goods", cres.nears);
 			m_PushIntToTable("perfects", cres.crits);
@@ -181,7 +182,8 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+				//TODO(gauge refactor): add "options" table
+				//m_PushIntToTable("flags", score->gameflags);
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);

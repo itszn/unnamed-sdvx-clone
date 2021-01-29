@@ -57,21 +57,21 @@ public:
 	static Game* Create(ChallengeManager*, ChartIndex* chart, PlayOptions&& options);
 	static Game* Create(const String& mapPath, PlayOptions&& options);
 	static Game* CreatePractice(ChartIndex* chart, PlayOptions&& options);
-	static GameFlags FlagsFromSettings();
+	static PlaybackOptions PlaybackOptionsFromSettings();
 
 	struct PlayOptions
 	{
 		PlayOptions() {}
 
 		// Implicitly used for normal gameplay
-		PlayOptions(GameFlags flags) : flags(flags) {}
+		PlayOptions(PlaybackOptions playbackOptions) : playbackOptions(playbackOptions) {}
 		PlayOptions(PlayOptions&&) = default;
 		
 		bool loopOnSuccess = false;
 		bool loopOnFail = false;
 
 		MapTimeRange range = { 0, 0 };
-		GameFlags flags = GameFlags::None;
+		PlaybackOptions playbackOptions;
 
 		float playbackSpeed = 1.0f;
 
@@ -100,7 +100,7 @@ public:
 	virtual class Scoring& GetScoring() = 0;
 	// Samples of the gauge for the performance graph
 	virtual const std::array<float, 256>& GetGaugeSamples() = 0;
-	virtual GameFlags GetFlags() = 0;
+	virtual PlaybackOptions GetPlaybackOptions() = 0;
 	// Map jacket image
 	virtual Texture GetJacketImage() = 0;
 	// Difficulty data

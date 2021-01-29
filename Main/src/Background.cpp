@@ -225,7 +225,7 @@ public:
 		timing.y = offsyncTimer;
 
 		float clearBorder = 0.70f;
-		if ((game->GetFlags() & GameFlags::Hard) != GameFlags::None)
+		if (game->GetPlaybackOptions().gaugeType != GaugeType::Normal)
 		{
 			clearBorder = 0.30f;
 		}

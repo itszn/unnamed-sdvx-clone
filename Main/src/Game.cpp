@@ -500,10 +500,10 @@ public:
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
 		}
-		g_application->LoadGauge((GetFlags() & GameFlags::Hard) != GameFlags::None);
+		g_application->LoadGauge(false);
 
 		// Do this here so we don't get input events while still loading
-		m_scoring.SetFlags(GetFlags());
+		m_scoring.SetOptions(GetPlaybackOptions());
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
@@ -513,7 +513,7 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		if ((GetFlags() & GameFlags::Random) != GameFlags::None)
+		if (GetPlaybackOptions().random)
 		{
 			//Randomize
 			std::array<int,4> swaps = { 0,1,2,3 };
@@ -561,7 +561,7 @@ public:
 
 		}
 
-		if ((GetFlags() & GameFlags::Mirror) != GameFlags::None)
+		if (GetPlaybackOptions().mirror)
 		{
 			int buttonSwaps[] = { 3,2,1,0,5,4 };
 
@@ -1350,8 +1350,9 @@ public:
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
 
-				m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
-				m_scoring.SetFlags(m_playOptions.flags);
+				//TODO(gauge refactor): ?
+				//m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
+				//m_scoring.SetFlags(m_playOptions.flags);
 			}
 		}
 
@@ -1610,7 +1611,7 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(diff, m_playOptions.flags);
+				game = Game::Create(diff, m_playOptions.playbackOptions);
 			}
 			game->GetScoring().autoplay = true;
 			game->SetDemoMode(true);
@@ -2311,7 +2312,7 @@ public:
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
-		scoreData.gameflags = (uint32) GetFlags();
+		scoreData.options = GetPlaybackOptions();
 		scoreData.gauge = g->GetValue();
 		scoreData.score = m_scoring.CalculateCurrentScore();
 
@@ -2660,9 +2661,9 @@ public:
 	{
 		return m_scoring.GetTopGauge()->GetSamples();
 	}
-	virtual GameFlags GetFlags() override
+	virtual PlaybackOptions GetPlaybackOptions() override
 	{
-		return m_playOptions.flags;
+		return m_playOptions.playbackOptions;
 	}
 	virtual lua_State* GetLuaState() override 
 	{
@@ -2960,7 +2961,7 @@ public:
 
 		pushIntToTable("difficulty", mapSettings.difficulty);
 		pushIntToTable("level", mapSettings.level);
-		pushIntToTable("gaugeType", (GetFlags() & GameFlags::Hard) != GameFlags::None ? 1 : 0);
+		pushIntToTable("gaugeType", GetPlaybackOptions().gaugeType == GaugeType::Hard ? 1 : 0);
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
@@ -3066,16 +3067,14 @@ GameFlags operator~(const GameFlags & a)
 	return (GameFlags)(~(uint32)a);
 }
 
-GameFlags Game::FlagsFromSettings()
+PlaybackOptions Game::PlaybackOptionsFromSettings()
 {
-	GameFlags flags = GameFlags::None;
+	PlaybackOptions options;
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
-		flags = flags | GameFlags::Hard;
-	if (g_gameConfig.GetBool(GameConfigKeys::MirrorChart))
-		flags = flags | GameFlags::Mirror;
-	if (g_gameConfig.GetBool(GameConfigKeys::RandomizeChart))
-		flags = flags | GameFlags::Random;
+		options.gaugeType = GaugeType::Hard;
+	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
+	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
 
-	return flags;
+	return options;
 }

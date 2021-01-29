@@ -90,7 +90,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 17;
+	static const int32 m_version = 18;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
@@ -245,7 +245,7 @@ public:
 						score.almost = scoreScan.IntColumn(3);
 						score.miss = scoreScan.IntColumn(4);
 						score.gauge = (float) scoreScan.DoubleColumn(5);
-						score.gameflags = scoreScan.IntColumn(6);
+						score.options.gaugeOption = scoreScan.IntColumn(6);
 						Buffer hitstats = scoreScan.BlobColumn(7);
 						score.timestamp = scoreScan.Int64Column(8);
 						auto timestamp = Shared::Time(score.timestamp);
@@ -283,7 +283,7 @@ public:
 					addScore.BindInt(3, score.almost);
 					addScore.BindInt(4, score.miss);
 					addScore.BindDouble(5, score.gauge);
-					addScore.BindInt(6, score.gameflags);
+					addScore.BindInt(6, score.options.gaugeOption);
 					addScore.BindString(7, score.replayPath);
 					addScore.BindInt64(8, score.timestamp);
 					addScore.BindString(9, score.chartHash);
@@ -366,6 +366,48 @@ public:
 					"lwt INTEGER"
 					")");
 				gotVersion = 17;
+			}
+			if (gotVersion == 17)
+			{
+				Map<int32, PlaybackOptions> optionMap;
+				int totalScoreCount = 0;
+				DBStatement scoreScan = m_database.Query("SELECT rowid,gameflags FROM Scores");
+				while (scoreScan.StepRow())
+				{
+					optionMap.Add(scoreScan.IntColumn(0), PlaybackOptions::FromFlags(scoreScan.IntColumn(1)));
+					totalScoreCount++;
+				}
+
+				m_outer.OnDatabaseUpdateProgress.Call(0, totalScoreCount);
+				int progress = 0;
+
+				//alter table.
+				// if we were on a newer sqlite version the gameflags column could easily be renamed but it will
+				// instead still exist in the db after this update but will be unused.
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN gauge_type INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN auto_flags INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN gauge_opt INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN mirror INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN random INTEGER");
+
+				DBStatement setScoreOpt = m_database.Query("UPDATE Scores set gauge_type=?, gauge_opt=?, mirror=?, random=?, auto_flags=? WHERE rowid=?");
+				for (auto& o : optionMap)
+				{
+					setScoreOpt.BindInt(1, (int32)o.second.gaugeType);
+					setScoreOpt.BindInt(2, o.second.gaugeOption);
+					setScoreOpt.BindInt(3, o.second.mirror ? 1 : 0);
+					setScoreOpt.BindInt(4, o.second.random ? 1 : 0);
+					setScoreOpt.BindInt(5, (int32)o.second.autoFlags);
+					setScoreOpt.BindInt(6, o.first);
+
+					setScoreOpt.StepRow();
+					setScoreOpt.Rewind();
+
+					progress++;
+					m_outer.OnDatabaseUpdateProgress.Call(progress, totalScoreCount);
+				}
+				gotVersion = 18;
+
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
@@ -783,7 +825,9 @@ public:
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeChallenge = m_database.Query("DELETE FROM Challenges WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
+		DBStatement scoreScan = m_database.Query("SELECT "
+			"rowid,score,crit,near,miss,gauge,auto_flags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,gauge_type,gauge_opt,mirror,random "
+			"FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
 		Set<FolderIndex*> addedChartEvents;
@@ -959,21 +1003,25 @@ public:
 					score->crit = scoreScan.IntColumn(2);
 					score->almost = scoreScan.IntColumn(3);
 					score->miss = scoreScan.IntColumn(4);
-					score->gauge = (float) scoreScan.DoubleColumn(5);
-					score->gameflags = scoreScan.IntColumn(6);
+					score->gauge = (float)scoreScan.DoubleColumn(5);
+					score->options.autoFlags = (AutoFlags)scoreScan.IntColumn(6);
 					score->replayPath = scoreScan.StringColumn(7);
 
 					score->timestamp = scoreScan.Int64Column(8);
-					score->userName = scoreScan.StringColumn(9);
-					score->userId = scoreScan.StringColumn(10);
-					score->localScore = scoreScan.IntColumn(11);
+					score->chartHash = scoreScan.StringColumn(9);
+					score->userName = scoreScan.StringColumn(10);
+					score->userId = scoreScan.StringColumn(11);
+					score->localScore = scoreScan.IntColumn(12);
 
-					score->hitWindowPerfect = scoreScan.IntColumn(12);
-					score->hitWindowGood = scoreScan.IntColumn(13);
-					score->hitWindowHold = scoreScan.IntColumn(14);
-					score->hitWindowMiss = scoreScan.IntColumn(15);
+					score->hitWindowPerfect = scoreScan.IntColumn(13);
+					score->hitWindowGood = scoreScan.IntColumn(14);
+					score->hitWindowHold = scoreScan.IntColumn(15);
+					score->hitWindowMiss = scoreScan.IntColumn(16);
 
-					score->chartHash = chart->hash;
+					score->options.gaugeType = (GaugeType)scoreScan.IntColumn(17);
+					score->options.gaugeOption = scoreScan.IntColumn(18);
+					score->options.mirror = scoreScan.IntColumn(19) == 1;
+					score->options.random = scoreScan.IntColumn(20) == 1;
 					chart->scores.Add(score);
 				}
 				scoreScan.Rewind();
@@ -1192,7 +1240,9 @@ public:
 
 	void AddScore(ScoreIndex* score)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+		DBStatement addScore = m_database.Query("INSERT INTO "
+			"Scores(score,crit,near,miss,gauge,auto_flags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,gauge_type,gauge_opt,mirror,random) "
+			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
 		m_database.Exec("BEGIN");
 		addScore.BindInt(1, score->score);
@@ -1200,7 +1250,7 @@ public:
 		addScore.BindInt(3, score->almost);
 		addScore.BindInt(4, score->miss);
 		addScore.BindDouble(5, score->gauge);
-		addScore.BindInt(6, score->gameflags);
+		addScore.BindInt(6, (int32)score->options.autoFlags);
 		addScore.BindString(7, score->replayPath);
 		addScore.BindInt64(8, score->timestamp);
 		addScore.BindString(9, score->chartHash);
@@ -1211,6 +1261,10 @@ public:
 		addScore.BindInt(14, score->hitWindowGood);
 		addScore.BindInt(15, score->hitWindowHold);
 		addScore.BindInt(16, score->hitWindowMiss);
+		addScore.BindInt(17, (int32)score->options.gaugeType);
+		addScore.BindInt(18, score->options.gaugeOption);
+		addScore.BindInt(19, score->options.mirror ? 1 : 0);
+		addScore.BindInt(20, score->options.random ? 1 : 0);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -1451,7 +1505,11 @@ private:
 			"near INTEGER,"
 			"miss INTEGER,"
 			"gauge REAL,"
-			"gameflags INTEGER,"
+			"gauge_type INTEGER,"
+			"gauge_opt INTEGER,"
+			"auto_flags INTEGER,"
+			"mirror INTEGER,"
+			"random INTEGER,"
 			"timestamp INTEGER,"
 			"replay TEXT,"
 			"user_name TEXT,"
@@ -1599,7 +1657,9 @@ private:
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT "
+			"rowid,score,crit,near,miss,gauge,auto_flags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,gauge_type,gauge_opt,mirror,random "
+			"FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -1610,7 +1670,7 @@ private:
 			score->almost = scoreScan.IntColumn(3);
 			score->miss = scoreScan.IntColumn(4);
 			score->gauge = (float) scoreScan.DoubleColumn(5);
-			score->gameflags = scoreScan.IntColumn(6);
+			score->options.autoFlags = (AutoFlags)scoreScan.IntColumn(6);
 			score->replayPath = scoreScan.StringColumn(7);
 
 			score->timestamp = scoreScan.Int64Column(8);
@@ -1623,6 +1683,11 @@ private:
 			score->hitWindowGood = scoreScan.IntColumn(14);
 			score->hitWindowHold = scoreScan.IntColumn(15);
 			score->hitWindowMiss = scoreScan.IntColumn(16);
+
+			score->options.gaugeType = (GaugeType)scoreScan.IntColumn(17);
+			score->options.gaugeOption = scoreScan.IntColumn(18);
+			score->options.mirror = scoreScan.IntColumn(19) == 1;
+			score->options.random = scoreScan.IntColumn(20) == 1;
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);

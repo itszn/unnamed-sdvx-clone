@@ -75,7 +75,7 @@ private:
 
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
-	GameFlags m_flags;
+	PlaybackOptions m_options;
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
@@ -153,14 +153,14 @@ public:
 		m_finalGaugeValue = scoring.GetTopGauge()->GetValue();
 		m_timedHits[0] = scoring.timedHits[0];
 		m_timedHits[1] = scoring.timedHits[1];
-		m_flags = game->GetFlags();
+		m_options = game->GetPlaybackOptions();
 		m_scoredata.score = m_score;
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_scoredata.crit = m_categorizedHits[2];
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
-		m_scoredata.gameflags = (uint32)m_flags;
+		m_scoredata.options = m_options;
 		if (!game->IsStorableScore())
 		{
 			m_badge = ClearMark::NotPlayed;
@@ -192,12 +192,15 @@ public:
 
 		const nlohmann::json& data= (*m_stats)[m_displayIndex];
 
+		//TODO(gauge refactor): options
+
+
 		m_score = data["score"];
 		m_maxCombo = data["combo"];
 		m_finalGaugeValue = data["gauge"];
 		m_timedHits[0] = data["early"];
 		m_timedHits[1] = data["late"];
-		m_flags = data["flags"];
+		//m_flags = data["flags"];
 
 		m_categorizedHits[0] = data["miss"];
 		m_categorizedHits[1] = data["near"];
@@ -209,7 +212,7 @@ public:
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
 
-		m_scoredata.gameflags = data["flags"];
+		//m_scoredata.gameflags = data["flags"];
 		m_badge = static_cast<ClearMark>(data["clear"]);
 
 		m_meanHitDelta[0] = data["mean_delta"];
@@ -362,7 +365,7 @@ public:
 			newScore->almost = m_categorizedHits[1];
 			newScore->miss = m_categorizedHits[0];
 			newScore->gauge = m_finalGaugeValue;
-			newScore->gameflags = (uint32)m_flags;
+			newScore->options = m_options;
 			newScore->timestamp = Shared::Time::Now().Data();
 			newScore->replayPath = replayPath;
 			newScore->chartHash = hash;
@@ -438,7 +441,8 @@ public:
 
 		lua_newtable(m_lua);
 		m_PushIntToTable("score", m_score);
-		m_PushIntToTable("flags", (int)m_flags);
+		//TODO(gauge refactor): add "options" table
+		//m_PushIntToTable("flags", (int)m_flags);
 		m_PushFloatToTable("gauge", m_finalGaugeValue);
 		m_PushIntToTable("misses", m_categorizedHits[0]);
 		m_PushIntToTable("goods", m_categorizedHits[1]);
@@ -540,7 +544,8 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+				//TODO(gauge refactor): add "options" table
+				//m_PushIntToTable("flags", score->gameflags);
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);

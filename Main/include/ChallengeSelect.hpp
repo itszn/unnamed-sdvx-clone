@@ -189,7 +189,7 @@ struct ChallengeResult
 	String failString;
 	ClearMark badge;
 	float gauge;
-	GameFlags flags;
+	PlaybackOptions opts;
 	uint32 score;
 	float percent;
 	uint32 maxCombo;
