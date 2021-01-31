@@ -76,6 +76,8 @@ private:
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
 	PlaybackOptions m_options;
+	GaugeType m_gaugeType;
+	uint32 m_gaugeOption;
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
@@ -145,12 +147,14 @@ public:
 	void loadScoresFromGame(class Game* game)
 	{
 		Scoring& scoring = game->GetScoring();
+		Gauge* gauge = scoring.GetTopGauge();
 		// Calculate hitstats
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
-
 		m_score = scoring.CalculateCurrentScore();
 		m_maxCombo = scoring.maxComboCounter;
-		m_finalGaugeValue = scoring.GetTopGauge()->GetValue();
+		m_finalGaugeValue = gauge->GetValue();
+		m_gaugeOption = gauge->GetOpts();
+		m_gaugeType = gauge->GetType();
 		m_timedHits[0] = scoring.timedHits[0];
 		m_timedHits[1] = scoring.timedHits[1];
 		m_options = game->GetPlaybackOptions();
@@ -160,7 +164,11 @@ public:
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
-		m_scoredata.options = m_options;
+		m_scoredata.gaugeType = m_gaugeType;
+		m_scoredata.gaugeOption = m_gaugeOption;
+		m_scoredata.mirror = m_options.mirror;
+		m_scoredata.random = m_options.random;
+		m_scoredata.autoFlags = m_options.autoFlags;
 		if (!game->IsStorableScore())
 		{
 			m_badge = ClearMark::NotPlayed;
@@ -365,7 +373,13 @@ public:
 			newScore->almost = m_categorizedHits[1];
 			newScore->miss = m_categorizedHits[0];
 			newScore->gauge = m_finalGaugeValue;
-			newScore->options = m_options;
+
+			newScore->gaugeType = m_gaugeType;
+			newScore->gaugeOption = m_gaugeOption;
+			newScore->mirror = m_options.mirror;
+			newScore->random = m_options.random;
+			newScore->autoFlags = m_options.autoFlags;
+
 			newScore->timestamp = Shared::Time::Now().Data();
 			newScore->replayPath = replayPath;
 			newScore->chartHash = hash;
@@ -441,8 +455,13 @@ public:
 
 		lua_newtable(m_lua);
 		m_PushIntToTable("score", m_score);
-		//TODO(gauge refactor): add "options" table
-		//m_PushIntToTable("flags", (int)m_flags);
+
+		m_PushIntToTable("gauge_type", (uint32)m_gaugeType);
+		m_PushIntToTable("gauge_option", m_gaugeOption);
+		m_PushIntToTable("random", m_options.random);
+		m_PushIntToTable("mirror", m_options.mirror);
+		m_PushIntToTable("auto_flags", (uint32)m_options.autoFlags);
+
 		m_PushFloatToTable("gauge", m_finalGaugeValue);
 		m_PushIntToTable("misses", m_categorizedHits[0]);
 		m_PushIntToTable("goods", m_categorizedHits[1]);
@@ -544,8 +563,13 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				//TODO(gauge refactor): add "options" table
-				//m_PushIntToTable("flags", score->gameflags);
+				
+				m_PushIntToTable("gauge_type", (uint32)score->gaugeType);
+				m_PushIntToTable("gauge_option", score->gaugeOption);
+				m_PushIntToTable("random", score->random);
+				m_PushIntToTable("mirror", score->mirror);
+				m_PushIntToTable("auto_flags", (uint32)score->autoFlags);
+
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);

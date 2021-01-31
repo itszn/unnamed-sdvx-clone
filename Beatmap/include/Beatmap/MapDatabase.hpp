@@ -25,7 +25,11 @@ struct ScoreIndex
 	int32 almost;
 	int32 miss;
 	float gauge;
-	PlaybackOptions options;
+	GaugeType gaugeType;
+	uint32 gaugeOption;
+	AutoFlags autoFlags;
+	bool random;
+	bool mirror;
 	String replayPath;
 	String chartHash;
 	uint64 timestamp;

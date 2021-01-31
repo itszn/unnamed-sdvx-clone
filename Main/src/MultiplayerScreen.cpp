@@ -952,20 +952,26 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 	clearState = HasFailed() ? ClearMark::Played : clearState;
 
 	PlaybackOptions opts = game->GetPlaybackOptions();
+	Gauge* gauge = scoring.GetTopGauge();
 
 	nlohmann::json packet;
 	packet["topic"] = "room.score.final";
 	packet["score"] = scoring.CalculateCurrentScore();
 	packet["combo"] = scoring.maxComboCounter;
 	packet["clear"] = static_cast<int>(clearState);
-	packet["gauge"] = scoring.GetTopGauge()->GetValue();
+	packet["gauge"] = gauge->GetValue();
 	packet["early"] = scoring.timedHits[0];
 	packet["late"] = scoring.timedHits[1];
 	packet["miss"] = scoring.categorizedHits[0];
 	packet["near"] = scoring.categorizedHits[1];
 	packet["crit"] = scoring.categorizedHits[2];
-	//TODO(gauge refactor): options
-	//packet["flags"] = flags;
+
+	packet["gauge_type"] = (uint32)gauge->GetType();
+	packet["gauge_option"] = gauge->GetOpts();
+	packet["mirror"] = opts.mirror;
+	packet["random"] = opts.random;
+	packet["auto_flags"] = (uint32)opts.autoFlags;
+
 	packet["mean_delta"] = scoring.GetMeanHitDelta();
 	packet["median_delta"] = scoring.GetMedianHitDelta();
 

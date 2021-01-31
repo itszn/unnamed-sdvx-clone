@@ -24,9 +24,9 @@ ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 		return ClearMark::Perfect;
 	if (score.miss == 0) //Full Combo
 		return ClearMark::FullCombo;
-	if (score.options.gaugeType == GaugeType::Hard && score.gauge > 0) //Hard Clear
+	if (score.gaugeType == GaugeType::Hard && score.gauge > 0) //Hard Clear
 		return ClearMark::HardClear;
-	if (score.options.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
+	if (score.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
 		return ClearMark::NormalClear;
 
 	return ClearMark::Played; //Failed

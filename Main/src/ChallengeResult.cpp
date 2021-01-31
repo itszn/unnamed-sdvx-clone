@@ -182,8 +182,13 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				//TODO(gauge refactor): add "options" table
-				//m_PushIntToTable("flags", score->gameflags);
+
+				m_PushIntToTable("gauge_type", (uint32)score->gaugeType);
+				m_PushIntToTable("gauge_option", score->gaugeOption);
+				m_PushIntToTable("random", score->random);
+				m_PushIntToTable("mirror", score->mirror);
+				m_PushIntToTable("auto_flags", (uint32)score->autoFlags);
+
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);

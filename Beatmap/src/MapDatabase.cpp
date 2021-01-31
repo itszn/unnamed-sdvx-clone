@@ -245,7 +245,7 @@ public:
 						score.almost = scoreScan.IntColumn(3);
 						score.miss = scoreScan.IntColumn(4);
 						score.gauge = (float) scoreScan.DoubleColumn(5);
-						score.options.gaugeOption = scoreScan.IntColumn(6);
+						score.gaugeOption = scoreScan.IntColumn(6);
 						Buffer hitstats = scoreScan.BlobColumn(7);
 						score.timestamp = scoreScan.Int64Column(8);
 						auto timestamp = Shared::Time(score.timestamp);
@@ -283,7 +283,7 @@ public:
 					addScore.BindInt(3, score.almost);
 					addScore.BindInt(4, score.miss);
 					addScore.BindDouble(5, score.gauge);
-					addScore.BindInt(6, score.options.gaugeOption);
+					addScore.BindInt(6, score.gaugeOption);
 					addScore.BindString(7, score.replayPath);
 					addScore.BindInt64(8, score.timestamp);
 					addScore.BindString(9, score.chartHash);
@@ -1004,7 +1004,7 @@ public:
 					score->almost = scoreScan.IntColumn(3);
 					score->miss = scoreScan.IntColumn(4);
 					score->gauge = (float)scoreScan.DoubleColumn(5);
-					score->options.autoFlags = (AutoFlags)scoreScan.IntColumn(6);
+					score->autoFlags = (AutoFlags)scoreScan.IntColumn(6);
 					score->replayPath = scoreScan.StringColumn(7);
 
 					score->timestamp = scoreScan.Int64Column(8);
@@ -1018,10 +1018,10 @@ public:
 					score->hitWindowHold = scoreScan.IntColumn(15);
 					score->hitWindowMiss = scoreScan.IntColumn(16);
 
-					score->options.gaugeType = (GaugeType)scoreScan.IntColumn(17);
-					score->options.gaugeOption = scoreScan.IntColumn(18);
-					score->options.mirror = scoreScan.IntColumn(19) == 1;
-					score->options.random = scoreScan.IntColumn(20) == 1;
+					score->gaugeType = (GaugeType)scoreScan.IntColumn(17);
+					score->gaugeOption = scoreScan.IntColumn(18);
+					score->mirror = scoreScan.IntColumn(19) == 1;
+					score->random = scoreScan.IntColumn(20) == 1;
 					chart->scores.Add(score);
 				}
 				scoreScan.Rewind();
@@ -1250,7 +1250,7 @@ public:
 		addScore.BindInt(3, score->almost);
 		addScore.BindInt(4, score->miss);
 		addScore.BindDouble(5, score->gauge);
-		addScore.BindInt(6, (int32)score->options.autoFlags);
+		addScore.BindInt(6, (int32)score->autoFlags);
 		addScore.BindString(7, score->replayPath);
 		addScore.BindInt64(8, score->timestamp);
 		addScore.BindString(9, score->chartHash);
@@ -1261,10 +1261,10 @@ public:
 		addScore.BindInt(14, score->hitWindowGood);
 		addScore.BindInt(15, score->hitWindowHold);
 		addScore.BindInt(16, score->hitWindowMiss);
-		addScore.BindInt(17, (int32)score->options.gaugeType);
-		addScore.BindInt(18, score->options.gaugeOption);
-		addScore.BindInt(19, score->options.mirror ? 1 : 0);
-		addScore.BindInt(20, score->options.random ? 1 : 0);
+		addScore.BindInt(17, (int32)score->gaugeType);
+		addScore.BindInt(18, score->gaugeOption);
+		addScore.BindInt(19, score->mirror ? 1 : 0);
+		addScore.BindInt(20, score->random ? 1 : 0);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -1670,7 +1670,7 @@ private:
 			score->almost = scoreScan.IntColumn(3);
 			score->miss = scoreScan.IntColumn(4);
 			score->gauge = (float) scoreScan.DoubleColumn(5);
-			score->options.autoFlags = (AutoFlags)scoreScan.IntColumn(6);
+			score->autoFlags = (AutoFlags)scoreScan.IntColumn(6);
 			score->replayPath = scoreScan.StringColumn(7);
 
 			score->timestamp = scoreScan.Int64Column(8);
@@ -1684,10 +1684,10 @@ private:
 			score->hitWindowHold = scoreScan.IntColumn(15);
 			score->hitWindowMiss = scoreScan.IntColumn(16);
 
-			score->options.gaugeType = (GaugeType)scoreScan.IntColumn(17);
-			score->options.gaugeOption = scoreScan.IntColumn(18);
-			score->options.mirror = scoreScan.IntColumn(19) == 1;
-			score->options.random = scoreScan.IntColumn(20) == 1;
+			score->gaugeType = (GaugeType)scoreScan.IntColumn(17);
+			score->gaugeOption = scoreScan.IntColumn(18);
+			score->mirror = scoreScan.IntColumn(19) == 1;
+			score->random = scoreScan.IntColumn(20) == 1;
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);

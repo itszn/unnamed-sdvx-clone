@@ -28,6 +28,8 @@ public:
 
 	virtual bool GetClearState() const = 0;
 	virtual const char* GetName() const = 0;
+	virtual GaugeType GetType() const = 0;
+	virtual uint32 GetOpts() const { return 0; };
 
 	// Returns true if the gauge should fail out the player
 	virtual bool FailOut() const {
@@ -54,7 +56,7 @@ public:
 	void ShortMiss();
 	bool GetClearState() const;
 	const char* GetName() const;
-
+	GaugeType GetType() const;
 
 private:
 	float m_shortMissDrain;
@@ -76,6 +78,7 @@ public:
 	bool GetClearState() const;
 	const char* GetName() const;
 	bool FailOut() const;
+	GaugeType GetType() const;
 
 private:
 	float DrainMultiplier() const;

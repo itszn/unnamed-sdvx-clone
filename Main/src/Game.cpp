@@ -2309,10 +2309,15 @@ public:
 			return ClearMark::Played;
 
 		ScoreIndex scoreData;
+		auto opts = GetPlaybackOptions();
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
-		scoreData.options = GetPlaybackOptions();
+		scoreData.gaugeType = g->GetType();
+		scoreData.gaugeOption = g->GetOpts();
+		scoreData.mirror = opts.mirror;
+		scoreData.random = opts.random;
+		scoreData.autoFlags = opts.autoFlags;
 		scoreData.gauge = g->GetValue();
 		scoreData.score = m_scoring.CalculateCurrentScore();
 

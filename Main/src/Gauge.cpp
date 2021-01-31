@@ -92,6 +92,11 @@ const char* GaugeNormal::GetName() const
 	return "Normal";
 }
 
+GaugeType GaugeNormal::GetType() const
+{
+	return GaugeType::Normal;
+}
+
 
 bool GaugeHard::Init(MapTotals mapTotals, uint16 total, MapTime length)
 {
@@ -175,6 +180,11 @@ const char* GaugeHard::GetName() const
 bool GaugeHard::FailOut() const
 {
 	return m_gauge == 0.f;
+}
+
+GaugeType GaugeHard::GetType() const
+{
+	return GaugeType::Hard;
 }
 
 float GaugeHard::DrainMultiplier() const
