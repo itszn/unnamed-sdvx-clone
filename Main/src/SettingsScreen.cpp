@@ -8,7 +8,6 @@
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "Background.hpp"
-#include "HealthGauge.hpp"
 #include "Shared/Jobs.hpp"
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"

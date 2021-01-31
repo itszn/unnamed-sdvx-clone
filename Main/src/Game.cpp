@@ -26,7 +26,6 @@
 #include <Shared/Time.hpp>
 #include "Gauge.hpp"
 
-#include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
 
 // Try load map helper
@@ -99,8 +98,6 @@ private:
 	SpeedMods m_speedMod;
 	float m_modSpeed = 400;
 
-	// Game Canvas
-	Ref<HealthGauge> m_scoringGauge;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -500,7 +497,6 @@ public:
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
 		}
-		g_application->LoadGauge(false);
 
 		// Do this here so we don't get input events while still loading
 		m_scoring.SetOptions(GetPlaybackOptions());

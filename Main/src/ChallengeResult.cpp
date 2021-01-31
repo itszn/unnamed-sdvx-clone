@@ -8,7 +8,6 @@
 #include "Scoring.hpp"
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
-#include "HealthGauge.hpp"
 #include "lua.hpp"
 #include "Shared/Time.hpp"
 #include "json.hpp"

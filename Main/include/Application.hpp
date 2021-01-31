@@ -72,8 +72,8 @@ public:
 	lua_State* LoadScript(const String& name, bool noError = false);
 	void ReloadScript(const String& name, lua_State* L);
 	void ShowLuaError(const String& error);
-	void LoadGauge(bool hard);
-	void DrawGauge(float rate, float x, float y, float w, float h, float deltaTime);
+
+	void WarnGauge();
 	int FastText(String text, float x, float y, int size, int align, const Color& color = Color::White);
 	float GetAppTime() const { return m_appTime; }
 	float GetRenderFPS() const;
@@ -89,7 +89,6 @@ public:
 	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
 	void DisposeLua(lua_State* state);
-	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
 	void DiscordPresenceMulti(String secret, int partySize, int partyMax, String id);
@@ -128,7 +127,6 @@ private:
 	Material m_fontMaterial;
 	Material m_fillMaterial;
 	Material m_guiTex;
-	class HealthGauge* m_gauge;
 	Map<String, CachedJacketImage*> m_jacketImages;
 	String m_lastMapPath;
 	Thread m_updateThread;
@@ -155,6 +153,7 @@ private:
 	String m_multiRoomId;
 	int m_multiRoomSize = 0;
 	int m_multiRoomCount = 0;
+	bool m_gaugeRemovedWarn = true;
 };
 
 class JacketLoadingJob : public JobBase

@@ -14,7 +14,6 @@
 #include "GameConfig.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
-#include "GUI/HealthGauge.hpp"
 #include "lua.hpp"
 #include "nanovg.h"
 #include "discord_rpc.h"
@@ -865,8 +864,7 @@ bool Application::m_Init()
 	m_fillMaterial->opaque = false;
 	CheckedLoad(m_guiTex = LoadMaterial("guiTex"));
 	m_guiTex->opaque = false;
-	m_gauge = new HealthGauge();
-	LoadGauge(false);
+
 
 	//m_skinHtpp = new SkinHttp();
 	// call the initial OnWindowResized now that we have intialized OpenGL
@@ -1138,11 +1136,7 @@ void Application::m_Cleanup()
 		delete g_skinConfig;
 		g_skinConfig = nullptr;
 	}
-	if (m_gauge)
-	{
-		delete m_gauge;
-		m_gauge = nullptr;
-	}
+
 	if (g_transition)
 	{
 		delete g_transition;
@@ -1510,6 +1504,7 @@ void Application::ReloadSkin()
 	//nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 
 	//push new titlescreen
+	m_gaugeRemovedWarn = true;
 	TitleScreen *t = TitleScreen::Create();
 	AddTickable(t);
 }
@@ -1519,20 +1514,7 @@ void Application::DisposeLua(lua_State *state)
 	m_skinHttp.ClearState(state);
 	lua_close(state);
 }
-void Application::SetGaugeColor(int i, Color c)
-{
-	m_gaugeColors[i] = c;
-	if (m_gauge->colorBorder < 0.5f)
-	{
-		m_gauge->lowerColor = m_gaugeColors[2];
-		m_gauge->upperColor = m_gaugeColors[3];
-	}
-	else
-	{
-		m_gauge->lowerColor = m_gaugeColors[0];
-		m_gauge->upperColor = m_gaugeColors[1];
-	}
-}
+
 void Application::DiscordError(int errorCode, const char *message)
 {
 	Logf("[Discord] %s", Logger::Severity::Warning, message);
@@ -1629,41 +1611,17 @@ void Application::JoinMultiFromInvite(String secret)
 	}
 }
 
-void Application::LoadGauge(bool hard)
-{
-	String gaugePath = "gauges/normal/";
-	if (hard)
-	{
-		gaugePath = "gauges/hard/";
-		m_gauge->colorBorder = 0.3f;
-		m_gauge->lowerColor = m_gaugeColors[2];
-		m_gauge->upperColor = m_gaugeColors[3];
-	}
-	else
-	{
-		m_gauge->colorBorder = 0.7f;
-		m_gauge->lowerColor = m_gaugeColors[0];
-		m_gauge->upperColor = m_gaugeColors[1];
-	}
-	m_gauge->fillTexture = LoadTexture(gaugePath + "gauge_fill.png");
-	m_gauge->frontTexture = LoadTexture(gaugePath + "gauge_front.png");
-	m_gauge->backTexture = LoadTexture(gaugePath + "gauge_back.png");
-	m_gauge->maskTexture = LoadTexture(gaugePath + "gauge_mask.png");
-	m_gauge->fillTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->frontTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->backTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->maskTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->fillMaterial = LoadMaterial("gauge");
-	m_gauge->fillMaterial->opaque = false;
-	m_gauge->baseMaterial = LoadMaterial("guiTex");
-	m_gauge->baseMaterial->opaque = false;
-}
 
-void Application::DrawGauge(float rate, float x, float y, float w, float h, float deltaTime)
+
+void Application::WarnGauge()
 {
-	m_gauge->rate = rate;
-	Mesh m = MeshGenerators::Quad(g_gl, Vector2(x, y), Vector2(w, h));
-	m_gauge->Render(m, deltaTime);
+	if (m_gaugeRemovedWarn)
+	{
+		g_gameWindow->ShowMessageBox("Gauge functions removed.",
+			"gfx.DrawGauge and gfx.SetGaugeColor have been removed in favour of drawing the gauge with the other gfx functions.\n"
+			"Please update your skin or contact the skin author.", 1);
+		m_gaugeRemovedWarn = false;
+	}
 }
 
 float Application::GetRenderFPS() const
@@ -1925,19 +1883,6 @@ static int lLog(lua_State *L)
 	return 0;
 }
 
-static int lDrawGauge(lua_State *L)
-{
-	float rate, x, y, w, h, deltaTime;
-	rate = luaL_checknumber(L, 1);
-	x = luaL_checknumber(L, 2);
-	y = luaL_checknumber(L, 3);
-	w = luaL_checknumber(L, 4);
-	h = luaL_checknumber(L, 5);
-	deltaTime = luaL_checknumber(L, 6);
-	g_application->DrawGauge(rate, x, y, w, h, deltaTime);
-	return 0;
-}
-
 static int lGetButton(lua_State *L /* int button */)
 {
 	int button = luaL_checkinteger(L, 1);
@@ -2106,15 +2051,9 @@ static int lLoadWebImageJob(lua_State *L /* char* url, int placeholder, int w = 
 	return 1;
 }
 
-static int lSetGaugeColor(lua_State *L /*int colorIndex, int r, int g, int b*/)
+static int lWarnGauge(lua_State *L)
 {
-	int colorindex, r, g, b;
-	colorindex = luaL_checkinteger(L, 1);
-	r = luaL_checkinteger(L, 2);
-	g = luaL_checkinteger(L, 3);
-	b = luaL_checkinteger(L, 4);
-
-	g_application->SetGaugeColor(colorindex, Colori(r, g, b));
+	g_application->WarnGauge();
 	return 0;
 }
 
@@ -2268,8 +2207,8 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("Stroke", lStroke);
 		pushFuncToTable("StrokeColor", lStrokeColor);
 		pushFuncToTable("UpdateLabel", lUpdateLabel);
-		pushFuncToTable("DrawGauge", lDrawGauge);
-		pushFuncToTable("SetGaugeColor", lSetGaugeColor);
+		pushFuncToTable("DrawGauge", lWarnGauge);
+		pushFuncToTable("SetGaugeColor", lWarnGauge);
 		pushFuncToTable("RoundedRect", lRoundedRect);
 		pushFuncToTable("RoundedRectVarying", lRoundedRectVarying);
 		pushFuncToTable("Ellipse", lEllipse);
