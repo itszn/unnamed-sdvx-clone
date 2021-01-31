@@ -199,15 +199,20 @@ public:
 
 		const nlohmann::json& data= (*m_stats)[m_displayIndex];
 
-		//TODO(gauge refactor): options
+		//TODO(gauge refactor): options are from flags, multi server needs update for the new options
 
+		uint32 flags = data["flags"];
+		m_options = PlaybackOptions::FromFlags(flags);
+
+		m_gaugeType = m_options.gaugeType;
+		m_gaugeOption = m_options.gaugeOption;
 
 		m_score = data["score"];
 		m_maxCombo = data["combo"];
 		m_finalGaugeValue = data["gauge"];
 		m_timedHits[0] = data["early"];
 		m_timedHits[1] = data["late"];
-		//m_flags = data["flags"];
+
 
 		m_categorizedHits[0] = data["miss"];
 		m_categorizedHits[1] = data["near"];
@@ -218,8 +223,12 @@ public:
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
+		m_scoredata.gaugeType = m_gaugeType;
+		m_scoredata.gaugeOption = m_gaugeOption;
+		m_scoredata.mirror = m_options.mirror;
+		m_scoredata.random = m_options.random;
+		m_scoredata.autoFlags = m_options.autoFlags;
 
-		//m_scoredata.gameflags = data["flags"];
 		m_badge = static_cast<ClearMark>(data["clear"]);
 
 		m_meanHitDelta[0] = data["mean_delta"];

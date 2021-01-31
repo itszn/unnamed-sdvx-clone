@@ -972,6 +972,11 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 	packet["random"] = opts.random;
 	packet["auto_flags"] = (uint32)opts.autoFlags;
 
+	//flags for backwards compatibility
+	opts.gaugeType = gauge->GetType();
+	opts.gaugeOption = gauge->GetOpts();
+	packet["flags"] = PlaybackOptions::ToLegacyFlags(opts);
+
 	packet["mean_delta"] = scoring.GetMeanHitDelta();
 	packet["median_delta"] = scoring.GetMedianHitDelta();
 

@@ -16,6 +16,7 @@ enum class AutoFlags : uint8 {
 typedef struct PlaybackOptions
 {
 	static PlaybackOptions FromFlags(uint32 flags);
+	static uint32 ToLegacyFlags(const PlaybackOptions& options);
 
 	GaugeType gaugeType = GaugeType::Normal;
 

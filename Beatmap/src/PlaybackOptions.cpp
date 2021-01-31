@@ -33,3 +33,13 @@ PlaybackOptions PlaybackOptions::FromFlags(uint32 flags)
 
     return res;
 }
+
+uint32 PlaybackOptions::ToLegacyFlags(const PlaybackOptions& options)
+{
+	uint32 flags = 0;
+	flags |= options.gaugeType != GaugeType::Normal ? (uint32)LegacyGameFlags::Hard : 0;
+	flags |= options.mirror ? (uint32)LegacyGameFlags::Mirror : 0;
+	flags |= options.random ? (uint32)LegacyGameFlags::Random : 0;
+	flags |= (uint32)options.autoFlags << 3;
+	return flags;
+}
