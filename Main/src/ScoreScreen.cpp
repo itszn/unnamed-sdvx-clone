@@ -466,8 +466,15 @@ public:
 
 		m_PushIntToTable("gauge_type", (uint32)m_gaugeType);
 		m_PushIntToTable("gauge_option", m_gaugeOption);
-		m_PushIntToTable("random", m_options.random);
-		m_PushIntToTable("mirror", m_options.mirror);
+
+		lua_pushstring(m_lua, "random");
+		lua_pushboolean(m_lua, m_options.random);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "mirror");
+		lua_pushboolean(m_lua, m_options.mirror);
+		lua_settable(m_lua, -3);
+
 		m_PushIntToTable("auto_flags", (uint32)m_options.autoFlags);
 
 		m_PushFloatToTable("gauge", m_finalGaugeValue);

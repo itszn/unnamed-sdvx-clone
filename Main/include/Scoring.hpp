@@ -164,6 +164,8 @@ public:
 	//	(New Score)
 	Delegate<> OnScoreChanged;
 
+	Delegate<class Gauge*, class Gauge*> OnGaugeChanged;
+
 	// Object timing window
 	HitWindow hitWindow = HitWindow::NORMAL;
 	static const float idleLaserSpeed;

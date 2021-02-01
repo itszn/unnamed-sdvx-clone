@@ -262,23 +262,23 @@ function ResetLayoutInformation()
     end
 
     do --update gauge_info
-        gauge_info.height = 1024 * scale * 0.35
-        gauge_info.width = 512 * scale * 0.35
-        gauge_info.posy = resy / 2 - gauge_info.height / 2
-        gauge_info.posx = resx - gauge_info.width
+        gauge_info.height = 1024 * 0.35
+        gauge_info.width = 512 * 0.35
+        gauge_info.posy = desh / 2 - gauge_info.height / 2
+        gauge_info.posx = desw - gauge_info.width
         if portrait then
             gauge_info.width = gauge_info.width * 0.8
             gauge_info.height = gauge_info.height * 0.8
             gauge_info.posy = gauge_info.posy - 30
-            gauge_info.posx = resx - gauge_info.width
+            gauge_info.posx = desw - gauge_info.width
         end
 
-        gauge_info.label_posx = gauge_info.posx / scale + (100 * 0.35) 
+        gauge_info.label_posx = gauge_info.posx + (100 * 0.35) 
         gauge_info.label_height = 880 * 0.35
         if portrait then
             gauge_info.label_height = gauge_info.label_height * 0.8;
         end
-        gauge_info.label_posy = gauge_info.posy / scale + (70 * 0.35) + gauge_info.label_height
+        gauge_info.label_posy = gauge_info.posy + (70 * 0.35) + gauge_info.label_height
     end
 
     do --update crit_base_info
@@ -336,7 +336,7 @@ function render(deltaTime)
     draw_song_info(deltaTime)
     draw_score(deltaTime)
     gfx.Translate(0, -yshift + 150 * math.max(introTimer - 1, 0))
-    draw_gauge(deltaTime)
+    draw_gauge(deltaTime, gameplay.gauge)
     if earlatePos ~= "off" then
         draw_earlate(deltaTime)
     end
@@ -803,17 +803,27 @@ function draw_score(deltaTime)
 end
 -- -------------------------------------------------------------------------- --
 -- draw_gauge:                                                                --
-function draw_gauge(deltaTime)
+function draw_gauge(deltaTime, gauge)
+    gfx.BeginPath()
+    gfx.Rect(gauge_info.posx, gauge_info.posy, gauge_info.width, gauge_info.height)
+    if gauge.type == 1 then --hard
+        gfx.StrokeColor(255,200,127)
+        gfx.FillColor(255,127,0)
+    else --normal
+        gfx.StrokeColor(0,127,255)
+        if gauge.value > 0.7 then 
+            gfx.FillColor(127, 0, 255)
+        else
+            gfx.FillColor(0, 20, 255)
+        end
+    end
 
-    gfx.DrawGauge(gameplay.gauge, 
-        gauge_info.posx, 
-        gauge_info.posy, 
-        gauge_info.width, 
-        gauge_info.height, 
-        deltaTime)
-
+    gfx.Stroke()
+    gfx.BeginPath()
+    gfx.Rect(gauge_info.posx, gauge_info.posy + (1.0 - gauge.value) * gauge_info.height, gauge_info.width, gauge_info.height * gauge.value)
+    gfx.Fill()
     --draw gauge % label
-    local posy = gauge_info.label_posy - gauge_info.label_height * gameplay.gauge
+    local posy = gauge_info.label_posy - gauge_info.label_height * gauge.value
     gfx.BeginPath()
     gfx.Rect(gauge_info.label_posx-35, posy-10, 40, 20)
     gfx.FillColor(0,0,0,200)
@@ -821,7 +831,7 @@ function draw_gauge(deltaTime)
     gfx.FillColor(255,255,255)
     gfx.TextAlign(gfx.TEXT_ALIGN_RIGHT + gfx.TEXT_ALIGN_MIDDLE)
     gfx.FontSize(20)
-    gfx.Text(string.format("%d%%", math.floor(gameplay.gauge * 100)), gauge_info.label_posx, posy )
+    gfx.Text(string.format("%d%%", math.floor(gauge.value * 100)), gauge_info.label_posx, posy )
 end
 -- -------------------------------------------------------------------------- --
 -- draw_combo:                                                                --

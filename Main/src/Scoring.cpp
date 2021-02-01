@@ -951,9 +951,10 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 
 	while (m_gaugeStack.size() > 1 && m_gaugeStack.back()->FailOut())
 	{
-		///TODO: Fire event?
-		delete m_gaugeStack.back();
+		Gauge* lostGauge = m_gaugeStack.back();
 		m_gaugeStack.pop_back();
+		OnGaugeChanged.Call(lostGauge, m_gaugeStack.back());
+		delete lostGauge;
 	}
 }
 

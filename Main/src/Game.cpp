@@ -1256,6 +1256,7 @@ public:
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
+		m_scoring.OnGaugeChanged.Add(this, &Game_Impl::OnGaugeChanged);
 
 		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
@@ -2006,6 +2007,11 @@ public:
 		{
 			Logf("Lua error on calling update_score: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
+	}
+
+	void OnGaugeChanged(Gauge* from, Gauge* to) {
+		Logf("Gauge changed: %s -> %s", Logger::Severity::Info, from->GetName(), to->GetName());
+		//TODO: Lua call?
 	}
 
 	// These functions control if FX button DSP's are muted or not
@@ -2817,9 +2823,29 @@ public:
 		lua_pushnumber(L, m_currentTiming->GetBPM());
 		lua_settable(L, -3);
 		// gauge
-		lua_pushstring(L, "gauge");
-		lua_pushnumber(L, gauge->GetValue());
-		lua_settable(L, -3);
+		{
+			Gauge* gauge = m_scoring.GetTopGauge();
+			lua_getfield(L, -1, "gauge");
+
+
+			lua_pushstring(L, "type");
+			lua_pushinteger(L, (uint32)gauge->GetType());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "options");
+			lua_pushinteger(L, gauge->GetOpts());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "value");
+			lua_pushnumber(L, gauge->GetValue());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "name");
+			lua_pushstring(L, gauge->GetName());
+			lua_settable(L, -3);
+
+			lua_pop(L, 1);
+		}
 		// combo state
 		lua_pushstring(L, "comboState");
 		lua_pushnumber(L, m_scoring.comboState);
@@ -2962,7 +2988,22 @@ public:
 
 		pushIntToTable("difficulty", mapSettings.difficulty);
 		pushIntToTable("level", mapSettings.level);
-		pushIntToTable("gaugeType", GetPlaybackOptions().gaugeType == GaugeType::Hard ? 1 : 0);
+
+		//gauge table
+		{
+			PlaybackOptions opts = GetPlaybackOptions();
+
+			lua_pushstring(L, "gauge");
+			lua_newtable(L);
+			pushIntToTable("type", (uint32)opts.gaugeType);
+			pushIntToTable("options", opts.gaugeOption);
+			pushFloatToTable("value", 0.0f);
+			pushStringToTable("name", "");
+			lua_settable(L, -3);
+
+		}
+
+
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
