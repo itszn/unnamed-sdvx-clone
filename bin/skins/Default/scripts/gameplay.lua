@@ -188,6 +188,9 @@ local laserCursor = gfx.CreateSkinImage("pointer.png", 0)
 local laserCursorOverlay = gfx.CreateSkinImage("pointer_overlay.png", 0)
 local earlatePos = game.GetSkinSetting("earlate_position")
 
+local prevGaugeType = nil
+local gaugeTransition = nil
+
 local ioConsoleDetails = {
     gfx.CreateSkinImage("console/detail_left.png", 0),
     gfx.CreateSkinImage("console/detail_right.png", 0),
@@ -235,6 +238,37 @@ local gauge_info = {}
 local crit_base_info = {}
 local combo_info = {}
 local practice_info = {}
+
+
+function LoadGauge(type)
+        
+    local name = type == 0 and "normal" or "hard"
+    local gauge_verts = {
+        {{gauge_info.posx, gauge_info.posy}, {0,1}},
+        {{gauge_info.posx + gauge_info.width, gauge_info.posy}, {1,1}},
+        {{gauge_info.posx + gauge_info.width, gauge_info.posy + gauge_info.height}, {1,0}},
+        {{gauge_info.posx, gauge_info.posy + gauge_info.height}, {0,0}},
+    }
+    local meshes = {}
+    meshes.front = gfx.CreateShadedMesh()
+    meshes.front:SetPrimitiveType(meshes.front.PRIM_TRIFAN)
+    meshes.front:SetData(gauge_verts)
+    meshes.front:AddSkinTexture("mainTex", "gauges/" .. name .. "/gauge_front.png")
+
+    meshes.back = gfx.CreateShadedMesh()
+    meshes.back:SetPrimitiveType(meshes.back.PRIM_TRIFAN)
+    meshes.back:SetData(gauge_verts)
+    meshes.back:AddSkinTexture("mainTex", "gauges/" .. name .. "/gauge_back.png")
+
+    meshes.fill = gfx.CreateShadedMesh("gauge")
+    meshes.fill:SetPrimitiveType(meshes.fill.PRIM_TRIFAN)
+    meshes.fill:SetData(gauge_verts)
+    meshes.fill:AddSkinTexture("mainTex", "gauges/" .. name .. "/gauge_fill.png")
+    meshes.fill:AddSkinTexture("maskTex", "gauges/" .. name .. "/gauge_mask.png")
+
+    return meshes
+end
+
 -- -------------------------------------------------------------------------- --
 -- ResetLayoutInformation:                                                    --
 -- Resets the layout values used by the skin.                                 --
@@ -279,6 +313,10 @@ function ResetLayoutInformation()
             gauge_info.label_height = gauge_info.label_height * 0.8;
         end
         gauge_info.label_posy = gauge_info.posy + (70 * 0.35) + gauge_info.label_height
+        
+        gauge_info.meshes = {}
+        gauge_info.meshes[0] = LoadGauge(0)
+        gauge_info.meshes[1] = LoadGauge(1)
     end
 
     do --update crit_base_info
@@ -335,8 +373,40 @@ function render(deltaTime)
     gfx.Translate(0, yshift - 150 * math.max(introTimer - 1, 0))
     draw_song_info(deltaTime)
     draw_score(deltaTime)
+
+    
+    if prevGaugeType ~= nil then
+        if gameplay.gauge.type ~= prevGaugeType and gaugeTransition == nil then
+            gaugeTransition = Animation:new()
+            gaugeTransition.smoothStart = true
+            gaugeTransition:restart(0, 1, 1 / 3)
+        end
+    end    
     gfx.Translate(0, -yshift + 150 * math.max(introTimer - 1, 0))
-    draw_gauge(deltaTime, gameplay.gauge)
+    
+    gfx.Save()
+    if gaugeTransition ~= nil then 
+        local v = gaugeTransition:tick(deltaTime)
+        if v < 1 then
+            local awayGauge = {}
+            awayGauge.type = prevGaugeType
+            awayGauge.value = 0.0
+            gfx.Save()
+            gfx.Translate(v * gauge_info.width, 0)
+            draw_gauge(awayGauge)
+            gfx.Restore()
+            gfx.Translate((1-v) * gauge_info.width, 0)
+        else
+            prevGaugeType = gameplay.gauge.type
+            gaugeTransition = nil
+        end
+    else
+        prevGaugeType = gameplay.gauge.type
+    end
+    draw_gauge(gameplay.gauge)
+    gfx.Restore()
+
+
     if earlatePos ~= "off" then
         draw_earlate(deltaTime)
     end
@@ -803,25 +873,25 @@ function draw_score(deltaTime)
 end
 -- -------------------------------------------------------------------------- --
 -- draw_gauge:                                                                --
-function draw_gauge(deltaTime, gauge)
-    gfx.BeginPath()
-    gfx.Rect(gauge_info.posx, gauge_info.posy, gauge_info.width, gauge_info.height)
-    if gauge.type == 1 then --hard
-        gfx.StrokeColor(255,200,127)
-        gfx.FillColor(255,127,0)
-    else --normal
-        gfx.StrokeColor(0,127,255)
-        if gauge.value > 0.7 then 
-            gfx.FillColor(127, 0, 255)
-        else
-            gfx.FillColor(0, 20, 255)
+function draw_gauge(gauge)
+    local c = nil
+    if gauge.type == 0 then 
+        if gauge.value > 0.7 then
+            c = {r = 1, g = 0, b = 1}
+        else 
+            c = {r = 0, g = 0.5, b = 1} 
         end
+    else
+        c = {r = 1, g = 0.5, b = 0}
     end
 
-    gfx.Stroke()
-    gfx.BeginPath()
-    gfx.Rect(gauge_info.posx, gauge_info.posy + (1.0 - gauge.value) * gauge_info.height, gauge_info.width, gauge_info.height * gauge.value)
-    gfx.Fill()
+    gauge_info.meshes[gauge.type].fill:SetParamVec4("barColor", c.r, c.g, c.b, 1)
+    gauge_info.meshes[gauge.type].fill:SetParam("rate", gauge.value)
+
+    gauge_info.meshes[gauge.type].back:Draw()
+    gauge_info.meshes[gauge.type].fill:Draw()
+    gauge_info.meshes[gauge.type].front:Draw()
+
     --draw gauge % label
     local posy = gauge_info.label_posy - gauge_info.label_height * gauge.value
     gfx.BeginPath()

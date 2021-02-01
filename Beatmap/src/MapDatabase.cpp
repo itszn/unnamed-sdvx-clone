@@ -1242,7 +1242,7 @@ public:
 	{
 		DBStatement addScore = m_database.Query("INSERT INTO "
 			"Scores(score,crit,near,miss,gauge,auto_flags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,gauge_type,gauge_opt,mirror,random) "
-			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
 		m_database.Exec("BEGIN");
 		addScore.BindInt(1, score->score);
