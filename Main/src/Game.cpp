@@ -3117,6 +3117,7 @@ PlaybackOptions Game::PlaybackOptionsFromSettings()
 		options.gaugeType = GaugeType::Hard;
 	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
 	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
+	options.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge);
 
 	return options;
 }

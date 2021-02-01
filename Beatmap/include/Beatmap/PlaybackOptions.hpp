@@ -25,5 +25,8 @@ typedef struct PlaybackOptions
 	bool mirror = false;
 	bool random = false;
 
+	// If true and gaugeType != normal then insert a normal type gauge as a fallback
+	bool backupGauge = false;
+
 	AutoFlags autoFlags = AutoFlags::None;
 } PlaybackOptions;

@@ -210,6 +210,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
+	Set(GameConfigKeys::BackupGauge, false);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);

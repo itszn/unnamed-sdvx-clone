@@ -144,12 +144,18 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	uint16 total = m_playback->GetBeatmap().GetMapSettings().total;
 
+	if (m_options.backupGauge && m_options.gaugeType != GaugeType::Normal)
+	{
+		GaugeNormal* gauge = new GaugeNormal();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
+	}
+
 	if (m_options.gaugeType == GaugeType::Hard)
 	{
 		GaugeHard* gauge = new GaugeHard();
 		gauge->Init(mapTotals, total, m_endTime);
 		m_gaugeStack.push_back(gauge);
-
 	}
 	else 
 	{
