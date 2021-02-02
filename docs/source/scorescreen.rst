@@ -6,7 +6,11 @@ Note that, for multiplayer play every fields other than ``isSelf`` and ``uid`` m
 .. code-block:: c#
 
     int score
-    int flags // gameplay options such as gauge type, mirror, and random.
+    int gauge_type // 0 = normal, 1 = hard. Should be defined in constants sometime
+    int gauge_option // type specific, such as difficulty level for the same gauge type if available    
+    bool mirror
+    bool random
+    int auto_flags //bits for autoplay settings, 0 = no autoplay
     float gauge // value of the gauge at the end of the song
     int misses
     int goods

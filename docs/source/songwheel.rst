@@ -55,7 +55,11 @@ A score contains the following fields:
 .. code-block:: c#
 
     float gauge //range 0.0 -> 1.0
-    int flags //contains information about gaugeType/random/mirror
+    int gauge_type // 0 = normal, 1 = hard. Should be defined in constants sometime
+    int gauge_option // type specific, such as difficulty level for the same gauge type if available    
+    bool mirror
+    bool random
+    int auto_flags //bits for autoplay settings, 0 = no autoplay
     int score
     int perfects
     int goods
