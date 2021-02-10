@@ -132,8 +132,13 @@ public:
 			m_PushIntToTable("score", cres.score);
 			m_PushIntToTable("percent", cres.percent);
 			m_PushFloatToTable("gauge", cres.gauge);
-			//TODO(gauge refactor): add "options" table
-			//m_PushIntToTable("flags", (int)cres.flags);
+
+			m_PushIntToTable("gauge_type", (uint32)cres.opts.gaugeType);
+			m_PushIntToTable("gauge_option", cres.opts.gaugeOption);
+			m_PushIntToTable("random", cres.opts.random);
+			m_PushIntToTable("mirror", cres.opts.mirror);
+			m_PushIntToTable("auto_flags", (uint32)cres.opts.autoFlags);
+
 			m_PushIntToTable("misses", cres.errors);
 			m_PushIntToTable("goods", cres.nears);
 			m_PushIntToTable("perfects", cres.crits);
