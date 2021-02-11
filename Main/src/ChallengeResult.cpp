@@ -135,8 +135,8 @@ public:
 
 			m_PushIntToTable("gauge_type", (uint32)cres.opts.gaugeType);
 			m_PushIntToTable("gauge_option", cres.opts.gaugeOption);
-			m_PushIntToTable("random", cres.opts.random);
-			m_PushIntToTable("mirror", cres.opts.mirror);
+			m_PushBoolToTable("random", cres.opts.random);
+			m_PushBoolToTable("mirror", cres.opts.mirror);
 			m_PushIntToTable("auto_flags", (uint32)cres.opts.autoFlags);
 
 			m_PushIntToTable("misses", cres.errors);
