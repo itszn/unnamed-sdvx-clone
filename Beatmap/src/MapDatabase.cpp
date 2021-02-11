@@ -384,6 +384,7 @@ public:
 				//alter table.
 				// if we were on a newer sqlite version the gameflags column could easily be renamed but it will
 				// instead still exist in the db after this update but will be unused.
+				m_database.Exec("BEGIN");
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN gauge_type INTEGER");
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN auto_flags INTEGER");
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN gauge_opt INTEGER");
@@ -406,6 +407,7 @@ public:
 					progress++;
 					m_outer.OnDatabaseUpdateProgress.Call(progress, totalScoreCount);
 				}
+				m_database.Exec("END");
 				gotVersion = 18;
 
 			}
