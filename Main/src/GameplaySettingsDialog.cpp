@@ -81,7 +81,7 @@ void GameplaySettingsDialog::InitTabs()
     }
 	auto this_p = this;
     profileWindowTab->settings.push_back(CreateButton("Create Profile", [this_p](const auto&) {
-		BasicPrompt *w = new BasicPrompt("Create New Profile","Enter name for profile:\n(Enter existing to overwrite)","Create");
+		BasicPrompt *w = new BasicPrompt("Create New Profile","Enter name for profile:\n(Enter existing to overwrite with current settings)","Create");
         w->OnResult.AddLambda([this_p](bool valid, const char* data) {
             if (!valid || strlen(data) == 0)
                 return;
@@ -140,6 +140,11 @@ void GameplaySettingsDialog::InitTabs()
 		w->Focus();
 		g_application->AddTickable(w);
     }));
+    profileWindowTab->settings.push_back(CreateButton("Manage Profiles", [this_p](const auto&) {
+		if (!Path::IsDirectory(Path::Absolute("profiles")))
+			Path::CreateDir(Path::Absolute("profiles"));
+        Path::ShowInFileBrowser(Path::Absolute("profiles"));
+	}));
 
     AddTab(std::move(offsetTab));
     AddTab(std::move(speedTab));
