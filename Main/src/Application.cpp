@@ -424,6 +424,11 @@ void Application::m_unpackSkins()
 	}
 }
 
+bool Application::ReloadConfig()
+{
+	return m_LoadConfig();
+}
+
 bool Application::m_LoadConfig()
 {
 	String profileName = "Main";
@@ -449,6 +454,7 @@ bool Application::m_LoadConfig()
 	{
 		FileReader reader(configFile);
 		bool result = g_gameConfig.Load(reader);
+		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
 
 		configFile.Close();
 		return result;

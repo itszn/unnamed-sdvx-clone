@@ -88,6 +88,7 @@ public:
 	// -1 if no sample exists, 0 if stopped, 1 if playing
 	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
+	bool ReloadConfig();
 	void DisposeLua(lua_State* state);
 	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);

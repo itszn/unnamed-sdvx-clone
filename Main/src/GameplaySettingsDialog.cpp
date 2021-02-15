@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "GameplaySettingsDialog.hpp"
 #include "HitStat.hpp"
+#include "Application.hpp"
 #include "SongSelect.hpp"
+#include "shared/Files.hpp"
 
 GameplaySettingsDialog::GameplaySettingsDialog(SongSelect* songSelectScreen)
     : songSelectScreen(songSelectScreen)
@@ -53,11 +55,76 @@ void GameplaySettingsDialog::InitTabs()
     judgeWindowTab->settings.push_back(CreateButton("Set to NORMAL", [](const auto&) { HitWindow::NORMAL.SaveConfig(); }));
     judgeWindowTab->settings.push_back(CreateButton("Set to HARD", [](const auto&) { HitWindow::HARD.SaveConfig(); }));
 
+
+    Tab profileWindowTab = std::make_unique<TabData>();
+    profileWindowTab->name = "Profiles";
+
+    {
+        auto addProfile = [](const String& profileName) {
+			Setting s = std::make_unique<SettingData>(profileName, SettingType::Boolean);
+			auto getter = [profileName](SettingData& data)
+            {
+				data.boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
+			};
+
+            Application* app = g_application;
+
+            auto setter = [app, profileName](const SettingData& data)
+            {
+
+                if (data.boolSetting.val) {
+                    if (!Path::IsDirectory(Path::Absolute("profiles")))
+                        Path::CreateDir(Path::Absolute("profiles"));
+
+                    File profileSelected;
+                    if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
+                    {
+                        profileSelected.Write(*profileName, profileName.length());
+                        profileSelected.Close();
+
+                        // I don't know why I can't just use g_application in this lambda
+
+                        // Save old setting
+                        app->ApplySettings();
+
+                        // Load new profile
+                        app->ReloadConfig();
+                    }
+				}
+			};
+
+            s->boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
+			s->setter.AddLambda(std::move(setter));
+			s->getter.AddLambda(std::move(getter));
+            return s;
+            
+        };
+
+		profileWindowTab->settings.push_back(addProfile("Main"));
+
+        Vector<FileInfo> files = Files::ScanFiles(
+            Path::Absolute("profiles/"), "cfg", NULL);
+
+        for (auto &file : files)
+        {
+
+            String profileName = "";
+            String unused = Path::RemoveLast(file.fullPath, &profileName);
+            profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
+
+			profileWindowTab->settings.push_back(addProfile(profileName));
+        }
+    }
+    profileWindowTab->settings.push_back(CreateButton("Create Profile", [](const auto&) {
+        // Create new profile
+    }));
+
     AddTab(std::move(offsetTab));
     AddTab(std::move(speedTab));
     AddTab(std::move(gameTab));
     AddTab(std::move(hidsudTab));
     AddTab(std::move(judgeWindowTab));
+    AddTab(std::move(profileWindowTab));
 
     SetCurrentTab(g_gameConfig.GetInt(GameConfigKeys::GameplaySettingsDialogLastTab));
 }
