@@ -163,6 +163,8 @@ DefineEnum(GameConfigKeys,
 		   GameplaySettingsDialogLastTab,
 		   TransferScoresOnChartUpdate,
 
+		   CurrentProfileName,
+
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,

@@ -213,6 +213,8 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
+
+	Set(GameConfigKeys::CurrentProfileName, "Main");
 }
 
 void GameConfig::UpdateVersion()

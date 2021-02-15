@@ -426,13 +426,32 @@ void Application::m_unpackSkins()
 
 bool Application::m_LoadConfig()
 {
+	String profileName = "Main";
+
+	File currentProfile;
+	if (currentProfile.OpenRead(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
+	{
+		char profile[255] = { 0 };
+		currentProfile.Read(profile, sizeof(profile) - 1);
+		currentProfile.Close();
+
+		profileName = String(profile);
+		//Remove new lines using erase-remove
+		profileName.erase(std::remove(profileName.begin(), profileName.end(), '\n'), profileName.end());
+	}
+
+	String configPath = "Main.cfg";
+	if (profileName != "Main")
+		configPath = Path::Normalize("profiles/" + profileName + ".cfg");
 
 	File configFile;
-	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
+	if (configFile.OpenRead(Path::Absolute(configPath)))
 	{
 		FileReader reader(configFile);
-		if (g_gameConfig.Load(reader))
-			return true;
+		bool result = g_gameConfig.Load(reader);
+
+		configFile.Close();
+		return result;
 	}
     else
     {
@@ -440,6 +459,7 @@ bool Application::m_LoadConfig()
         g_gameConfig.Clear();
     }
 
+	g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
 	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
 }
@@ -454,8 +474,13 @@ void Application::m_SaveConfig()
 	if (!g_gameConfig.IsDirty())
 		return;
 
+	String profile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+	String configPath = "Main.cfg";
+	if (profile != "Main")
+		configPath = Path::Normalize("profiles/" + profile + ".cfg");
+
 	File configFile;
-	if (configFile.OpenWrite(Path::Absolute("Main.cfg")))
+	if (configFile.OpenWrite(Path::Absolute(configPath)))
 	{
 		FileWriter writer(configFile);
 		g_gameConfig.Save(writer);
