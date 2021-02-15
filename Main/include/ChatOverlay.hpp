@@ -34,6 +34,7 @@
 
 class MultiplayerScreen;
 
+// TODO(itszn) inherit BasicNuklearGui to reduce duplciated code
 class ChatOverlay: public IApplicationTickable
 {
 public:
