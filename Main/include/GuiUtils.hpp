@@ -83,7 +83,7 @@ bool nk_edit_isfocused(struct nk_context* ctx);
 class BasicPrompt : public BasicWindow {
 public:
 	BasicPrompt(String title, String body, String submitText = "Submit")
-		: m_title(title), m_text(body), m_submitText(submitText), BasicWindow(title) { };
+		: BasicWindow(title), m_text(body), m_submitText(submitText) { };
 	bool Init() override;
 	virtual bool OnKeyPressedConsume(SDL_Scancode code) override;
 	void DrawWindow() override;
@@ -94,7 +94,6 @@ public:
 	Delegate<bool, char*> OnResult;
 
 protected:
-	String m_title;
 	String m_text;
 	String m_submitText;
 	char m_data[255] = { 0 };
