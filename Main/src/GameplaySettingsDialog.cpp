@@ -4,11 +4,14 @@
 #include "Application.hpp"
 #include "SongSelect.hpp"
 #include "shared/Files.hpp"
+#include "GuiUtils.hpp"
 
 GameplaySettingsDialog::GameplaySettingsDialog(SongSelect* songSelectScreen)
     : songSelectScreen(songSelectScreen)
 {
 }
+
+
 
 void GameplaySettingsDialog::InitTabs()
 {
@@ -59,48 +62,9 @@ void GameplaySettingsDialog::InitTabs()
     Tab profileWindowTab = std::make_unique<TabData>();
     profileWindowTab->name = "Profiles";
 
-    {
-        auto addProfile = [](const String& profileName) {
-			Setting s = std::make_unique<SettingData>(profileName, SettingType::Boolean);
-			auto getter = [profileName](SettingData& data)
-            {
-				data.boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
-			};
 
-            Application* app = g_application;
-
-            auto setter = [app, profileName](const SettingData& data)
-            {
-
-                if (data.boolSetting.val) {
-                    if (!Path::IsDirectory(Path::Absolute("profiles")))
-                        Path::CreateDir(Path::Absolute("profiles"));
-
-                    File profileSelected;
-                    if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
-                    {
-                        profileSelected.Write(*profileName, profileName.length());
-                        profileSelected.Close();
-
-                        // I don't know why I can't just use g_application in this lambda
-
-                        // Save old setting
-                        app->ApplySettings();
-
-                        // Load new profile
-                        app->ReloadConfig();
-                    }
-				}
-			};
-
-            s->boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
-			s->setter.AddLambda(std::move(setter));
-			s->getter.AddLambda(std::move(getter));
-            return s;
-            
-        };
-
-		profileWindowTab->settings.push_back(addProfile("Main"));
+	profileWindowTab->settings.push_back(m_CreateProfileSetting("Main"));
+	{
 
         Vector<FileInfo> files = Files::ScanFiles(
             Path::Absolute("profiles/"), "cfg", NULL);
@@ -112,11 +76,69 @@ void GameplaySettingsDialog::InitTabs()
             String unused = Path::RemoveLast(file.fullPath, &profileName);
             profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
 
-			profileWindowTab->settings.push_back(addProfile(profileName));
+			profileWindowTab->settings.push_back(m_CreateProfileSetting(profileName));
         }
     }
-    profileWindowTab->settings.push_back(CreateButton("Create Profile", [](const auto&) {
-        // Create new profile
+	auto this_p = this;
+    profileWindowTab->settings.push_back(CreateButton("Create Profile", [this_p](const auto&) {
+		BasicPrompt *w = new BasicPrompt("Create New Profile","Enter name for profile:\n(Enter existing to overwrite)","Create");
+        w->OnResult.AddLambda([this_p](bool valid, const char* data) {
+            if (!valid || strlen(data) == 0)
+                return;
+
+            String profile = String(data);
+            // Validate filename (this is windows specific but is a subperset of linux)
+            // https://stackoverflow.com/questions/4814040/allowed-characters-in-filename/35352640#35352640
+			// TODO we could probably make a general function under Path::
+			profile.erase(std::remove_if(profile.begin(), profile.end(),
+				[](unsigned char x) {
+					switch (x) {
+					case '\0':
+					case '\\':
+					case '/':
+					case ':':
+					case '*':
+					case '"':
+					case '<':
+					case '>':
+					case '|':
+					case '\n':
+					case '\r':
+						return true;
+					default:
+						return false;
+					}
+				}
+			), profile.end());
+
+			if (profile == "." || profile == "..")
+				return;
+            if (profile[0] == ' '
+					|| profile[profile.length() - 1] == ' '
+					|| profile[profile.length() - 1] == '.')
+                return;
+
+			if (!Path::IsDirectory(Path::Absolute("profiles")))
+				Path::CreateDir(Path::Absolute("profiles"));
+
+			File profileSelected;
+            if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
+            {
+                profileSelected.Write(*profile, profile.length());
+                profileSelected.Close();
+
+                // Save old setting
+                g_application->ApplySettings();
+                // Update with new profile name to clone
+                g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profile);
+                // Now save as new profile
+                g_application->ApplySettings();
+                // Re-init tabs
+                this_p->ResetTabs();
+            }
+		});
+		w->Focus();
+		g_application->AddTickable(w);
     }));
 
     AddTab(std::move(offsetTab));
@@ -151,4 +173,43 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateSongOffsetSettin
     });
 
     return songOffsetSetting;
+}
+
+GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateProfileSetting(const String& profileName) {
+	Setting s = std::make_unique<SettingData>(profileName, SettingType::Boolean);
+	auto getter = [profileName](SettingData& data)
+	{
+		data.boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
+	};
+
+	Application* app = g_application;
+
+	auto setter = [app, profileName](const SettingData& data)
+	{
+
+		if (data.boolSetting.val) {
+			if (!Path::IsDirectory(Path::Absolute("profiles")))
+				Path::CreateDir(Path::Absolute("profiles"));
+
+			File profileSelected;
+			if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
+			{
+				profileSelected.Write(*profileName, profileName.length());
+				profileSelected.Close();
+
+				// I don't know why I can't just use g_application in this lambda
+
+				// Save old setting
+				app->ApplySettings();
+
+				// Load new profile
+				app->ReloadConfig();
+			}
+		}
+	};
+
+	s->boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
+	s->setter.AddLambda(std::move(setter));
+	s->getter.AddLambda(std::move(getter));
+	return s;
 }
