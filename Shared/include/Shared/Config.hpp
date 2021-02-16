@@ -33,6 +33,9 @@ public:
 	// Update this config with values from a second
 	void Update(ConfigBase& other, KeyList* ignore = nullptr, KeyList* only = nullptr);
 
+	// Only really useful for profiles
+	const KeyList& GetKeysInFile() { return m_entriesInFile;  }
+
 protected:
 	ConfigBase();
 	virtual void InitDefaults() = 0;
@@ -40,6 +43,8 @@ protected:
 	Map<String, uint32> m_keys;
 	Map<uint32, String> m_reverseKeys;
 	Map<uint32, IConfigEntry*> m_entries;
+	KeyList m_entriesInFile;
+	
 	bool m_dirty = false;
 };
 

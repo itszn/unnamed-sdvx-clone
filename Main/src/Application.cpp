@@ -510,10 +510,15 @@ void Application::m_SaveConfig()
 		{
 			// First load the current Main.cfg
 			File configFile;
-			if (configFile.OpenWrite(Path::Absolute(configPath)))
+			if (configFile.OpenRead(Path::Absolute(configPath)))
 			{
 				FileReader reader(configFile);
 				tmp_gc.Load(reader);
+				configFile.Close();
+			}
+			else
+			{
+				tmp_gc.Clear();
 			}
 		}
 
@@ -533,11 +538,38 @@ void Application::m_SaveConfig()
 	// Now save the profile only settings
 	configPath = Path::Normalize("profiles/" + profile + ".cfg");
 
+	GameConfig tmp_gc;
+	{
+		// First load the current profile (including extra settings)
+		File configFile;
+		if (configFile.OpenRead(Path::Absolute(configPath)))
+		{
+			FileReader reader(configFile);
+			tmp_gc.Load(reader);
+			configFile.Close();
+		}
+		else
+		{
+			tmp_gc.Clear();
+		}
+	}
+
+	// Now merge our new settings (only profile settings)
+	tmp_gc.Update(g_gameConfig, nullptr, &GameConfigProfileSettings);
+
+	// If there are any extra keys in the profile config, add them
+	ConfigBase::KeyList toSave(GameConfigProfileSettings);
+	for (uint32 k : tmp_gc.GetKeysInFile())
+	{
+		toSave.insert(k);
+	}
+
 	File configFile;
 	if (configFile.OpenWrite(Path::Absolute(configPath)))
 	{
 		FileWriter writer(configFile);
-		g_gameConfig.Save(writer, nullptr, &GameConfigProfileSettings);
+		tmp_gc.Save(writer, nullptr, &toSave);
+		configFile.Close();
 	}
 }
 

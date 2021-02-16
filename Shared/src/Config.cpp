@@ -49,6 +49,7 @@ bool ConfigBase::Load(BinaryStream& stream, bool reset)
 				auto it1 = m_entries.find(it->second);
 				if(it1 != m_entries.end())
 				{
+					m_entriesInFile.insert(it1->first);
 					setKeys.erase(it1->first);
 					m_entries[it1->first]->FromString(v);
 				}
