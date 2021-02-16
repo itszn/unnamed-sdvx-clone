@@ -81,7 +81,10 @@ void GameplaySettingsDialog::InitTabs()
     }
 	auto this_p = this;
     profileWindowTab->settings.push_back(CreateButton("Create Profile", [this_p](const auto&) {
-		BasicPrompt *w = new BasicPrompt("Create New Profile","Enter name for profile:\n(Enter existing to overwrite with current settings)","Create");
+		BasicPrompt *w = new BasicPrompt(
+            "Create New Profile",
+            "Enter name for profile\n(This will copy your current profile)",
+            "Create Profile");
         w->OnResult.AddLambda([this_p](bool valid, const char* data) {
             if (!valid || strlen(data) == 0)
                 return;
@@ -121,21 +124,17 @@ void GameplaySettingsDialog::InitTabs()
 			if (!Path::IsDirectory(Path::Absolute("profiles")))
 				Path::CreateDir(Path::Absolute("profiles"));
 
-			File profileSelected;
-            if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
-            {
-                profileSelected.Write(*profile, profile.length());
-                profileSelected.Close();
+			// Save old setting
+			g_application->ApplySettings();
 
-                // Save old setting
-                g_application->ApplySettings();
-                // Update with new profile name to clone
-                g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profile);
-                // Now save as new profile
-                g_application->ApplySettings();
-                // Re-init tabs
-                this_p->ResetTabs();
-            }
+			// Update with new profile name
+			g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profile);
+
+			// Now save as new profile
+			g_application->ApplySettings();
+
+			// Re-init tabs
+			this_p->ResetTabs();
 		});
 		w->Focus();
 		g_application->AddTickable(w);
@@ -187,29 +186,18 @@ GameplaySettingsDialog::Setting GameplaySettingsDialog::m_CreateProfileSetting(c
 		data.boolSetting.val = (g_gameConfig.GetString(GameConfigKeys::CurrentProfileName) == profileName);
 	};
 
-	Application* app = g_application;
-
-	auto setter = [app, profileName](const SettingData& data)
+	auto setter = [profileName](const SettingData& data)
 	{
 
 		if (data.boolSetting.val) {
 			if (!Path::IsDirectory(Path::Absolute("profiles")))
 				Path::CreateDir(Path::Absolute("profiles"));
 
-			File profileSelected;
-			if (profileSelected.OpenWrite(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
-			{
-				profileSelected.Write(*profileName, profileName.length());
-				profileSelected.Close();
+            // Save current settings
+            g_application->ApplySettings();
 
-				// I don't know why I can't just use g_application in this lambda
-
-				// Save old setting
-				app->ApplySettings();
-
-				// Load new profile
-				app->ReloadConfig();
-			}
+			// Load new profile
+			g_application->ReloadConfig(profileName);
 		}
 	};
 

@@ -424,50 +424,60 @@ void Application::m_unpackSkins()
 	}
 }
 
-bool Application::ReloadConfig()
+bool Application::ReloadConfig(const String& profile)
 {
-	return m_LoadConfig();
+	return m_LoadConfig(profile);
 }
 
-bool Application::m_LoadConfig()
+bool Application::m_LoadConfig(String profileName /* must be by value */)
 {
-	String profileName = "Main";
 
-	File currentProfile;
-	if (currentProfile.OpenRead(Path::Absolute(Path::Normalize("profiles/selected.txt"))))
-	{
-		char profile[255] = { 0 };
-		currentProfile.Read(profile, sizeof(profile) - 1);
-		currentProfile.Close();
-
-		profileName = String(profile);
-		//Remove new lines using erase-remove
-		profileName.erase(std::remove(profileName.begin(), profileName.end(), '\n'), profileName.end());
-	}
+	bool successful = false;
 
 	String configPath = "Main.cfg";
-	if (profileName != "Main")
-		configPath = Path::Normalize("profiles/" + profileName + ".cfg");
-
-	File configFile;
-	if (configFile.OpenRead(Path::Absolute(configPath)))
+	File mainConfigFile;
+	if (mainConfigFile.OpenRead(Path::Absolute(configPath)))
 	{
-		FileReader reader(configFile);
-		bool result = g_gameConfig.Load(reader);
-		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+		FileReader reader(mainConfigFile);
+		successful = g_gameConfig.Load(reader);
+		mainConfigFile.Close();
+	}
+	else
+	{
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+		g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
+	}
 
-		configFile.Close();
-		return result;
+	if (profileName == "")
+		profileName = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+	// First load main config over
+	if (profileName == "Main") {
+		// If only loading main, then we are done
+		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+		return successful;
+	}
+
+	// Otherwise we are going to load the profile information over top
+	configPath = Path::Normalize("profiles/" + profileName + ".cfg");
+
+	File profileConfigFile;
+	if (profileConfigFile.OpenRead(Path::Absolute(configPath)))
+	{
+		FileReader reader(profileConfigFile);
+		successful |= g_gameConfig.Load(reader, false); // Do not reset
+
+		profileConfigFile.Close();
 	}
     else
     {
-        // Clear here to apply defaults
-        g_gameConfig.Clear();
+		// We couldn't load this, but we are not going to do anything about it
+		successful = false;
     }
 
 	g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
-	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
-	return false;
+	return successful;
 }
 
 void Application::m_UpdateConfigVersion()
@@ -482,14 +492,52 @@ void Application::m_SaveConfig()
 
 	String profile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
 	String configPath = "Main.cfg";
-	if (profile != "Main")
-		configPath = Path::Normalize("profiles/" + profile + ".cfg");
+	if (profile == "Main")
+	{
+		//Save everything into main.cfg
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			g_gameConfig.Save(writer);
+			configFile.Close();
+		}
+		return;
+	}
+	// We are going to save the config excluding profile settings
+	{
+		GameConfig tmp_gc;
+		{
+			// First load the current Main.cfg
+			File configFile;
+			if (configFile.OpenWrite(Path::Absolute(configPath)))
+			{
+				FileReader reader(configFile);
+				tmp_gc.Load(reader);
+			}
+		}
+
+		// Now merge our new settings (ignoring profile settings)
+		tmp_gc.Update(g_gameConfig, &GameConfigProfileSettings);
+
+		// Finally save the updated version to file
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			tmp_gc.Save(writer);
+			configFile.Close();
+		}
+	}
+
+	// Now save the profile only settings
+	configPath = Path::Normalize("profiles/" + profile + ".cfg");
 
 	File configFile;
 	if (configFile.OpenWrite(Path::Absolute(configPath)))
 	{
 		FileWriter writer(configFile);
-		g_gameConfig.Save(writer);
+		g_gameConfig.Save(writer, nullptr, &GameConfigProfileSettings);
 	}
 }
 

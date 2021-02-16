@@ -4,6 +4,8 @@
 #include "Shared/Enum.hpp"
 #include "Shared/Unique.hpp"
 #include "Shared/BinaryStream.hpp"
+#include <unordered_set>
+
 
 /*
 	Base class used for config files
@@ -13,19 +15,23 @@
 class ConfigBase : public Unique
 {
 public:
+	typedef std::unordered_set<uint32> KeyList;
 	virtual ~ConfigBase();
 
 	// Load from text file
-	bool Load(BinaryStream& stream);
-	bool Load(const String& path);
+	bool Load(BinaryStream& stream, bool reload = true);
+	bool Load(const String& path, bool reload = true);
 	// Save to text file
-	void Save(BinaryStream& stream);
-	bool Save(const String& path);
+	void Save(BinaryStream& stream, KeyList* ignore = nullptr, KeyList* only = nullptr);
+	bool Save(const String& path, KeyList* ignore = nullptr, KeyList* only = nullptr);
 
 	bool IsDirty() const;
 
 	// Resets config back to default state
 	void Clear();
+
+	// Update this config with values from a second
+	void Update(ConfigBase& other, KeyList* ignore = nullptr, KeyList* only = nullptr);
 
 protected:
 	ConfigBase();
