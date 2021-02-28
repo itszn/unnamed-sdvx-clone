@@ -213,7 +213,7 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
-	Set(GameConfigKeys::UpdateChannel, GIT_BRANCH);
+	Set(GameConfigKeys::UpdateChannel, "master");
 }
 
 void GameConfig::UpdateVersion()

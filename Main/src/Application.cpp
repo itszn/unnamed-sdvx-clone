@@ -504,6 +504,12 @@ void __updateChecker()
 
 	String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
 
+    // For some reason the github actions have the branch as HEAD?
+    if (channel == "HEAD")
+    {
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "master");
+    }
+
 	ProfilerScope $1("Check for updates");
 	if (channel == "release")
 	{
