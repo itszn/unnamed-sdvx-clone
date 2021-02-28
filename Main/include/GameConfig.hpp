@@ -166,7 +166,9 @@ DefineEnum(GameConfigKeys,
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
-		   RandomizeChart)
+		   RandomizeChart,
+			  
+		   UpdateChannel)
 
 DefineEnum(GaugeTypes,
 		   Normal,
