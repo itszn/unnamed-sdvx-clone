@@ -12,6 +12,7 @@
 #include "Shared/Jobs.hpp"
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
+#include "Shared/Files.hpp"
 #include "Input.hpp"
 #include <SDL2/SDL.h>
 #include "nanovg.h"
@@ -123,6 +124,10 @@ private:
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
+	Vector<String> m_profiles;
+
+	String m_currentProfile;
+	bool m_needsProfileReboot = false;
 
 	const Vector<GameConfigKeys> m_keyboardKeys = {
 		GameConfigKeys::Key_BTS,
@@ -449,6 +454,21 @@ public:
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();
 		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+
+		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+		{
+			m_profiles.push_back("Main");
+			Vector<FileInfo> profiles = Files::ScanFiles(
+				Path::Absolute("profiles/"), "cfg", NULL);
+			for (auto& file : profiles)
+			{
+				String profileName = "";
+				String unused = Path::RemoveLast(file.fullPath, &profileName);
+				profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
+				m_profiles.push_back(profileName);
+			}
+		}
+
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
@@ -547,6 +567,22 @@ public:
 
 	void Tick(float deltatime)
 	{
+		if (m_needsProfileReboot)
+		{
+			String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+			// Save old settings
+			g_gameConfig.Set(GameConfigKeys::CurrentProfileName, m_currentProfile);
+			Exit();
+			g_application->ApplySettings();
+
+			// Load in new settings
+			g_application->ReloadConfig(newProfile);
+
+			g_application->AddTickable(SettingsScreen::Create());
+			return;
+		}
+
 		nk_input_begin(m_nctx);
 		while (!eventQueue.empty())
 		{
@@ -651,6 +687,8 @@ public:
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", (treesOpen & 1) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
 			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 1);
+
+
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetBTBind((*m_activeBTKeys)[0]);
@@ -673,6 +711,14 @@ public:
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
 			nk_label(m_nctx, "Back:", nk_text_alignment::NK_TEXT_LEFT);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[7].c_str())) SetBTBind((*m_activeBTKeys)[7]);
+
+			if (m_profiles.size() > 0)
+			{
+				if (StringSelectionSetting(GameConfigKeys::CurrentProfileName, m_profiles, "Selected Profile:")) {
+
+					m_needsProfileReboot = true;
+				}
+			}
 
 			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
 			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
@@ -755,6 +801,7 @@ public:
 	// Game settings
 	void RenderSettingsGame()
 	{
+
 		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", (treesOpen & 2) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
@@ -1116,6 +1163,7 @@ public:
 		{
 			g_application->RemoveTickable(this);
 		}
+
 	}
 
 	void Render(float deltatime)
