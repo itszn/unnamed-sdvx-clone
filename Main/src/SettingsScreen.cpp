@@ -461,17 +461,18 @@ public:
 		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
 
 		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-		{
-			m_profiles.push_back("Main");
-			Vector<FileInfo> profiles = Files::ScanFiles(
-				Path::Absolute("profiles/"), "cfg", NULL);
-			for (auto& file : profiles)
-			{
-				String profileName = "";
-				String unused = Path::RemoveLast(file.fullPath, &profileName);
-				profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
-				m_profiles.push_back(profileName);
-			}
+
+        m_profiles.push_back("Main");
+        Vector<FileInfo> profiles = Files::ScanFiles(
+            Path::Absolute("profiles/"), "cfg", NULL);
+        for (auto& file : profiles)
+        {
+            String profileName = "";
+            String unused = Path::RemoveLast(file.fullPath, &profileName);
+            profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
+            m_profiles.push_back(profileName);
+        }
+
 		String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
 
 		if (!m_channels.Contains(channel))
