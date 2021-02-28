@@ -179,9 +179,11 @@ void Application::SetUpdateAvailable(const String &version, const String &url, c
 	m_hasUpdate = true;
 }
 
+
 void Application::RunUpdater()
 {
 #ifdef _WIN32
+
 	//HANDLE handle = GetCurrentProcess();
 	//HANDLE handledup;
 
@@ -194,6 +196,7 @@ void Application::RunUpdater()
 	//	0);
 
 	/// TODO: use process handle instead of pid to wait
+	
 	String arguments = Utility::Sprintf("%lld %s", GetCurrentProcessId(), *m_updateDownload);
 	Path::Run(Path::Absolute("updater.exe"), *arguments);
 	Shutdown();
@@ -603,9 +606,17 @@ void __discordDisconnected(int errcode, const char *msg)
 
 void __updateChecker()
 {
+	// Handle default config or old config
+	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	{
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "release");
+		g_gameConfig.Set(GameConfigKeys::OnlyRelease, false);
+	}
+
+	String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
 
 	ProfilerScope $1("Check for updates");
-	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	if (channel == "release")
 	{
 		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
 
@@ -666,6 +677,7 @@ void __updateChecker()
 		auto commits = nlohmann::json::parse(response.text);
 		String current_hash;
 		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
+		String current_branch = channel;
 
 		if (commits.contains("message"))
 		{
@@ -692,7 +704,7 @@ void __updateChecker()
 			}
 			commit.at("conclusion").get_to(conclusion);
 
-			if (branch == "master" && status == "completed" && conclusion == "success")
+			if (branch == current_branch && status == "completed" && conclusion == "success")
 			{
 				String new_hash;
 				commit.at("head_sha").get_to(new_hash);
@@ -713,12 +725,26 @@ void __updateChecker()
 						auto commit_status = nlohmann::json::parse(response.text);
 						commit_status.at("html_url").get_to(updateUrl);
 					}
-					g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					if (current_branch == "master")
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					else
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "https://builds.drewol.me/" + current_branch + "/Game");
 					return;
 				}
 			}
 		}
 #endif
+	}
+}
+
+void Application::CheckForUpdate()
+{
+	m_hasUpdate = false;
+	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+	{
+		if (m_updateThread.joinable())
+			m_updateThread.join();
+		m_updateThread = Thread(__updateChecker);
 	}
 }
 
@@ -963,10 +989,8 @@ bool Application::m_Init()
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
-	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
-	{
-		m_updateThread = Thread(__updateChecker);
-	}
+	CheckForUpdate();
+
 
 	m_InitDiscord();
 

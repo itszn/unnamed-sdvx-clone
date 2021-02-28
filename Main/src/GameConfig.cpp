@@ -196,7 +196,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MuteUnfocused, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
-	Set(GameConfigKeys::OnlyRelease, true);
+	Set(GameConfigKeys::OnlyRelease, true); // deprecated
 	Set(GameConfigKeys::LimitSettingsFont, false);
 
 	// Multiplayer
@@ -215,6 +215,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
 
 	Set(GameConfigKeys::CurrentProfileName, "Main");
+	Set(GameConfigKeys::UpdateChannel, GIT_BRANCH);
 }
 
 void GameConfig::UpdateVersion()
