@@ -54,7 +54,20 @@ target_compile_features(usc-game PUBLIC cxx_std_17)
 target_compile_definitions(usc-game PRIVATE VERSION_MINOR=${PROJECT_VERSION_MINOR})
 target_compile_definitions(usc-game PRIVATE VERSION_MAJOR=${PROJECT_VERSION_MAJOR})
 target_compile_definitions(usc-game PRIVATE VERSION_PATCH=${PROJECT_VERSION_PATCH})
-target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
+find_package (Git)
+if(GIT_FOUND)
+    target_compile_definitions(usc-game PRIVATE GIT_COMMIT=${GIT_DATE_HASH})
+    execute_process(
+      COMMAND git rev-parse --abbrev-ref HEAD
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      OUTPUT_VARIABLE GIT_BRANCH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    target_compile_definitions(usc-game PRIVATE GIT_BRANCH="${GIT_BRANCH}")
+else(GIT_FOUND)
+    target_compile_definitions(usc-game PRIVATE GIT_COMMIT="")
+    target_compile_definitions(usc-game PRIVATE GIT_BRANCH="master")
+endif(GIT_FOUND)
 
 set_output_postfixes(usc-game)
 

@@ -173,7 +173,9 @@ DefineEnum(GameConfigKeys,
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
-		   RandomizeChart)
+		   RandomizeChart,
+			  
+		   UpdateChannel)
 
 // List of settings overriden by profiles
 extern ConfigBase::KeyList GameConfigProfileSettings;
