@@ -3,6 +3,7 @@
 #include <Shared/Jobs.hpp>
 #include <Shared/Thread.hpp>
 #include "SkinHttp.hpp"
+#include "SkinIR.hpp"
 
 #define DISCORD_APPLICATION_ID "514489760568573952"
 
@@ -33,7 +34,7 @@ public:
 	void ApplySettings();
 	// Runs the application
 	int32 Run();
-	
+
 	void SetCommandLine(int32 argc, char** argv);
 	void SetCommandLine(const char* cmdLine);
 
@@ -88,6 +89,7 @@ public:
 	// -1 if no sample exists, 0 if stopped, 1 if playing
 	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
+	bool ReloadConfig(const String& profile = "");
 	void DisposeLua(lua_State* state);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
@@ -96,6 +98,7 @@ public:
 	void JoinMultiFromInvite(String secret);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
+	void CheckForUpdate();
 	void ForceRender();
 	void SetLuaBindings(struct lua_State* state);
 	struct NVGcontext* GetVGContext();
@@ -105,7 +108,7 @@ public:
 	Vector<String> GetUpdateAvailable();
 
 private:
-	bool m_LoadConfig();
+	bool m_LoadConfig(String profileName = "");
 	void m_UpdateConfigVersion();
 	void m_SaveConfig();
 	void m_InitDiscord();
@@ -132,6 +135,7 @@ private:
 	Thread m_updateThread;
 	class Beatmap* m_currentMap = nullptr;
 	SkinHttp m_skinHttp;
+	SkinIR m_skinIR;
 
 	float m_deltaTime;
 	float m_fpsTargetSleepMult = 1.0f;

@@ -16,6 +16,9 @@
 #include "MultiplayerScreen.hpp"
 #include "ChatOverlay.hpp"
 #include "Gauge.hpp"
+#include "IR.hpp"
+#include <future>
+#include <chrono>
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -38,6 +41,14 @@ private:
 	std::array<float, 256> m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
+	int m_irState = IR::ResponseState["Unused"];
+	String m_chartHash;
+
+	//promote this to higher scope so i can use it in tick
+	String m_replayPath;
+
+	cpr::AsyncResponse m_irResponse;
+	nlohmann::json m_irResponseJson;
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
@@ -139,6 +150,64 @@ private:
 			loadScoresFromMultiplayer();
 			updateLuaData();
 		}
+	}
+
+	void m_PushIRScores()
+	{
+		lua_pushstring(m_lua, "irScores");
+		lua_newtable(m_lua);
+		int scoreIndex = 1;
+
+		//we don't need to display the server record separately if we just set it
+		//we also don't need to display the server record separately if our PB is the server record
+		if(!m_irResponseJson["body"]["isServerRecord"] && m_irResponseJson["body"]["serverRecord"]["score"] != m_irResponseJson["body"]["score"]["score"])
+		{
+			auto& record = m_irResponseJson["body"]["serverRecord"];
+
+			m_PushIRScoreToTable(scoreIndex++, record, false);
+		}
+
+		//scores above ours
+		for (auto& scoreA : m_irResponseJson["body"]["adjacentAbove"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreA.value(), false);
+
+
+		//our score
+		auto& ours = m_irResponseJson["body"]["score"];
+
+		m_PushIRScoreToTable(scoreIndex++, ours, true);
+
+		//scores below ours
+		for (auto& scoreB : m_irResponseJson["body"]["adjacentBelow"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreB.value(), false);
+
+		lua_settable(m_lua, -3);
+	}
+
+	void m_PushIRScoreToTable(int i, nlohmann::json& score, bool yours)
+	{
+		lua_pushinteger(m_lua, i);
+		lua_newtable(m_lua);
+		m_PushIntToTable("score", score["score"]);
+		m_PushIntToTable("crit", score["crit"]);
+		m_PushIntToTable("near", score["near"]);
+		m_PushIntToTable("error", score["error"]);
+		m_PushIntToTable("lamp", score["lamp"]);
+		m_PushIntToTable("ranking", score["ranking"]);
+		m_PushIntToTable("timestamp", score["timestamp"]);
+		m_PushStringToTable("username", score["username"]);
+
+		if(yours)
+		{
+			lua_pushstring(m_lua, "yours");
+			lua_pushboolean(m_lua, true);
+			lua_settable(m_lua, -3);
+			lua_pushstring(m_lua, "justSet");
+			lua_pushboolean(m_lua, m_irResponseJson["body"]["isPB"]);
+			lua_settable(m_lua, -3);
+		}
+
+		lua_settable(m_lua, -3);
 	}
 
 public:
@@ -329,6 +398,15 @@ public:
 			}
 		}
 
+		//this has been moved to the top so that it is instantiated in time for IR submission
+
+		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
+
+		// Used for jacket images
+		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
+		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
+		m_jacketImage = game->GetJacketImage();
+
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
 		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
@@ -357,16 +435,18 @@ public:
 				s.getDigest(digest);
 				hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 			}
-			else 
+			else
 			{
 				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Severity::Warning);
 			}
 
+			m_chartHash = hash;
+
 			Path::CreateDir(Path::Absolute("replays/" + hash));
-			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+			m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
 			File replayFile;
 
-			if (replayFile.OpenWrite(replayPath))
+			if (replayFile.OpenWrite(m_replayPath))
 			{
 				FileWriter fw(replayFile);
 				fw.SerializeObject(m_simpleHitStats);
@@ -389,7 +469,7 @@ public:
 			newScore->autoFlags = m_options.autoFlags;
 
 			newScore->timestamp = Shared::Time::Now().Data();
-			newScore->replayPath = replayPath;
+			newScore->replayPath = m_replayPath;
 			newScore->chartHash = hash;
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 			newScore->localScore = true;
@@ -401,6 +481,12 @@ public:
 
 			m_mapDatabase.AddScore(newScore);
 
+			if(g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
+			{
+				m_irState = IR::ResponseState["Pending"];
+				m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
+			}
+
 		 	chart->scores.Add(newScore);
 			chart->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
 			{
@@ -409,13 +495,6 @@ public:
 		}
 
 		m_startPressed = false;
-
-		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
-
-		// Used for jacket images
-		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
-		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
-		m_jacketImage = game->GetJacketImage();
 
 
 		if (m_challengeManager != nullptr)
@@ -442,6 +521,7 @@ public:
 			res.scorescreenInfo.speedModValue = g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed);
 			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples.data(), sizeof(res.scorescreenInfo.gaugeSamples));
 		}
+
 	}
 	~ScoreScreen_Impl()
 	{
@@ -524,6 +604,19 @@ public:
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
 
+		m_PushIntToTable("irState", m_irState);
+		m_PushStringToTable("chartHash", m_chartHash);
+
+		//description (for displaying any errors, etc)
+		if(m_irState >= 20)
+		{
+			if(m_irState == IR::ResponseState["RequestFailure"])
+				m_PushStringToTable("irDescription", "The request to the IR failed.");
+			else
+				m_PushStringToTable("irDescription", m_irResponseJson["description"]);
+		}
+
+
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
 		m_PushStringToTable("mission", m_mission);
@@ -599,6 +692,10 @@ public:
 			lua_settable(m_lua, -3);
 		}
 
+		//ir scores moved to be in multiplayer too, not yet tested
+		if(m_irState == IR::ResponseState["Success"])
+			m_PushIRScores();
+
 		if (isSelf)
 		{
 			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
@@ -639,7 +736,7 @@ public:
 			}
 			lua_settable(m_lua, -3);
 		}
-		
+
 		lua_setglobal(m_lua, "result");
 
 		lua_getglobal(m_lua, "result_set");
@@ -745,7 +842,7 @@ public:
 		}
 
 
-        
+
 
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 
@@ -773,6 +870,57 @@ public:
 
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
+
+		//handle ir score submission request
+		if (m_irState == IR::ResponseState["Pending"])
+		{
+			try {
+
+
+				if(m_irResponse.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+				{
+					cpr::Response response = m_irResponse.get();
+
+		        	if(response.status_code != 200)
+					{
+						Logf("Submitting score to IR failed with code: %d", Logger::Severity::Error, response.status_code);
+						m_irState = IR::ResponseState["RequestFailure"];
+					}
+					else
+					{
+						try {
+							m_irResponseJson = nlohmann::json::parse(response.text);
+
+							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
+							else
+							{
+								m_irState = m_irResponseJson["statusCode"];
+
+								//if we are allowed to send replays
+								if(!g_gameConfig.GetBool(GameConfigKeys::IRLowBandwidth))
+								{
+									//and server wants us to send replay
+									if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+									{
+										//don't really care about the return of this, if it fails it's not the end of the world
+										IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
+									}
+								}			
+							}
+
+
+						} catch(nlohmann::json::parse_error& e) {
+							Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);
+						}
+					}
+
+					updateLuaData();
+				}
+
+			} catch(std::future_error& e) {
+				Logf("future_error when submitting score to IR: %s", Logger::Severity::Error, e.what());
+			}
+		}
 	}
 
 	void OnSuspend() override
@@ -836,7 +984,7 @@ public:
 			screenshot->SavePNG(screenshotPath);
 			screenshot.reset();
 		}
-		else 
+		else
 		{
 			screenshotPath = "Failed to capture screenshot";
 		}

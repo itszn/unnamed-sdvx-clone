@@ -21,7 +21,9 @@
 #include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
+#include "SkinIR.hpp"
 #include "ShadedMesh.hpp"
+#include "IR.hpp"
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -178,9 +180,11 @@ void Application::SetUpdateAvailable(const String &version, const String &url, c
 	m_hasUpdate = true;
 }
 
+
 void Application::RunUpdater()
 {
 #ifdef _WIN32
+
 	//HANDLE handle = GetCurrentProcess();
 	//HANDLE handledup;
 
@@ -193,6 +197,7 @@ void Application::RunUpdater()
 	//	0);
 
 	/// TODO: use process handle instead of pid to wait
+	
 	String arguments = Utility::Sprintf("%lld %s", GetCurrentProcessId(), *m_updateDownload);
 	Path::Run(Path::Absolute("updater.exe"), *arguments);
 	Shutdown();
@@ -423,24 +428,60 @@ void Application::m_unpackSkins()
 	}
 }
 
-bool Application::m_LoadConfig()
+bool Application::ReloadConfig(const String& profile)
+{
+	return m_LoadConfig(profile);
+}
+
+bool Application::m_LoadConfig(String profileName /* must be by value */)
 {
 
-	File configFile;
-	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
+	bool successful = false;
+
+	String configPath = "Main.cfg";
+	File mainConfigFile;
+	if (mainConfigFile.OpenRead(Path::Absolute(configPath)))
 	{
-		FileReader reader(configFile);
-		if (g_gameConfig.Load(reader))
-			return true;
+		FileReader reader(mainConfigFile);
+		successful = g_gameConfig.Load(reader);
+		mainConfigFile.Close();
+	}
+	else
+	{
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+		g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
+	}
+
+	if (profileName == "")
+		profileName = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+	// First load main config over
+	if (profileName == "Main") {
+		// If only loading main, then we are done
+		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+		return successful;
+	}
+
+	// Otherwise we are going to load the profile information over top
+	configPath = Path::Normalize("profiles/" + profileName + ".cfg");
+
+	File profileConfigFile;
+	if (profileConfigFile.OpenRead(Path::Absolute(configPath)))
+	{
+		FileReader reader(profileConfigFile);
+		successful |= g_gameConfig.Load(reader, false); // Do not reset
+
+		profileConfigFile.Close();
 	}
     else
     {
-        // Clear here to apply defaults
-        g_gameConfig.Clear();
+		// We couldn't load this, but we are not going to do anything about it
+		successful = false;
     }
 
-	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
-	return false;
+	g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+	return successful;
 }
 
 void Application::m_UpdateConfigVersion()
@@ -453,11 +494,86 @@ void Application::m_SaveConfig()
 	if (!g_gameConfig.IsDirty())
 		return;
 
+	String profile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+	String configPath = "Main.cfg";
+	if (profile == "Main")
+	{
+		//Save everything into main.cfg
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			g_gameConfig.Save(writer);
+			configFile.Close();
+		}
+		return;
+	}
+	// We are going to save the config excluding profile settings
+	{
+		GameConfig tmp_gc;
+		{
+			// First load the current Main.cfg
+			File configFile;
+			if (configFile.OpenRead(Path::Absolute(configPath)))
+			{
+				FileReader reader(configFile);
+				tmp_gc.Load(reader);
+				configFile.Close();
+			}
+			else
+			{
+				tmp_gc.Clear();
+			}
+		}
+
+		// Now merge our new settings (ignoring profile settings)
+		tmp_gc.Update(g_gameConfig, &GameConfigProfileSettings);
+
+		// Finally save the updated version to file
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			tmp_gc.Save(writer);
+			configFile.Close();
+		}
+	}
+
+	// Now save the profile only settings
+	configPath = Path::Normalize("profiles/" + profile + ".cfg");
+
+	GameConfig tmp_gc;
+	{
+		// First load the current profile (including extra settings)
+		File configFile;
+		if (configFile.OpenRead(Path::Absolute(configPath)))
+		{
+			FileReader reader(configFile);
+			tmp_gc.Load(reader);
+			configFile.Close();
+		}
+		else
+		{
+			tmp_gc.Clear();
+		}
+	}
+
+	// Now merge our new settings (only profile settings)
+	tmp_gc.Update(g_gameConfig, nullptr, &GameConfigProfileSettings);
+
+	// If there are any extra keys in the profile config, add them
+	ConfigBase::KeyList toSave(GameConfigProfileSettings);
+	for (uint32 k : tmp_gc.GetKeysInFile())
+	{
+		toSave.insert(k);
+	}
+
 	File configFile;
-	if (configFile.OpenWrite(Path::Absolute("Main.cfg")))
+	if (configFile.OpenWrite(Path::Absolute(configPath)))
 	{
 		FileWriter writer(configFile);
-		g_gameConfig.Save(writer);
+		tmp_gc.Save(writer, nullptr, &toSave);
+		configFile.Close();
 	}
 }
 
@@ -491,9 +607,23 @@ void __discordDisconnected(int errcode, const char *msg)
 
 void __updateChecker()
 {
+	// Handle default config or old config
+	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	{
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "release");
+		g_gameConfig.Set(GameConfigKeys::OnlyRelease, false);
+	}
+
+	String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
+
+    // For some reason the github actions have the branch as HEAD?
+    if (channel == "HEAD")
+    {
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "master");
+    }
 
 	ProfilerScope $1("Check for updates");
-	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	if (channel == "release")
 	{
 		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
 
@@ -554,6 +684,7 @@ void __updateChecker()
 		auto commits = nlohmann::json::parse(response.text);
 		String current_hash;
 		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
+		String current_branch = channel;
 
 		if (commits.contains("message"))
 		{
@@ -580,7 +711,7 @@ void __updateChecker()
 			}
 			commit.at("conclusion").get_to(conclusion);
 
-			if (branch == "master" && status == "completed" && conclusion == "success")
+			if (branch == current_branch && status == "completed" && conclusion == "success")
 			{
 				String new_hash;
 				commit.at("head_sha").get_to(new_hash);
@@ -601,12 +732,26 @@ void __updateChecker()
 						auto commit_status = nlohmann::json::parse(response.text);
 						commit_status.at("html_url").get_to(updateUrl);
 					}
-					g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					if (current_branch == "master")
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					else
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "https://builds.drewol.me/" + current_branch + "/Game");
 					return;
 				}
 			}
 		}
 #endif
+	}
+}
+
+void Application::CheckForUpdate()
+{
+	m_hasUpdate = false;
+	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+	{
+		if (m_updateThread.joinable())
+			m_updateThread.join();
+		m_updateThread = Thread(__updateChecker);
 	}
 }
 
@@ -851,10 +996,8 @@ bool Application::m_Init()
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
-	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
-	{
-		m_updateThread = Thread(__updateChecker);
-	}
+	CheckForUpdate();
+
 
 	m_InitDiscord();
 
@@ -1023,6 +1166,9 @@ void Application::m_Tick()
 
 	// Process async lua http callbacks
 	m_skinHttp.ProcessCallbacks();
+
+	// likewise for IR
+	m_skinIR.ProcessCallbacks();
 
 	// Tick all items
 	for (auto &tickable : g_tickables)
@@ -1432,6 +1578,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	DisposeGUI(L);
 	m_skinHttp.ClearState(L);
+	m_skinIR.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1512,6 +1659,7 @@ void Application::DisposeLua(lua_State *state)
 {
 	DisposeGUI(state);
 	m_skinHttp.ClearState(state);
+	m_skinIR.ClearState(state);
 	lua_close(state);
 }
 
@@ -2339,6 +2487,27 @@ void Application::SetLuaBindings(lua_State *state)
 		lua_newtable(state);
 		pushFuncToTable("Absolute", lPathAbsolute);
 		lua_setglobal(state, "path");
+	}
+
+	//ir
+	{
+		lua_newtable(state);
+
+		lua_pushstring(state, "States");
+		lua_newtable(state);
+
+		for(auto& el : IR::ResponseState.items())
+			pushIntToTable(el.key().c_str(), el.value());
+
+		lua_settable(state, -3);
+
+		lua_pushstring(state, "Active");
+		lua_pushboolean(state, g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "");
+		lua_settable(state, -3);
+
+		lua_setglobal(state, "IRData");
+
+		m_skinIR.PushFunctions(state);
 	}
 
 	//http

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ChatOverlay.hpp"
 #include <time.h>
+#include "GuiUtils.hpp"
 
 
 #include "MultiplayerScreen.hpp"
@@ -132,16 +133,6 @@ void ChatOverlay::Tick(float deltatime)
 void ChatOverlay::NKRender()
 {
 	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
-}
-
-bool
-nk_edit_isfocused(struct nk_context *ctx)
-{
-	struct nk_window *win;
-	if (!ctx || !ctx->current) return false;
-
-	win = ctx->current;
-	return win->edit.active;
 }
 
 void ChatOverlay::m_drawChatAlert()
@@ -291,7 +282,8 @@ void ChatOverlay::m_drawWindow()
 	nk_end(m_nctx);
 }
 
-void ChatOverlay::Render(float deltatime) {
+void ChatOverlay::Render(float deltatime)
+{
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 	float x = g_resolution.x / 2 - w / 2;
 
