@@ -220,7 +220,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
 
 	Set(GameConfigKeys::CurrentProfileName, "Main");
-	Set(GameConfigKeys::UpdateChannel, GIT_BRANCH);
+	Set(GameConfigKeys::UpdateChannel, "master");
 }
 
 void GameConfig::UpdateVersion()
