@@ -2684,6 +2684,10 @@ public:
 			gauge->SetValue(g);
 		}
 	}
+	virtual void SetAllGaugeValues(const Vector<float> values)
+	{
+		m_scoring.SetAllGaugeValues(values);
+	}
 	virtual bool IsStorableScore() override
 	{
 		if (m_scoring.autoplay) return false;

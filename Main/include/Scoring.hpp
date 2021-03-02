@@ -113,6 +113,8 @@ public:
 
 	bool IsFailOut() const;
 	class Gauge* GetTopGauge() const;
+	void SetAllGaugeValues(const Vector<float>, bool zeroRest=true);
+	void GetAllGaugeValues(Vector<float>& out) const;
 
 	// Calculates the maximum score of the current map
 	MapTotals CalculateMapTotals() const;

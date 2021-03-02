@@ -438,9 +438,17 @@ bool Scoring::IsLaserIdle(uint32 index) const
 
 bool Scoring::IsFailOut() const
 {
-	if (m_gaugeStack.size() > 0)
-	{
+	if (m_gaugeStack.size() == 0)
+		return true;
+
+	if (m_gaugeStack.size() == 1)
 		return m_gaugeStack.back()->FailOut();
+
+	for (auto g : m_gaugeStack)
+	{
+		// If there are any gauges left, then don't fail
+		if (!g->FailOut())
+			return false;
 	}
 	return true;
 }
@@ -452,6 +460,42 @@ Gauge* Scoring::GetTopGauge() const
 		return m_gaugeStack.back();
 	}
 	return nullptr;
+}
+
+void Scoring::SetAllGaugeValues(const Vector<float> values, bool zeroRest)
+{
+	unsigned int i = 0;
+	for (; i<m_gaugeStack.size() && i<values.size(); i++)
+	{
+		m_gaugeStack[i]->SetValue(values[i]);
+	}
+	if (zeroRest) {
+		for (; i < m_gaugeStack.size(); i++)
+		{
+			m_gaugeStack[i]->SetValue(0);
+		}
+	}
+
+	for (i = 0; i < m_gaugeStack.size(); i++)
+	{
+		// If last gauge left, don't remove
+		if (m_gaugeStack.size() == 1)
+			continue;
+
+		if (!m_gaugeStack[i]->FailOut())
+			continue;
+		// remove this gauge if it is failed
+		m_gaugeStack.erase(m_gaugeStack.begin() + i);
+		i--; // Reset num after removed
+	}
+}
+
+void Scoring::GetAllGaugeValues(Vector<float>& out) const
+{
+	for (auto g : m_gaugeStack)
+	{
+		out.push_back(g->GetValue());
+	}
 }
 
 double Scoring::m_CalculateTicks(const TimingPoint* tp) const

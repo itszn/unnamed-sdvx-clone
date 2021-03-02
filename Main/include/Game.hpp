@@ -138,4 +138,6 @@ public:
 	virtual String GetMissionStr() const = 0;
 
 	virtual void SetGauge(float) = 0;
+
+	virtual void SetAllGaugeValues(const Vector<float> values) = 0;
 };
