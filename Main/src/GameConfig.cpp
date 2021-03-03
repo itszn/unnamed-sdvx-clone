@@ -36,8 +36,8 @@ inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<Game
 
 GameConfig::GameConfig()
 {
-	// Default state
-	Clear();
+    //XXX We can't do clear here as it leads to UB with the initialization of hitstat static values
+    // This sould be ok as Clear will be called in the Load function
 }
 
 void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
@@ -196,7 +196,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MuteUnfocused, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
-	Set(GameConfigKeys::OnlyRelease, true);
+	Set(GameConfigKeys::OnlyRelease, true); // deprecated
 	Set(GameConfigKeys::LimitSettingsFont, false);
 
 	// Multiplayer
@@ -206,13 +206,22 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::EnableFancyHighwayRoll, true);
 
+	// IR
+	Set(GameConfigKeys::IRBaseURL, "");
+	Set(GameConfigKeys::IRToken, "");
+	Set(GameConfigKeys::IRLowBandwidth, false);
+
 	//Gameplay
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
+	Set(GameConfigKeys::BackupGauge, false);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
+
+	Set(GameConfigKeys::CurrentProfileName, "Main");
+	Set(GameConfigKeys::UpdateChannel, "master");
 }
 
 void GameConfig::UpdateVersion()
@@ -268,3 +277,82 @@ void GameConfig::UpdateVersion()
 	assert(configVersion == GameConfig::VERSION);
 	Set(GameConfigKeys::ConfigVersion, configVersion);
 }
+
+#define Key(v) static_cast<uint32>(GameConfigKeys::v)
+ConfigBase::KeyList GameConfigProfileSettings = {
+	Key(HitWindowPerfect),
+	Key(HitWindowGood),
+	Key(HitWindowHold),
+	Key(GlobalOffset),
+	Key(InputOffset),
+	Key(LaserAssistLevel),
+	Key(LaserPunish),
+	Key(LaserChangeTime),
+	Key(LaserChangeExponent),
+
+	Key(HiddenCutoff),
+	Key(HiddenFade),
+	Key(SuddenCutoff),
+	Key(SuddenFade),
+
+	Key(UseBackCombo),
+	Key(LaserInputDevice),
+	Key(ButtonInputDevice),
+	Key(Mouse_Laser0Axis),
+	Key(Mouse_Laser1Axis),
+	Key(Mouse_Sensitivity),
+
+	Key(Key_BTS),
+	Key(Key_BTSAlt),
+	Key(Key_BT0),
+	Key(Key_BT1),
+	Key(Key_BT2),
+	Key(Key_BT3),
+	Key(Key_BT0Alt),
+	Key(Key_BT1Alt),
+	Key(Key_BT2Alt),
+	Key(Key_BT3Alt),
+	Key(Key_FX0),
+	Key(Key_FX1),
+	Key(Key_FX0Alt),
+	Key(Key_FX1Alt),
+	Key(Key_Laser0Pos),
+	Key(Key_Laser0Neg),
+	Key(Key_Laser1Pos),
+	Key(Key_Laser1Neg),
+	Key(Key_Laser0PosAlt),
+	Key(Key_Laser0NegAlt),
+	Key(Key_Laser1PosAlt),
+	Key(Key_Laser1NegAlt),
+	Key(Key_Back),
+	Key(Key_BackAlt),
+	Key(Key_Sensitivity),
+	Key(Key_LaserReleaseTime),
+
+	Key(Controller_DeviceID),
+	Key(Controller_BTS),
+	Key(Controller_BT0),
+	Key(Controller_BT1),
+	Key(Controller_BT2),
+	Key(Controller_BT3),
+	Key(Controller_FX0),
+	Key(Controller_FX1),
+	Key(Controller_Back),
+	Key(Controller_Laser0Axis),
+	Key(Controller_Laser1Axis),
+	Key(Controller_Deadzone),
+	Key(Controller_DirectMode),
+	Key(Controller_Sensitivity),
+	Key(InputBounceGuard),
+	Key(SongSelSensMult),
+	Key(InvertLaserInput),
+
+	Key(RestartPlayMethod),
+	Key(RestartPlayHoldDuration),
+	Key(ExitPlayMethod),
+	Key(ExitPlayHoldDuration),
+	Key(DisableNonButtonInputsDuringPlay),
+
+	Key(MultiplayerUsername)
+};
+#undef Key

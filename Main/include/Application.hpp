@@ -3,6 +3,7 @@
 #include <Shared/Jobs.hpp>
 #include <Shared/Thread.hpp>
 #include "SkinHttp.hpp"
+#include "SkinIR.hpp"
 
 #define DISCORD_APPLICATION_ID "514489760568573952"
 
@@ -33,7 +34,7 @@ public:
 	void ApplySettings();
 	// Runs the application
 	int32 Run();
-	
+
 	void SetCommandLine(int32 argc, char** argv);
 	void SetCommandLine(const char* cmdLine);
 
@@ -72,8 +73,8 @@ public:
 	lua_State* LoadScript(const String& name, bool noError = false);
 	void ReloadScript(const String& name, lua_State* L);
 	void ShowLuaError(const String& error);
-	void LoadGauge(bool hard);
-	void DrawGauge(float rate, float x, float y, float w, float h, float deltaTime);
+
+	void WarnGauge();
 	int FastText(String text, float x, float y, int size, int align, const Color& color = Color::White);
 	float GetAppTime() const { return m_appTime; }
 	float GetRenderFPS() const;
@@ -88,8 +89,8 @@ public:
 	// -1 if no sample exists, 0 if stopped, 1 if playing
 	int IsNamedSamplePlaying(String name);
 	void ReloadSkin();
+	bool ReloadConfig(const String& profile = "");
 	void DisposeLua(lua_State* state);
-	void SetGaugeColor(int i, Color c);
 	void DiscordError(int errorCode, const char* message);
 	void DiscordPresenceMenu(String name);
 	void DiscordPresenceMulti(String secret, int partySize, int partyMax, String id);
@@ -97,6 +98,7 @@ public:
 	void JoinMultiFromInvite(String secret);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
+	void CheckForUpdate();
 	void ForceRender();
 	void SetLuaBindings(struct lua_State* state);
 	struct NVGcontext* GetVGContext();
@@ -106,7 +108,7 @@ public:
 	Vector<String> GetUpdateAvailable();
 
 private:
-	bool m_LoadConfig();
+	bool m_LoadConfig(String profileName = "");
 	void m_UpdateConfigVersion();
 	void m_SaveConfig();
 	void m_InitDiscord();
@@ -128,12 +130,12 @@ private:
 	Material m_fontMaterial;
 	Material m_fillMaterial;
 	Material m_guiTex;
-	class HealthGauge* m_gauge;
 	Map<String, CachedJacketImage*> m_jacketImages;
 	String m_lastMapPath;
 	Thread m_updateThread;
 	class Beatmap* m_currentMap = nullptr;
 	SkinHttp m_skinHttp;
+	SkinIR m_skinIR;
 
 	float m_deltaTime;
 	float m_fpsTargetSleepMult = 1.0f;
@@ -155,6 +157,7 @@ private:
 	String m_multiRoomId;
 	int m_multiRoomSize = 0;
 	int m_multiRoomCount = 0;
+	bool m_gaugeRemovedWarn = true;
 };
 
 class JacketLoadingJob : public JobBase

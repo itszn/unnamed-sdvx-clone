@@ -3,10 +3,11 @@
 #include "Audio_Impl.hpp"
 #include "Audio.hpp"
 
-#include "extras/dr_wav.h"	// Enables WAV decoding.
-#include "extras/dr_flac.h" // Enables FLAC decoding.
-#include "extras/dr_mp3.h"	// Enables MP3 decoding.
-#include "extras/stb_vorbis.c"
+#include "extras/dr_wav.h"   // Enables WAV decoding.
+#include "extras/dr_flac.h"  // Enables FLAC decoding.
+#include "extras/dr_mp3.h"   // Enables MP3 decoding.
+#undef STB_VORBIS_HEADER_ONLY
+#include "extras/stb_vorbis.c"	// Enables Vorbis decoding.
 
 #include "miniaudio.h"
 

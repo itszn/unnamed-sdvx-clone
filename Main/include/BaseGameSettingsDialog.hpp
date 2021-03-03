@@ -85,6 +85,8 @@ public:
     inline void Open() { assert(!m_active); m_targetActive = true; }
     inline void Close() { assert(m_active); m_targetActive = false; }
 
+    void ResetTabs();
+
     Delegate<> onClose;
 
 protected:

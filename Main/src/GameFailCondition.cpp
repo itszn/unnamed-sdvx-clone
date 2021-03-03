@@ -2,6 +2,7 @@
 #include "GameFailCondition.hpp"
 
 #include "Scoring.hpp"
+#include "Gauge.hpp"
 
 const char* GameFailCondition::TYPE_STR[6] = { "None", "Score", "Grade", "Miss", "MissAndNear", "Gauge" };
 
@@ -20,9 +21,9 @@ bool GameFailCondition::Gauge::IsFailed(const Scoring& scoring) const
 	if (scoring.IsPerfect()) return false;
 
 	if (m_gauge == 0) return false;
-	if (m_gauge == 100) return scoring.currentGauge < 1.0f;
+	if (m_gauge == 100) return scoring.GetTopGauge()->GetValue() < 1.0f;
 
-	return scoring.currentGauge * 100 < m_gauge;
+	return scoring.GetTopGauge()->GetValue() * 100 < m_gauge;
 }
 
 bool GameFailCondition::MissCount::IsFailed(const Scoring& scoring) const

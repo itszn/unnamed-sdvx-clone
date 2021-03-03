@@ -17,6 +17,7 @@
 #include <string>
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
+#include "Gauge.hpp"
 
 #define MULTIPLAYER_VERSION "v0.19"
 
@@ -385,16 +386,13 @@ bool MultiplayerScreen::m_handleStartPacket(nlohmann::json& packet)
 	bool is_hard = packet["hard"];
 	bool is_mirror = packet.value("mirror", false);
 
-	GameFlags flags;
+	PlaybackOptions opts;
 	if (is_hard)
-		flags = GameFlags::Hard;
-	else
-		flags = GameFlags::None;
-	if (is_mirror)
-		flags = flags | GameFlags::Mirror;
+		opts.gaugeType = GaugeType::Hard;
+	opts.mirror = is_mirror;
 
 	// Create the game using the Create that takes the MultiplayerScreen class
-	Game* game = Game::Create(this, chart, flags);
+	Game* game = Game::Create(this, chart, opts);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Severity::Error);
@@ -953,24 +951,36 @@ void MultiplayerScreen::SendFinalScore(class Game* game, ClearMark clearState)
 
 	clearState = HasFailed() ? ClearMark::Played : clearState;
 
-	uint32 flags = (uint32)game->GetFlags();
+	PlaybackOptions opts = game->GetPlaybackOptions();
+	Gauge* gauge = scoring.GetTopGauge();
 
 	nlohmann::json packet;
 	packet["topic"] = "room.score.final";
 	packet["score"] = scoring.CalculateCurrentScore();
 	packet["combo"] = scoring.maxComboCounter;
 	packet["clear"] = static_cast<int>(clearState);
-	packet["gauge"] = scoring.currentGauge;
+	packet["gauge"] = gauge->GetValue();
 	packet["early"] = scoring.timedHits[0];
 	packet["late"] = scoring.timedHits[1];
 	packet["miss"] = scoring.categorizedHits[0];
 	packet["near"] = scoring.categorizedHits[1];
 	packet["crit"] = scoring.categorizedHits[2];
-	packet["flags"] = flags;
+
+	packet["gauge_type"] = (uint32)gauge->GetType();
+	packet["gauge_option"] = gauge->GetOpts();
+	packet["mirror"] = opts.mirror;
+	packet["random"] = opts.random;
+	packet["auto_flags"] = (uint32)opts.autoFlags;
+
+	//flags for backwards compatibility
+	opts.gaugeType = gauge->GetType();
+	opts.gaugeOption = gauge->GetOpts();
+	packet["flags"] = PlaybackOptions::ToLegacyFlags(opts);
+
 	packet["mean_delta"] = scoring.GetMeanHitDelta();
 	packet["median_delta"] = scoring.GetMedianHitDelta();
 
-	packet["graph"] = *(std::array<float, 256>*)game->GetGaugeSamples();
+	packet["graph"] = game->GetGaugeSamples();
 
 	m_tcp.SendJSON(packet);
 

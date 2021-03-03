@@ -6,7 +6,9 @@
 #define DR_FLAC_IMPLEMENTATION
 #include "extras/dr_flac.h" // Enables FLAC decoding.
 #define DR_MP3_IMPLEMENTATION
-#include "extras/dr_mp3.h" // Enables MP3 decoding.
+#include "extras/dr_mp3.h"   // Enables MP3 decoding.
+#define STB_VORBIS_HEADER_ONLY
+#include "extras/stb_vorbis.c"	// Enables Vorbis decoding.
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "miniaudio.h"

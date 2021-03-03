@@ -45,10 +45,6 @@ jobs:
               with:
                 name: Game
                 path: bin
-            - name: Trigger artifact distribution
-              continue-on-error: true
-              run: |
-                Invoke-RestMethod -Method POST -ContentType "application/json" -Body '{ "id": ${{ github.run_id }}}' -Uri ${{ secrets.WEBHOOK_URL }}
     linux_build:
         name: Linux build
         runs-on: ubuntu-latest
@@ -101,3 +97,13 @@ jobs:
               with:
                 name: Game_mac
                 path: bin
+    distribution_trigger:
+        name: Artifact distribution trigger
+        runs-on: windows-latest
+        if: github.ref == 'refs/heads/master'
+        needs: [windows_build, linux_build, macos_build]
+        steps:
+            - name: Trigger artifact distribution
+              continue-on-error: true
+              run: |
+                Invoke-RestMethod -Method POST -ContentType "application/json" -Body '{ "id": ${{ github.run_id }}}' -Uri ${{ secrets.WEBHOOK_URL }}

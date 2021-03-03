@@ -7,7 +7,6 @@
 #include "Scoring.hpp"
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
-#include "HealthGauge.hpp"
 #include "ChallengeSelect.hpp"
 #include "lua.hpp"
 #include "Shared/Time.hpp"
@@ -16,6 +15,10 @@
 #include <Beatmap/TinySHA1.hpp>
 #include "MultiplayerScreen.hpp"
 #include "ChatOverlay.hpp"
+#include "Gauge.hpp"
+#include "IR.hpp"
+#include <future>
+#include <chrono>
 
 class ScoreScreen_Impl : public ScoreScreen
 {
@@ -35,9 +38,17 @@ private:
 	uint32 m_maxCombo;
 	uint32 m_categorizedHits[3];
 	float m_finalGaugeValue;
-	float* m_gaugeSamples;
+	std::array<float, 256> m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
+	int m_irState = IR::ResponseState["Unused"];
+	String m_chartHash;
+
+	//promote this to higher scope so i can use it in tick
+	String m_replayPath;
+
+	cpr::AsyncResponse m_irResponse;
+	nlohmann::json m_irResponseJson;
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
@@ -74,8 +85,9 @@ private:
 
 	BeatmapSettings m_beatmapSettings;
 	Texture m_jacketImage;
-	Texture m_graphTex;
-	GameFlags m_flags;
+	PlaybackOptions m_options;
+	GaugeType m_gaugeType;
+	uint32 m_gaugeOption;
 	CollectionDialog m_collDiag;
 	ChartIndex* m_chartIndex;
 
@@ -140,27 +152,91 @@ private:
 		}
 	}
 
+	void m_PushIRScores()
+	{
+		lua_pushstring(m_lua, "irScores");
+		lua_newtable(m_lua);
+		int scoreIndex = 1;
+
+		//we don't need to display the server record separately if we just set it
+		//we also don't need to display the server record separately if our PB is the server record
+		if(!m_irResponseJson["body"]["isServerRecord"] && m_irResponseJson["body"]["serverRecord"]["score"] != m_irResponseJson["body"]["score"]["score"])
+		{
+			auto& record = m_irResponseJson["body"]["serverRecord"];
+
+			m_PushIRScoreToTable(scoreIndex++, record, false);
+		}
+
+		//scores above ours
+		for (auto& scoreA : m_irResponseJson["body"]["adjacentAbove"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreA.value(), false);
+
+
+		//our score
+		auto& ours = m_irResponseJson["body"]["score"];
+
+		m_PushIRScoreToTable(scoreIndex++, ours, true);
+
+		//scores below ours
+		for (auto& scoreB : m_irResponseJson["body"]["adjacentBelow"].items())
+			m_PushIRScoreToTable(scoreIndex++, scoreB.value(), false);
+
+		lua_settable(m_lua, -3);
+	}
+
+	void m_PushIRScoreToTable(int i, nlohmann::json& score, bool yours)
+	{
+		lua_pushinteger(m_lua, i);
+		lua_newtable(m_lua);
+		m_PushIntToTable("score", score["score"]);
+		m_PushIntToTable("crit", score["crit"]);
+		m_PushIntToTable("near", score["near"]);
+		m_PushIntToTable("error", score["error"]);
+		m_PushIntToTable("lamp", score["lamp"]);
+		m_PushIntToTable("ranking", score["ranking"]);
+		m_PushIntToTable("timestamp", score["timestamp"]);
+		m_PushStringToTable("username", score["username"]);
+
+		if(yours)
+		{
+			lua_pushstring(m_lua, "yours");
+			lua_pushboolean(m_lua, true);
+			lua_settable(m_lua, -3);
+			lua_pushstring(m_lua, "justSet");
+			lua_pushboolean(m_lua, m_irResponseJson["body"]["isPB"]);
+			lua_settable(m_lua, -3);
+		}
+
+		lua_settable(m_lua, -3);
+	}
+
 public:
 
 	void loadScoresFromGame(class Game* game)
 	{
 		Scoring& scoring = game->GetScoring();
+		Gauge* gauge = scoring.GetTopGauge();
 		// Calculate hitstats
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
-
 		m_score = scoring.CalculateCurrentScore();
 		m_maxCombo = scoring.maxComboCounter;
-		m_finalGaugeValue = scoring.currentGauge;
+		m_finalGaugeValue = gauge->GetValue();
+		m_gaugeOption = gauge->GetOpts();
+		m_gaugeType = gauge->GetType();
 		m_timedHits[0] = scoring.timedHits[0];
 		m_timedHits[1] = scoring.timedHits[1];
-		m_flags = game->GetFlags();
+		m_options = game->GetPlaybackOptions();
 		m_scoredata.score = m_score;
 		memcpy(m_categorizedHits, scoring.categorizedHits, sizeof(scoring.categorizedHits));
 		m_scoredata.crit = m_categorizedHits[2];
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
-		m_scoredata.gameflags = (uint32)m_flags;
+		m_scoredata.gaugeType = m_gaugeType;
+		m_scoredata.gaugeOption = m_gaugeOption;
+		m_scoredata.mirror = m_options.mirror;
+		m_scoredata.random = m_options.random;
+		m_scoredata.autoFlags = m_options.autoFlags;
 		if (!game->IsStorableScore())
 		{
 			m_badge = ClearMark::NotPlayed;
@@ -183,16 +259,7 @@ public:
 
 		m_hitWindow = scoring.hitWindow;
 
-		// Make texture for performance graph samples
-		m_graphTex = TextureRes::Create(g_gl);
-		m_graphTex->Init(Vector2i(256, 1), Graphics::TextureFormat::RGBA8);
-		Colori graphPixels[256];
-		for (uint32 i = 0; i < 256; i++)
-		{
-			graphPixels[i].x = 255.0f * Math::Clamp(m_gaugeSamples[i], 0.0f, 1.0f);
-		}
-		m_graphTex->SetData(Vector2i(256, 1), graphPixels);
-		m_graphTex->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
+
 	}
 
 	void loadScoresFromMultiplayer() {
@@ -201,12 +268,20 @@ public:
 
 		const nlohmann::json& data= (*m_stats)[m_displayIndex];
 
+		//TODO(gauge refactor): options are from flags, multi server needs update for the new options
+
+		uint32 flags = data["flags"];
+		m_options = PlaybackOptions::FromFlags(flags);
+
+		m_gaugeType = m_options.gaugeType;
+		m_gaugeOption = m_options.gaugeOption;
+
 		m_score = data["score"];
 		m_maxCombo = data["combo"];
 		m_finalGaugeValue = data["gauge"];
 		m_timedHits[0] = data["early"];
 		m_timedHits[1] = data["late"];
-		m_flags = data["flags"];
+
 
 		m_categorizedHits[0] = data["miss"];
 		m_categorizedHits[1] = data["near"];
@@ -217,8 +292,12 @@ public:
 		m_scoredata.almost = m_categorizedHits[1];
 		m_scoredata.miss = m_categorizedHits[0];
 		m_scoredata.gauge = m_finalGaugeValue;
+		m_scoredata.gaugeType = m_gaugeType;
+		m_scoredata.gaugeOption = m_gaugeOption;
+		m_scoredata.mirror = m_options.mirror;
+		m_scoredata.random = m_options.random;
+		m_scoredata.autoFlags = m_options.autoFlags;
 
-		m_scoredata.gameflags = data["flags"];
 		m_badge = static_cast<ClearMark>(data["clear"]);
 
 		m_meanHitDelta[0] = data["mean_delta"];
@@ -228,17 +307,12 @@ public:
 
 		auto samples = data["graph"];
 
-		// Make texture for performance graph samples
-		m_graphTex = TextureRes::Create(g_gl);
-		m_graphTex->Init(Vector2i(256, 1), Graphics::TextureFormat::RGBA8);
+
 		Colori graphPixels[256];
 		for (uint32 i = 0; i < 256; i++)
 		{
 			m_gaugeSamples[i] = samples[i].get<float>();
-			graphPixels[i].x = 255.0f * Math::Clamp(m_gaugeSamples[i], 0.0f, 1.0f);
 		}
-		m_graphTex->SetData(Vector2i(256, 1), graphPixels);
-		m_graphTex->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
 
 		m_numPlayersSeen = m_stats->size();
 		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid",""));
@@ -324,6 +398,15 @@ public:
 			}
 		}
 
+		//this has been moved to the top so that it is instantiated in time for IR submission
+
+		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
+
+		// Used for jacket images
+		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
+		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
+		m_jacketImage = game->GetJacketImage();
+
 		// Don't save the score if autoplay was on or if the song was launched using command line
 		// also don't save the score if the song was manually exited
 		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
@@ -352,16 +435,18 @@ public:
 				s.getDigest(digest);
 				hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
 			}
-			else 
+			else
 			{
 				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Severity::Warning);
 			}
 
+			m_chartHash = hash;
+
 			Path::CreateDir(Path::Absolute("replays/" + hash));
-			String replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+			m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
 			File replayFile;
 
-			if (replayFile.OpenWrite(replayPath))
+			if (replayFile.OpenWrite(m_replayPath))
 			{
 				FileWriter fw(replayFile);
 				fw.SerializeObject(m_simpleHitStats);
@@ -376,9 +461,15 @@ public:
 			newScore->almost = m_categorizedHits[1];
 			newScore->miss = m_categorizedHits[0];
 			newScore->gauge = m_finalGaugeValue;
-			newScore->gameflags = (uint32)m_flags;
+
+			newScore->gaugeType = m_gaugeType;
+			newScore->gaugeOption = m_gaugeOption;
+			newScore->mirror = m_options.mirror;
+			newScore->random = m_options.random;
+			newScore->autoFlags = m_options.autoFlags;
+
 			newScore->timestamp = Shared::Time::Now().Data();
-			newScore->replayPath = replayPath;
+			newScore->replayPath = m_replayPath;
 			newScore->chartHash = hash;
 			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
 			newScore->localScore = true;
@@ -390,6 +481,12 @@ public:
 
 			m_mapDatabase.AddScore(newScore);
 
+			if(g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
+			{
+				m_irState = IR::ResponseState["Pending"];
+				m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
+			}
+
 		 	chart->scores.Add(newScore);
 			chart->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
 			{
@@ -398,13 +495,6 @@ public:
 		}
 
 		m_startPressed = false;
-
-		m_beatmapDuration = game->GetBeatmap()->GetLastObjectTime();
-
-		// Used for jacket images
-		m_beatmapSettings = game->GetBeatmap()->GetMapSettings();
-		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
-		m_jacketImage = game->GetJacketImage();
 
 
 		if (m_challengeManager != nullptr)
@@ -429,8 +519,9 @@ public:
 			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
 			res.scorescreenInfo.speedMod = static_cast<int>(speedMod);
 			res.scorescreenInfo.speedModValue = g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed);
-			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples, sizeof(res.scorescreenInfo.gaugeSamples));
+			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples.data(), sizeof(res.scorescreenInfo.gaugeSamples));
 		}
+
 	}
 	~ScoreScreen_Impl()
 	{
@@ -452,7 +543,20 @@ public:
 
 		lua_newtable(m_lua);
 		m_PushIntToTable("score", m_score);
-		m_PushIntToTable("flags", (int)m_flags);
+
+		m_PushIntToTable("gauge_type", (uint32)m_gaugeType);
+		m_PushIntToTable("gauge_option", m_gaugeOption);
+
+		lua_pushstring(m_lua, "random");
+		lua_pushboolean(m_lua, m_options.random);
+		lua_settable(m_lua, -3);
+
+		lua_pushstring(m_lua, "mirror");
+		lua_pushboolean(m_lua, m_options.mirror);
+		lua_settable(m_lua, -3);
+
+		m_PushIntToTable("auto_flags", (uint32)m_options.autoFlags);
+
 		m_PushFloatToTable("gauge", m_finalGaugeValue);
 		m_PushIntToTable("misses", m_categorizedHits[0]);
 		m_PushIntToTable("goods", m_categorizedHits[1]);
@@ -499,6 +603,19 @@ public:
 		lua_pushstring(m_lua, "autoplay");
 		lua_pushboolean(m_lua, m_autoplay);
 		lua_settable(m_lua, -3);
+
+		m_PushIntToTable("irState", m_irState);
+		m_PushStringToTable("chartHash", m_chartHash);
+
+		//description (for displaying any errors, etc)
+		if(m_irState >= 20)
+		{
+			if(m_irState == IR::ResponseState["RequestFailure"])
+				m_PushStringToTable("irDescription", "The request to the IR failed.");
+			else
+				m_PushStringToTable("irDescription", m_irResponseJson["description"]);
+		}
+
 
 		m_PushFloatToTable("playbackSpeed", m_playbackSpeed);
 
@@ -554,7 +671,13 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+				
+				m_PushIntToTable("gauge_type", (uint32)score->gaugeType);
+				m_PushIntToTable("gauge_option", score->gaugeOption);
+				m_PushIntToTable("random", score->random);
+				m_PushIntToTable("mirror", score->mirror);
+				m_PushIntToTable("auto_flags", (uint32)score->autoFlags);
+
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);
@@ -568,6 +691,10 @@ public:
 			}
 			lua_settable(m_lua, -3);
 		}
+
+		//ir scores moved to be in multiplayer too, not yet tested
+		if(m_irState == IR::ResponseState["Success"])
+			m_PushIRScores();
 
 		if (isSelf)
 		{
@@ -609,7 +736,7 @@ public:
 			}
 			lua_settable(m_lua, -3);
 		}
-		
+
 		lua_setglobal(m_lua, "result");
 
 		lua_getglobal(m_lua, "result_set");
@@ -715,7 +842,7 @@ public:
 		}
 
 
-        
+
 
 		m_showStats = g_input.GetButton(Input::Button::FX_0);
 
@@ -743,6 +870,57 @@ public:
 
 		if (m_multiplayer)
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
+
+		//handle ir score submission request
+		if (m_irState == IR::ResponseState["Pending"])
+		{
+			try {
+
+
+				if(m_irResponse.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+				{
+					cpr::Response response = m_irResponse.get();
+
+		        	if(response.status_code != 200)
+					{
+						Logf("Submitting score to IR failed with code: %d", Logger::Severity::Error, response.status_code);
+						m_irState = IR::ResponseState["RequestFailure"];
+					}
+					else
+					{
+						try {
+							m_irResponseJson = nlohmann::json::parse(response.text);
+
+							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
+							else
+							{
+								m_irState = m_irResponseJson["statusCode"];
+
+								//if we are allowed to send replays
+								if(!g_gameConfig.GetBool(GameConfigKeys::IRLowBandwidth))
+								{
+									//and server wants us to send replay
+									if(m_irResponseJson["body"].find("sendReplay") != m_irResponseJson["body"].end() && m_irResponseJson["body"]["sendReplay"].is_string())
+									{
+										//don't really care about the return of this, if it fails it's not the end of the world
+										IR::PostReplay(m_irResponseJson["body"]["sendReplay"].get<String>(), m_replayPath).get();
+									}
+								}			
+							}
+
+
+						} catch(nlohmann::json::parse_error& e) {
+							Log("Parsing JSON returned from IR failed.", Logger::Severity::Error);
+						}
+					}
+
+					updateLuaData();
+				}
+
+			} catch(std::future_error& e) {
+				Logf("future_error when submitting score to IR: %s", Logger::Severity::Error, e.what());
+			}
+		}
 	}
 
 	void OnSuspend() override
@@ -806,7 +984,7 @@ public:
 			screenshot->SavePNG(screenshotPath);
 			screenshot.reset();
 		}
-		else 
+		else
 		{
 			screenshotPath = "Failed to capture screenshot";
 		}
