@@ -1017,6 +1017,7 @@ public:
 			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
 			ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
+			ToggleSetting(GameConfigKeys::PrerenderEffects, "Pre-Render Song Effects (experimental)");
 			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 
 			if (m_channels.size() > 0)

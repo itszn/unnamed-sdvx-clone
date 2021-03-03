@@ -4,29 +4,27 @@
 #include <Audio/DSP.hpp>
 #include <Audio/Audio.hpp>
 
-DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
+DSP *GameAudioEffect::CreateDSP(const TimingPoint &tp, float filterInput, uint32 sampleRate)
 {
-	DSP* ret = nullptr;
+	DSP *ret = nullptr;
 
-	const TimingPoint& tp = playback.GetBeatmapPlayback().GetCurrentTimingPoint();
 	double noteDuration = tp.GetWholeNoteLength();
 
-	float filterInput = playback.GetLaserFilterInput();
 	uint32 actualLength = duration.Sample(filterInput).Absolute(noteDuration);
 	uint32 maxLength = Math::Max(duration.Sample(0.f).Absolute(noteDuration), duration.Sample(1.f).Absolute(noteDuration));
 
-	switch(type)
+	switch (type)
 	{
 	case EffectType::Bitcrush:
 	{
-		BitCrusherDSP* bcDSP = new BitCrusherDSP(sampleRate);
+		BitCrusherDSP *bcDSP = new BitCrusherDSP(sampleRate);
 		bcDSP->SetPeriod((float)bitcrusher.reduction.Sample(filterInput));
 		ret = bcDSP;
 		break;
 	}
 	case EffectType::Echo:
 	{
-		EchoDSP* echoDSP = new EchoDSP(sampleRate);
+		EchoDSP *echoDSP = new EchoDSP(sampleRate);
 		echoDSP->feedback = echo.feedback.Sample(filterInput) / 100.0f;
 		echoDSP->SetLength(actualLength);
 		ret = echoDSP;
@@ -37,13 +35,13 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	case EffectType::HighPassFilter:
 	{
 		// Don't set anthing for biquad Filters
-		BQFDSP* bqfDSP = new BQFDSP(sampleRate);
+		BQFDSP *bqfDSP = new BQFDSP(sampleRate);
 		ret = bqfDSP;
 		break;
 	}
 	case EffectType::Gate:
 	{
-		GateDSP* gateDSP = new GateDSP(sampleRate);
+		GateDSP *gateDSP = new GateDSP(sampleRate);
 		gateDSP->SetLength(actualLength);
 		gateDSP->SetGating(gate.gate.Sample(filterInput));
 		ret = gateDSP;
@@ -51,14 +49,14 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::TapeStop:
 	{
-		TapeStopDSP* tapestopDSP = new TapeStopDSP(sampleRate);
+		TapeStopDSP *tapestopDSP = new TapeStopDSP(sampleRate);
 		tapestopDSP->SetLength(actualLength);
 		ret = tapestopDSP;
 		break;
 	}
 	case EffectType::Retrigger:
 	{
-		RetriggerDSP* retriggerDSP = new RetriggerDSP(sampleRate);
+		RetriggerDSP *retriggerDSP = new RetriggerDSP(sampleRate);
 		retriggerDSP->SetMaxLength(maxLength);
 		retriggerDSP->SetLength(actualLength);
 		retriggerDSP->SetGating(retrigger.gate.Sample(filterInput));
@@ -68,7 +66,7 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::Wobble:
 	{
-		WobbleDSP* wb = new WobbleDSP(sampleRate);
+		WobbleDSP *wb = new WobbleDSP(sampleRate);
 		wb->SetLength(actualLength);
 		wb->q = wobble.q.Sample(filterInput);
 		wb->fmax = wobble.max.Sample(filterInput);
@@ -78,7 +76,7 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::Phaser:
 	{
-		PhaserDSP* phs = new PhaserDSP(sampleRate);
+		PhaserDSP *phs = new PhaserDSP(sampleRate);
 		phs->SetLength(actualLength);
 		phs->dmin = phaser.min.Sample(filterInput);
 		phs->dmax = phaser.max.Sample(filterInput);
@@ -88,16 +86,16 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::Flanger:
 	{
-		FlangerDSP* fl = new FlangerDSP(sampleRate);
+		FlangerDSP *fl = new FlangerDSP(sampleRate);
 		fl->SetLength(actualLength);
 		fl->SetDelayRange(abs(flanger.offset.Sample(filterInput)),
-			abs(flanger.depth.Sample(filterInput)));
+						  abs(flanger.depth.Sample(filterInput)));
 		ret = fl;
 		break;
 	}
 	case EffectType::SideChain:
 	{
-		SidechainDSP* sc = new SidechainDSP(sampleRate);
+		SidechainDSP *sc = new SidechainDSP(sampleRate);
 		sc->SetLength(actualLength);
 		sc->amount = 1.0f;
 		sc->curve = Interpolation::CubicBezier(0.39, 0.575, 0.565, 1);
@@ -106,16 +104,16 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 	}
 	case EffectType::PitchShift:
 	{
-		PitchShiftDSP* ps = new PitchShiftDSP(sampleRate);
+		PitchShiftDSP *ps = new PitchShiftDSP(sampleRate);
 		ps->amount = pitchshift.amount.Sample(filterInput);
 		ret = ps;
 		break;
 	}
 	default:
-	break;
+		break;
 	}
 
-	if(!ret)
+	if (!ret)
 	{
 		Logf("Failed to create game audio effect for type \"%s\"", Logger::Severity::Warning, Enum_EffectType::ToString(type));
 		return nullptr;
@@ -123,72 +121,72 @@ DSP* GameAudioEffect::CreateDSP(AudioPlayback& playback, uint32 sampleRate)
 
 	return ret;
 }
-void GameAudioEffect::SetParams(DSP* dsp, AudioPlayback& playback, HoldObjectState* object)
+void GameAudioEffect::SetParams(DSP *dsp, AudioPlayback &playback, HoldObjectState *object)
 {
-	const TimingPoint& tp = playback.GetBeatmapPlayback().GetCurrentTimingPoint();
+	const TimingPoint &tp = *playback.GetBeatmapPlayback().GetTimingPointAt(object->time);
 	double noteDuration = tp.GetWholeNoteLength();
 
-	switch(type)
+	switch (type)
 	{
 	case EffectType::Bitcrush:
 	{
-		BitCrusherDSP* bcDSP = (BitCrusherDSP*)dsp;
+		BitCrusherDSP *bcDSP = (BitCrusherDSP *)dsp;
 		bcDSP->SetPeriod((float)object->effectParams[0]);
 		break;
 	}
 	case EffectType::Gate:
 	{
-		GateDSP* gateDSP = (GateDSP*)dsp;
+		GateDSP *gateDSP = (GateDSP *)dsp;
 		gateDSP->SetLength(noteDuration / object->effectParams[0]);
 		gateDSP->SetGating(0.5f);
 		break;
 	}
 	case EffectType::TapeStop:
 	{
-		TapeStopDSP* tapestopDSP = (TapeStopDSP*)dsp;
+		TapeStopDSP *tapestopDSP = (TapeStopDSP *)dsp;
 		tapestopDSP->SetLength((1000 * ((double)16 / Math::Max(object->effectParams[0], (int16)1))));
 		break;
 	}
 	case EffectType::Retrigger:
 	{
-		RetriggerDSP* retriggerDSP = (RetriggerDSP*)dsp;
+		RetriggerDSP *retriggerDSP = (RetriggerDSP *)dsp;
 		retriggerDSP->SetLength(noteDuration / object->effectParams[0]);
 		retriggerDSP->SetGating(0.65f);
 		break;
 	}
 	case EffectType::Echo:
 	{
-		EchoDSP* echoDSP = (EchoDSP*)dsp;
+		EchoDSP *echoDSP = (EchoDSP *)dsp;
 		echoDSP->SetLength(noteDuration / object->effectParams[0]);
 		echoDSP->feedback = object->effectParams[1] / 100.0f;
 		break;
 	}
 	case EffectType::Wobble:
 	{
-		WobbleDSP* wb = (WobbleDSP*)dsp;
+		WobbleDSP *wb = (WobbleDSP *)dsp;
 		wb->SetLength(noteDuration / object->effectParams[0]);
 		break;
 	}
 	case EffectType::Phaser:
 	{
-		PhaserDSP* phs = (PhaserDSP*)dsp;
+		PhaserDSP *phs = (PhaserDSP *)dsp;
 		phs->time = object->time;
 		break;
 	}
 	case EffectType::Flanger:
 	{
-		FlangerDSP* fl = (FlangerDSP*)dsp;
+		FlangerDSP *fl = (FlangerDSP *)dsp;
 		double delay = (noteDuration) / 1000.0;
 		fl->SetDelayRange(10, 40);
 		break;
 	}
 	case EffectType::PitchShift:
 	{
-		PitchShiftDSP* ps = (PitchShiftDSP*)dsp;
+		PitchShiftDSP *ps = (PitchShiftDSP *)dsp;
 		ps->amount = (float)object->effectParams[0];
 		break;
 	}
 	default:
-	break;
+		break;
 	}
 }

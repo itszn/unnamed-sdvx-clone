@@ -194,6 +194,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::EditorParamsFormat, "%s");
 	Set(GameConfigKeys::WASAPI_Exclusive, false);
 	Set(GameConfigKeys::MuteUnfocused, false);
+	Set(GameConfigKeys::PrerenderEffects, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true); // deprecated
