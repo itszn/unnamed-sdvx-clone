@@ -15,7 +15,7 @@ AudioPlayback::~AudioPlayback()
 	m_CleanupDSP(m_buttonDSPs[1]);
 	m_CleanupDSP(m_laserDSP);
 }
-bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootPath)
+bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootPath, bool preRender)
 {
 	// Cleanup exising DSP's
 	m_currentHoldEffects[0] = nullptr;
@@ -76,14 +76,14 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 		return true;
 	}
 
-	bool preRenderEffects = true; //TODO: Game setting
-	if (preRenderEffects)
+	if (preRender)
 	{
 		m_fxtrack = AudioStream::Clone(g_audio, m_music);
 		assert(m_fxtrack);
 		m_PreRenderDSPTrack();
 		return true;
 	}
+
 
 	auto switchablePaths = m_beatmap->GetSwitchablePaths();
 
@@ -113,6 +113,7 @@ bool AudioPlayback::Init(class BeatmapPlayback &playback, const String &mapRootP
 		}
 		m_switchables.Add(switchable);
 	}
+
 
 	return true;
 }
@@ -529,7 +530,7 @@ void AudioPlayback::m_PreRenderDSPTrack()
 				GameAudioEffect effect = m_beatmap->GetEffect(holdObj->effectType);
 				DSP *dsp = effect.CreateDSP(*m_playback->GetTimingPointAt(chartObj->time),
 											1.0f,
-											m_fxtrack->GetAudioSampleRate());
+											m_fxtrack->GetSampleRate());
 
 				effect.SetParams(dsp, *this, holdObj);
 				dsp->startTime = chartObj->time;

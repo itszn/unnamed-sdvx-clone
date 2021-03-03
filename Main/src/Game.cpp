@@ -382,7 +382,7 @@ public:
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, g_gameConfig.GetBool(GameConfigKeys::PrerenderEffects)))
 			return false;
 
 		// Get fps limit
