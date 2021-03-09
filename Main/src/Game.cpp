@@ -27,6 +27,7 @@
 
 #include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
+#include <SDL2/SDL.h>
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -171,8 +172,6 @@ private:
 
 	bool m_manualExit = false;
 	bool m_showCover = true;
-
-	float m_shakeDuration = 5 / 60.f;
 
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
@@ -1243,6 +1242,14 @@ public:
 		// Enable laser slams and roll ignore behaviour
 		m_camera.SetFancyHighwayTilt(g_gameConfig.GetBool(GameConfigKeys::EnableFancyHighwayRoll));
 
+		SDL_DisplayMode current;
+		int displayIndex = g_gameWindow->GetDisplayIndex();
+		int error = SDL_GetCurrentDisplayMode(displayIndex, &current);
+		if (error)
+			Logf("Could not get display mode info for display %d: %s", Logger::Severity::Warning, displayIndex, SDL_GetError());
+		else
+			m_camera.SetSlamShakeGuardDuration(current.refresh_rate);
+
 		// If c-mod is used
 		if (m_speedMod == SpeedMods::CMod)
 		{
@@ -1866,8 +1873,7 @@ public:
 	{
 		float slamSize = object->points[1] - object->points[0];
 		float direction = Math::Sign(slamSize);
-		CameraShake shake(fabsf(slamSize) * m_shakeDuration, fabsf(slamSize) * -direction);
-		m_camera.AddCameraShake(shake);
+		m_camera.AddCameraShake(slamSize);
 		m_slamSample->Play();
 
 		if (object->spin.type != 0)

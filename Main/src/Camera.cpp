@@ -88,7 +88,7 @@ static Transform GetOriginTransform(float pitch, float offs, float roll)
 {
 	if (g_aspectRatio < 1.0f)
 	{
-		auto origin = Transform::Rotation({ 0, 0, roll });
+		auto origin = Transform::Rotation({ 1, 0, roll }); // Reduce rotation radius
 		auto anchor = Transform::Translation({ offs, -0.8f, 0 })
 			* Transform::Rotation({ 1.5f, 0, 0 });
 		auto contnr = Transform::Translation({ 0, 0, -0.9f })
@@ -111,7 +111,6 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 {
 	auto LerpTo = [&](float &value, float target, float speed = 0.5f)
 	{
-		float diff = abs(target - value);
 		float change = deltaTime * speed;
 
 		if (target < value)
@@ -120,13 +119,16 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	};
 
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	float speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED;
+	// Percentage of m_rollIntensity where camera rolls at its slowest rate
+	const float slowestTiltThreshold = 0.1f;
+	const float rollSpeed = 4;
+	float speedLimit = MAX_ROLL_ANGLE * rollSpeed;
 	float actualRollTarget = 0;
 
 	// Lerp crit line position
 	if (m_slowTilt)
 		// Roll even slower when roll is less than 1 / 10 of tilt
-		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * SLOWEST_TILT_THRESHOLD ? 4.f : 8.f;
+		speedLimit /= fabsf(m_critLineRoll) > MAX_ROLL_ANGLE * slowestTiltThreshold ? 4.f : 8.f;
 	LerpTo(m_critLineRoll, m_targetCritLineRoll, speedLimit);
 
 	if (pManualTiltEnabled)
@@ -150,10 +152,10 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	// Roll to crit line position or roll keep value with respect to roll intensity
 	// 2.5 corresponds to BIGGEST roll speed
 	// Don't respect roll intensity if manual tilt is on, was recently toggled (off) or if roll speed is somehow 0
-	speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED *
+	speedLimit = MAX_ROLL_ANGLE * rollSpeed *
 		Math::Max(m_rollIntensity, m_oldRollIntensity) / MAX_ROLL_ANGLE;
 	if (speedLimit == 0 || pManualTiltEnabled || m_manualTiltRecentlyToggled)
-		speedLimit = MAX_ROLL_ANGLE * ROLL_SPEED * 2.5f;
+		speedLimit = MAX_ROLL_ANGLE * rollSpeed * 2.5f;
 
 	if (pManualTiltEnabled || m_manualTiltRecentlyToggled)
 	{
@@ -217,13 +219,19 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	m_totalOffset = (pLaneOffset * (5 * 100) / (6 * 116)) / 2.0f + m_spinBounceOffset;
 
 	// Update camera shake effects
-	// Check if shake effect time is > 0 to prevent division by 0 from shake effect duration
-	if (m_shakeEffect.time > 0)
+	if (m_shakeEffect.amplitudeToBeAdded != 0)
 	{
-		float shakeProgress = m_shakeEffect.time / m_shakeEffect.duration;
-		m_shakeOffset = Vector3({ 0, m_shakeEffect.amplitude * shakeProgress, 0 });
+		m_shakeEffect.amplitude += m_shakeEffect.amplitudeToBeAdded;
+		m_shakeEffect.amplitudeToBeAdded = 0;
+		m_shakeEffect.guard = m_shakeEffect.guardDuration;
 	}
-	m_shakeEffect.time = Math::Max(m_shakeEffect.time - deltaTime, 0.f);
+	else if (fabsf(m_shakeEffect.amplitude) > 0)
+	{
+		float shakeDecrement = 0.2f * (deltaTime / (1 / 60.f)); // Reduce shake by constant amount
+		m_shakeEffect.amplitude = Math::Max(fabsf(m_shakeEffect.amplitude) - shakeDecrement, 0.f) * Math::Sign(m_shakeEffect.amplitude);
+	}
+	m_shakeOffset = m_shakeEffect.amplitude;
+	m_shakeEffect.guard -= deltaTime;
 
 	float lanePitch = PitchScaleFunc(pLanePitch) * pitchUnit;
 
@@ -239,7 +247,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 		float zoomAmt;
 		if (pLaneZoom <= 0) zoomAmt = pow(ZOOM_POW, -pLaneZoom) - 1;
 		else zoomAmt = highwayDist * (pow(ZOOM_POW, -pow(pLaneZoom, 1.35f)) - 1);
-		
+
 		return Transform::Translation(zoomDir * zoomAmt) * t;
 	};
 
@@ -247,9 +255,12 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 
 	critOrigin = GetZoomedTransform(GetOriginTransform(lanePitch, m_totalOffset, m_actualRoll * 360.0f + sin(m_spinRoll * Math::pi * 2) * 20));
 }
-void Camera::AddCameraShake(CameraShake cameraShake)
+void Camera::AddCameraShake(float cameraShake)
 {
-	m_shakeEffect = cameraShake;
+	// Ensures the red laser's slam shake is prioritised
+	// Shake guard is set after this function is called
+	if (m_shakeEffect.guard <= 0)
+		m_shakeEffect.amplitudeToBeAdded = -cameraShake;
 }
 void Camera::AddRollImpulse(float dir, float strength)
 {
@@ -305,6 +316,11 @@ float Camera::GetSlamAmount(uint32 index)
 	return m_slamRoll[index];
 }
 
+void Camera::SetSlamShakeGuardDuration(int refreshRate)
+{
+	m_shakeEffect.guardDuration = 1.f / refreshRate;
+}
+
 void Camera::SetManualTilt(bool manualTilt)
 {
 	if (pManualTiltEnabled != manualTilt)
@@ -354,7 +370,7 @@ RenderState Camera::CreateRenderState(bool clipped)
 	float cameraRot = fov / 2 - fov * pitchOffsets[portrait];
 
 	m_actualCameraPitch = rotToCrit - cameraRot + basePitch[portrait];
-	auto cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, 0, 0) + m_shakeOffset);
+	auto cameraTransform = Transform::Rotation(Vector3(m_actualCameraPitch, m_shakeOffset, 0));
 
 	// Calculate clipping distances
 	Vector3 toTrackEnd = (track->trackOrigin).TransformPoint(Vector3(0.0f, track->trackLength, 0));
@@ -449,12 +465,12 @@ Vector2i Camera::GetScreenCenter()
 	float fov = fovs[portrait];
 
 	ret.x = m_rsLast.viewportSize.x / 2;
-	ret.x -= (m_shakeOffset.y / (fov * g_aspectRatio)) * m_rsLast.viewportSize.x;
+	ret.x -= (m_shakeOffset / (fov * g_aspectRatio)) * m_rsLast.viewportSize.x;
 
 	return ret;
 }
 
-Vector3 Camera::GetShakeOffset()
+float Camera::GetShakeOffset()
 {
 	return m_shakeOffset;
 }
@@ -477,13 +493,3 @@ float Camera::m_ClampRoll(float in) const
 		return sign * fmodf(ain, 1.0f);
 	}
 }
-
-CameraShake::CameraShake(float duration) : duration(duration)
-{
-	time = duration;
-}
-CameraShake::CameraShake(float duration, float amplitude) : duration(duration), amplitude(amplitude)
-{
-	time = duration;
-}
-
