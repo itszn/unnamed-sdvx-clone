@@ -176,7 +176,7 @@ void Camera::Tick(float deltaTime, class BeatmapPlayback& playback)
 	
 	for (int index = 0; index < 2; ++index)
 	{
-		m_rollIgnoreTimer[index] = Math::Max(m_rollIgnoreTimer[index] - deltaTime, 0.f);
+		m_rollIgnoreTimer[index] -= deltaTime;
 
 		// Apply slam roll for 100ms
 		if (m_rollIgnoreTimer[index] <= m_rollIgnoreDuration)
