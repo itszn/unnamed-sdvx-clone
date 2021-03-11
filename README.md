@@ -1,76 +1,32 @@
-# Unnamed SDVX clone ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Build](https://github.com/Drewol/unnamed-sdvx-clone/workflows/Build/badge.svg)](https://github.com/Drewol/unnamed-sdvx-clone/actions)
-A game based on [KShootMania](http://www.kshootmania.com/) and [SDVX](https://remywiki.com/What_is_SOUND_VOLTEX).
+# Unnamed SDVX Clone Event Client (usc-ec) ![language: C/C++](https://img.shields.io/badge/language-C%2FC%2B%2B-green.svg) [![Build](https://github.com/itszn/unnamed-sdvx-clone/workflows/Build/badge.svg)](https://github.com/itszn/unnamed-sdvx-clone/actions)
 
-### [**Download latest Windows build**](https://drewol.me/Downloads/Game.zip)
+This is the Event Client for USC. This allows you to see two players in a multiplayer match next to each other.
 
-### [**FAQ**](https://github.com/Drewol/unnamed-sdvx-clone/wiki/F.-A.-Q.)
+## Should I use this?
 
-#### [**Skinning Documentation**](https://unnamed-sdvx-clone.readthedocs.io/en/latest/index.html)
+There are two reasons to use the event client:
+1. If you are running some kind of event and want to stream the competitors
+2. If you are playing in some kind of an event where they are using the Event Client to stream
 
-#### Demo Videos:
-[![Gameplay Video](http://img.youtube.com/vi/1GCraT0ktrc/2.jpg)](https://youtu.be/1GCraT0ktrc)
-[![Portrait Gameplay](http://img.youtube.com/vi/kP1tD6bkPa4/2.jpg)](https://youtu.be/kP1tD6bkPa4)
-[![Various Settings](http://img.youtube.com/vi/_g9Xv5RDwa0/2.jpg)](https://youtu.be/_g9Xv5RDwa0)
+Other than that this client functions as a normal [USC client](https://github.com/Drewol/unnamed-sdvx-clone)
 
-### Current features:
-- Completely skinnable GUI
-- OGG/MP3 Audio streaming (with preloading for gameplay performance)
-- Uses KShoot charts (`*.ksh`) (1.6 supported)
-- Functional gameplay and scoring
-- Saving of local scores
-- Autoplay
-- Basic controller support (Still some issues with TC+)
-- Changeable settings and key mapping in configuration file
-- Skinning support
-- Supports new sound FX method (real-time sound FX) and old sound FX method (separate NOFX & sound effected music files)
-- Song database cache for near-instant game startup (sqlite3)
-- Song database searching
-- Linux/Windows/macOS support
+## Setup
 
-### Features currently on hold / in progress:
-- Song select UI/Controls to change HiSpeed and other game settings
+#### Download the latest build from [here (needs a github account)]((https://github.com/itszn/unnamed-sdvx-clone/actions) 
 
-The folder that is scanned for songs can be changed in the "Main.cfg" file (`songfolder = "path to song folder"`).  
-Make sure you use a *plain* text editor like Notepad, Notepad++ or gedit; NOT a *rich* text editor like Wordpad or Word!
+USC-ec runs just as the normal USC client runs, you can just copy `usc-event.exe` into your main usc directory
 
-If something breaks in the song database, delete "maps.db". **Please note this will also wipe saved scores.**
+If you are streaming the client, make sure to copy the `PlaybackDefault` skin as well.
 
-## Controls
-### Default bindings (Customizable):
-- Start: \[1\]
-- BTN (White notes , A/B/C/D): \[D\] \[F\] \[J\] \[K\]
-- FX (Yellow notes, L/R): \[C\] \[M\]
-- VOL-L (Cyan laser, Move left / right): \[W\] \[E\]
-- VOL-R (Magenta laser): \[O\] \[P\]
+You can also play out of the Event Client directory. Just make sure to copy over your config and update the song path
 
-### Song Select:
-- Use the arrow keys or knobs to select a song and difficulty
-- Use \[Page Down\]/\[Page Up\] to scroll faster
-- Press \[F2\] to select a random song
-- Press \[F8\] demo mode (continuously autoplay random songs)
-- Press \[F9\] to reload the skin
-- Press \[F11\] to open the the currently selected chart in the editor specified by the `EditorPath` setting
-- Press \[F12\] to open the directory of the currently selected song in your file explorer
-- Press \[Enter\] or \[Start\] to start a song
-- Press \[Ctrl\]+\[Start\] to start song with autoplay
-- Press \[FX-L\] to open up filter select to filter the displayed songs
-- Press \[Start\] when selecting filters to toggle between level and folder filters
-- Press \[FX-L\] + \[FX-R\] to open up game settings (Hard gauge, Random, Mirror, etc.)
-- Press \[TAB\] to open the Search bar on the top to search for songs
+## Streaming How To
 
-## How to run:
-Just run 'usc-game' or 'usc-game_Debug' from within the 'bin' folder. Or, to play a chart immediately:  
-#### `{Download Location}/bin> usc-game {path to *.ksh chart} [flags]`
+Using USC-ec create a new multiplayer room. This room will only allow other USC-ec users to join. Then open the chat with `f8` and type `/ref`. This will mark you as a ref and not a player. Finally hit `f10` to start the stream client. This will automatically connect to the room and wait for players.
 
-#### Command line flags (all are optional):
-- `-notitle` - Skips the title menu launching the game directly into song select.
-- `-mute` - Mutes all audio output
-- `-autoplay` - Plays chart automatically, no user input required
-- `-autobuttons` Like autoplay, but just for the buttons. You only have to control the lasers
-- `-autoskip` - Skips beginning of song to the first chart note
-- `-convertmaps` - Allows converting of `*.ksh` charts to a binary format that loads faster (experimental, feature not complete)
-- `-debug` - Used to show relevant debug info in game such as hit timings, and scoring debug info
-- `-test` - Runs test scene, for development purposes only
+__The client only supports 2 players for now, any others will be ignored__
+
+The stream client will automatically handle results screen navigation, so you should just be able to leave it alone and let it do its thing.
 
 ## How to build:
 Clone the project and then run `git submodule update --init --recursive` to download the required submodules.

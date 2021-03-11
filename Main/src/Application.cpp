@@ -537,6 +537,8 @@ void __discordDisconnected(int errcode, const char *msg)
 
 void __updateChecker()
 {
+	return;
+
 	// Handle default config or old config
 	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
 	{
@@ -555,7 +557,7 @@ void __updateChecker()
 	ProfilerScope $1("Check for updates");
 	if (channel == "release")
 	{
-		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
+		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/itszn/unnamed-sdvx-clone/releases/latest"});
 
 		Logf("Update check status code: %d", Logger::Severity::Normal, r.status_code);
 		if (r.status_code != 200)
