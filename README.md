@@ -12,7 +12,7 @@ Other than that this client functions as a normal [USC client](https://github.co
 
 ## Setup
 
-#### Download the latest build from [here (needs a github account)]((https://github.com/itszn/unnamed-sdvx-clone/actions) 
+#### Download the latest build from [here (needs a github account)](https://github.com/itszn/unnamed-sdvx-clone/actions) 
 
 USC-ec runs just as the normal USC client runs, you can just copy `usc-event.exe` into your main usc directory
 
