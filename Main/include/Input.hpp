@@ -88,6 +88,7 @@ private:
 	float m_prevLaserStates[2] = { 0.0f };
 	float m_absoluteLaserStates[2] = { 0.0f };
 	float m_comboHoldTimer = 0.0f;
+	float m_laserDirections[2] = { 1.0f };
 
 	// Keyboard bindings
 	Multimap<int32, Button> m_buttonMap;

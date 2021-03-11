@@ -73,3 +73,31 @@ bool CollectionFilter::IsAll() const
 {
 	return false;
 }
+
+Map<int32, ChallengeSelectIndex> ChallengeLevelFilter::GetFiltered(const Map<int32, ChallengeSelectIndex>& source)
+{
+	Map<int32, ChallengeSelectIndex> filtered;
+	for (auto kvp : source)
+	{
+		const auto& chal = kvp.second.GetChallenge();
+		if (chal->level == m_level)
+		{
+			ChallengeSelectIndex index(chal);
+			filtered.Add(index.id, index);
+		}
+	}
+	return filtered;
+}
+
+String ChallengeLevelFilter::GetName() const
+{
+	//return "Level: " + "\u221E";
+	if (m_level == 12)
+		return "Level: \xe2\x88\x9e";
+	return Utility::Sprintf("Level: %d", m_level);
+}
+
+bool ChallengeLevelFilter::IsAll() const
+{
+	return false;
+}

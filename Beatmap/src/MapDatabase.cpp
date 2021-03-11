@@ -6,10 +6,13 @@
 #include "Shared/Profiling.hpp"
 #include "Shared/Files.hpp"
 #include "Shared/Time.hpp"
+#include "KShootMap.hpp"
 #include <thread>
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <iostream>
+#include <fstream>
 #include <condition_variable>
 using std::thread;
 using std::mutex;
@@ -32,6 +35,7 @@ public:
 
 	Map<int32, FolderIndex*> m_folders;
 	Map<int32, ChartIndex*> m_charts;
+	Map<int32, ChallengeIndex*> m_challenges;
 	Map<int32, PracticeSetupIndex*> m_practiceSetups;
 
 	Map<String, ChartIndex*> m_chartsByHash;
@@ -40,18 +44,20 @@ public:
 
 	int32 m_nextFolderId = 1;
 	int32 m_nextChartId = 1;
+	int32 m_nextChalId = 1;
 	String m_sortField = "title";
 	bool m_transferScores = true;
 
 	struct SearchState
 	{
-		struct ExistingDifficulty
+		struct ExistingFileEntry
 		{
 			int32 id;
 			uint64 lwt;
 		};
 		// Maps file paths to the id's and last write time's for difficulties already in the database
-		Map<String, ExistingDifficulty> difficulties;
+		Map<String, ExistingFileEntry> difficulties;
+		Map<String, ExistingFileEntry> challenges;
 	} m_searchState;
 
 	// Represents an event produced from a scan
@@ -59,6 +65,11 @@ public:
 	//	a BeatmapSettings structure will be provided for added/updated events
 	struct Event
 	{
+		enum Type{
+			Chart,
+			Challenge
+		};
+		Type type;
 		enum Action
 		{
 			Added,
@@ -73,12 +84,13 @@ public:
 		int32 id;
 		// Scanned map data, for added/updated maps
 		BeatmapSettings* mapData = nullptr;
+		nlohmann::json json;
 		String hash;
 	};
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 16;
+	static const int32 m_version = 17;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
@@ -338,14 +350,35 @@ public:
 				m_database.Exec("UPDATE Scores SET window_miss=250");
 				gotVersion = 16;
 			}
+			if (gotVersion == 16)
+			{
+				m_database.Exec("CREATE TABLE Challenges"
+					"("
+					"title TEXT,"
+					"charts TEXT,"
+					"chart_meta TEXT," // used for search
+					"clear_mark INTEGER,"
+					"best_score INTEGER,"
+					"req_text TEXT,"
+					"path TEXT,"
+					"hash TEXT,"
+					"level INTEGER,"
+					"lwt INTEGER"
+					")");
+				gotVersion = 17;
+			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
 			m_outer.OnDatabaseUpdateDone.Call();
 		}
 		else
 		{
-			// Load initial folder tree
-			m_LoadInitialData();
+			// NOTE: before we loaded the database here. This was redundant since we always do StartSearching
+			//       Plus we don't do this when doing an update so if it was a problem to not do it here we would
+			//       have already noticed it being broken in a launch where the db is updated
+			//       Also with challenges we can't do this until the constructor is done so we can access the
+			//       MapDatabase wrapper while loading challenges
+			//m_LoadInitialData();
 		}
 	}
 	~MapDatabase_Impl()
@@ -435,6 +468,59 @@ public:
 		return std::move(changes);
 	}
 
+	// TODO(itszn) make sure this is not case sensitive
+	ChartIndex* FindFirstChartByPath(const String& searchString)
+	{
+		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE path LIKE ? LIMIT 1";
+
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, "%"+searchString+"%");
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChartIndex** chart = m_charts.Find(id);
+			if (!chart)
+				return nullptr;
+			return *chart;
+		}
+
+		return nullptr;
+	}
+
+	ChartIndex* FindFirstChartByNameAndLevel(const String& name, uint32 level, bool exact=true)
+	{
+		String stmt = "SELECT DISTINCT rowid FROM Charts WHERE title LIKE ? and level=? LIMIT 1";
+
+		DBStatement search = m_database.Query(stmt);
+		if (exact)
+			search.BindString(1, name);
+		else
+			search.BindString(1, "%"+name+"%");
+		search.BindInt(2, level);
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChartIndex** chart = m_charts.Find(id);
+			if (!chart)
+				return nullptr;
+			return *chart;
+		}
+
+		// Try non exact now
+		if (exact)
+			return FindFirstChartByNameAndLevel(name, level, false);
+
+		return nullptr;
+	}
+
+	ChartIndex* FindFirstChartByHash(const String& hash)
+	{
+		ChartIndex** chart = m_chartsByHash.Find(hash);
+		if (!chart)
+			return nullptr;
+		return *chart;
+	}
+
 	Map<int32, FolderIndex*> FindFoldersByHash(const String& hash)
 	{
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE hash = ?";
@@ -455,12 +541,14 @@ public:
 		return res;
 	}
 
+	// TODO(itszn) make this not case sensitive
 	Map<int32, FolderIndex*> FindFoldersByPath(const String& searchString)
 	{
-		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE path LIKE \"%" + searchString + "%\"";
+		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE path LIKE ?";
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, "%" + searchString + "%");
 
 		Map<int32, FolderIndex*> res;
-		DBStatement search = m_database.Query(stmt);
 		while(search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
@@ -473,31 +561,83 @@ public:
 
 		return res;
 	}
+
+	Map<int32, ChallengeIndex*> FindChallenges(const String& searchString)
+	{
+		WString test = Utility::ConvertToWString(searchString);
+		String stmt = "SELECT DISTINCT rowid FROM Challenges WHERE";
+
+		Vector<String> terms = searchString.Explode(" ");
+		int32 i = 0;
+		for (auto term : terms)
+		{
+			if (i > 0)
+				stmt += " AND";
+			stmt += String(" (title LIKE ?") +
+				" OR chart_meta LIKE ?"
+				" OR path LIKE ?)";
+			i++;
+		}
+		DBStatement search = m_database.Query(stmt);
+
+		i = 1;
+		for (auto term : terms)
+		{
+			// Bind all the terms
+			for (int j = 0; j < 3; j++)
+			{
+				search.BindString(i+j, "%" + term + "%");
+			}
+			i+=6;
+		}
+		
+		Map<int32, ChallengeIndex*> res;
+		while(search.StepRow())
+		{
+			int32 id = search.IntColumn(0);
+			ChallengeIndex** challenge = m_challenges.Find(id);
+			if(challenge)
+			{
+				res.Add(id, *challenge);
+			}
+		}
+
+		return res;
+	}
 	
 	Map<int32, FolderIndex*> FindFolders(const String& searchString)
 	{
 		WString test = Utility::ConvertToWString(searchString);
 		String stmt = "SELECT DISTINCT folderId FROM Charts WHERE";
 
-
-		//search.spl
 		Vector<String> terms = searchString.Explode(" ");
 		int32 i = 0;
 		for(auto term : terms)
 		{
 			if(i > 0)
 				stmt += " AND";
-			stmt += " (artist LIKE \"%" + term + "%\"" + 
-				" OR title LIKE \"%" + term + "%\"" +
-				" OR path LIKE \"%" + term + "%\"" +
-				" OR effector LIKE \"%" + term + "%\"" +
-				" OR artist_translit LIKE \"%" + term + "%\"" +
-				" OR title_translit LIKE \"%" + term + "%\")";
+			stmt += String(" (artist LIKE ?") +
+				" OR title LIKE ?" +
+				" OR path LIKE ?" +
+				" OR effector LIKE ?" +
+				" OR artist_translit LIKE ?" +
+				" OR title_translit LIKE ?)";
 			i++;
+		}
+		DBStatement search = m_database.Query(stmt);
+
+		i = 1;
+		for (auto term : terms)
+		{
+			// Bind all the terms
+			for (int j = 0; j < 6; j++)
+			{
+				search.BindString(i+j, "%" + term + "%");
+			}
+			i+=6;
 		}
 
 		Map<int32, FolderIndex*> res;
-		DBStatement search = m_database.Query(stmt);
 		while(search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
@@ -579,10 +719,11 @@ public:
 
 	Map<int32, FolderIndex*> FindFoldersByCollection(const String& collection)
 	{
-		String stmt = Utility::Sprintf("SELECT folderid FROM Collections WHERE collection==\"%s\"", collection);
+		String stmt = "SELECT folderid FROM Collections WHERE collection==?";
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, collection);
 
 		Map<int32, FolderIndex*> res;
-		DBStatement search = m_database.Query(stmt);
 		while (search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
@@ -603,10 +744,12 @@ public:
 		csep[0] = Path::sep;
 		csep[1] = 0;
 		String sep(csep);
-		String stmt = "SELECT rowid FROM folders WHERE path LIKE \"%" + sep + folder + sep + "%\"";
+		String stmt = "SELECT rowid FROM folders WHERE path LIKE ?";
+		DBStatement search = m_database.Query(stmt);
+		search.BindString(1, "%" + sep + folder + sep + "%");
+
 
 		Map<int32, FolderIndex*> res;
-		DBStatement search = m_database.Query(stmt);
 		while (search.StepRow())
 		{
 			int32 id = search.IntColumn(0);
@@ -631,16 +774,25 @@ public:
 			"diff_name,diff_shortname,bpm,diff_index,level,hash,preview_file,preview_offset,preview_length,lwt) "
 			"VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		DBStatement addFolder = m_database.Query("INSERT INTO Folders(path,rowid) VALUES(?,?)");
+		DBStatement addChallenge = m_database.Query("INSERT INTO Challenges("
+			"title,charts,chart_meta,clear_mark,best_score,req_text,path,hash,level,lwt) "
+			"VALUES(?,?,?,?,?,?,?,?,?,?)");
 		DBStatement update = m_database.Query("UPDATE Charts SET path=?,title=?,artist=?,title_translit=?,artist_translit=?,jacket_path=?,effector=?,illustrator=?,"
 			"diff_name=?,diff_shortname=?,bpm=?,diff_index=?,level=?,hash=?,preview_file=?,preview_offset=?,preview_length=?,lwt=? WHERE rowid=?"); //TODO: update
+		DBStatement updateChallenge = m_database.Query("UPDATE Challenges SET title=?,charts=?,chart_meta=?,clear_mark=?,best_score=?,req_text=?,path=?,hash=?,level=?,lwt=? WHERE rowid=?");
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
+		DBStatement removeChallenge = m_database.Query("DELETE FROM Challenges WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
 		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
-		Set<FolderIndex*> addedEvents;
-		Set<FolderIndex*> removeEvents;
-		Set<FolderIndex*> updatedEvents;
+		Set<FolderIndex*> addedChartEvents;
+		Set<FolderIndex*> removeChartEvents;
+		Set<FolderIndex*> updatedChartEvents;
+
+		Set<ChallengeIndex*> addedChalEvents;
+		Set<ChallengeIndex*> removeChalEvents;
+		Set<ChallengeIndex*> updatedChalEvents;
 
 		const String diffShortNames[4] = { "NOV", "ADV", "EXH", "INF" };
 		const String diffNames[4] = { "Novice", "Advanced", "Exhaust", "Infinite" };
@@ -648,7 +800,103 @@ public:
 		m_database.Exec("BEGIN");
 		for(Event& e : changes)
 		{
-			if(e.action == Event::Added)
+			if (e.type == Event::Challenge && (e.action == Event::Added || e.action == Event::Updated))
+			{
+				ChallengeIndex* chal;
+				if (e.action == Event::Added)
+				{
+					chal = new ChallengeIndex();
+					chal->id = m_nextChalId++;
+				}
+				else
+				{
+					auto itChal = m_challenges.find(e.id);
+					assert(itChal != m_challenges.end());
+					chal = itChal->second;
+				}
+
+				if (e.json.is_discarded() || e.json.is_null())
+				{
+					Log("Tried to process invalid json in Challenge Add event", Logger::Severity::Warning);
+					continue;
+				}
+				chal->settings = e.json;
+				chal->settings["title"].get_to(chal->title);
+				chal->path = e.path;
+				chal->settings["level"].get_to(chal->level);
+				if (e.action == Event::Added)
+				{
+					chal->clearMark = 0;
+					chal->bestScore = 0;
+				}
+				chal->hash = e.hash;
+				chal->missingChart = false;
+				chal->lwt = e.lwt;
+				chal->charts.clear();
+
+				String chartMeta = "";
+				// Grab the charts
+				chal->FindCharts(&m_outer, chal->settings["charts"]);
+				chal->GenerateDescription();
+
+				String chartString = chal->settings["charts"].dump();
+
+				if (e.action == Event::Added)
+				{
+					m_challenges.Add(chal->id, chal);
+
+					// Add Chart
+					// ("title,charts,chart_meta,clear_mark,best_score,req_text,path,hash,level,lwt) "
+					addChallenge.BindString(1, chal->title);
+					addChallenge.BindString(2, chartString);
+					addChallenge.BindString(3, chartMeta);
+					addChallenge.BindInt(4, chal->clearMark);
+					addChallenge.BindInt(5, chal->bestScore);
+					addChallenge.BindString(6, chal->reqText);
+					addChallenge.BindString(7, chal->path);
+					addChallenge.BindString(8, chal->hash);
+					addChallenge.BindInt(9, chal->level);
+					addChallenge.BindInt64(10, chal->lwt);
+
+					addChallenge.Step();
+					addChallenge.Rewind();
+
+					addedChalEvents.Add(chal);
+				}
+				else if (e.action == Event::Updated)
+				{
+					updateChallenge.BindString(1, chal->title);
+					updateChallenge.BindString(2, chartString);
+					updateChallenge.BindString(3, chartMeta);
+					updateChallenge.BindInt(4, chal->clearMark);
+					updateChallenge.BindInt(5, chal->bestScore);
+					updateChallenge.BindString(6, chal->reqText);
+					updateChallenge.BindString(7, chal->path);
+					updateChallenge.BindString(8, chal->hash);
+					updateChallenge.BindInt(9, chal->level);
+					updateChallenge.BindInt64(10, chal->lwt);
+					updateChallenge.BindInt(11, e.id);
+
+					updateChallenge.Step();
+					updateChallenge.Rewind();
+
+					updatedChalEvents.Add(chal);
+				}
+			}
+			else if(e.type == Event::Challenge && e.action == Event::Removed)
+			{
+				auto itChal = m_challenges.find(e.id);
+				assert(itChal != m_challenges.end());
+
+				delete itChal->second;
+				m_challenges.erase(e.id);
+
+				// Remove diff in db
+				removeChallenge.BindInt(1, e.id);
+				removeChallenge.Step();
+				removeChallenge.Rewind();
+			}
+			if(e.type == Event::Chart && e.action == Event::Added)
 			{
 				String folderPath = Path::RemoveLast(e.path, nullptr);
 				bool existingUpdated;
@@ -765,14 +1013,14 @@ public:
 				// Send appropriate notification
 				if(existingUpdated)
 				{
-					updatedEvents.Add(folder);
+					updatedChartEvents.Add(folder);
 				}
 				else
 				{
-					addedEvents.Add(folder);
+					addedChartEvents.Add(folder);
 				}
 			}
-			else if(e.action == Event::Updated)
+			else if(e.type == Event::Chart && e.action == Event::Updated)
 			{
 				update.BindString(1, e.path);
 				update.BindString(2, e.mapData->title);
@@ -832,9 +1080,9 @@ public:
 				assert(itFolder != m_folders.end());
 
 				// Send notification
-				updatedEvents.Add(itFolder->second);
+				updatedChartEvents.Add(itFolder->second);
 			}
-			else if(e.action == Event::Removed)
+			else if(e.type == Event::Chart && e.action == Event::Removed)
 			{
 				auto itChart = m_charts.find(e.id);
 				assert(itChart != m_charts.end());
@@ -859,7 +1107,7 @@ public:
 
 				if(itFolder->second->charts.empty()) // Remove map as well
 				{
-					removeEvents.Add(itFolder->second);
+					removeChartEvents.Add(itFolder->second);
 
 					removeFolder.BindInt(1, itFolder->first);
 					removeFolder.Step();
@@ -870,7 +1118,7 @@ public:
 				}
 				else
 				{
-					updatedEvents.Add(itFolder->second);
+					updatedChartEvents.Add(itFolder->second);
 				}
 			}
 			if(e.mapData)
@@ -879,14 +1127,14 @@ public:
 		m_database.Exec("END");
 
 		// Fire events
-		if(!removeEvents.empty())
+		if(!removeChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : removeEvents)
+			for(auto i : removeChartEvents)
 			{
 				// Don't send 'updated' or 'added' events for removed maps
-				addedEvents.erase(i);
-				updatedEvents.erase(i);
+				addedChartEvents.erase(i);
+				updatedChartEvents.erase(i);
 				eventsArray.Add(i);
 			}
 
@@ -896,27 +1144,49 @@ public:
 				delete e;
 			}
 		}
-		if(!addedEvents.empty())
+		if(!addedChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : addedEvents)
+			for(auto i : addedChartEvents)
 			{
 				// Don't send 'updated' events for added maps
-				updatedEvents.erase(i);
+				updatedChartEvents.erase(i);
 				eventsArray.Add(i);
 			}
 
 			m_outer.OnFoldersAdded.Call(eventsArray);
 		}
-		if(!updatedEvents.empty())
+		if(!addedChalEvents.empty())
+		{
+			Vector<ChallengeIndex*> eventsArray;
+			for(auto i : addedChalEvents)
+			{
+				// Don't send 'updated' events for added maps
+				updatedChalEvents.erase(i);
+				eventsArray.Add(i);
+			}
+
+			m_outer.OnChallengesAdded.Call(eventsArray);
+		}
+		if(!updatedChartEvents.empty())
 		{
 			Vector<FolderIndex*> eventsArray;
-			for(auto i : updatedEvents)
+			for(auto i : updatedChartEvents)
 			{
 				eventsArray.Add(i);
 			}
 
 			m_outer.OnFoldersUpdated.Call(eventsArray);
+		}
+		if(!updatedChalEvents.empty())
+		{
+			Vector<ChallengeIndex*> eventsArray;
+			for(auto i : updatedChalEvents)
+			{
+				eventsArray.Add(i);
+			}
+
+			m_outer.OnChallengesUpdated.Call(eventsArray);
 		}
 	}
 
@@ -948,6 +1218,35 @@ public:
 		m_database.Exec("END");
 	}
 
+	void UpdateChallengeResult(ChallengeIndex* chal, uint32 clearMark, uint32 bestScore)
+	{
+		assert(chal != nullptr);
+		assert(m_challenges.Contains(chal->id));
+
+		chal->clearMark = clearMark;
+		chal->bestScore = bestScore;
+
+		const constexpr char* updateQuery = "UPDATE Challenges SET "
+			"clear_mark=?, best_score=?"
+			" WHERE rowid=?";
+
+		DBStatement statement = m_database.Query(updateQuery);
+
+		m_database.Exec("BEGIN");
+
+		statement.BindInt(1, clearMark);
+		statement.BindInt(2, bestScore);
+		statement.BindInt(3, chal->id);
+		if (!statement.Step())
+		{
+			Log("Failed to execute query for UpdateChallengeResult", Logger::Severity::Warning);
+		}
+
+		statement.Rewind();
+
+		m_database.Exec("END");
+	}
+
 	void UpdateOrAddPracticeSetup(PracticeSetupIndex* practiceSetup)
 	{
 		if (!m_charts.Contains(practiceSetup->chartId))
@@ -964,12 +1263,12 @@ public:
 			return;
 		}
 
-		constexpr char* addQuery = "INSERT INTO PracticeSetups("
+		const constexpr char* addQuery = "INSERT INTO PracticeSetups("
 			"chart_id, setup_title, loop_success, loop_fail, range_begin, range_end, fail_cond_type, fail_cond_value, "
 			"playback_speed, inc_speed_on_success, inc_speed, inc_streak, dec_speed_on_fail, dec_speed, min_playback_speed, max_rewind, max_rewind_measure"
 			") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-		constexpr char* updateQuery = "UPDATE PracticeSetups SET "
+		const constexpr char* updateQuery = "UPDATE PracticeSetups SET "
 			"chart_id=?, setup_title=?, loop_success=?, loop_fail=?, range_begin=?, range_end=?, fail_cond_type=?, fail_cond_value=?, "
 			"playback_speed=?, inc_speed_on_success=?, inc_speed=?, inc_streak=?, dec_speed_on_fail=?, dec_speed=?, min_playback_speed=?, max_rewind=?, max_rewind_measure=?"
 			" WHERE rowid=?";
@@ -1032,6 +1331,7 @@ public:
 
 	void UpdateChartOffset(const ChartIndex* chart)
 	{
+		// Safe from sqli bc hash will be alphanum
 		m_database.Exec(Utility::Sprintf("UPDATE Charts SET custom_offset=%d WHERE hash LIKE '%s'", chart->custom_offset, *chart->hash));
 	}
 
@@ -1050,7 +1350,11 @@ public:
 
 		if (!result) //Failed to add, try to remove
 		{
-			m_database.Exec(Utility::Sprintf("DELETE FROM collections WHERE folderid==%d AND collection==\"%s\"", mapid, name));
+			DBStatement remColl = m_database.Query("DELETE FROM collections WHERE folderid==? AND collection==?");
+			remColl.BindInt(1, mapid);
+			remColl.BindString(2, name);
+			remColl.Step();
+			remColl.Rewind();
 		}
 	}
 
@@ -1184,6 +1488,20 @@ private:
 			"max_rewind_measure INTEGER,"
 			"FOREIGN KEY(chart_id) REFERENCES Charts(rowid)"
 		")");
+
+		m_database.Exec("CREATE TABLE Challenges"
+			"("
+			"title TEXT,"
+			"charts TEXT,"
+			"chart_meta TEXT," // used for search
+			"clear_mark INTEGER,"
+			"best_score INTEGER,"
+			"req_text TEXT,"
+			"path TEXT,"
+			"hash TEXT,"
+			"level INTEGER,"
+			"lwt INTEGER"
+			")");
 	}
 	void m_LoadInitialData()
 	{
@@ -1267,7 +1585,7 @@ private:
 			m_SortCharts(folderIt->second);
 
 			// Add to search state
-			SearchState::ExistingDifficulty ed;
+			SearchState::ExistingFileEntry ed;
 			ed.id = chart->id;
 			if (chart->hash.length() == 0)
 			{
@@ -1356,6 +1674,66 @@ private:
 		}
 
 		m_outer.OnFoldersCleared.Call(m_folders);
+
+		DBStatement chalScan = m_database.Query("SELECT rowid"
+			",title"
+			",charts"
+			",clear_mark"
+			",best_score"
+			",req_text"
+			",path"
+			",hash"
+			",level"
+			",lwt"
+			" FROM Challenges");
+		while (chalScan.StepRow())
+		{
+			ChallengeIndex* chal = new ChallengeIndex();
+			chal->id = chalScan.IntColumn(0);
+			chal->title = chalScan.StringColumn(1);
+			String chartsString = chalScan.StringColumn(2);
+			chal->clearMark = chalScan.IntColumn(3);
+			chal->bestScore = chalScan.IntColumn(4);
+			chal->reqText = chalScan.StringColumnEmptyOnNull(5);
+			chal->path = chalScan.StringColumn(6);
+			chal->hash = chalScan.StringColumn(7);
+			chal->level = chalScan.IntColumn(8);
+			chal->lwt = chalScan.Int64Column(9);
+			chal->missingChart = false;
+			chal->charts.clear();
+
+			nlohmann::json charts = nlohmann::json::parse(chartsString, nullptr, false);
+			chal->FindCharts(&m_outer, charts);
+
+			if (chal->charts.size() == 0)
+			{
+				Logf("Unable to parse charts for challenge %s in database", Logger::Severity::Warning, chal->path);
+				// Try to reload from the file
+				chal->lwt = 0;
+			}
+
+			// If we don't have req text, update
+			if (chal->reqText == "")
+				chal->lwt = 0;
+
+			m_challenges.Add(chal->id, chal);
+
+			// Add to search state
+			SearchState::ExistingFileEntry ed;
+			ed.id = chal->id;
+			if (chal->hash.length() == 0)
+			{
+				ed.lwt = 0;
+			}
+			else {
+				ed.lwt = chal->lwt;
+
+			}
+			m_searchState.challenges.Add(chal->path, ed);
+		}
+		m_nextChalId = m_challenges.empty() ? 1 : (m_challenges.rbegin()->first + 1);
+
+		m_outer.OnChallengesCleared.Call(m_challenges);
 	}
 	void m_SortCharts(FolderIndex* folderIndex)
 	{
@@ -1379,44 +1757,58 @@ private:
 	void m_SearchThread()
 	{
 		Map<String, FileInfo> fileList;
-
+		Map<String, FileInfo> challengeFileList;
+		Map<String, FileInfo> legacyChallengeFileList;
 		{
-			ProfilerScope $("Chart Database - Enumerate Files and Folders");
+			ProfilerScope $("Chart Database - Enumerate Files and Charts");
 			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Enumerate Files and Folders");
 			for(String rootSearchPath : m_searchPaths)
 			{
-				Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "ksh", &m_interruptSearch);
+				Vector<String> exts(3);
+				exts[0] = "ksh";
+				exts[1] = "chal";
+				exts[2] = "kco";
+				Map<String, Vector<FileInfo>> files = Files::ScanFilesRecursive(rootSearchPath, exts, &m_interruptSearch);
 				if(m_interruptSearch)
 					return;
-				for(FileInfo& fi : files)
+				for(FileInfo& fi : files["ksh"])
 				{
 					fileList.Add(fi.fullPath, fi);
+				}
+				for(FileInfo& fi : files["chal"])
+				{
+					challengeFileList.Add(fi.fullPath, fi);
+				}
+				for(FileInfo& fi : files["kco"])
+				{
+					legacyChallengeFileList.Add(fi.fullPath, fi);
 				}
 			}
 			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Enumerate Files and Folders");
 		}
 
 		{
-			ProfilerScope $("Chart Database - Process Removed Files");
-			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Files");
+			ProfilerScope $("Chart Database - Process Removed Charts");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Charts");
 			// Process scanned files
 			for(auto f : m_searchState.difficulties)
 			{
 				if(!fileList.Contains(f.first))
 				{
 					Event evt;
+					evt.type = Event::Chart;
 					evt.action = Event::Removed;
 					evt.path = f.first;
 					evt.id = f.second.id;
 					AddChange(evt);
 				}
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Files");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Charts");
 		}
 
 		{
-			ProfilerScope $("Chart Database - Process New Files");
-			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Files");
+			ProfilerScope $("Chart Database - Process New Charts");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Charts");
 			// Process scanned files
 			for(auto f : fileList)
 			{
@@ -1431,9 +1823,10 @@ private:
 
 				uint64 mylwt = f.second.lastWriteTime;
 				Event evt;
+				evt.type = Event::Chart;
 				evt.lwt = mylwt;
 
-				SearchState::ExistingDifficulty* existing = m_searchState.difficulties.Find(f.first);
+				SearchState::ExistingFileEntry* existing = m_searchState.difficulties.Find(f.first);
 				if(existing)
 				{
 					evt.id = existing->id;
@@ -1503,8 +1896,10 @@ private:
 						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted chart [%s]", f.first));
 						if(evt.mapData)
 							delete evt.mapData;
+						evt.mapData = nullptr;
 						continue;
 					}
+					// XXX does remove actually use / free mapData
 					// Invalid maps get removed from the database
 					evt.action = Event::Removed;
 				}
@@ -1512,9 +1907,216 @@ private:
 				AddChange(evt);
 				continue;
 			}
-			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Files");
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Charts");
 		}
 		m_outer.OnSearchStatusUpdated.Call("");
+		
+		{
+			ProfilerScope $("Chart Database - Process Removed Challenges");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process Removed Challenges");
+			// Process scanned files
+			for(auto f : m_searchState.challenges)
+			{
+				if(!challengeFileList.Contains(f.first))
+				{
+					Event evt;
+					evt.type = Event::Challenge;
+					evt.action = Event::Removed;
+					evt.path = f.first;
+					evt.id = f.second.id;
+					AddChange(evt);
+				}
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process Removed Challenges");
+		}
+
+		if (legacyChallengeFileList.size() > 0)
+		{
+			bool addedNewJson = false;
+			ProfilerScope $("Chart Database - Converting Legacy Challenges");
+			for (auto f : legacyChallengeFileList)
+			{
+				if (m_paused.load())
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
+				if (!m_searching)
+					break;
+
+				String newName = f.first + ".chal";
+				// XXX if the kco was modified then after converting, it will not be updated
+				if (Path::FileExists(newName))
+				{
+					// If we already did a convert, check if the kco has been updated
+					uint64 mylwt = f.second.lastWriteTime;
+					FileInfo* conv = challengeFileList.Find(newName);
+					if (conv != nullptr && conv->lastWriteTime >= mylwt)
+					{
+						// No update
+						continue;
+					}
+				}
+				Logf("Converting legacy KShoot course %s", Logger::Severity::Info, f.first);
+
+				File legacyFile;
+				if (!legacyFile.OpenRead(f.first))
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Unable to open KShoot course [%s]", f.first));
+					continue;
+				}
+
+				FileReader legacyReader(legacyFile);
+				Map<String, String> courseSettings;
+				Vector<String> courseCharts;
+				if (!ParseKShootCourse(legacyReader, courseSettings, courseCharts)
+					|| !courseSettings.Contains("title")
+					|| courseCharts.size() == 0)
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted KShoot course [%s]", f.first));
+					continue;
+				}
+
+				nlohmann::json newJson = "{\"charts\":[], \"level\":0, \"global\":{\"clear\":true}}"_json;
+				newJson["title"] = courseSettings["title"];
+				for (const String& chart : courseCharts)
+					newJson["charts"].push_back(chart);
+
+				File newJsonFile;
+				if (!newJsonFile.OpenWrite(newName))
+				{
+					m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Unable to open KShoot course json file [%s]", newName));
+					continue;
+				}
+				String jsonData = newJson.dump(4);
+				newJsonFile.Write(*jsonData, jsonData.length());
+				addedNewJson = true;
+			}
+
+			// If we added a json file we have to rescan for chals, this only happens when converting legacy courses
+			if (addedNewJson)
+			{
+				for (String rootSearchPath : m_searchPaths)
+				{
+					challengeFileList.clear();
+					Vector<FileInfo> files = Files::ScanFilesRecursive(rootSearchPath, "chal", &m_interruptSearch);
+					if (m_interruptSearch)
+						return;
+					for (FileInfo& fi : files)
+					{
+						challengeFileList.Add(fi.fullPath, fi);
+					}
+				}
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Converting Legacy Challenges");
+		}
+
+		if (challengeFileList.size() > 0)
+		{
+			ProfilerScope $("Chart Database - Process New Challenges");
+			m_outer.OnSearchStatusUpdated.Call("[START] Chart Database - Process New Challenges");
+			// Process scanned files
+			for (auto f : challengeFileList)
+			{
+				if (m_paused.load())
+				{
+					unique_lock<mutex> lock(m_pauseMutex);
+					m_cvPause.wait(lock);
+				}
+
+				if (!m_searching)
+					break;
+
+				uint64 mylwt = f.second.lastWriteTime;
+				Event evt;
+				evt.type = Event::Challenge;
+				evt.lwt = mylwt;
+
+				SearchState::ExistingFileEntry* existing = m_searchState.challenges.Find(f.first);
+				if (existing)
+				{
+					evt.id = existing->id;
+					if (existing->lwt != mylwt)
+					{
+						// Challenge Updated
+						evt.action = Event::Updated;
+					}
+					else
+					{
+						// Skip, not changed
+						continue;
+					}
+				}
+				else
+				{
+					// Challenge added
+					evt.action = Event::Added;
+				}
+
+				if (existing)
+					Logf("Discovered Updated Challenge [%s]", Logger::Severity::Info, f.first);
+				else
+					Logf("Discovered Challenge [%s]", Logger::Severity::Info, f.first);
+				m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Discovered Challenge [%s]", f.first));
+
+				bool chalValid = true;
+				// TODO support old style courses
+				nlohmann::json settings;
+
+				File chalFile;
+				if (!chalFile.OpenRead(f.first))
+					chalValid = false;
+
+				if (chalValid)
+				{
+					// TODO support old style courses
+					Buffer jsonBuf;
+					jsonBuf.resize(chalFile.GetSize());
+					chalFile.Read(jsonBuf.data(), jsonBuf.size());
+					settings = ChallengeIndex::LoadJson(jsonBuf, f.first);
+					chalValid = ChallengeIndex::BasicValidate(settings, f.first);
+
+					if (chalValid)
+					{
+						sha1::SHA1 s;
+
+						s.processBytes(jsonBuf.data(), jsonBuf.size());
+
+						uint32_t digest[5];
+						s.getDigest(digest);
+
+						evt.hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+
+					}
+				}
+
+				if (!chalValid)
+				{
+					// Reset json entry
+					evt.json = nlohmann::json();
+
+					if(!existing) // Never added
+					{
+						Logf("Skipping corrupted challenge [%s]", Logger::Severity::Warning, f.first);
+						m_outer.OnSearchStatusUpdated.Call(Utility::Sprintf("Skipping corrupted challenge [%s]", f.first));
+						continue;
+					}
+					// Invalid chals get removed from the database
+					evt.action = Event::Removed;
+				}
+				else
+				{
+					evt.json = settings;
+				}
+				evt.path = f.first;
+				AddChange(evt);
+				continue;
+			}
+			m_outer.OnSearchStatusUpdated.Call("[END] Chart Database - Process New Challenges");
+		}
+		m_outer.OnSearchStatusUpdated.Call("");
+
 		m_searching = false;
 	}
 
@@ -1568,6 +2170,10 @@ void MapDatabase::StopSearching()
 Map<int32, FolderIndex*> MapDatabase::FindFoldersByPath(const String& search)
 {
 	return m_impl->FindFoldersByPath(search);
+}
+Map<int32, ChallengeIndex*> MapDatabase::FindChallenges(const String& search)
+{
+	return m_impl->FindChallenges(search);
 }
 Map<int32, FolderIndex*> MapDatabase::FindFolders(const String& search)
 {
@@ -1626,6 +2232,10 @@ void MapDatabase::UpdatePracticeSetup(PracticeSetupIndex* practiceSetup)
 {
 	m_impl->UpdateOrAddPracticeSetup(practiceSetup);
 }
+void MapDatabase::UpdateChallengeResult(ChallengeIndex* chal, uint32 clearMark, uint32 bestScore)
+{
+	m_impl->UpdateChallengeResult(chal, clearMark, bestScore);
+}
 ChartIndex* MapDatabase::GetRandomChart()
 {
 	return m_impl->GetRandomChart();
@@ -1634,4 +2244,16 @@ void MapDatabase::SetChartUpdateBehavior(bool transferScores) {
 	m_transferScores = transferScores;
 	if (m_impl != NULL)
 		m_impl->SetChartUpdateBehavior(transferScores);
+}
+ChartIndex* MapDatabase::FindFirstChartByPath(const String& s)
+{
+	return m_impl->FindFirstChartByPath(s);
+}
+ChartIndex* MapDatabase::FindFirstChartByHash(const String& s)
+{
+	return m_impl->FindFirstChartByHash(s);
+}
+ChartIndex* MapDatabase::FindFirstChartByNameAndLevel(const String& s, int32 level)
+{
+	return m_impl->FindFirstChartByNameAndLevel(s, level);
 }

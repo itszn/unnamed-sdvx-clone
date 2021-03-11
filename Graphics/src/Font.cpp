@@ -272,7 +272,7 @@ namespace Graphics
 			{
 				const CharInfo& info = size->GetCharInfo(c);
 
-				if(info.coords.size.x != 0 && info.coords.size.y != 0)
+				if(c != L'\n' && c != L'\t' && info.coords.size.x != 0 && info.coords.size.y != 0)
 				{
 					Vector2 corners[4];
 					corners[0] = Vector2(0, 0);
@@ -358,7 +358,7 @@ namespace Graphics
 	bool FontRes::InitLibrary()
 	{
 		ProfilerScope $("Font library initialization");
-		if(!FT_Init_FreeType(&library) == FT_Err_Ok)
+		if(FT_Init_FreeType(&library) != FT_Err_Ok)
 			return false;
 
 		if(!LoadFallbackFont())

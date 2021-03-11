@@ -14,7 +14,8 @@ void GameplaySettingsDialog::InitTabs()
     offsetTab->name = "Offsets";
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::GlobalOffset, "Global Offset", {-200, 200}));
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::InputOffset, "Input Offset", {-200, 200}));
-    offsetTab->settings.push_back(m_CreateSongOffsetSetting());
+    if (songSelectScreen != nullptr)
+		offsetTab->settings.push_back(m_CreateSongOffsetSetting());
 
     Tab speedTab = std::make_unique<TabData>();
     speedTab->name = "HiSpeed";
@@ -29,8 +30,11 @@ void GameplaySettingsDialog::InitTabs()
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::MirrorChart, "Mirror"));
     gameTab->settings.push_back(CreateBoolSetting(GameConfigKeys::DisableBackgrounds, "Hide Backgrounds"));
     gameTab->settings.push_back(CreateEnumSetting<Enum_ScoreDisplayModes>(GameConfigKeys::ScoreDisplayMode, "Score Display"));
-    gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
-    gameTab->settings.push_back(CreateButton("Practice", [this](const auto&) { onPressPractice.Call(); }));
+    if (songSelectScreen != nullptr)
+    {
+        gameTab->settings.push_back(CreateButton("Autoplay", [this](const auto&) { onPressAutoplay.Call(); }));
+        gameTab->settings.push_back(CreateButton("Practice", [this](const auto&) { onPressPractice.Call(); }));
+    }
 
     Tab hidsudTab = std::make_unique<TabData>();
     hidsudTab->name = "Hid/Sud";
@@ -46,8 +50,8 @@ void GameplaySettingsDialog::InitTabs()
     judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowPerfect, "Crit Window", {0, HitWindow::NORMAL.perfect}));
     judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowGood, "Near Window", { 0, HitWindow::NORMAL.good }));
     judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowHold, "Hold Window", { 0, HitWindow::NORMAL.hold }));
-    judgeWindowTab->settings.push_back(CreateButton("Set to NORMAL", [this](const auto&) { HitWindow::NORMAL.SaveConfig(); }));
-    judgeWindowTab->settings.push_back(CreateButton("Set to HARD", [this](const auto&) { HitWindow::HARD.SaveConfig(); }));
+    judgeWindowTab->settings.push_back(CreateButton("Set to NORMAL", [](const auto&) { HitWindow::NORMAL.SaveConfig(); }));
+    judgeWindowTab->settings.push_back(CreateButton("Set to HARD", [](const auto&) { HitWindow::HARD.SaveConfig(); }));
 
     AddTab(std::move(offsetTab));
     AddTab(std::move(speedTab));

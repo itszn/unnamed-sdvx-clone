@@ -8,6 +8,7 @@
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
 #include "HealthGauge.hpp"
+#include "ChallengeSelect.hpp"
 #include "lua.hpp"
 #include "Shared/Time.hpp"
 #include "json.hpp"
@@ -57,6 +58,8 @@ private:
 	int m_selfDisplayIndex = 0;
 	Vector<nlohmann::json> const* m_stats;
 	int m_numPlayersSeen = 0;
+
+	ChallengeManager* m_challengeManager;
 
 	String m_mission = "";
 	int m_retryCount = 0;
@@ -245,8 +248,9 @@ public:
 	}
 
 	ScoreScreen_Impl(class Game* game, MultiplayerScreen* multiplayer,
-		String uid, Vector<nlohmann::json> const* multistats)
+		String uid, Vector<nlohmann::json> const* multistats, ChallengeManager* manager)
 	{
+		m_challengeManager = manager;
 		m_displayIndex = 0;
 		m_selfDisplayIndex = 0;
 		Scoring& scoring = game->GetScoring();
@@ -407,6 +411,31 @@ public:
 		m_jacketPath = Path::Normalize(game->GetChartRootPath() + Path::sep + m_beatmapSettings.jacketPath);
 		m_jacketImage = game->GetJacketImage();
 
+
+		if (m_challengeManager != nullptr)
+		{
+			// Save some score screen info for challenge results later
+			ChallengeResult& res = m_challengeManager->GetCurrentResultForUpdating();
+			res.scorescreenInfo.difficulty = m_beatmapSettings.difficulty;
+			res.scorescreenInfo.beatmapDuration = m_beatmapDuration;
+			res.scorescreenInfo.medianHitDelta = m_medianHitDelta[0];
+			res.scorescreenInfo.meanHitDelta = m_meanHitDelta[0];
+			res.scorescreenInfo.medianHitDeltaAbs = m_medianHitDelta[1];
+			res.scorescreenInfo.meanHitDeltaAbs = m_meanHitDelta[1];
+			res.scorescreenInfo.earlies = m_timedHits[0];
+			res.scorescreenInfo.lates = m_timedHits[1];
+			res.scorescreenInfo.hitWindow = m_hitWindow;
+			res.scorescreenInfo.showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
+			res.scorescreenInfo.suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
+			res.scorescreenInfo.hiddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::HiddenCutoff);
+			res.scorescreenInfo.suddenFade = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
+			res.scorescreenInfo.hiddenFade =  g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
+			res.scorescreenInfo.simpleNoteHitStats = m_simpleNoteHitStats;
+			SpeedMods speedMod = g_gameConfig.GetEnum<Enum_SpeedMods>(GameConfigKeys::SpeedMod);
+			res.scorescreenInfo.speedMod = static_cast<int>(speedMod);
+			res.scorescreenInfo.speedModValue = g_gameConfig.GetFloat(speedMod == SpeedMods::XMod ? GameConfigKeys::HiSpeed : GameConfigKeys::ModSpeed);
+			memcpy(res.scorescreenInfo.gaugeSamples, m_gaugeSamples, sizeof(res.scorescreenInfo.gaugeSamples));
+		}
 	}
 	~ScoreScreen_Impl()
 	{
@@ -737,11 +766,11 @@ public:
 
 	}
 
-	virtual void OnSuspend()
+	void OnSuspend() override
 	{
 		m_restored = false;
 	}
-	virtual void OnRestore()
+	void OnRestore() override
 	{
 		g_application->DiscordPresenceMenu("Result Screen");
 		m_restored = true;
@@ -816,12 +845,18 @@ public:
 
 ScoreScreen* ScoreScreen::Create(class Game* game)
 {
-	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, NULL, String(""), nullptr);
+	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, nullptr, "", nullptr, nullptr);
+	return impl;
+}
+
+ScoreScreen* ScoreScreen::Create(class Game* game, ChallengeManager* manager)
+{
+	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, nullptr, "", nullptr, manager);
 	return impl;
 }
 
 ScoreScreen* ScoreScreen::Create(class Game* game, String uid, Vector<nlohmann::json> const* stats, MultiplayerScreen* multi)
 {
-	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, multi, uid, stats);
+	ScoreScreen_Impl* impl = new ScoreScreen_Impl(game, multi, uid, stats, nullptr);
 	return impl;
 }

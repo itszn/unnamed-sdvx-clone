@@ -221,9 +221,11 @@ void Application::SetUpdateAvailable(const String &version, const String &url, c
 	m_hasUpdate = true;
 }
 
+
 void Application::RunUpdater()
 {
 #ifdef _WIN32
+
 	//HANDLE handle = GetCurrentProcess();
 	//HANDLE handledup;
 
@@ -236,6 +238,7 @@ void Application::RunUpdater()
 	//	0);
 
 	/// TODO: use process handle instead of pid to wait
+	
 	String arguments = Utility::Sprintf("%lld %s", GetCurrentProcessId(), *m_updateDownload);
 	Path::Run(Path::Absolute("updater.exe"), *arguments);
 	Shutdown();
@@ -468,6 +471,7 @@ void Application::m_unpackSkins()
 
 bool Application::m_LoadConfig()
 {
+
 	File configFile;
 	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
 	{
@@ -475,6 +479,11 @@ bool Application::m_LoadConfig()
 		if (g_gameConfig.Load(reader))
 			return true;
 	}
+    else
+    {
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+    }
 
 	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
 	return false;
@@ -528,9 +537,23 @@ void __discordDisconnected(int errcode, const char *msg)
 
 void __updateChecker()
 {
+	// Handle default config or old config
+	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	{
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "release");
+		g_gameConfig.Set(GameConfigKeys::OnlyRelease, false);
+	}
+
+	String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
+
+    // For some reason the github actions have the branch as HEAD?
+    if (channel == "HEAD")
+    {
+		g_gameConfig.Set(GameConfigKeys::UpdateChannel, "master");
+    }
 
 	ProfilerScope $1("Check for updates");
-	if (g_gameConfig.GetBool(GameConfigKeys::OnlyRelease))
+	if (channel == "release")
 	{
 		auto r = cpr::Get(cpr::Url{"https://api.github.com/repos/drewol/unnamed-sdvx-clone/releases/latest"});
 
@@ -591,6 +614,7 @@ void __updateChecker()
 		auto commits = nlohmann::json::parse(response.text);
 		String current_hash;
 		String(GIT_COMMIT).Split("_", nullptr, &current_hash);
+		String current_branch = channel;
 
 		if (commits.contains("message"))
 		{
@@ -617,7 +641,7 @@ void __updateChecker()
 			}
 			commit.at("conclusion").get_to(conclusion);
 
-			if (branch == "master" && status == "completed" && conclusion == "success")
+			if (branch == current_branch && status == "completed" && conclusion == "success")
 			{
 				String new_hash;
 				commit.at("head_sha").get_to(new_hash);
@@ -638,12 +662,26 @@ void __updateChecker()
 						auto commit_status = nlohmann::json::parse(response.text);
 						commit_status.at("html_url").get_to(updateUrl);
 					}
-					g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					if (current_branch == "master")
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "http://drewol.me/Downloads/Game.zip");
+					else
+						g_application->SetUpdateAvailable(new_hash.substr(0, 7), updateUrl, "https://builds.drewol.me/" + current_branch + "/Game");
 					return;
 				}
 			}
 		}
 #endif
+	}
+}
+
+void Application::CheckForUpdate()
+{
+	m_hasUpdate = false;
+	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+	{
+		if (m_updateThread.joinable())
+			m_updateThread.join();
+		m_updateThread = Thread(__updateChecker);
 	}
 }
 
@@ -695,10 +733,9 @@ bool Application::m_Init()
 		NULL,
 		google_breakpad::ExceptionHandler::HANDLER_ALL,
 		MiniDumpNormal,
-		(const wchar_t*)nullptr,
-		&custom_info
-	);
-#endif 
+		(const wchar_t *)nullptr,
+		&custom_info);
+#endif
 #endif
 
 	// Must have command line
@@ -726,8 +763,8 @@ bool Application::m_Init()
 	}
 
 	// Load config
-	if (!m_LoadConfig()) Log("Failed to load config file", Logger::Severity::Warning);
-	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
+	if (!m_LoadConfig())
+		Log("Failed to load config file", Logger::Severity::Warning);
 
 	// Job sheduler
 	g_jobSheduler = new JobSheduler();
@@ -785,7 +822,8 @@ bool Application::m_Init()
 	g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
 
 	int samplecount = g_gameConfig.GetInt(GameConfigKeys::AntiAliasing);
-	if (samplecount > 0) samplecount = 1 << samplecount;
+	if (samplecount > 0)
+		samplecount = 1 << samplecount;
 
 	g_gameWindow = new Graphics::Window(g_resolution, samplecount);
 
@@ -900,10 +938,8 @@ bool Application::m_Init()
 		nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 	}
 
-	if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
-	{
-		m_updateThread = Thread(__updateChecker);
-	}
+	CheckForUpdate();
+
 
 	m_InitDiscord();
 
@@ -935,15 +971,18 @@ bool Application::m_Init()
 	Path::CreateDir(Path::Absolute("songs"));
 	Path::CreateDir(Path::Absolute("replays"));
 	Path::CreateDir(Path::Absolute("crash_dumps"));
-
+	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	return true;
 }
 void Application::m_MainLoop()
 {
 	Timer appTimer;
-	m_lastRenderTime = 0.0f;
+	m_deltaTime = 0.5f;
+	Timer frameTimer;
 	while (true)
 	{
+		m_appTime = appTimer.SecondsAsFloat();
+		frameTimer.Restart();
 		//run discord callbacks
 		Discord_RunCallbacks();
 
@@ -1064,7 +1103,7 @@ void Application::m_MainLoop()
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
-		float targetRenderTime = 0.0f;
+		uint32 targetRenderTime = 0;
 #ifndef PLAYBACK
 		for (auto tickable : g_tickables)
 		{
@@ -1091,45 +1130,54 @@ void Application::m_MainLoop()
 		}
 #endif
 		if (targetFPS > 0)
-			targetRenderTime = 1.0f / (float)targetFPS;
+			targetRenderTime = 1000000 / targetFPS;
 
 		// Main loop
 		float currentTime = appTimer.SecondsAsFloat();
-		float timeSinceRender = currentTime - m_lastRenderTime;
-		if (timeSinceRender > targetRenderTime)
-		{
-			// Calculate actual deltatime for timing calculations
-			currentTime = appTimer.SecondsAsFloat();
-			float actualDeltaTime = currentTime - m_lastRenderTime;
-			g_avgRenderDelta = g_avgRenderDelta * 0.98f + actualDeltaTime * 0.02f; // Calculate avg
 
-			m_deltaTime = actualDeltaTime;
-			m_lastRenderTime = currentTime;
+		g_avgRenderDelta = g_avgRenderDelta * 0.98f + m_deltaTime * 0.02f; // Calculate avg
 
-			// Set time in render state
-			m_renderStateBase.time = currentTime;
+		// Set time in render state
+		m_renderStateBase.time = currentTime;
 
-			// Also update window in render loop
-			if (!g_gameWindow->Update())
-				return;
+		// Also update window in render loop
+		if (!g_gameWindow->Update())
+			return;
 
-			m_Tick();
-			timeSinceRender = 0.0f;
+		m_Tick();
 
-			// Garbage collect resources
-			ResourceManagers::TickAll();
-		}
+		// Garbage collect resources
+		ResourceManagers::TickAll();
 
 		// Tick job sheduler
 		// processed callbacks for finished tasks
 		g_jobSheduler->Update();
 
-		if (timeSinceRender < targetRenderTime)
+		//This FPS limiter seems unstable over 500fps
+		uint32 frameTime = frameTimer.Microseconds();
+		if (frameTime < targetRenderTime)
 		{
-			float timeLeft = (targetRenderTime - timeSinceRender);
-			uint32 sleepMicroSecs = (uint32)(timeLeft * 1000000.0f * 0.75f);
-			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+			uint32 timeLeft = (targetRenderTime - frameTime);
+			uint32 sleepMicroSecs = (uint32)(timeLeft * m_fpsTargetSleepMult * 0.75);
+			if (sleepMicroSecs > 1000)
+			{
+				uint32 sleepStart = frameTimer.Microseconds();
+				std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroSecs));
+				float actualSleep = frameTimer.Microseconds() - sleepStart;
+
+				m_fpsTargetSleepMult += ((float)timeLeft - (float)actualSleep / 0.75) / 500000.f;
+				m_fpsTargetSleepMult = Math::Clamp(m_fpsTargetSleepMult, 0.0f, 1.0f);
+			}
+
+			do
+			{
+				std::this_thread::yield();
+			} while (frameTimer.Microseconds() < targetRenderTime);
 		}
+		// Swap buffers
+		g_gl->SwapBuffers();
+
+		m_deltaTime = frameTimer.SecondsAsFloat();
 	}
 }
 
@@ -1190,6 +1238,11 @@ void Application::m_Tick()
 			nvgFillColor(g_guiState.vg, nvgRGB(0, 200, 255));
 			String fpsText = Utility::Sprintf("%.1fFPS", GetRenderFPS());
 			nvgText(g_guiState.vg, g_resolution.x - 5, g_resolution.y - 5, fpsText.c_str(), 0);
+			// Visualize m_fpsTargetSleepMult for debugging
+			//nvgBeginPath(g_guiState.vg);
+			//float h = m_fpsTargetSleepMult * g_resolution.y;
+			//nvgRect(g_guiState.vg, g_resolution.x - 10, g_resolution.y - h, 10, h);
+			//nvgFill(g_guiState.vg);
 		}
 #else
 		auto realRes = g_resolution;
@@ -1256,8 +1309,6 @@ void Application::m_Tick()
 
 		g_gl->SetViewport(g_resolution);
 		glCullFace(GL_FRONT);
-		// Swap buffers
-		g_gl->SwapBuffers();
 	}
 
 	if (m_needSkinReload)
@@ -1344,12 +1395,11 @@ void Application::m_Cleanup()
 	}
 
 	//clear fonts before freeing library
-	for (auto& f : g_guiState.fontCahce)
+	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
 	}
 	g_guiState.currentFont.reset();
-
 
 	Discord_Shutdown();
 
@@ -1385,7 +1435,6 @@ void Application::AddTickable(class IApplicationTickable *tickable, class IAppli
 {
 	assert(tickable->GetWindowIndex() < g_numWindows);
 	Log("Adding tickable", Logger::Severity::Debug);
-
 
 	TickableChange &change = g_tickableChanges.Add();
 	change.mode = TickableChange::Added;
@@ -1567,6 +1616,8 @@ void Application::SetScriptPath(lua_State *s)
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
+std::set<String> g_luaErrorsSeen;
+
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
 	lua_State *s = luaL_newstate();
@@ -1577,6 +1628,21 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
+
+	// If we can't find this file, copy it from the default skin
+	if (!Path::FileExists(path))
+	{
+		String defaultPath = Path::Absolute("skins/Default/scripts/" + name + ".lua");
+		if (Path::FileExists(defaultPath))
+		{
+			bool copyDefault = g_gameWindow->ShowYesNoMessage("Missing " + name + ".lua", "No " + name + ".lua file could be found, suggested solution:\n"
+																										 "Would you like to copy \"scripts/" +
+																							  name + ".lua\" from the default skin to your current skin?");
+			if (copyDefault)
+				Path::Copy(defaultPath, path);
+		}
+	}
+
 	SetLuaBindings(s);
 	if (luaL_dofile(s, commonPath.c_str()) || luaL_dofile(s, path.c_str()))
 	{
@@ -1586,7 +1652,20 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
+	else
+		g_luaErrorsSeen.clear();
 	return s;
+}
+
+// TODO add option for this
+void Application::ShowLuaError(const String &error)
+{
+	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
+		return;
+	g_luaErrorsSeen.insert(error);
+
+	Logf("Lua error: %s", Logger::Severity::Error, *error);
+	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
 }
 
 void Application::ReloadScript(const String &name, lua_State *L)
@@ -1605,6 +1684,8 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		lua_close(L);
 		assert(false);
 	}
+	else
+		g_luaErrorsSeen.clear();
 }
 
 void Application::ReloadSkin()
@@ -1621,7 +1702,7 @@ void Application::ReloadSkin()
 	}
 #else
 	//remove all tickables
-	for (auto* t : g_tickables)
+	for (auto *t : g_tickables)
 	{
 		t->m_Suspend();
 		delete t;
@@ -1657,31 +1738,30 @@ void Application::ReloadSkin()
 	}
 #endif
 
-//#ifdef EMBEDDED
-//	nvgDeleteGLES2(g_guiState.vg);
-//#else
-//	nvgDeleteGL3(g_guiState.vg);
-//#endif
-//
-//#ifdef EMBEDDED
-//#ifdef _DEBUG
-//	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
-//#else
-//	g_guiState.vg = nvgCreateGLES2(0);
-//#endif
-//#else
-//#ifdef _DEBUG
-//	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
-//#else
-//	g_guiState.vg = nvgCreateGL3(0);
-//#endif
-//#endif
+	//#ifdef EMBEDDED
+	//	nvgDeleteGLES2(g_guiState.vg);
+	//#else
+	//	nvgDeleteGL3(g_guiState.vg);
+	//#endif
+	//
+	//#ifdef EMBEDDED
+	//#ifdef _DEBUG
+	//	g_guiState.vg = nvgCreateGLES2(NVG_DEBUG);
+	//#else
+	//	g_guiState.vg = nvgCreateGLES2(0);
+	//#endif
+	//#else
+	//#ifdef _DEBUG
+	//	g_guiState.vg = nvgCreateGL3(NVG_DEBUG);
+	//#else
+	//	g_guiState.vg = nvgCreateGL3(0);
+	//#endif
+	//#endif
 
 	//nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 
-
 	//push new titlescreen
-	TitleScreen* t = TitleScreen::Create();
+	TitleScreen *t = TitleScreen::Create();
 	AddTickable(t);
 }
 void Application::DisposeLua(lua_State *state)
@@ -2056,7 +2136,7 @@ void Application::m_OnFocusChanged(bool focused)
 	}
 }
 
-int Application::FastText(String inputText, float x, float y, int size, int align, const Color& color /* = Color::White */)
+int Application::FastText(String inputText, float x, float y, int size, int align, const Color &color /* = Color::White */)
 {
 	WString text = Utility::ConvertToWString(inputText);
 	String fontpath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));

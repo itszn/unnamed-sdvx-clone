@@ -17,6 +17,7 @@
 #include "AudioPlayback.hpp"
 #include "Input.hpp"
 #include "SongSelect.hpp"
+#include "ChallengeSelect.hpp"
 #include "ScoreScreen.hpp"
 #include "TransitionScreen.hpp"
 #include "AsyncAssetLoader.hpp"
@@ -76,6 +77,7 @@ private:
 	bool m_renderDebugHUD = false;
 
 	MultiplayerScreen* m_multiplayer = nullptr;
+	ChallengeManager* m_challengeManager = nullptr;
 
 	// Making this into a separate class would be better, but it will (obviously) take a lot of work.
 	// If you who are reading this comment have a lot of free time, feel free to refactor Game_Impl. :)
@@ -184,6 +186,7 @@ private:
 	MapTime m_exitTriggerTime = 0;
 	bool m_exitTriggerTimeSet = false;
 
+	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 public:
 	Game_Impl(const String& mapPath, PlayOptions&& options) : m_playOptions(std::move(options))
@@ -259,6 +262,11 @@ public:
 	{
 		ProfilerScope $("AsyncLoad Game");
 
+		// If CMod is not allowed, switch to MMod
+		if (IsChallenge() && m_speedMod == SpeedMods::CMod
+				&& !m_challengeManager->GetCurrentOptions().allow_cmod.Get(true))
+			m_speedMod = SpeedMods::MMod;
+
 		if(!Path::FileExists(m_chartPath))
 		{
 			Logf("Couldn't find chart at %s", Logger::Severity::Error, m_chartPath);
@@ -281,7 +289,33 @@ public:
 		}
 				
 		m_endTime = m_beatmap->GetLastObjectTime();
-		m_gaugeSampleRate = m_endTime / 256;
+		m_gaugeSampleRate = Math::Max(1, m_endTime / 256);
+
+		if (IsMultiplayerGame())
+			m_hitWindow = HitWindow::NORMAL;
+		else if (IsChallenge())
+		{
+			m_hitWindow = HitWindow(
+				m_challengeManager->GetCurrentOptions().crit_judge.Get(
+					g_gameConfig.GetInt(GameConfigKeys::HitWindowPerfect)
+				),
+				m_challengeManager->GetCurrentOptions().near_judge.Get(
+					g_gameConfig.GetInt(GameConfigKeys::HitWindowGood)
+				),
+				m_challengeManager->GetCurrentOptions().hold_judge.Get(
+					g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
+				)
+			);
+		}
+		else
+			m_hitWindow = HitWindow::FromConfig();
+
+		// Double check that the window has not been widened by accident
+		if (!(m_hitWindow <= HitWindow::NORMAL))
+		{
+			Log("HitWindow is automatically adjusted to NORMAL", Logger::Severity::Warning);
+			m_hitWindow = HitWindow::NORMAL;
+		}
 
 		const BeatmapSettings& mapSettings = m_beatmap->GetMapSettings();
 
@@ -321,10 +355,17 @@ public:
 			}
 
 			m_hispeed = m_modSpeed / useBPM; 
+			CheckChallengeHispeed(useBPM);
 		}
 		else if (m_speedMod == SpeedMods::CMod)
 		{
-			m_hispeed = m_modSpeed / m_beatmap->GetLinearTimingPoints().front()->GetBPM();
+			double bpm = m_beatmap->GetLinearTimingPoints().front()->GetBPM();
+			m_hispeed = m_modSpeed / bpm;
+			CheckChallengeHispeed(bpm);
+		}
+		else if (m_speedMod == SpeedMods::XMod)
+		{
+			CheckChallengeHispeed(m_beatmap->GetLinearTimingPoints().front()->GetBPM());
 		}
 
 
@@ -415,6 +456,17 @@ public:
 		else {
 			m_track->suddenCutoff = 1.0f;
 			m_track->hiddenCutoff = 0.0f;
+		}
+		if (IsChallenge())
+		{
+			float hiddenMin = m_challengeManager->GetCurrentOptions().hidden_min.Get(0.0);
+			if (m_track->hiddenCutoff < hiddenMin)
+				m_track->hiddenCutoff = hiddenMin;
+
+			// Sudden is reversed since it starts at 1.0
+			float suddenMin = 1.0 - m_challengeManager->GetCurrentOptions().sudden_min.Get(0.0);
+			if (m_track->suddenCutoff > suddenMin)
+				m_track->suddenCutoff = suddenMin;
 		}
 		m_track->suddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::SuddenFade);
 		m_track->hiddenFadewindow = g_gameConfig.GetFloat(GameConfigKeys::HiddenFade);
@@ -565,6 +617,24 @@ public:
 		}
 
 		return true;
+	}
+
+	void CheckChallengeHispeed(double bpm)
+	{
+		if (!IsChallenge())
+			return;
+		// Get the current modspeed for the hispeed
+		m_modSpeed = m_hispeed * bpm;
+		// TODO should we optimize these accesses?
+		uint32 min = m_challengeManager->GetCurrentOptions().min_modspeed.Get(0);
+		uint32 max = m_challengeManager->GetCurrentOptions().max_modspeed.Get(INT_MAX);
+		if (m_modSpeed < min)
+			m_modSpeed = min;
+		else if (m_modSpeed > max)
+			m_modSpeed = max;
+		else
+			return; // No change needed
+		m_hispeed = m_modSpeed / bpm;
 	}
 
 	bool Init() override
@@ -727,7 +797,13 @@ public:
 						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
 					}
 					m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
+					// Have to check in here so we can update m_playback
+					CheckChallengeHispeed(m_currentTiming->GetBPM());
 					m_playback.cModSpeed = m_modSpeed;
+				}
+				else
+				{
+					CheckChallengeHispeed(m_currentTiming->GetBPM());
 				}
 			}
 		}
@@ -1194,7 +1270,12 @@ public:
 		{
 			m_playback.OnTimingPointChanged.Add(this, &Game_Impl::OnTimingPointChanged);
 		}
+		else if (IsChallenge())
+		{
+			m_playback.OnTimingPointChanged.Add(this, &Game_Impl::OnTimingPointChangedChallenge);
+		}
 		m_playback.cMod = m_speedMod == SpeedMods::CMod;
+		CheckChallengeHispeed(m_playback.GetCurrentTimingPoint().GetBPM());
 		m_playback.cModSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 
 		// Register input bindings
@@ -1374,8 +1455,9 @@ public:
 		g_transition->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 #endif
 
-		if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore) && m_multiplayer == nullptr) ||
-			(m_manualExit && m_demo))
+		if ((m_manualExit && g_gameConfig.GetBool(GameConfigKeys::SkipScore)
+			&& m_multiplayer == nullptr && m_challengeManager == nullptr)
+			|| (m_manualExit && m_demo))
 		{
 			g_application->RemoveTickable(this);
 		}
@@ -1417,6 +1499,11 @@ public:
 					m_multiplayer->GetFinalStats(), m_multiplayer));
 				trans->OnLoadingComplete.Add(this, &Game_Impl::OnScoreScreenLoaded);
 #endif
+			}
+			else if (m_challengeManager != nullptr)
+			{
+				g_transition->TransitionTo(ScoreScreen::Create(
+					this, m_challengeManager));
 			}
 			else
 			{
@@ -1582,6 +1669,9 @@ public:
 		// Send the final scores to the server
 		if (m_multiplayer)
 			m_multiplayer->SendFinalScore(this, m_getClearState());
+
+		if (m_challengeManager)
+			m_challengeManager->ReportScore(this, m_getClearState());
 
 		m_scoring.FinishGame();
 		m_ended = true;
@@ -2024,6 +2114,10 @@ public:
 	{
 	   m_hispeed = m_modSpeed / tp->GetBPM(); 
 	}
+	void OnTimingPointChangedChallenge(TimingPoint* tp)
+	{
+		CheckChallengeHispeed(tp->GetBPM());
+	}
 
 	void OnLaneToggleChanged(LaneHideTogglePoint* tp)
 	{
@@ -2141,7 +2235,7 @@ public:
 			m_manualExit = true;
 			FinishGame();
 		}
-		else if(code == SDL_SCANCODE_PAUSE && m_multiplayer == nullptr)
+		else if(code == SDL_SCANCODE_PAUSE && !IsMultiplayerGame() && !IsChallenge())
 		{
 			m_audioPlayback.TogglePause();
 			m_paused = m_audioPlayback.IsPaused();
@@ -2151,11 +2245,11 @@ public:
 			if(!SkipIntro() && !m_isPracticeSetup)
 				SkipOutro();
 		}
-		else if(code == SDL_SCANCODE_PAGEUP && m_multiplayer == nullptr)
+		else if(code == SDL_SCANCODE_PAGEUP && !IsMultiplayerGame() && !IsChallenge())
 		{
 			m_audioPlayback.Advance(5000);
 		}
-		else if(code == SDL_SCANCODE_F5 && m_multiplayer == nullptr && !m_isPracticeSetup)
+		else if(code == SDL_SCANCODE_F5 && !IsMultiplayerGame() && !IsChallenge() && !m_isPracticeSetup)
 		{
 			AbortMethod abortMethod = g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod);
 			if (abortMethod == AbortMethod::Press)
@@ -2301,10 +2395,10 @@ public:
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
 		scoreData.gameflags = (uint32) GetFlags();
-scoreData.gauge = m_scoring.currentGauge;
-scoreData.score = m_scoring.CalculateCurrentScore();
+		scoreData.gauge = m_scoring.currentGauge;
+		scoreData.score = m_scoring.CalculateCurrentScore();
 
-return Scoring::CalculateBadge(scoreData);
+		return Scoring::CalculateBadge(scoreData);
 	}
 
 	void m_setLuaHolds(lua_State* L)
@@ -2375,6 +2469,11 @@ return Scoring::CalculateBadge(scoreData);
 	{
 		assert(!m_isPracticeSetup);
 		m_multiplayer = multiplayer;
+	}
+
+	void MakeChallenge(ChallengeManager* manager)
+	{
+		m_challengeManager = manager;
 	}
 
 	// Called only for initialization of practice setup
@@ -2598,7 +2697,7 @@ return Scoring::CalculateBadge(scoreData);
 	
 	inline HitWindow GetHitWindow() const
 	{
-		return IsMultiplayerGame() ? HitWindow::NORMAL : HitWindow::FromConfig();
+		return m_hitWindow;
 	}
 
 	virtual bool IsPlaying() const override
@@ -2652,6 +2751,10 @@ return Scoring::CalculateBadge(scoreData);
 	{
 		return m_lua;
 	}
+	virtual void SetGauge(float g) override
+	{
+		m_scoring.currentGauge = g;
+	}
 	virtual bool IsStorableScore() override
 	{
 		if (m_scoring.autoplay) return false;
@@ -2668,49 +2771,53 @@ return Scoring::CalculateBadge(scoreData);
 
 		return true;
 	}
-	virtual float GetPlaybackSpeed() override
+	float GetPlaybackSpeed() override
 	{
 		return m_audioPlayback.GetPlaybackSpeed();
 	}
-	virtual const PlayOptions& GetPlayOptions() const override
+	const PlayOptions& GetPlayOptions() const override
 	{
 		return m_playOptions;
 	}
-	virtual int GetRetryCount() const override
+	int GetRetryCount() const override
 	{
 		return m_loopCount;
 	}
-	virtual String GetMissionStr() const override
+	String GetMissionStr() const override
 	{
 		return m_playOptions.failCondition ? m_playOptions.failCondition->GetDescription() : "";
 	}
-	virtual const String& GetChartRootPath() const
+	const String& GetChartRootPath() const override
 	{
 		return m_chartRootPath;
 	}
-	virtual const String& GetChartPath() const
+	const String& GetChartPath() const override
 	{
 		return m_chartPath;
 	}
-	virtual bool IsMultiplayerGame() const
+	bool IsMultiplayerGame() const override
 	{
 		return m_multiplayer != nullptr;
 	}
-	virtual ChartIndex* GetChartIndex()
+	virtual bool IsChallenge() const
+	{
+		return m_challengeManager != nullptr;
+	}
+	ChartIndex* GetChartIndex() override
 	{
 		return m_chartIndex;
 	}
-	virtual void SetDemoMode(bool value)
+	void SetDemoMode(bool value) override
 	{
 		m_demo = value;
 	}
-	virtual void SetSongDB(MapDatabase* db)
+	void SetSongDB(MapDatabase* db) override
 	{
 		m_db = db;
 		
 		if (m_isPracticeMode) LoadPracticeSetupIndex();
 	}
-	virtual void SetGameplayLua(lua_State* L)
+	void SetGameplayLua(lua_State* L) override
 	{
 		//set lua
 		lua_getglobal(L, "gameplay");
@@ -2910,7 +3017,7 @@ return Scoring::CalculateBadge(scoreData);
 
 		lua_setglobal(L, "gameplay");
 	}
-	virtual void SetInitialGameplayLua(lua_State* L)
+	void SetInitialGameplayLua(lua_State* L) override
 	{
 		auto pushStringToTable = [&](const char* name, String data)
 		{
@@ -3024,6 +3131,13 @@ Game* Game::Create(MultiplayerScreen* multiplayer, ChartIndex* chart, PlayOption
 {
 	Game_Impl* impl = new Game_Impl(chart, std::move(options));
 	impl->MakeMultiplayer(multiplayer);
+	return impl;
+}
+
+Game* Game::Create(ChallengeManager* challenge, ChartIndex* chart, PlayOptions&& options)
+{
+	Game_Impl* impl = new Game_Impl(chart, std::move(options));
+	impl->MakeChallenge(challenge);
 	return impl;
 }
 

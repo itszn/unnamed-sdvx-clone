@@ -13,7 +13,7 @@ uniform ivec2 viewport;
 uniform float objectGlow;
 // bg_texture.png
 uniform sampler2D mainTex;
-uniform sampler2D fb_tex;
+uniform sampler2D texFrameBuffer;
 uniform float tilt;
 uniform float clearTransition;
 
@@ -37,9 +37,9 @@ void main()
     float scanline = (0.5 * sin(uv.y * TWO_PI * lines) + 0.5 - gapWidth) / (2.0 - gapWidth);
     scanline = max(0., scanline);
     scanline = pow(scanline, scan_curve);
-    target.r = texture(fb_tex, uv).r * scanline * (1.0 + boost);
-    target.g = texture(fb_tex, uv - blue_green_shift).g * scanline * (1.0 + boost);
-    target.b = texture(fb_tex, uv + blue_green_shift).b * scanline * (1.0 + boost);
+    target.r = texture(texFrameBuffer, uv).r * scanline * (1.0 + boost);
+    target.g = texture(texFrameBuffer, uv - blue_green_shift).g * scanline * (1.0 + boost);
+    target.b = texture(texFrameBuffer, uv + blue_green_shift).b * scanline * (1.0 + boost);
     target.r = pow(target.r, boost_exponent);
     target.g = pow(target.g, boost_exponent);
     target.b = pow(target.b, boost_exponent);

@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "SongSelect.hpp"
+#include "ChallengeSelect.hpp"
 #include <Beatmap/MapDatabase.hpp>
 
 enum FilterType
@@ -11,31 +12,31 @@ enum FilterType
 	Collection
 };
 
-class SongFilter
+template<class ItemIndex>
+class Filter
 {
 public:
-	SongFilter() = default;
-	virtual ~SongFilter() = default;
-
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) { return source; }
+	Filter() = default;
+	virtual ~Filter() = default;
 	virtual String GetName() const { return m_name; }
 	virtual bool IsAll() const { return true; }
 	virtual FilterType GetType() const { return FilterType::All; }
-
+	virtual Map<int32, ItemIndex> GetFiltered(const Map<int32, ItemIndex>& source) { return source; }
 private:
 	String m_name = "All";
-
 };
+
+using SongFilter = Filter<SongSelectIndex>;
 
 class LevelFilter : public SongFilter
 {
 public:
 	~LevelFilter() = default;
 	LevelFilter(uint16 level) : m_level(level) {}
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) override;
-	virtual String GetName() const override;
-	virtual bool IsAll() const override;
-	virtual FilterType GetType() const { return FilterType::Level; }
+	Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Level; }
 
 
 private:
@@ -47,10 +48,10 @@ class FolderFilter : public SongFilter
 public:
 	FolderFilter(String folder, MapDatabase* database) : m_folder(folder), m_mapDatabase(database) {}
 	~FolderFilter() = default;
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source);
-	virtual String GetName() const override;
-	virtual bool IsAll() const override;
-	virtual FilterType GetType() const { return FilterType::Folder; }
+	Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Folder; }
 
 
 private:
@@ -65,14 +66,29 @@ public:
 	CollectionFilter(String collection, MapDatabase* database) : m_collection(collection), m_mapDatabase(database) {}
 	~CollectionFilter() = default;
 
-	virtual Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source);
-	virtual String GetName() const override;
-	virtual bool IsAll() const override;
-	virtual FilterType GetType() const { return FilterType::Collection; }
+	Map<int32, SongSelectIndex> GetFiltered(const Map<int32, SongSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Collection; }
 
 
 private:
 	String m_collection;
 	MapDatabase* m_mapDatabase;
 
+};
+
+using ChallengeFilter = Filter<ChallengeSelectIndex>;
+
+class ChallengeLevelFilter : public ChallengeFilter
+{
+public:
+	~ChallengeLevelFilter() = default;
+	ChallengeLevelFilter(uint16 level) : m_level(level) {}
+	Map<int32, ChallengeSelectIndex> GetFiltered(const Map<int32, ChallengeSelectIndex>& source) override;
+	String GetName() const override;
+	bool IsAll() const override;
+	FilterType GetType() const override { return FilterType::Level; }
+private:
+	uint16 m_level;
 };

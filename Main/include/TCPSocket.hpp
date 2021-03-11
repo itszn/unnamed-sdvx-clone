@@ -100,12 +100,14 @@ public:
 		return m_open;
 	}
 
+	// TODO(itszn) move this somewhere else
+	static void PushJsonValue(lua_State* L, const nlohmann::json& val);
+	static void PushJsonObject(lua_State* L, const nlohmann::json& packet);
+
 private:
 	void m_processPacket(char* data, size_t length, TCPPacketMode mode);
 	void m_eraseBuffer(size_t end);
 
-	void m_pushJsonObject(lua_State* L, const nlohmann::json& packet);
-	void m_pushJsonValue(lua_State* L, const nlohmann::json& val);
 
 	bool m_readyToRead();
 

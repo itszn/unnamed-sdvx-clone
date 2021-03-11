@@ -3,6 +3,8 @@ A game based on [KShootMania](http://www.kshootmania.com/) and [SDVX](https://re
 
 ### [**Download latest Windows build**](https://drewol.me/Downloads/Game.zip)
 
+### [**FAQ**](https://github.com/Drewol/unnamed-sdvx-clone/wiki/F.-A.-Q.)
+
 #### [**Skinning Documentation**](https://unnamed-sdvx-clone.readthedocs.io/en/latest/index.html)
 
 #### Demo Videos:

@@ -119,6 +119,7 @@ DefineEnum(GameConfigKeys,
 		   Controller_Sensitivity,
 		   InputBounceGuard,
 		   SongSelSensMult,
+		   InvertLaserInput,
 
 		   // In-Game Abort
 		   RestartPlayMethod,
@@ -128,8 +129,11 @@ DefineEnum(GameConfigKeys,
 		   DisableNonButtonInputsDuringPlay, // TODO: after enabling key customization for non-button commands, remove this.
 
 		   LastSelected,
+		   LastSelectedChal,
 		   LastSort,
+		   LastSortChal,
 		   LevelFilter,
+		   LevelFilterChal,
 		   FolderFilter,
 
 		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
@@ -163,7 +167,9 @@ DefineEnum(GameConfigKeys,
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
-		   RandomizeChart)
+		   RandomizeChart,
+			  
+		   UpdateChannel)
 
 DefineEnum(GaugeTypes,
 		   Normal,
@@ -183,6 +189,12 @@ DefineEnum(ScoreDisplayModes,
 		   Additive,
 		   Subtractive,
 		   Average)
+
+DefineEnum(LaserAxisOption,
+	       None,
+	       Left,
+	       Right,
+	       Both)
 
 #ifdef Always
 #undef Always

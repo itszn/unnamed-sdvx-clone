@@ -239,7 +239,7 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 		if (m_boundStates.Contains(handler->L))
 		{
 			lua_rawgeti(handler->L, LUA_REGISTRYINDEX, handler->callback);
-			m_pushJsonObject(handler->L, jsonPacket);
+			PushJsonObject(handler->L, jsonPacket);
 			if (lua_pcall(handler->L, 1, 0, 0) != 0)
 			{
 				Logf("[Socket] Lua error on calling TCP handler: %s", Logger::Severity::Error, lua_tostring(handler->L, -1));
@@ -251,11 +251,11 @@ void TCPSocket::m_processPacket(char* ptr, size_t length, TCPPacketMode mode)
 
 
 // Push a single json value as a lua table
-void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
+void TCPSocket::PushJsonValue(lua_State* L, const nlohmann::json& val)
 {
 	if (val.is_object())
 	{
-		m_pushJsonObject(L, val);
+		PushJsonObject(L, val);
 	}
 	else if (val.is_array())
 	{
@@ -263,7 +263,7 @@ void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
 		for (size_t index = 0; index < val.size(); index++)
 		{
 			lua_pushinteger(L, index + 1);
-			m_pushJsonValue(L, val[index]);
+			PushJsonValue(L, val[index]);
 			lua_settable(L, -3);
 		}
 	}
@@ -296,7 +296,7 @@ void TCPSocket::m_pushJsonValue(lua_State* L, const nlohmann::json& val)
 }
 
 // Push a json object onto the lua stack as a table
-void TCPSocket::m_pushJsonObject(lua_State* L, const nlohmann::json& packet)
+void TCPSocket::PushJsonObject(lua_State* L, const nlohmann::json& packet)
 {
 	assert(packet.is_object());
 
@@ -308,7 +308,7 @@ void TCPSocket::m_pushJsonObject(lua_State* L, const nlohmann::json& packet)
 		auto& val = el.value();
 		
 		lua_pushstring(L, key.c_str());
-		m_pushJsonValue(L, val);
+		PushJsonValue(L, val);
 		lua_settable(L, -3);
 	}
 }

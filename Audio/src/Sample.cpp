@@ -6,8 +6,8 @@
 #include "extras/dr_wav.h"   // Enables WAV decoding.
 #include "extras/dr_flac.h"  // Enables FLAC decoding.
 #include "extras/dr_mp3.h"   // Enables MP3 decoding.
-#include "extras/stb_vorbis.c"
-
+#undef STB_VORBIS_HEADER_ONLY
+#include "extras/stb_vorbis.c"	// Enables Vorbis decoding.
 
 #include "miniaudio.h"
 
@@ -91,31 +91,31 @@ public:
 		}
 		m_lock.unlock();
 	}
-	const Buffer& GetData() const
+	const Buffer& GetData() const override
 	{
 		return m_data;
 	}
-	uint32 GetBitsPerSample() const
+	uint32 GetBitsPerSample() const override
 	{
 		return 32;
 	}
-	uint32 GetNumChannels() const
+	uint32 GetNumChannels() const override
 	{
 		return 2;
 	}
-	int32 GetPosition() const
+	int32 GetPosition() const override
 	{
 		return m_playbackPointer;
 	}
-	float* GetPCM()
+	float* GetPCM() override
 	{
 		return nullptr;
 	}
-	uint32 GetSampleRate() const
+	uint32 GetSampleRate() const override
 	{
 		return g_audio->GetSampleRate();
 	}
-	bool IsPlaying() const
+	bool IsPlaying() const override
 	{
 		return m_playing;
 	}
