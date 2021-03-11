@@ -194,8 +194,8 @@ void Audio::SetGlobalVolume(float vol)
 }
 void Audio::Mute()
 {
-	impl.m_isMuted = true;
-	impl.globalVolume = 0.0;
+	g_impl.m_isMuted = true;
+	g_impl.globalVolume = 0.0;
 }
 uint32 Audio::GetSampleRate() const
 {

@@ -76,7 +76,9 @@ private:
 
 	int lChallengeSelect(lua_State* L)
 	{
-		g_transition->TransitionTo(ChallengeSelect::Create());
+		TransitionScreen* t = TransitionScreen::Create();
+		t->TransitionTo(ChallengeSelect::Create());
+		g_application->AddTickable(t);
 		return 0;
 	}
 

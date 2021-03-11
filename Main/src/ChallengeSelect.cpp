@@ -1607,7 +1607,9 @@ bool ChallengeManager::m_finishedAllCharts(bool passed)
 	m_overallResults.goodScore = goodScore;
 
 	ChallengeResultScreen* resScreen = ChallengeResultScreen::Create(this);
-	g_transition->TransitionTo(resScreen);
+	TransitionScreen* t = TransitionScreen::Create();
+	t->TransitionTo(resScreen);
+	g_application->AddTickable(t);
 
 	m_seenResults = true;
 	return false;
@@ -1684,6 +1686,7 @@ bool ChallengeManager::m_setupNextChart()
 		return false;
 	}
 
+	TransitionScreen* t = nullptr;
 	// Negative means we have not saved a gauge yet
 	if (m_currentOptions.gauge_carry_over.Get(false) && m_lastGauge >= 0)
 	{
@@ -1692,11 +1695,14 @@ bool ChallengeManager::m_setupNextChart()
 				return;
 			game->SetGauge(m_lastGauge);
 		};
-		auto handle = g_transition->OnLoadingComplete.AddLambda(std::move(setGauge));
-		g_transition->RemoveOnComplete(handle);
+		t = TransitionScreen::Create();
+		auto handle = t->OnLoadingComplete.AddLambda(std::move(setGauge));
+		t->RemoveOnComplete(handle);
 	}
 
-	g_transition->TransitionTo(game);
+	if (t == nullptr)
+		t = TransitionScreen::Create();
+	t->TransitionTo(game);
 	return true;
 }
 

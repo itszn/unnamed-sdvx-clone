@@ -1502,8 +1502,10 @@ public:
 			}
 			else if (m_challengeManager != nullptr)
 			{
-				g_transition->TransitionTo(ScoreScreen::Create(
+				TransitionScreen* t = TransitionScreen::Create();
+				t->TransitionTo(ScoreScreen::Create(
 					this, m_challengeManager));
+				g_application->AddTickable(t);
 			}
 			else
 			{
