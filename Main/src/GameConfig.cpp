@@ -36,8 +36,8 @@ inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<Game
 
 GameConfig::GameConfig()
 {
-	// Default state
-	Clear();
+    //XXX We can't do clear here as it leads to UB with the initialization of hitstat static values
+    // This sould be ok as Clear will be called in the Load function
 }
 
 void GameConfig::SetKeyBinding(GameConfigKeys key, Graphics::Key value)
@@ -197,7 +197,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MuteUnfocused, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
-	Set(GameConfigKeys::OnlyRelease, true);
+	Set(GameConfigKeys::OnlyRelease, true); // deprecated
 	Set(GameConfigKeys::LimitSettingsFont, false);
 
 	// Multiplayer
@@ -214,6 +214,7 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
+	Set(GameConfigKeys::UpdateChannel, "master");
 }
 
 void GameConfig::UpdateVersion()

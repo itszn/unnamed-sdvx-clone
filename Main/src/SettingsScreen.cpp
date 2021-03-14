@@ -123,6 +123,7 @@ private:
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
+	Vector<String> m_channels = { "release", "master", "develop" };
 
 	const Vector<GameConfigKeys> m_keyboardKeys = {
 		GameConfigKeys::Key_BTS,
@@ -287,6 +288,10 @@ private:
 			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
 		}
 
+		if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+		{
+			g_application->CheckForUpdate();
+		}
 
 		g_input.Cleanup();
 		g_input.Init(*g_gameWindow);
@@ -435,6 +440,14 @@ public:
 	{
 		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
 		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+
+		String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
+
+		if (!m_channels.Contains(channel))
+		{
+			m_channels.insert(m_channels.begin(), channel);
+		}
+
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
 		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
 		{
@@ -941,7 +954,11 @@ public:
 #endif // _WIN32
 			ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
 			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
-			ToggleSetting(GameConfigKeys::OnlyRelease, "Only check for new release versions");
+
+			if (m_channels.size() > 0)
+			{
+				StringSelectionSetting(GameConfigKeys::UpdateChannel, m_channels, "Update Channel:");
+			}
 
 			EnumSetting<Logger::Enum_Severity>(GameConfigKeys::LogLevel, "Logging level");
 

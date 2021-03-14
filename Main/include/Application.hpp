@@ -97,6 +97,7 @@ public:
 	void JoinMultiFromInvite(String secret);
 	void SetUpdateAvailable(const String& version, const String& url, const String& download);
 	void RunUpdater();
+	void CheckForUpdate();
 	void ForceRender();
 	void SetLuaBindings(struct lua_State* state);
 	struct NVGcontext* GetVGContext();
