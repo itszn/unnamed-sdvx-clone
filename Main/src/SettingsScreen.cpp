@@ -818,6 +818,8 @@ public:
 
 			ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
 
+			ToggleSetting(GameConfigKeys::AutoComputeSongOffset, "Auto-compute the song offset on first play");
+
 			nk_tree_pop(m_nctx);
 		}
 		else

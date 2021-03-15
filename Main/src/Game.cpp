@@ -27,6 +27,8 @@
 
 #include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
+#include "Audio/OffsetComputer.hpp"
+
 #include <SDL2/SDL.h>
 
 // Try load map helper
@@ -391,6 +393,22 @@ public:
 		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
 			return false;
 
+		m_songOffset = 0;
+
+		// Compute chart offset
+		if (g_gameConfig.GetBool(GameConfigKeys::AutoComputeSongOffset) && m_scoreReplays.empty()) {
+			if (OffsetComputer(m_audioPlayback).Compute(m_songOffset) && m_chartIndex)
+			{
+				Logf("Setting the chart offset of '%s' to %d (previously %d)", Logger::Severity::Info, m_chartIndex->title, m_songOffset, m_chartIndex->custom_offset);
+				m_chartIndex->custom_offset = m_songOffset;
+			}
+		}
+
+		if (m_chartIndex)
+		{
+			m_songOffset = m_chartIndex->custom_offset;
+		}
+
 		// Get fps limit
 		m_fpsTarget = g_gameConfig.GetInt(GameConfigKeys::FPSTarget);
 
@@ -398,7 +416,6 @@ public:
 
 		// Load audio offset
 		m_globalOffset = g_gameConfig.GetInt(GameConfigKeys::GlobalOffset);
-		m_songOffset = m_chartIndex ? m_chartIndex->custom_offset : 0;
 		m_tempOffset = 0;
 
 		InitPlaybacks(0);
