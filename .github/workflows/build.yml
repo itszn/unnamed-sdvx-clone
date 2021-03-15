@@ -34,7 +34,8 @@ jobs:
             - name: Tests
               run: rm ./bin/Tests.*
             - name: Post Build Stuff
-              run: cp ./bin/libiconv.dll ./bin/libiconv-2.dll; cp ./bin/usc-game.exe ./bin/usc-event.exe
+              run: cp ./bin/usc-game.exe ./bin/usc-event.exe; cp ./bin/libiconv.dll ./bin/libiconv-2.dll
+              continue-on-error: true
             - name: Get Symbols 
               continue-on-error: true
               run: |
