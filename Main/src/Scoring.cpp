@@ -1003,37 +1003,37 @@ void Scoring::m_UpdateLasers(float deltaTime)
 {
 	MapTime mapTime = m_playback->GetLastTime();
 	bool currentlySlamNextSegmentStraight[2] = { false };
+	// Check for new laser segments in laser queue
+	for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
+	{
+		// Reset laser usage timer
+		timeSinceLaserUsed[(*it)->index] = 0.0f;
+
+		if ((*it)->time <= mapTime)
+		{
+			const uint8 index = (*it)->index;
+			// Replace the currently active segment
+			m_currentLaserSegments[index] = *it;
+			auto current = m_currentLaserSegments[index];
+			auto& currentTicks = m_ticks[6 + index];
+			if (!currentTicks.empty() && current != nullptr)
+			{
+				auto tick = currentTicks.front();
+				if ((LaserObjectState*)tick->object == current)
+				{
+					// Auto lasers unless current segment is a slam and the next is a straight laser
+					if (current->next && current->next->GetDirection() == 0 && tick->HasFlag(TickFlags::Slam))
+						currentlySlamNextSegmentStraight[index] = true;
+				}
+			}
+			it = m_laserSegmentQueue.erase(it);
+			continue;
+		}
+		it++;
+	}
+
 	for (uint32 i = 0; i < 2; i++)
 	{
-		// Check for new laser segments in laser queue
-		for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
-		{
-			// Reset laser usage timer
-			timeSinceLaserUsed[(*it)->index] = 0.0f;
-
-			if ((*it)->time <= mapTime)
-			{
-				const uint8 index = (*it)->index;
-				// Replace the currently active segment
-				m_currentLaserSegments[index] = *it;
-				auto current = m_currentLaserSegments[index];
-				auto& currentTicks = m_ticks[6 + index];
-				if (!currentTicks.empty() && current != nullptr)
-				{
-					auto tick = currentTicks.front();
-					if ((LaserObjectState*)tick->object == current)
-					{
-						// Auto lasers unless current segment is a slam and the next is a straight laser
-						if (current->next && current->next->GetDirection() == 0 && tick->HasFlag(TickFlags::Slam))
-							currentlySlamNextSegmentStraight[index] = true;
-					}
-				}
-				it = m_laserSegmentQueue.erase(it);
-				continue;
-			}
-			it++;
-		}
-
 		LaserObjectState* currentSegment = m_currentLaserSegments[i];
 		if (currentSegment)
 		{
