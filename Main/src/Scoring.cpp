@@ -237,21 +237,26 @@ float Scoring::GetLaserRollOutput(uint32 index)
 	{
 		return GetLaserPosition(index, laserTargetPositions[index]);
 	}
-	else // Check if any upcoming lasers are within 2 beats
+	// Check if any upcoming lasers are within 2 beats
+	LaserObjectState* l = m_GetLaserObjectWithinTwoBeats(index);
+	if (l)
+		return GetLaserPosition(index, l->points[0]);
+	return 0.0f;
+}
+
+LaserObjectState* Scoring::m_GetLaserObjectWithinTwoBeats(uint8 index)
+{
+	for (auto l : m_laserSegmentQueue)
 	{
-		for (auto l : m_laserSegmentQueue)
+		if (l->index == index && m_IsRoot(l))
 		{
-			if (l->index == index && m_IsRoot(l))
+			if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
 			{
-				if (l->time - m_playback->GetLastTime() <= m_playback->GetCurrentTimingPoint().beatDuration * 2)
-				{
-					return GetLaserPosition(index, l->points[0]);
-				}
+				return l;
 			}
 		}
-			
 	}
-	return 0.0f;
+	return nullptr;
 }
 
 bool Scoring::GetLaserActive()
@@ -997,10 +1002,9 @@ bool Scoring::m_IsRoot(const HoldObjectState* hold) const
 void Scoring::m_UpdateLasers(float deltaTime)
 {
 	MapTime mapTime = m_playback->GetLastTime();
+	bool currentlySlamNextSegmentStraight[2] = { false };
 	for (uint32 i = 0; i < 2; i++)
 	{
-		bool starting = false;
-		bool currentlySlamNextSegmentStraight = false;
 		// Check for new laser segments in laser queue
 		for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
 		{
@@ -1009,7 +1013,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 			if ((*it)->time <= mapTime)
 			{
-				uint8 index = (*it)->index;
+				const uint8 index = (*it)->index;
 				// Replace the currently active segment
 				m_currentLaserSegments[index] = *it;
 				auto current = m_currentLaserSegments[index];
@@ -1019,11 +1023,9 @@ void Scoring::m_UpdateLasers(float deltaTime)
 					auto tick = currentTicks.front();
 					if ((LaserObjectState*)tick->object == current)
 					{
-						if (tick->HasFlag(TickFlags::Start))
-							starting = true;
 						// Auto lasers unless current segment is a slam and the next is a straight laser
 						if (current->next && current->next->GetDirection() == 0 && tick->HasFlag(TickFlags::Slam))
-							currentlySlamNextSegmentStraight = true;
+							currentlySlamNextSegmentStraight[index] = true;
 					}
 				}
 				it = m_laserSegmentQueue.erase(it);
@@ -1036,7 +1038,6 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		if (currentSegment)
 		{
 			lasersAreExtend[i] = (currentSegment->flags & LaserObjectState::flag_Extended) != 0;
-			MapTime duration = currentSegment->duration;
 
 			if ((currentSegment->time + currentSegment->duration) < mapTime)
 			{
@@ -1115,18 +1116,23 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				if (inputDir != laserDir)
 					m_autoLaserTime[i] -= deltaTime;
 			}
-			// Always snap laser to start sections if they are completely vertical or if after the start of a laser segment
+			// Always snap laser to start sections if they are completely vertical
 			// Lock lasers on straight parts
-			else if ((laserDir == 0 && fabsf(positionDelta) <= m_laserDistanceLeniency) || starting)
+			else if (laserDir == 0 && fabsf(positionDelta) <= m_laserDistanceLeniency)
 				m_autoLaserTime[i] = m_autoLaserDuration;
 			else
 				m_autoLaserTime[i] -= deltaTime;
 			timeSinceLaserUsed[i] = 0.0f;
 		}
 		else
+		{
 			timeSinceLaserUsed[i] += deltaTime;
+
+			if (m_GetLaserObjectWithinTwoBeats(i))
+				m_autoLaserTime[i] = m_autoLaserDuration;
+		}
 		
-		if (currentlySlamNextSegmentStraight)
+		if (currentlySlamNextSegmentStraight[i])
 			m_autoLaserTime[i] = 0;
 		if (autoplay || m_autoLaserTime[i] > 0)
 			laserPositions[i] = laserTargetPositions[i];

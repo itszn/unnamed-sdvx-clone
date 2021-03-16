@@ -273,6 +273,8 @@ private:
 	HitStat* m_AddOrUpdateHitStat(ObjectState* object);
 	void m_CleanupHitStats();
 
+	LaserObjectState* m_GetLaserObjectWithinTwoBeats(uint8 index);
+
 	// Updates laser output with or without interpolation
 	bool m_interpolateLaserOutput = false;
 
