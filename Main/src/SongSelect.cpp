@@ -22,6 +22,7 @@
 #include "DBUpdateScreen.hpp"
 #include "PreviewPlayer.hpp"
 #include "ItemSelectionWheel.hpp"
+#include "Audio/OffsetComputer.hpp"
 
 /*
 	Song preview player with fade-in/out
@@ -1032,6 +1033,7 @@ public:
 		if (ChartIndex* chart = GetCurrentSelectedChart())
 		{
 			chart->custom_offset = newValue;
+			m_mapDatabase->UpdateChartOffset(chart);
 		}
 	}
 
@@ -1138,6 +1140,20 @@ public:
 				trans->SetWindowIndex(this->GetWindowIndex());
 				trans->TransitionTo(practiceGame);
 #endif
+		});
+
+		m_settDiag.onPressComputeSongOffset.AddLambda([this]() {
+			ChartIndex* chart = GetCurrentSelectedChart();
+			if (!chart) return;
+
+			m_previewPlayer.Pause();
+
+			if (OffsetComputer::Compute(chart, chart->custom_offset))
+			{
+				m_mapDatabase->UpdateChartOffset(chart);
+			}
+
+			m_previewPlayer.Restore();
 		});
 
 		if (m_hasCollDiag)
@@ -1724,7 +1740,10 @@ public:
 		{
 			m_selectionWheel->SelectMapByMapIndex(m_lastMapIndex);
 		}
-
+		if (ChartIndex* chartIndex = m_selectionWheel->GetSelectedChart())
+		{
+			m_mapDatabase->UpdateChartOffset(chartIndex);
+		}
 	}
 
 	void MakeMultiplayer(MultiplayerScreen *multiplayer)

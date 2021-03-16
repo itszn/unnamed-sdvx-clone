@@ -85,6 +85,8 @@ public:
 	float GetPlaybackSpeed() const;
 	void SetVolume(float volume);
 
+	Ref<AudioStream> GetMusic() const { return m_music; }
+
 private:
 	// Returns the track that should have effects applied to them
 	Ref<AudioStream> m_GetDSPTrack();

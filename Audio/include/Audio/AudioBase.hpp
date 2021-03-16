@@ -59,6 +59,7 @@ public:
 
 	// Gets pcm data from a decoded stream, nullptr if not available
 	virtual float* GetPCM() = 0;
+	virtual uint64 GetPCMCount() const = 0;
 
 	void ProcessDSPs(float* out, uint32 numSamples);
 	// Adds a signal processor to the audio

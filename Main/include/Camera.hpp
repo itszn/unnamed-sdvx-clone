@@ -1,25 +1,24 @@
 #pragma once
 
 /*
-	Camera shake effect 
+	Camera shake effect.
+	VVD scales slam shakes using the following formula: slamLength (0 to 1) * 15px.
+	Slam shakes decay at a rate of 3px per frame.
 */
 struct CameraShake
 {
-	float duration;
-	float amplitude;
-	float time = 0.0f;
+	float amplitude = 0;
+	float amplitudeToBeAdded = 0;
+	// Prevent slams from cancelling each other out if applied in a short time
+	float guard = 0;
+	float guardDuration = 1 / 60.f;
 	CameraShake() = default;
-	CameraShake(float duration);
-	CameraShake(float duration, float amplitude);
 };
 
 static const float KSM_PITCH_UNIT_PRE_168 = 7.0f;
 static const float KSM_PITCH_UNIT_POST_168 = 180.0f / 12;
-// Percent of m_rollIntensity where camera rolls at its slowest rate
-static const float SLOWEST_TILT_THRESHOLD = 0.1f;
-// If this value is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
+// If this is changed, remember to change the manual tilt roll calculation in BeatmapFromKSH as well
 static const float MAX_ROLL_ANGLE = 10 / 360.f;
-static const float ROLL_SPEED = 4;
 
 /*
 	Camera that hovers above the playfield track and can process camera shake and tilt effects
@@ -33,7 +32,8 @@ public:
 	// Updates the camera's shake effects, movement, etc.
 	void Tick(float deltaTime, class BeatmapPlayback& playback);
 
-	void AddCameraShake(CameraShake camerShake);
+	// Will ignore consecutive shakes if less than 1 / 60 of a second apart
+	void AddCameraShake(float camerShake);
 	void AddRollImpulse(float dir, float strength);
 
 	// Changes the amount of roll applied when lasers are controlled, default = 1
@@ -68,12 +68,13 @@ public:
 	float GetActualRoll() const;
 	float GetHorizonHeight();
 	Vector2i GetScreenCenter();
-	Vector3 GetShakeOffset();
+	float GetShakeOffset();
 	bool GetRollKeep();
 	void SetManualTilt(bool manualTilt);
 	void SetManualTiltInstant(bool instant);
 	// Enables/disables laser slams and roll ignore
 	void SetFancyHighwayTilt(bool fancyHighwaySetting);
+	void SetSlamShakeGuardDuration(int refreshRate);
 	
 	/*
 	Gets roll ignore timer for a laser
@@ -180,5 +181,5 @@ private:
 
 	CameraShake m_shakeEffect;
 	// Base position with shake effects applied after a frame
-	Vector3 m_shakeOffset = Vector3(0.0f);
+	float m_shakeOffset = 0.f;
 };

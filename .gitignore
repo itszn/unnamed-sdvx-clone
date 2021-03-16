@@ -7,9 +7,12 @@
 *.exe
 *.a
 
+# Memory dump files
+*.dmp
+
 # Game files
 bin/songs/*
-maps.db
+maps.db*
 bin/Main.cfg
 bin/screenshots
 bin/log*
@@ -49,8 +52,10 @@ CMakeCache.txt
 CMakeFiles
 Makefile
 !docs/Makefile
+
 # Not adding photoshop source files for textures
 *.psd
 
 # Document build files
 docs/build
+
