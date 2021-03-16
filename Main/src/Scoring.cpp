@@ -872,7 +872,7 @@ void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 	}
 	else if (tick->HasFlag(TickFlags::Laser))
 	{
-		currentGauge -= tick->HasFlag(TickFlags::Slam) ? -shortMissDrain : shortMissDrain / 4.f;
+		currentGauge -= tick->HasFlag(TickFlags::Slam) ? shortMissDrain : shortMissDrain / 4.f;
 		stat->rating = ScoreHitRating::Miss;
 	}
 
