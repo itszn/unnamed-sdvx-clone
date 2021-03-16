@@ -1000,7 +1000,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 	for (uint32 i = 0; i < 2; i++)
 	{
 		bool starting = false;
-		bool slamNextSegmentStraight = false;
+		bool currentlySlamNextSegmentStraight = false;
 		// Check for new laser segments in laser queue
 		for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
 		{
@@ -1023,7 +1023,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 							starting = true;
 						// Auto lasers unless current segment is a slam and the next is a straight laser
 						if (current->next && current->next->GetDirection() == 0 && tick->HasFlag(TickFlags::Slam))
-							slamNextSegmentStraight = true;
+							currentlySlamNextSegmentStraight = true;
 					}
 				}
 				it = m_laserSegmentQueue.erase(it);
@@ -1126,7 +1126,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		else
 			timeSinceLaserUsed[i] += deltaTime;
 		
-		if (slamNextSegmentStraight)
+		if (currentlySlamNextSegmentStraight)
 			m_autoLaserTime[i] = 0;
 		if (autoplay || m_autoLaserTime[i] > 0)
 			laserPositions[i] = laserTargetPositions[i];
