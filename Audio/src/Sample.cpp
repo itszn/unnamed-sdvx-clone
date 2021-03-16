@@ -111,6 +111,10 @@ public:
 	{
 		return nullptr;
 	}
+	uint64 GetPCMCount() const override
+	{
+		return 0;
+	}
 	uint32 GetSampleRate() const override
 	{
 		return g_audio->GetSampleRate();

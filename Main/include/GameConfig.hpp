@@ -53,6 +53,7 @@ DefineEnum(GameConfigKeys,
 		   BTOverFXScale,
 		   DisableBackgrounds,
 		   ScoreDisplayMode,
+		   AutoComputeSongOffset,
 
 		   LeadInTime,
 		   PracticeLeadInTime,

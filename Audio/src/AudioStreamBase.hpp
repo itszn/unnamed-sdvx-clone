@@ -69,7 +69,7 @@ public:
 	virtual int32 GetPosition() const override;
 	virtual void SetPosition(int32 pos) override;
 	virtual float* GetPCM() override;
+	virtual uint64 GetPCMCount() const override;
 	virtual uint32 GetSampleRate() const override;
 	virtual void Process(float* out, uint32 numSamples) override;
-
 };
