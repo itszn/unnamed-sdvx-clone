@@ -642,8 +642,6 @@ void Scoring::m_UpdateTicks()
 	// This loop checks for ticks that are missed
 	for (uint32 buttonCode = 0; buttonCode < 8; buttonCode++)
 	{
-		Input::Button button = (Input::Button) buttonCode;
-
 		// List of ticks for the current button code
 		auto& ticks = m_ticks[buttonCode];
 		for (uint32 i = 0; i < ticks.size(); i++)
@@ -721,7 +719,7 @@ void Scoring::m_UpdateTicks()
 				}
 			}
 
-			if (delta > hitWindow.good && !processed)
+			if (((tick->HasFlag(TickFlags::Slam) && delta > 75) || delta > hitWindow.good) && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
 				processed = true;
@@ -1007,7 +1005,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 	for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
 	{
 		// Reset laser usage timer
-		timeSinceLaserUsed[(*it)->index] = 0.0f;
+		timeSinceLaserUsed[(*it)->index] = 0;
 
 		if ((*it)->time <= mapTime)
 		{
@@ -1084,26 +1082,19 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		{
 			// Update laser gameplay
 			float positionDelta = laserTargetPositions[i] - laserPositions[i];
-			float moveDir = Math::Sign(positionDelta);
 			float laserDir = currentSegment->GetDirection();
 			float input = m_laserInput[i];
 			float inputDir = Math::Sign(input);
 
-			if (inputDir != 0.0f)
+			if (inputDir != 0)
 			{
 				if (laserDir < 0 && positionDelta < 0)
-				{
 					laserPositions[i] = Math::Max(laserPositions[i] + input, laserTargetPositions[i]);
-				}
 				else if (laserDir > 0 && positionDelta > 0)
-				{
 					laserPositions[i] = Math::Min(laserPositions[i] + input, laserTargetPositions[i]);
-				}
 				else if ((laserDir < 0 && positionDelta > 0) || (laserDir > 0 && positionDelta < 0))
-				{
-					laserPositions[i] = laserPositions[i] + input;
-				}
-				else if (laserDir == 0.0f)
+					laserPositions[i] += input;
+				else if (laserDir == 0)
 				{
 					if (positionDelta > 0)
 						laserPositions[i] = Math::Min(laserPositions[i] + input, laserTargetPositions[i]);
@@ -1111,23 +1102,27 @@ void Scoring::m_UpdateLasers(float deltaTime)
 						laserPositions[i] = Math::Max(laserPositions[i] + input, laserTargetPositions[i]);
 				}
 
-				if (inputDir == moveDir && fabsf(positionDelta) <= m_laserDistanceLeniency)
-					m_autoLaserTime[i] = m_autoLaserDuration;
-				if (inputDir != laserDir)
+				positionDelta = laserTargetPositions[i] - laserPositions[i];
+				if (inputDir == laserDir || laserDir == 0)
+				{
+					if (fabsf(positionDelta) <= m_laserDistanceLeniency)
+						m_autoLaserTime[i] = m_autoLaserDuration;
+				}
+				else
 					m_autoLaserTime[i] -= deltaTime;
 			}
-			// Always snap laser to start sections if they are completely vertical
 			// Lock lasers on straight parts
 			else if (laserDir == 0 && fabsf(positionDelta) <= m_laserDistanceLeniency)
 				m_autoLaserTime[i] = m_autoLaserDuration;
 			else
 				m_autoLaserTime[i] -= deltaTime;
-			timeSinceLaserUsed[i] = 0.0f;
+			timeSinceLaserUsed[i] = 0;
 		}
 		else
 		{
 			timeSinceLaserUsed[i] += deltaTime;
 
+			// Always snap laser to start sections if they are completely vertical
 			if (m_GetLaserObjectWithinTwoBeats(i))
 				m_autoLaserTime[i] = m_autoLaserDuration;
 		}
