@@ -688,7 +688,7 @@ void Scoring::m_UpdateTicks()
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
 						// TODO: Make slam window adjustable
-						if (autoplay || (dirSign == inputSign && delta <= 75))
+						if (autoplay || (dirSign == inputSign && delta <= 50) || tick->HasFlag(TickFlags::Processed))
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -717,6 +717,14 @@ void Scoring::m_UpdateTicks()
 						processed = true;
 					}
 				}
+			}
+			else if (fabs(delta) <= 25 && tick->HasFlag(TickFlags::Laser) && tick->HasFlag(TickFlags::Slam))
+			{
+				LaserObjectState* laserObject = (LaserObjectState*)tick->object;
+				float dirSign = Math::Sign(laserObject->GetDirection());
+				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
+				if (dirSign == inputSign)
+					tick->SetFlag(TickFlags::Processed);
 			}
 
 			if (((tick->HasFlag(TickFlags::Slam) && delta > 75) || delta > hitWindow.good) && !processed)
@@ -1013,16 +1021,11 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			// Replace the currently active segment
 			m_currentLaserSegments[index] = *it;
 			auto current = m_currentLaserSegments[index];
-			auto& currentTicks = m_ticks[6 + index];
-			if (!currentTicks.empty() && current != nullptr)
+			if (current != nullptr)
 			{
-				auto tick = currentTicks.front();
-				if ((LaserObjectState*)tick->object == current)
-				{
-					// Auto lasers unless current segment is a slam and the next is a straight laser
-					if (current->next && current->next->GetDirection() == 0 && tick->HasFlag(TickFlags::Slam))
-						currentlySlamNextSegmentStraight[index] = true;
-				}
+				// Auto lasers unless current segment is a slam and the next is a straight laser
+				if (current->next && current->next->GetDirection() == 0 && current->flags & LaserObjectState::flag_Instant)
+					currentlySlamNextSegmentStraight[index] = true;
 			}
 			it = m_laserSegmentQueue.erase(it);
 			continue;
