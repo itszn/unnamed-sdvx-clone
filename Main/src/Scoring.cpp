@@ -688,7 +688,7 @@ void Scoring::m_UpdateTicks()
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
 						// TODO: Make slam window adjustable
-						if (autoplay || (dirSign == inputSign && delta <= 50) || tick->HasFlag(TickFlags::Processed))
+						if (autoplay || (dirSign == inputSign && delta <= 75))
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -701,7 +701,8 @@ void Scoring::m_UpdateTicks()
 					else
 					{
 						// Check laser input
-						float laserDelta = fabs(laserPositions[laserObject->index] - laserTargetPositions[laserObject->index]);
+						uint8 index = laserObject->index;
+						float laserDelta = fabs(laserPositions[index] - laserTargetPositions[index]);
 						if (autoplay || laserDelta <= m_laserDistanceLeniency)
 						{
 							m_TickHit(tick, buttonCode);
@@ -717,14 +718,6 @@ void Scoring::m_UpdateTicks()
 						processed = true;
 					}
 				}
-			}
-			else if (fabs(delta) <= 25 && tick->HasFlag(TickFlags::Laser) && tick->HasFlag(TickFlags::Slam))
-			{
-				LaserObjectState* laserObject = (LaserObjectState*)tick->object;
-				float dirSign = Math::Sign(laserObject->GetDirection());
-				float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-				if (dirSign == inputSign)
-					tick->SetFlag(TickFlags::Processed);
 			}
 
 			if (((tick->HasFlag(TickFlags::Slam) && delta > 75) || delta > hitWindow.good) && !processed)
@@ -1125,7 +1118,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		{
 			timeSinceLaserUsed[i] += deltaTime;
 
-			// Always snap laser to start sections if they are completely vertical
+			// Always snap laser to start sections
 			if (m_GetLaserObjectWithinTwoBeats(i))
 				m_autoLaserTime[i] = m_autoLaserDuration;
 		}

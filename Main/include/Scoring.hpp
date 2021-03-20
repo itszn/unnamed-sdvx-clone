@@ -17,7 +17,6 @@ enum class TickFlags : uint8
 	// For lasers only
 	Laser = 0x10,
 	Slam = 0x20,
-	Processed = 0x40,
 };
 TickFlags operator|(const TickFlags& a, const TickFlags& b);
 TickFlags operator&(const TickFlags& a, const TickFlags& b);
