@@ -992,10 +992,24 @@ public:
 		}
 	}
 
+	virtual void OnKeyPressed(SDL_Scancode code)
+	{
+		if (IsSuspended())
+		{
+			return;
+		}
+
+		if (code == SDL_SCANCODE_ESCAPE)
+		{
+			Exit();
+		}
+	}
+
 	virtual void OnSuspend()
 	{
 		//g_rootCanvas->Remove(m_canvas.As<GUIElementBase>());
 	}
+
 	virtual void OnRestore()
 	{
 		g_application->DiscordPresenceMenu("Settings");
