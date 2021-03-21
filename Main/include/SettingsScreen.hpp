@@ -3,14 +3,14 @@
 #include "GameConfig.hpp"
 #include "SkinConfig.hpp"
 
-class SettingsScreen : public IApplicationTickable
+class SettingsScreen
 {
-protected:
-	SettingsScreen() = default;
+private:
+	SettingsScreen() = delete;
+	~SettingsScreen() = delete;
+
 public:
-	virtual ~SettingsScreen() = default;
-	static SettingsScreen* Create();
-	static void NKRender();
+	static IApplicationTickable* Create();
 };
 
 class ButtonBindingScreen : public IApplicationTickable

@@ -10,7 +10,7 @@
 #include <tchar.h>
 #endif
 
-// SDL keycodes
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_keycode.h>
 
 // C RunTime Header Files
@@ -21,14 +21,16 @@
 #endif
 
 #include <memory.h>
+#include <time.h>
+
 #include <cinttypes>
+#include <ctime>
 
-#include <memory>
 #include <functional>
-
+#include <memory>
+#include <string>
 #include <queue>
 
-// TODO: reference additional headers your program requires here
 #include <Shared/Shared.hpp>
 
 // Graphics components
@@ -45,11 +47,33 @@
 #include <Graphics/Font.hpp>
 using namespace Graphics;
 
-extern "C"
-{
-#include "lua.h"
-#include "lauxlib.h"
-}
+#include "archive.h"
+#include "archive_entry.h"
+#include "json.hpp"
+#include "lua.hpp"
+
+// NK imports
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#undef NK_IMPLEMENTATION
+#ifdef EMBEDDED
+#undef NK_SDL_GLES2_IMPLEMENTATION
+#include "../third_party/nuklear/nuklear.h"
+#include "nuklear/nuklear_sdl_gles2.h"
+#else
+#undef	NK_SDL_GL3_IMPLEMENTATION
+#include "../third_party/nuklear/nuklear.h"
+#include "nuklear/nuklear_sdl_gl3.h"
+#endif
+
+constexpr int MAX_VERTEX_MEMORY = 512 * 1024;
+constexpr int MAX_ELEMENT_MEMORY = 128 * 1024;
+constexpr int FULL_FONT_TEXTURE_HEIGHT = 32768; //needed to load all CJK glyphs
 
 #include "BasicDefinitions.hpp"
 

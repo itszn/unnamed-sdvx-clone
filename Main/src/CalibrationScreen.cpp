@@ -1,11 +1,10 @@
 #include "stdafx.h"
-#include "Application.hpp"
 #include "CalibrationScreen.hpp"
+
+#include "Application.hpp"
 #include "Audio/Audio.hpp"
 #include "SettingsScreen.hpp"
-#include "../third_party/nuklear/nuklear.h"
-#include <unordered_set>
-
+#include "GUIUtils.hpp"
 
 CalibrationScreen::CalibrationScreen(nk_context* nk_ctx)
 {
@@ -206,14 +205,13 @@ void CalibrationScreen::Render(float deltaTime)
 
 		}
 		nk_end(m_ctx);
+
 		if (!m_hasRenderedOnce) {
 			nk_window_collapse(m_ctx, "Guide", NK_MINIMIZED);
 			m_hasRenderedOnce = true;
 		}
 
-
-
-		SettingsScreen::NKRender();
+		nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
 	}
 }
 

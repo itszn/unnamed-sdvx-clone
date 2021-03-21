@@ -1,9 +1,6 @@
 #include "stdafx.h"
 #include "MultiplayerScreen.hpp"
 #include "Application.hpp"
-#include "lua.hpp"
-#include "archive.h"
-#include "archive_entry.h"
 #include "SkinHttp.hpp"
 #include "GameConfig.hpp"
 #include "cpr/util.h"
@@ -13,8 +10,6 @@
 #include "ChatOverlay.hpp"
 #include <Audio/Audio.hpp>
 
-#include <ctime>
-#include <string>
 #include <TransitionScreen.hpp>
 #include <Game.hpp>
 #include "Gauge.hpp"
