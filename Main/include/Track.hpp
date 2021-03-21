@@ -83,7 +83,7 @@ public:
 	float suddenCutoff = 0.5f;
 	float suddenFadewindow = 0.2f;
 
-	float laserSpeedOffset = 0.90;
+	float laserSpeedOffset = 0.90f;
 	float centerSplit = 0.0f;
 	Vector3 shakeOffset;
 

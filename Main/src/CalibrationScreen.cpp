@@ -4,7 +4,6 @@
 #include "Application.hpp"
 #include "Audio/Audio.hpp"
 #include "SettingsScreen.hpp"
-#include "GUIUtils.hpp"
 
 CalibrationScreen::CalibrationScreen(nk_context* nk_ctx)
 {

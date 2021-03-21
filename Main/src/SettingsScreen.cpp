@@ -97,14 +97,72 @@ protected:
 
 	virtual void RenderContents() = 0;
 
+	class TextSettingData
+	{
+	public:
+		TextSettingData(GameConfigKeys key) : m_key(key) {}
+
+		void Load()
+		{
+			String str = g_gameConfig.GetString(m_key);
+			m_len = static_cast<int>(str.length());
+
+			if (m_len >= m_buffer.size())
+			{
+				Logf("Config key=%d cropped due to being too long (%d)", Logger::Severity::Error, static_cast<int>(m_key), m_len);
+				m_len = static_cast<int>(m_buffer.size() - 1);
+			}
+
+			std::memcpy(m_buffer.data(), str.data(), m_len + 1);
+		}
+
+		void Save()
+		{
+			String str = String(m_buffer.data(), m_len);
+
+			str.TrimBack('\n');
+			str.TrimBack(' ');
+
+			g_gameConfig.Set(m_key, str);
+		}
+
+		void Render(nk_context* nctx)
+		{
+			nk_sdl_text(nk_edit_string(nctx, NK_EDIT_FIELD, m_buffer.data(), &m_len, static_cast<int>(m_buffer.size()), nk_filter_default));
+		}
+
+		void RenderPassword(nk_context* nctx)
+		{
+			// Hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
+			const int old_len = m_len;
+			
+			std::array<char, BUFFER_SIZE> tokenBuffer;
+			std::fill(tokenBuffer.begin(), tokenBuffer.begin() + m_len, '*');
+
+			nk_sdl_text(nk_edit_string(nctx, NK_EDIT_FIELD, tokenBuffer.data(), &m_len, 1024, nk_filter_default));
+
+			if (old_len < m_len)
+			{
+				std::memcpy(m_buffer.data() + old_len, tokenBuffer.data() + old_len, m_len - old_len);
+			}
+		}
+
+	protected:
+		constexpr static size_t BUFFER_SIZE = 1024;
+
+		GameConfigKeys m_key;
+		std::array<char, BUFFER_SIZE> m_buffer;
+		int m_len = 0;
+	};
+
 	// Useful elements
 
 	inline void LayoutRowDynamic(int num_columns)
 	{
-		LayoutRowDynamic(num_columns, m_buttonHeight);
+		LayoutRowDynamic(num_columns, static_cast<float>(m_buttonHeight));
 	}
 
-	inline void LayoutRowDynamic(int num_columns, int height)
+	inline void LayoutRowDynamic(int num_columns, float height)
 	{
 		nk_layout_row_dynamic(m_nctx, height, num_columns);
 	}
@@ -158,7 +216,7 @@ protected:
 		const int prevValue = value;
 
 		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, const_cast<const char**>(options.data()), options.size(), &value, m_buttonHeight, m_comboBoxSize);
+		nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &value, m_buttonHeight, m_comboBoxSize);
 		if (prevValue != value) {
 			g_gameConfig.Set(key, value);
 			return true;
@@ -169,13 +227,15 @@ protected:
 	bool StringSelectionSetting(GameConfigKeys key, const Vector<String>& options, const std::string_view& label)
 	{
 		String value = g_gameConfig.GetString(key);
-		int selection;
-		auto stringSearch = std::find(options.begin(), options.end(), value);
+		int selection = 0;
+
+		const auto stringSearch = std::find(options.begin(), options.end(), value);
 		if (stringSearch != options.end())
-			selection = stringSearch - options.begin();
-		else
-			selection = 0;
-		auto prevSelection = selection;
+		{
+			selection = static_cast<int>(stringSearch - options.begin());
+		}
+
+		const int prevSelection = selection;
 
 		Vector<const char*> displayData;
 		for (const String& s : options)
@@ -184,7 +244,7 @@ protected:
 		}
 
 		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonHeight, m_comboBoxSize);
+		nk_combobox(m_nctx, displayData.data(), static_cast<int>(options.size()), &selection, m_buttonHeight, m_comboBoxSize);
 
 		if (prevSelection != selection) {
 			String newValue = options[selection];
@@ -195,10 +255,10 @@ protected:
 		return false;
 	}
 	
-	bool IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step = 1, int perpixel = 1)
+	bool IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1)
 	{
 		int value = g_gameConfig.GetInt(key);
-		auto newValue = nk_propertyi_sdl_text(m_nctx, label.data(), min, value, max, step, perpixel);
+		const int newValue = nk_propertyi_sdl_text(m_nctx, label.data(), min, value, max, step, perPixel);
 		if (newValue != value) {
 			g_gameConfig.Set(key, newValue);
 			return true;
@@ -578,9 +638,7 @@ protected:
 	{
 		m_hitWindow = HitWindow::FromConfig();
 
-		String songsPath = g_gameConfig.GetString(GameConfigKeys::SongFolder);
-		strcpy(m_songsPath, songsPath.c_str());
-		m_songsPathLen = songsPath.length();
+		m_songsPath.Load();
 	}
 
 	void Save() override
@@ -588,17 +646,12 @@ protected:
 		m_hitWindow.Validate();
 		m_hitWindow.SaveConfig();
 
-		String songsPath = String(m_songsPath, m_songsPathLen);
-		songsPath.TrimBack('\n');
-		songsPath.TrimBack(' ');
-
-		g_gameConfig.Set(GameConfigKeys::SongFolder, songsPath);
+		m_songsPath.Save();
 	}
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
-	char m_songsPath[1024];
-	int m_songsPathLen = 0;
+	TextSettingData m_songsPath = { GameConfigKeys::SongFolder };
 
 protected:
 	void RenderContents() override
@@ -669,7 +722,7 @@ protected:
 		}
 
 		nk_label(m_nctx, "Songs folder path:", nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_songsPath, &m_songsPathLen, 1024, nk_filter_default));
+		m_songsPath.Render(m_nctx);
 
 		ToggleSetting(GameConfigKeys::TransferScoresOnChartUpdate, "Transfer scores on chart change");
 
@@ -769,7 +822,7 @@ private:
 		// Palette
 		if (m_laserColorPaletteVisible)
 		{
-			LayoutRowDynamic(2 * m_laserColorPalette.size());
+			LayoutRowDynamic(2 * static_cast<int>(m_laserColorPalette.size()));
 
 			RenderLaserColorPalette(m_laserColors.data());
 			RenderLaserColorPalette(m_laserColors.data() + 1);
@@ -788,8 +841,8 @@ private:
 
 		// Slider
 		{
-			nk_slider_float(m_nctx, 0, m_laserColors.data(), 360, 0.1);
-			nk_slider_float(m_nctx, 0, m_laserColors.data() + 1, 360, 0.1);
+			nk_slider_float(m_nctx, 0, m_laserColors.data(), 360, 0.1f);
+			nk_slider_float(m_nctx, 0, m_laserColors.data() + 1, 360, 0.1f);
 		}
 	}
 
@@ -864,104 +917,53 @@ class SettingsPage_Online : public SettingsPage
 {
 public:
 	SettingsPage_Online(nk_context* nctx) : SettingsPage(nctx, "Online") {}
-
+	
 protected:
 	void Load() override
 	{
-		String multiplayerHost = g_gameConfig.GetString(GameConfigKeys::MultiplayerHost);
-		strcpy(m_multiplayerHost, multiplayerHost.c_str());
-		m_multiplayerHostLen = multiplayerHost.length();
+		m_multiplayerHost.Load();
+		m_multiplayerPassword.Load();
+		m_multiplayerUsername.Load();
 
-		String multiplayerPassword = g_gameConfig.GetString(GameConfigKeys::MultiplayerPassword);
-		strcpy(m_multiplayerPassword, multiplayerPassword.c_str());
-		m_multiplayerPasswordLen = multiplayerPassword.length();
-
-		String multiplayerUsername = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
-		strcpy(m_multiplayerUsername, multiplayerUsername.c_str());
-		m_multiplayerUsernameLen = multiplayerUsername.length();
-
-		String irBaseURL = g_gameConfig.GetString(GameConfigKeys::IRBaseURL);
-		strcpy(m_irBaseURL, irBaseURL.c_str());
-		m_irBaseURLLen = irBaseURL.length();
-
-		String irToken = g_gameConfig.GetString(GameConfigKeys::IRToken);
-		strcpy(m_irToken, irToken.c_str());
-		m_irTokenLen = irToken.length();
+		m_irBaseURL.Load();
+		m_irToken.Load();
 	}
 
 	void Save() override
 	{
-		String multiplayerHost = String(m_multiplayerHost, m_multiplayerHostLen);
-		multiplayerHost.TrimBack('\n');
-		multiplayerHost.TrimBack(' ');
-		g_gameConfig.Set(GameConfigKeys::MultiplayerHost, multiplayerHost);
+		m_multiplayerHost.Save();
+		m_multiplayerPassword.Save();
+		m_multiplayerUsername.Save();
 
-		String multiplayerPassword = String(m_multiplayerPassword, m_multiplayerPasswordLen);
-		multiplayerPassword.TrimBack('\n');
-		multiplayerPassword.TrimBack(' ');
-		g_gameConfig.Set(GameConfigKeys::MultiplayerPassword, multiplayerPassword);
-
-		String multiplayerUsername = String(m_multiplayerUsername, m_multiplayerUsernameLen);
-		multiplayerUsername.TrimBack('\n');
-		multiplayerUsername.TrimBack(' ');
-		g_gameConfig.Set(GameConfigKeys::MultiplayerUsername, multiplayerUsername);
-
-		String irBaseURL = String(m_irBaseURL, m_irBaseURLLen);
-		irBaseURL.TrimBack('\n');
-		irBaseURL.TrimBack(' ');
-		g_gameConfig.Set(GameConfigKeys::IRBaseURL, irBaseURL);
-
-		String irToken = String(m_irToken, m_irTokenLen);
-		irToken.TrimBack('\n');
-		irToken.TrimBack(' ');
-		g_gameConfig.Set(GameConfigKeys::IRToken, irToken);
+		m_irBaseURL.Save();
+		m_irToken.Save();
 	}
 
-	char m_multiplayerHost[1024];
-	int m_multiplayerHostLen = 0;
+	TextSettingData m_multiplayerHost = { GameConfigKeys::MultiplayerHost };
+	TextSettingData m_multiplayerPassword = { GameConfigKeys::MultiplayerPassword };
+	TextSettingData m_multiplayerUsername = { GameConfigKeys::MultiplayerUsername };
 
-	char m_multiplayerPassword[1024];
-	int m_multiplayerPasswordLen = 0;
-
-	char m_multiplayerUsername[1024];
-	int m_multiplayerUsernameLen = 0;
-
-	char m_irBaseURL[1024];
-	int m_irBaseURLLen = 0;
-
-	char m_irToken[1024];
-	int m_irTokenLen = 0;
+	TextSettingData m_irBaseURL = { GameConfigKeys::IRBaseURL };
+	TextSettingData m_irToken = { GameConfigKeys::IRToken };
 
 	void RenderContents() override
 	{
 		LayoutRowDynamic(1);
 
 		nk_label(m_nctx, "Multiplayer Server:", nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerHost, &m_multiplayerHostLen, 1024, nk_filter_default));
+		m_multiplayerHost.Render(m_nctx);
 
 		nk_label(m_nctx, "Multiplayer Server Username:", nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerUsername, &m_multiplayerUsernameLen, 1024, nk_filter_default));
+		m_multiplayerUsername.Render(m_nctx);
 
 		nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
+		m_multiplayerPassword.RenderPassword(m_nctx);
 
 		nk_label(m_nctx, "IR Base URL:", nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_irBaseURL, &m_irBaseURLLen, 1024, nk_filter_default));
+		m_irBaseURL.Render(m_nctx);
 
 		nk_label(m_nctx, "IR Token:", nk_text_alignment::NK_TEXT_LEFT);
-
-		//hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
-		int i = 0;
-		int old_len = m_irTokenLen;
-		char tokenBuffer[1024];
-		for (i = 0; i < m_irTokenLen; ++i) tokenBuffer[i] = '*';
-
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, tokenBuffer, &m_irTokenLen, 1024, nk_filter_default));
-
-		if (old_len < m_irTokenLen)
-		{
-			memcpy(&m_irToken[old_len], &tokenBuffer[old_len], (nk_size)(m_irTokenLen - old_len));
-		}
+		m_irToken.RenderPassword(m_nctx);
 
 		ToggleSetting(GameConfigKeys::IRLowBandwidth, "IR Low Bandwidth (disables sending replays)");
 	}
@@ -1176,7 +1178,7 @@ private:
 				const auto& page = m_pages[i];
 				const String& name = page->GetName();
 
-				if (nk_button_text(m_nctx, name.c_str(), name.size()))
+				if (nk_button_text(m_nctx, name.c_str(), static_cast<int>(name.size())))
 				{
 					m_currPage = i;
 				}
