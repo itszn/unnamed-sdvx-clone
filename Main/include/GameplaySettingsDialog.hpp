@@ -20,4 +20,5 @@ public:
 private:
     SongSelect* songSelectScreen = nullptr;
     Setting m_CreateSongOffsetSetting();
+    Setting m_CreateProfileSetting(const String&);
 };

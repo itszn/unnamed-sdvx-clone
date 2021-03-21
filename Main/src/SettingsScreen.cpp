@@ -8,10 +8,10 @@
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "Background.hpp"
-#include "HealthGauge.hpp"
 #include "Shared/Jobs.hpp"
 #include "ScoreScreen.hpp"
 #include "Shared/Enum.hpp"
+#include "Shared/Files.hpp"
 #include "Input.hpp"
 #include <SDL2/SDL.h>
 #include "nanovg.h"
@@ -397,6 +397,10 @@ private:
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
 	Vector<String> m_gamePads;
 	Vector<String> m_skins;
+	Vector<String> m_profiles;
+
+	String m_currentProfile;
+	bool m_needsProfileReboot = false;
 	Vector<String> m_channels = { "release", "master", "develop" };
 
 	const Vector<GameConfigKeys> m_keyboardKeys = {
@@ -469,12 +473,16 @@ private:
 	int m_multiplayerPasswordLen = 0;
 	char m_multiplayerUsername[1024];
 	int m_multiplayerUsernameLen = 0;
+	char m_irBaseURL[1024];
+	int m_irBaseURLLen = 0;
+	char m_irToken[1024];
+	int m_irTokenLen = 0;
 	const Vector<GameConfigKeys>* m_activeBTKeys = &m_keyboardKeys;
 	const Vector<GameConfigKeys>* m_activeLaserKeys = &m_keyboardLaserKeys;
 	bool m_useBTGamepad = false;
 	bool m_useLaserGamepad = false;
 	bool m_altBinds = false;
-	
+
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
 	String m_skinBeforeSkinSettings = "";
@@ -557,6 +565,16 @@ private:
 		multiplayerUsername.TrimBack(' ');
 		g_gameConfig.Set(GameConfigKeys::MultiplayerUsername, multiplayerUsername);
 
+		String irBaseURL = String(m_irBaseURL, m_irBaseURLLen);
+		irBaseURL.TrimBack('\n');
+		irBaseURL.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::IRBaseURL, irBaseURL);
+
+		String irToken = String(m_irToken, m_irTokenLen);
+		irToken.TrimBack('\n');
+		irToken.TrimBack(' ');
+		g_gameConfig.Set(GameConfigKeys::IRToken, irToken);
+
 		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
 		{
 			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
@@ -628,7 +646,7 @@ private:
 	template<typename EnumClass>
 	bool EnumSetting(GameConfigKeys key, String label)
 	{
-		
+
 		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
 		Vector<const char*> names;
 		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
@@ -680,7 +698,7 @@ private:
 
 		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
 		nk_combobox(m_nctx, displayData.data(), options.size(), &selection, m_buttonheight, m_comboBoxSize);
-		
+
 		if (prevSelection != selection) {
 			String newValue = options[selection];
 			value = newValue;
@@ -712,8 +730,21 @@ public:
 	//TODO: Controller support and the rest of the options and better layout
 	bool Init()
 	{
-		m_gamePads = g_gameWindow->GetGamepadDeviceNames();	
+		m_gamePads = g_gameWindow->GetGamepadDeviceNames();
 		m_skins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+
+		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+        m_profiles.push_back("Main");
+        Vector<FileInfo> profiles = Files::ScanFiles(
+            Path::Absolute("profiles/"), "cfg", NULL);
+        for (auto& file : profiles)
+        {
+            String profileName = "";
+            String unused = Path::RemoveLast(file.fullPath, &profileName);
+            profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
+            m_profiles.push_back(profileName);
+        }
 
 		String channel = g_gameConfig.GetString(GameConfigKeys::UpdateChannel);
 
@@ -771,7 +802,7 @@ public:
 			{
 				nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
 			}
-			
+
 			nk_sdl_font_stash_end();
 			nk_font_atlas_cleanup(atlas);
 			//nk_style_load_all_cursors(m_nctx, atlas->cursors);
@@ -807,11 +838,35 @@ public:
 		strcpy(m_multiplayerUsername, multiplayerUsername.c_str());
 		m_multiplayerUsernameLen = multiplayerUsername.length();
 
+		String irBaseURL = g_gameConfig.GetString(GameConfigKeys::IRBaseURL);
+		strcpy(m_irBaseURL, irBaseURL.c_str());
+		m_irBaseURLLen = irBaseURL.length();
+
+		String irToken = g_gameConfig.GetString(GameConfigKeys::IRToken);
+		strcpy(m_irToken, irToken.c_str());
+		m_irTokenLen = irToken.length();
+
 		return true;
 	}
 
 	void Tick(float deltatime)
 	{
+		if (m_needsProfileReboot)
+		{
+			String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+			// Save old settings
+			g_gameConfig.Set(GameConfigKeys::CurrentProfileName, m_currentProfile);
+			Exit();
+			g_application->ApplySettings();
+
+			// Load in new settings
+			g_application->ReloadConfig(newProfile);
+
+			g_application->AddTickable(SettingsScreen::Create());
+			return;
+		}
+
 		nk_input_begin(m_nctx);
 		while (!eventQueue.empty())
 		{
@@ -822,7 +877,7 @@ public:
 
 		m_useBTGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Controller;
 		m_useLaserGamepad = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Controller;
-		
+
 		if (m_useBTGamepad) m_activeBTKeys = &m_controllerKeys;
 		else if (m_altBinds) m_activeBTKeys = &m_altKeyboardKeys;
 		else m_activeBTKeys = &m_keyboardKeys;
@@ -884,7 +939,7 @@ public:
 			nk_spacing(m_nctx, 1);
 
 			if (nk_button_label(m_nctx, "Skin Settings")
-				|| (m_skinBeforeSkinSettings != "" && 
+				|| (m_skinBeforeSkinSettings != "" &&
 					m_skinBeforeSkinSettings != g_gameConfig.GetString(GameConfigKeys::Skin))
 				)
 			{
@@ -916,6 +971,8 @@ public:
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Input", (treesOpen & 1) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
 			g_gameConfig.Set(GameConfigKeys::SettingsTreesOpen, treesOpen | 1);
+
+
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 3);
 			if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) SetLL();
 			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) SetBTBind((*m_activeBTKeys)[0]);
@@ -938,6 +995,14 @@ public:
 			nk_layout_row_dynamic(m_nctx, m_buttonheight, 1);
 			nk_label(m_nctx, "Back:", nk_text_alignment::NK_TEXT_LEFT);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[7].c_str())) SetBTBind((*m_activeBTKeys)[7]);
+
+			if (m_profiles.size() > 0)
+			{
+				if (StringSelectionSetting(GameConfigKeys::CurrentProfileName, m_profiles, "Selected Profile:")) {
+
+					m_needsProfileReboot = true;
+				}
+			}
 
 			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
 			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
@@ -972,12 +1037,12 @@ public:
 
 			IntSetting(GameConfigKeys::GlobalOffset, "Global Offset", -1000, 1000);
 			IntSetting(GameConfigKeys::InputOffset, "Input Offset", -1000, 1000);
-			
+
 			if (nk_button_label(m_nctx, "Calibrate offsets")) {
 				CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
 				g_transition->TransitionTo(cscreen);
 			}
-			
+
 			FloatSetting(GameConfigKeys::SongSelSensMult, "Song Select Sensitivity Multiplier", 0.0f, 20.0f, 0.1f);
 			IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
 
@@ -1020,6 +1085,7 @@ public:
 	// Game settings
 	void RenderSettingsGame()
 	{
+
 		int treesOpen = g_gameConfig.GetInt(GameConfigKeys::SettingsTreesOpen);
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Game", (treesOpen & 2) ? NK_MAXIMIZED : NK_MINIMIZED))
 		{
@@ -1164,7 +1230,7 @@ public:
 		nk_label(m_nctx, "Laser colors:", nk_text_alignment::NK_TEXT_LEFT);
 
 		nk_layout_row_dynamic(m_nctx, 30, 2);
-		
+
 		// Color
 		if (nk_button_color(m_nctx, leftColor)) m_laserColorPaletteVisible = !m_laserColorPaletteVisible;
 		if (nk_button_color(m_nctx, rightColor)) m_laserColorPaletteVisible = !m_laserColorPaletteVisible;
@@ -1227,6 +1293,7 @@ public:
 			ToggleSetting(GameConfigKeys::WASAPI_Exclusive, "WASAPI Exclusive Mode (requires restart)");
 #endif // _WIN32
 			ToggleSetting(GameConfigKeys::MuteUnfocused, "Mute the game when unfocused");
+			ToggleSetting(GameConfigKeys::PrerenderEffects, "Pre-Render Song Effects (experimental)");
 			ToggleSetting(GameConfigKeys::CheckForUpdates, "Check for updates on startup");
 
 			if (m_channels.size() > 0)
@@ -1258,6 +1325,27 @@ public:
 
 			nk_label(m_nctx, "Multiplayer Server Password:", nk_text_alignment::NK_TEXT_LEFT);
 			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_multiplayerPassword, &m_multiplayerPasswordLen, 1024, nk_filter_default));
+
+			nk_label(m_nctx, "IR Base URL:", nk_text_alignment::NK_TEXT_LEFT);
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, m_irBaseURL, &m_irBaseURLLen, 1024, nk_filter_default));
+
+			nk_label(m_nctx, "IR Token:", nk_text_alignment::NK_TEXT_LEFT);
+
+			//hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
+			int i = 0;
+			int old_len = m_irTokenLen;
+			char tokenBuffer[1024];
+			for (i = 0; i < m_irTokenLen; ++i) tokenBuffer[i] = '*';
+
+			nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, tokenBuffer, &m_irTokenLen, 1024, nk_filter_default));
+
+			if (old_len < m_irTokenLen)
+			{
+				memcpy(&m_irToken[old_len], &tokenBuffer[old_len], (nk_size)(m_irTokenLen - old_len));
+			}
+
+			ToggleSetting(GameConfigKeys::IRLowBandwidth, "IR Low Bandwidth (disables sending replays)");
+
 			nk_tree_pop(m_nctx);
 		}
 		else
@@ -1380,6 +1468,7 @@ public:
 		{
 			g_application->RemoveTickable(this);
 		}
+
 	}
 
 	void Render(float deltatime)
@@ -1520,7 +1609,7 @@ public:
 		if (m_state)
 		{
 			float sens = 6.0 / m_delta;
-			
+
 			g_application->FastText("Turn left knob one revolution clockwise", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText("then press start.", g_resolution.x / 2, g_resolution.y / 2 + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), g_resolution.x / 2, g_resolution.y / 2 + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);

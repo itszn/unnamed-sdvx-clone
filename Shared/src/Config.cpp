@@ -13,18 +13,19 @@ ConfigBase::~ConfigBase()
 		delete e.second;
 	}
 }
-bool ConfigBase::Load(const String& path)
+bool ConfigBase::Load(const String& path, bool reset)
 {
     File file;
     if(!file.OpenRead(path))
         return false;
     FileReader reader(file);
-    return Load(reader);
+    return Load(reader, reset);
 }
-bool ConfigBase::Load(BinaryStream& stream)
+bool ConfigBase::Load(BinaryStream& stream, bool reset)
 {
 	// Clear and load defaults
-	Clear();
+	if (reset)
+		Clear();
 
 	Set<uint32> setKeys;
 	for(auto e : m_entries)
@@ -48,6 +49,7 @@ bool ConfigBase::Load(BinaryStream& stream)
 				auto it1 = m_entries.find(it->second);
 				if(it1 != m_entries.end())
 				{
+					m_entriesInFile.insert(it1->first);
 					setKeys.erase(it1->first);
 					m_entries[it1->first]->FromString(v);
 				}
@@ -68,19 +70,29 @@ bool ConfigBase::Load(BinaryStream& stream)
 	}
 	return true;
 }
-bool ConfigBase::Save(const String& path)
+bool ConfigBase::Save(const String& path,
+	ConfigBase::KeyList* ignore,
+	ConfigBase::KeyList* only)
 {
     File file;
     if(!file.OpenWrite(path))
         return false;
     FileWriter reader(file);
-    Save(reader);
+    Save(reader, ignore, only);
     return true;
 }
-void ConfigBase::Save(BinaryStream& stream)
+void ConfigBase::Save(BinaryStream& stream,
+	ConfigBase::KeyList* ignore,
+	ConfigBase::KeyList* only)
 {
 	for(auto& e : m_entries)
 	{
+		if (ignore && ignore->find(e.first) != ignore->end())
+			continue;
+
+		if (only && only->find(e.first) == only->end())
+			continue;
+
 		String key = m_reverseKeys[e.first];
 		String line = key + " = " + e.second->ToString();
 		TextStream::WriteLine(stream, line);
@@ -88,6 +100,24 @@ void ConfigBase::Save(BinaryStream& stream)
 
 	// Saved
 	m_dirty = false;
+}
+void ConfigBase::Update(ConfigBase& other,
+	ConfigBase::KeyList* ignore,
+	ConfigBase::KeyList* only)
+{
+	for (auto& e : other.m_entries)
+	{
+		if (ignore && ignore->find(e.first) != ignore->end())
+			continue;
+
+		if (only && only->find(e.first) == only->end())
+			continue;
+
+		// TODO a better method of assignment than this?
+		m_entries[e.first]->FromString(e.second->ToString());
+	}
+
+	m_dirty = true;
 }
 bool ConfigBase::IsDirty() const
 {

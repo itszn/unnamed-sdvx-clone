@@ -24,6 +24,18 @@ BaseGameSettingsDialog::~BaseGameSettingsDialog()
 	g_gameWindow->OnKeyPressed.RemoveAll(this);
 }
 
+void BaseGameSettingsDialog::ResetTabs()
+{
+	for (auto& tab : m_tabs)
+	{
+		tab->settings.clear();
+	}
+
+	m_tabs.clear();
+
+    InitTabs();
+}
+
 void BaseGameSettingsDialog::Tick(float deltaTime)
 {
     if (m_active != m_targetActive)
