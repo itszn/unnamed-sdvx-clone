@@ -105,12 +105,15 @@ protected:
 		void Load()
 		{
 			String str = g_gameConfig.GetString(m_key);
-			m_len = static_cast<int>(str.length());
 
-			if (m_len >= m_buffer.size())
+			if (str.length() >= m_buffer.size())
 			{
 				Logf("Config key=%d cropped due to being too long (%d)", Logger::Severity::Error, static_cast<int>(m_key), m_len);
 				m_len = static_cast<int>(m_buffer.size() - 1);
+			}
+			else
+			{
+				m_len = static_cast<int>(str.length());
 			}
 
 			std::memcpy(m_buffer.data(), str.data(), m_len + 1);
