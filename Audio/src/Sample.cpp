@@ -122,10 +122,6 @@ public:
 	{
 		return m_playing;
 	}
-	uint64 GetSampleCount() const override
-	{
-		return 0;
-	}
 	void PreRenderDSPs(Vector<DSP *> &DSPs) override {}
 	uint64 GetSamplePos() const override
 	{

@@ -110,7 +110,7 @@ Ref<AudioStream> AudioStreamPcm::Create(class Audio *audio, const Ref<AudioStrea
     AudioStreamPcm *impl = new AudioStreamPcm();
     impl->m_pcm = nullptr;
     float *source = other->GetPCM();
-    uint64 sampleCount = other->GetSampleCount();
+    uint64 sampleCount = other->GetPCMCount();
     if (source == nullptr || sampleCount == 0)
     {
         delete impl;

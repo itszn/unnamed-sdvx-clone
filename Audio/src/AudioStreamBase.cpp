@@ -121,15 +121,11 @@ float *AudioStreamBase::GetPCM()
 }
 uint64 AudioStreamBase::GetPCMCount() const
 {
-	return m_samplesTotal;
+	return GetSampleCount_Internal();
 }
 uint32 AudioStreamBase::GetSampleRate() const
 {
 	return GetSampleRate_Internal();
-}
-uint64 AudioStreamBase::GetSampleCount() const
-{
-	return GetSampleCount_Internal();
 }
 void AudioStreamBase::m_restartTiming()
 {

@@ -531,14 +531,16 @@ void AudioPlayback::m_PreRenderDSPTrack()
 				DSP *dsp = effect.CreateDSP(*m_playback->GetTimingPointAt(chartObj->time),
 											1.0f,
 											m_fxtrack->GetSampleRate());
-
-				effect.SetParams(dsp, *this, holdObj);
-				dsp->startTime = chartObj->time;
-				dsp->endTime = dsp->startTime + holdObj->duration;
-				dsp->SetAudioBase(m_fxtrack.get());
-				dsp->priority = GameAudioEffect::GetDefaultEffectPriority(effect.type);
-				Logf("Added %s at %dms", Logger::Severity::Debug, dsp->GetName(), dsp->startTime);
-				DSPs.Add(dsp);
+				if (dsp != nullptr)
+				{
+					effect.SetParams(dsp, *this, holdObj);
+					dsp->startTime = chartObj->time;
+					dsp->endTime = dsp->startTime + holdObj->duration;
+					dsp->SetAudioBase(m_fxtrack.get());
+					dsp->priority = GameAudioEffect::GetDefaultEffectPriority(effect.type);
+					Logf("Added %s at %dms", Logger::Severity::Debug, dsp->GetName(), dsp->startTime);
+					DSPs.Add(dsp);
+				}
 			}
 		}
 	}
