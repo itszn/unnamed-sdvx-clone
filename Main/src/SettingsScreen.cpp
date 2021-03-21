@@ -19,7 +19,7 @@
 #include "TransitionScreen.hpp"
 
 // nuklear's nk_dtoa is inaccurate, even for exact values like 0.25f.
-static void sprintf_dtoa(char (&buffer)[64 /* NK_MAX_NUMBER_BUFFER */], double d)
+static inline void sprintf_dtoa(char (&buffer)[64 /* NK_MAX_NUMBER_BUFFER */], double d)
 {
 	Utility::BufferSprintf(buffer, "%g", d);
 }
@@ -45,11 +45,11 @@ static void sprintf_dtoa(char (&buffer)[64 /* NK_MAX_NUMBER_BUFFER */], double d
 #include "nuklear/nuklear_sdl_gl3.h"
 #endif
 
-#define MAX_VERTEX_MEMORY 512 * 1024
-#define MAX_ELEMENT_MEMORY 128 * 1024
-#define FULL_FONT_TEXTURE_HEIGHT 32768 //needed to load all CJK glyphs
+constexpr static int MAX_VERTEX_MEMORY = 512 * 1024;
+constexpr static int MAX_ELEMENT_MEMORY = 128 * 1024;
+constexpr static int FULL_FONT_TEXTURE_HEIGHT = 32768;
 
-static void nk_sdl_text(nk_flags event)
+static inline void nk_sdl_text(nk_flags event)
 {
 	if (event & NK_EDIT_ACTIVATED)
 	{
@@ -61,7 +61,7 @@ static void nk_sdl_text(nk_flags event)
 	}
 }
 
-static int nk_get_property_state(struct nk_context *ctx, const char *name)
+static inline int nk_get_property_state(struct nk_context *ctx, const char *name)
 {
     if (!ctx || !ctx->current || !ctx->current->layout) return NK_PROPERTY_DEFAULT;
 	struct nk_window* win = ctx->current;
@@ -76,7 +76,7 @@ static int nk_get_property_state(struct nk_context *ctx, const char *name)
 	return NK_PROPERTY_DEFAULT;
 }
 
-static int nk_propertyi_sdl_text(struct nk_context *ctx, const char *name, int min, int val,
+static inline int nk_propertyi_sdl_text(struct nk_context *ctx, const char *name, int min, int val,
 		    int max, int step, float inc_per_pixel)
 {
 	int oldState = nk_get_property_state(ctx, name);
@@ -93,7 +93,7 @@ static int nk_propertyi_sdl_text(struct nk_context *ctx, const char *name, int m
 	return value;
 }
 
-static float nk_propertyf_sdl_text(struct nk_context *ctx, const char *name, float min,
+static inline float nk_propertyf_sdl_text(struct nk_context *ctx, const char *name, float min,
 		    float val, float max, float step, float inc_per_pixel)
 {
 	int oldState = nk_get_property_state(ctx, name);
@@ -115,7 +115,281 @@ static inline const char* GetKeyNameFromScancodeConfig(int scancode)
 	return SDL_GetKeyName(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode)));
 }
 
-class SettingsScreen_Impl : public SettingsScreen
+/// New
+class SettingsPage
+{
+protected:
+	SettingsPage(nk_context* nctx, std::string_view name) : m_nctx(nctx), m_name(name) {}
+
+public:
+	inline const String& GetName() const { return m_name; }
+	virtual void Render(const Rect& rect) {}
+
+private:
+	nk_context* m_nctx = nullptr;
+	String m_name;
+};
+
+class SettingsPage_Input : public SettingsPage
+{
+public:
+	SettingsPage_Input(nk_context* nctx) : SettingsPage(nctx, "Input")
+	{
+	}
+};
+
+class SettingsPage_Game : public SettingsPage
+{
+public:
+	SettingsPage_Game(nk_context* nctx) : SettingsPage(nctx, "Game")
+	{
+	}
+};
+
+class SettingsPage_Display : public SettingsPage
+{
+public:
+	SettingsPage_Display(nk_context* nctx) : SettingsPage(nctx, "Display")
+	{
+	}
+};
+
+class SettingsPage_System : public SettingsPage
+{
+public:
+	SettingsPage_System(nk_context* nctx) : SettingsPage(nctx, "System")
+	{
+	}
+};
+
+class SettingsPage_Online : public SettingsPage
+{
+public:
+	SettingsPage_Online(nk_context* nctx) : SettingsPage(nctx, "Online")
+	{
+	}
+};
+
+class SettingsPage_Skin : public SettingsPage
+{
+public:
+	SettingsPage_Skin(nk_context* nctx) : SettingsPage(nctx, "Skin")
+	{
+	}
+};
+
+class SettingsScreen_Impl_New : public SettingsScreen
+{
+public:
+	bool Init() override
+	{
+		InitNuklear();
+		InitPages();
+
+		return true;
+	}
+
+	~SettingsScreen_Impl_New() override
+	{
+		nk_sdl_shutdown();
+		g_application->ApplySettings();
+	}
+
+	void Tick(float deltaTime) override
+	{
+		HandleNuklearInput();
+	}
+
+	void Render(float deltaTime) override
+	{
+		if (IsSuspended())
+		{
+			return;
+		}
+
+		UpdatePageRegions();
+		RenderPageHeaders();
+		RenderPageContents();
+	}
+
+	void OnKeyPressed(SDL_Scancode code) override
+	{
+		if (IsSuspended())
+		{
+			return;
+		}
+
+		if (code == SDL_SCANCODE_ESCAPE)
+		{
+			Exit();
+		}
+	}
+
+	void OnSuspend() override
+	{
+	}
+
+	void OnRestore() override
+	{
+		g_application->DiscordPresenceMenu("Settings");
+	}
+
+	void Exit()
+	{
+		g_gameWindow->OnAnyEvent.RemoveAll(this);
+
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
+		{
+			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
+		}
+
+		if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+		{
+			g_application->CheckForUpdate();
+		}
+
+		g_input.Cleanup();
+		g_input.Init(*g_gameWindow);
+
+		g_application->RemoveTickable(this);
+	}
+
+private:
+	Vector<std::unique_ptr<SettingsPage>> m_pages;
+	size_t m_currPage = 0;
+
+	Rect m_pageHeaderRegion;
+	Rect m_pageContentRegion;
+
+	void InitPages()
+	{
+		m_pages.emplace_back(std::make_unique<SettingsPage_Game>(m_nctx));
+		m_pages.emplace_back(std::make_unique<SettingsPage_Display>(m_nctx));
+		m_pages.emplace_back(std::make_unique<SettingsPage_System>(m_nctx));
+		m_pages.emplace_back(std::make_unique<SettingsPage_Online>(m_nctx));
+		m_pages.emplace_back(std::make_unique<SettingsPage_Skin>(m_nctx));
+
+		m_currPage = 0;
+	}
+
+	inline void UpdatePageRegions()
+	{
+		const float SETTINGS_DESIRED_CONTENTS_WIDTH = g_resolution.y / 1.4f;
+		const float SETTINGS_DESIRED_HEADERS_WIDTH = Math::Min(SETTINGS_DESIRED_CONTENTS_WIDTH / 3.0f, 80.0f);
+
+		const float SETTINGS_WIDTH = Math::Min(SETTINGS_DESIRED_CONTENTS_WIDTH + SETTINGS_DESIRED_HEADERS_WIDTH, g_resolution.x - 5.0f);
+		const float SETTINGS_CONTENTS_WIDTH = Math::Max(SETTINGS_WIDTH * 0.75f, SETTINGS_WIDTH - SETTINGS_DESIRED_HEADERS_WIDTH);
+		const float SETTINGS_HEADERS_WIDTH = SETTINGS_WIDTH - SETTINGS_CONTENTS_WIDTH;
+
+		// Better to keep current layout if there's not enough space
+		if (SETTINGS_CONTENTS_WIDTH < 10.0f || SETTINGS_HEADERS_WIDTH < 10.0f)
+		{
+			return;
+		}
+
+		const float SETTINGS_OFFSET_X = (g_resolution.x - SETTINGS_WIDTH) / 2;
+		const float SETTINGS_CONTENTS_OFFSET_X = SETTINGS_OFFSET_X + SETTINGS_HEADERS_WIDTH;
+
+		m_pageHeaderRegion = Rect(SETTINGS_OFFSET_X, 0, SETTINGS_CONTENTS_OFFSET_X, (float) g_resolution.y);
+		m_pageContentRegion = Rect(SETTINGS_CONTENTS_OFFSET_X, 0, SETTINGS_CONTENTS_OFFSET_X + SETTINGS_CONTENTS_WIDTH, (float) g_resolution.y);
+	}
+
+	inline void RenderPageHeaders()
+	{
+
+	}
+
+	inline void RenderPageContents()
+	{
+		if (m_currPage >= m_pages.size())
+		{
+			return;
+		}
+
+		m_pages[m_currPage]->Render(m_pageContentRegion);
+	}
+
+private:
+	nk_context* m_nctx = nullptr;
+
+	std::queue<SDL_Event> m_eventQueue;
+	inline void UpdateNuklaerInput(SDL_Event event)
+	{
+		m_eventQueue.push(event);
+	}
+
+	inline void HandleNuklearInput()
+	{
+		nk_input_begin(m_nctx);
+		while (!m_eventQueue.empty())
+		{
+			nk_sdl_handle_event(&m_eventQueue.front());
+			m_eventQueue.pop();
+		}
+		nk_input_end(m_nctx);
+	}
+
+	inline void InitNuklear()
+	{
+		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
+		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl_New::UpdateNuklaerInput);
+
+		InitNuklearFontAtlas();
+		InitNuklearStyles();
+	}
+
+	inline void InitNuklearFontAtlas()
+	{
+		struct nk_font_atlas* atlas;
+		nk_sdl_font_stash_begin(&atlas);
+
+		struct nk_font* fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf")).c_str(), 24, 0);
+
+		NK_STORAGE const nk_rune cjk_ranges[] = {
+			0x0020, 0x00FF,
+			0x3000, 0x30FF,
+			0x3131, 0x3163,
+			0xAC00, 0xD79D,
+			0x31F0, 0x31FF,
+			0xFF00, 0xFFEF,
+			0x4e00, 0x9FAF,
+			0
+		};
+
+		struct nk_font_config cfg_cjk = nk_font_config(24);
+		cfg_cjk.merge_mode = nk_true;
+		cfg_cjk.range = cjk_ranges;
+
+		int maxSize;
+		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
+		Logf("System max texture size: %d", Logger::Severity::Info, maxSize);
+		if (maxSize >= FULL_FONT_TEXTURE_HEIGHT && !g_gameConfig.GetBool(GameConfigKeys::LimitSettingsFont))
+		{
+			nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
+		}
+
+		nk_sdl_font_stash_end();
+		nk_font_atlas_cleanup(atlas);
+
+		nk_style_set_font(m_nctx, &fallback->handle);
+	}
+
+	inline void InitNuklearStyles()
+	{
+		m_nctx->style.text.color = nk_rgb(255, 255, 255);
+		m_nctx->style.button.border_color = nk_rgb(0, 128, 255);
+		m_nctx->style.button.padding = nk_vec2(5, 5);
+		m_nctx->style.button.rounding = 0;
+		m_nctx->style.window.fixed_background = nk_style_item_color(nk_rgb(40, 40, 40));
+		m_nctx->style.slider.bar_normal = nk_rgb(20, 20, 20);
+		m_nctx->style.slider.bar_hover = nk_rgb(20, 20, 20);
+		m_nctx->style.slider.bar_active = nk_rgb(20, 20, 20);
+	}
+};
+
+/// Old
+
+class SettingsScreen_Impl_Old : public SettingsScreen
 {
 private:
 	nk_context* m_nctx;
@@ -232,7 +506,7 @@ private:
 	void CalibrateSens()
 	{
 		LaserSensCalibrationScreen* sensScreen = LaserSensCalibrationScreen::Create();
-		sensScreen->SensSet.Add(this, &SettingsScreen_Impl::SetSens);
+		sensScreen->SensSet.Add(this, &SettingsScreen_Impl_Old::SetSens);
 		g_application->AddTickable(sensScreen);
 	}
 
@@ -428,7 +702,7 @@ private:
 	}
 
 public:
-	~SettingsScreen_Impl()
+	~SettingsScreen_Impl_Old()
 	{
 		nk_sdl_shutdown();
 		g_application->ApplySettings();
@@ -449,7 +723,7 @@ public:
 		}
 
 		m_nctx = nk_sdl_init((SDL_Window*)g_gameWindow->Handle());
-		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl::UpdateNuklearInput);
+		g_gameWindow->OnAnyEvent.Add(this, &SettingsScreen_Impl_Old::UpdateNuklearInput);
 		{
 			struct nk_font_atlas *atlas;
 			nk_sdl_font_stash_begin(&atlas);
@@ -1020,7 +1294,7 @@ public:
 
 SettingsScreen* SettingsScreen::Create()
 {
-	SettingsScreen_Impl* impl = new SettingsScreen_Impl();
+	SettingsScreen_Impl_Old* impl = new SettingsScreen_Impl_Old();
 	return impl;
 }
 
