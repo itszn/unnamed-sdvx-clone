@@ -63,7 +63,7 @@ public:
 	// Gets pcm data from a decoded stream, nullptr if not available
 	virtual float *GetPCM() = 0;
 	// Gets pcm sample count
-	virtual uint64 GetSampleCount() const = 0;
+	virtual uint64 GetPCMCount() const = 0;
 	virtual void PreRenderDSPs(Vector<DSP *> &DSPs) = 0;
 
 	void ProcessDSPs(float *out, uint32 numSamples);

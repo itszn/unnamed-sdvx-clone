@@ -110,6 +110,10 @@ public:
 	{
 		return nullptr;
 	}
+	uint64 GetPCMCount() const override
+	{
+		return 0;
+	}
 	uint32 GetSampleRate() const override
 	{
 		return g_audio->GetSampleRate();
@@ -117,10 +121,6 @@ public:
 	bool IsPlaying() const override
 	{
 		return m_playing;
-	}
-	uint64 GetSampleCount() const override
-	{
-		return 0;
 	}
 	void PreRenderDSPs(Vector<DSP *> &DSPs) override {}
 	uint64 GetSamplePos() const override

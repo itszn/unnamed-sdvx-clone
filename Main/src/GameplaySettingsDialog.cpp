@@ -20,7 +20,10 @@ void GameplaySettingsDialog::InitTabs()
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::GlobalOffset, "Global Offset", {-200, 200}));
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::InputOffset, "Input Offset", {-200, 200}));
     if (songSelectScreen != nullptr)
-		offsetTab->settings.push_back(m_CreateSongOffsetSetting());
+    {
+        offsetTab->settings.push_back(m_CreateSongOffsetSetting());
+        offsetTab->settings.push_back(CreateButton("Compute Song Offset", [this](const auto&) { onPressComputeSongOffset.Call(); }));
+    }
 
     Tab speedTab = std::make_unique<TabData>();
     speedTab->name = "HiSpeed";

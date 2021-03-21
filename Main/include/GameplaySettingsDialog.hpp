@@ -15,6 +15,7 @@ public:
     Delegate<> onPressAutoplay;
     Delegate<> onPressPractice;
     Delegate<int> onSongOffsetChange;
+    Delegate<> onPressComputeSongOffset;
 
 private:
     SongSelect* songSelectScreen = nullptr;
