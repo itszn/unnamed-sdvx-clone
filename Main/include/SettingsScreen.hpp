@@ -1,7 +1,7 @@
 #pragma once
 #include "ApplicationTickable.hpp"
-#include "GameConfig.hpp"
-#include "SkinConfig.hpp"
+
+enum class GameConfigKeys : uint32;
 
 class SettingsScreen
 {
@@ -47,7 +47,7 @@ private:
 	bool ColorSetting(String key, String label);
 	bool FloatSetting(String key, String label, float min, float max, float step = 0.01);
 	bool IntSetting(String key, String label, int min, int max, int step = 1, int perpixel = 1);
-	bool StringSelectionSetting(String key, String label, SkinSetting& setting);
+	bool StringSelectionSetting(String key, String label, class SkinSetting& setting);
 	bool MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label);
 	void Exit();
 

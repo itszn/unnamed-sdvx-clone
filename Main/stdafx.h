@@ -30,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <queue>
+#include <unordered_set>
 
 #include <Shared/Shared.hpp>
 

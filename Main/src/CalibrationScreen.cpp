@@ -3,6 +3,7 @@
 
 #include "Application.hpp"
 #include "Audio/Audio.hpp"
+#include "GameConfig.hpp"
 #include "SettingsScreen.hpp"
 
 CalibrationScreen::CalibrationScreen(nk_context* nk_ctx)

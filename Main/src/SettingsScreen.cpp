@@ -1,23 +1,27 @@
 #include "stdafx.h"
 #include "SettingsScreen.hpp"
 
-#include "Application.hpp"
 #include <Shared/Profiling.hpp>
-#include "GameConfig.hpp"
-#include "Scoring.hpp"
+#include <Shared/Enum.hpp>
+#include <Shared/Files.hpp>
+
 #include <Audio/Audio.hpp>
+
+#include "Application.hpp"
+#include "GameConfig.hpp"
+#include "SkinConfig.hpp"
+#include "Scoring.hpp"
 #include "Track.hpp"
 #include "Camera.hpp"
 #include "Background.hpp"
 #include "Shared/Jobs.hpp"
 #include "ScoreScreen.hpp"
-#include "Shared/Enum.hpp"
-#include "Shared/Files.hpp"
 #include "Input.hpp"
 #include "nanovg.h"
 #include "CalibrationScreen.hpp"
 #include "TransitionScreen.hpp"
 #include "GuiUtils.hpp"
+#include "SettingsPage.hpp"
 
 constexpr static int NK_PROPERTY_DEFAULT = 0;
 
@@ -86,266 +90,6 @@ static inline const char* GetKeyNameFromScancodeConfig(int scancode)
 {
 	return SDL_GetKeyName(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode)));
 }
-
-class SettingsPage
-{
-protected:
-	SettingsPage(nk_context* nctx, const std::string_view& name) : m_nctx(nctx), m_name(name) {}
-
-	virtual void Load() = 0;
-	virtual void Save() = 0;
-
-	virtual void RenderContents() = 0;
-
-	class TextSettingData
-	{
-	public:
-		TextSettingData(GameConfigKeys key) : m_key(key) {}
-
-		void Load()
-		{
-			String str = g_gameConfig.GetString(m_key);
-
-			if (str.length() >= m_buffer.size())
-			{
-				Logf("Config key=%d cropped due to being too long (%d)", Logger::Severity::Error, static_cast<int>(m_key), m_len);
-				m_len = static_cast<int>(m_buffer.size() - 1);
-			}
-			else
-			{
-				m_len = static_cast<int>(str.length());
-			}
-
-			std::memcpy(m_buffer.data(), str.data(), m_len + 1);
-		}
-
-		void Save()
-		{
-			String str = String(m_buffer.data(), m_len);
-
-			str.TrimBack('\n');
-			str.TrimBack(' ');
-
-			g_gameConfig.Set(m_key, str);
-		}
-
-		void Render(nk_context* nctx)
-		{
-			nk_sdl_text(nk_edit_string(nctx, NK_EDIT_FIELD, m_buffer.data(), &m_len, static_cast<int>(m_buffer.size()), nk_filter_default));
-		}
-
-		void RenderPassword(nk_context* nctx)
-		{
-			// Hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
-			const int old_len = m_len;
-			
-			std::array<char, BUFFER_SIZE> tokenBuffer;
-			std::fill(tokenBuffer.begin(), tokenBuffer.begin() + m_len, '*');
-
-			nk_sdl_text(nk_edit_string(nctx, NK_EDIT_FIELD, tokenBuffer.data(), &m_len, 1024, nk_filter_default));
-
-			if (old_len < m_len)
-			{
-				std::memcpy(m_buffer.data() + old_len, tokenBuffer.data() + old_len, m_len - old_len);
-			}
-		}
-
-	protected:
-		constexpr static size_t BUFFER_SIZE = 1024;
-
-		GameConfigKeys m_key;
-		std::array<char, BUFFER_SIZE> m_buffer;
-		int m_len = 0;
-	};
-
-	// Useful elements
-
-	inline void LayoutRowDynamic(int num_columns)
-	{
-		LayoutRowDynamic(num_columns, static_cast<float>(m_buttonHeight));
-	}
-
-	inline void LayoutRowDynamic(int num_columns, float height)
-	{
-		nk_layout_row_dynamic(m_nctx, height, num_columns);
-	}
-
-	bool ToggleSetting(GameConfigKeys key, const std::string_view& label)
-	{
-		int value = g_gameConfig.GetBool(key) ? 0 : 1;
-		const int prevValue = value;
-
-		nk_checkbox_label(m_nctx, label.data(), &value);
-
-		if (value != prevValue)
-		{
-			g_gameConfig.Set(key, value == 0);
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	template<typename EnumClass>
-	bool EnumSetting(GameConfigKeys key, const std::string_view& label)
-	{
-		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
-		Vector<const char*> names;
-
-		int value = (int) g_gameConfig.GetEnum<EnumClass>(key);
-		const int prevValue = value;
-
-		for (auto it = nameMap.begin(); it != nameMap.end(); it++)
-		{
-			names.Add(*(*it).second);
-		}
-
-		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, names.data(), names.size(), &value, m_buttonHeight, m_comboBoxSize);
-		if (prevValue != value) {
-			g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[value]));
-			return true;
-		}
-		return false;
-	}
-
-	bool SelectionSetting(GameConfigKeys key, const Vector<const char*>& options, const std::string_view& label)
-	{
-		assert(options.size() > 0);
-
-		int value = g_gameConfig.GetInt(key) % options.size();
-		const int prevValue = value;
-
-		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &value, m_buttonHeight, m_comboBoxSize);
-		if (prevValue != value) {
-			g_gameConfig.Set(key, value);
-			return true;
-		}
-		return false;
-	}
-
-	bool StringSelectionSetting(GameConfigKeys key, const Vector<String>& options, const std::string_view& label)
-	{
-		String value = g_gameConfig.GetString(key);
-		int selection = 0;
-
-		const auto stringSearch = std::find(options.begin(), options.end(), value);
-		if (stringSearch != options.end())
-		{
-			selection = static_cast<int>(stringSearch - options.begin());
-		}
-
-		const int prevSelection = selection;
-
-		Vector<const char*> displayData;
-		for (const String& s : options)
-		{
-			displayData.Add(s.data());
-		}
-
-		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, displayData.data(), static_cast<int>(options.size()), &selection, m_buttonHeight, m_comboBoxSize);
-
-		if (prevSelection != selection) {
-			String newValue = options[selection];
-			value = newValue;
-			g_gameConfig.Set(key, value);
-			return true;
-		}
-		return false;
-	}
-	
-	bool IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step = 1, float perPixel = 1)
-	{
-		int value = g_gameConfig.GetInt(key);
-		const int newValue = nk_propertyi_sdl_text(m_nctx, label.data(), min, value, max, step, perPixel);
-		if (newValue != value) {
-			g_gameConfig.Set(key, newValue);
-			return true;
-		}
-		return false;
-	}
-
-	bool FloatSetting(GameConfigKeys key, const std::string_view& label, float min, float max, float step = 0.01f)
-	{
-		float value = g_gameConfig.GetFloat(key);
-		const auto prevValue = value;
-
-		// nuklear supports precision only up to 2 decimal places (wtf)
-		if (step >= 0.01f)
-		{
-			float incPerPixel = step;
-			if (incPerPixel >= step / 2) incPerPixel = step * Math::Round(incPerPixel / step);
-
-			value = nk_propertyf_sdl_text(m_nctx, label.data(), min, value, max, step, incPerPixel);
-		}
-		else
-		{
-			nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, label.data(), value);
-			nk_slider_float(m_nctx, min, &value, max, step);
-		}
-
-		if (value != prevValue) {
-			g_gameConfig.Set(key, value);
-			return true;
-		}
-
-		return false;
-	}
-
-	bool PercentSetting(GameConfigKeys key, const std::string_view& label)
-	{
-		float value = g_gameConfig.GetFloat(key);
-		const float prevValue = value;
-
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, label.data(), value * 100);
-		nk_slider_float(m_nctx, 0, &value, 1, 0.005f);
-
-		if (value != prevValue)
-		{
-			g_gameConfig.Set(key, value);
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-public:
-	inline void Init()
-	{
-		Load();
-	}
-
-	inline void Exit()
-	{
-		Save();
-	}
-
-	inline const String& GetName() const { return m_name; }
-	
-	void Render(const struct nk_rect& rect)
-	{
-		m_comboBoxSize.x = rect.x - 30;
-
-		if (nk_begin(m_nctx, m_name.data(), rect, NK_WINDOW_NO_SCROLLBAR))
-		{
-			RenderContents();
-			nk_end(m_nctx);
-		}
-	}
-
-protected:
-	nk_context* m_nctx = nullptr;
-	String m_name;
-
-	int m_buttonHeight = 30;
-	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
-};
 
 class SettingsPage_Input : public SettingsPage
 {
@@ -679,7 +423,7 @@ protected:
 			nk_label(m_nctx, "Timing Window:", nk_text_alignment::NK_TEXT_LEFT);
 			LayoutRowDynamic(3);
 
-			const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.perfect, 1, 1);
+			const int hitWindowPerfect = IntInput(m_hitWindow.perfect, "Crit", 0, HitWindow::NORMAL.perfect);
 			if (hitWindowPerfect != m_hitWindow.perfect)
 			{
 				m_hitWindow.perfect = hitWindowPerfect;
@@ -689,7 +433,7 @@ protected:
 					m_hitWindow.hold = m_hitWindow.perfect;
 			}
 
-			const int hitWindowGood = nk_propertyi_sdl_text(m_nctx, "Near", 0, m_hitWindow.good, HitWindow::NORMAL.good, 1, 1);
+			const int hitWindowGood = IntInput(m_hitWindow.good, "Near", 0, HitWindow::NORMAL.good);
 			if (hitWindowGood != m_hitWindow.good)
 			{
 				m_hitWindow.good = hitWindowGood;
@@ -699,7 +443,7 @@ protected:
 					m_hitWindow.hold = m_hitWindow.good;
 			}
 
-			const int hitWindowHold = nk_propertyi_sdl_text(m_nctx, "Hold", 0, m_hitWindow.hold, HitWindow::NORMAL.hold, 1, 1);
+			const int hitWindowHold = IntInput(m_hitWindow.hold, "Hold", 0, HitWindow::NORMAL.hold);
 			if (hitWindowHold != m_hitWindow.hold)
 			{
 				m_hitWindow.hold = hitWindowHold;
@@ -751,6 +495,11 @@ protected:
 	{
 		g_gameConfig.Set(GameConfigKeys::Laser0Color, m_laserColors[0]);
 		g_gameConfig.Set(GameConfigKeys::Laser1Color, m_laserColors[1]);
+
+		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
+		{
+			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
+		}
 	}
 	
 	Vector<String> m_skins;
@@ -835,10 +584,10 @@ private:
 
 		// Text
 		{
-			const int lcolIntNew = nk_propertyi_sdl_text(m_nctx, "LLaser Hue", 0, lcolInt, 360, 1, 1);
+			const int lcolIntNew = IntInput(lcolInt, "LLaser Hue", 0, 360);
 			if (lcolIntNew != lcolInt) m_laserColors[0] = static_cast<float>(lcolIntNew);
 
-			const int rcolIntNew = nk_propertyi_sdl_text(m_nctx, "RLaser Hue", 0, rcolInt, 360, 1, 1);
+			const int rcolIntNew = IntInput(rcolInt, "RLaser Hue", 0, 360);
 			if (rcolIntNew != rcolInt) m_laserColors[1] = static_cast<float>(rcolIntNew);
 		}
 
@@ -881,6 +630,10 @@ protected:
 
 	void Save() override
 	{
+		if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
+		{
+			g_application->CheckForUpdate();
+		}
 	}
 
 	const Vector<const char*> m_aaModes = { "Off", "2x MSAA", "4x MSAA", "8x MSAA", "16x MSAA" };
@@ -987,63 +740,9 @@ protected:
 	}
 };
 
-class SettingsScreen_Impl_New : public BasicNuklearGui
+class SettingsScreen_Impl : public SettingsPageCollection
 {
 public:
-	bool Init() override
-	{
-		BasicNuklearGui::Init();
-		InitPages();
-		
-		return true;
-	}
-
-	~SettingsScreen_Impl_New() override
-	{
-		for (auto& page : m_pages)
-		{
-			page->Exit();
-		}
-
-		g_application->ApplySettings();
-	}
-
-	void Tick(float deltaTime) override
-	{
-		if (m_needsProfileReboot)
-		{
-			RefreshProfile();
-			return;
-		}
-
-		BasicNuklearGui::Tick(deltaTime);
-	}
-
-	void Render(float deltaTime) override
-	{
-		if (IsSuspended())
-		{
-			return;
-		}
-
-		RenderPages();
-
-		BasicNuklearGui::NKRender();
-	}
-
-	void OnKeyPressed(SDL_Scancode code) override
-	{
-		if (IsSuspended())
-		{
-			return;
-		}
-
-		if (code == SDL_SCANCODE_ESCAPE)
-		{
-			Exit();
-		}
-	}
-
 	void OnSuspend() override
 	{
 	}
@@ -1053,159 +752,21 @@ public:
 		g_application->DiscordPresenceMenu("Settings");
 	}
 
-	void Exit()
+protected:
+	void AddPages(Vector<std::unique_ptr<SettingsPage>>& pages) override
 	{
-		for (auto& page : m_pages)
-		{
-			page->Exit();
-		}
-
-		g_gameWindow->OnAnyEvent.RemoveAll(this);
-
-		if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice) == InputDevice::Mouse)
-		{
-			g_gameConfig.SetEnum<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, InputDevice::Keyboard);
-		}
-
-		if (g_gameConfig.GetBool(GameConfigKeys::CheckForUpdates))
-		{
-			g_application->CheckForUpdate();
-		}
-
-		g_input.Cleanup();
-		g_input.Init(*g_gameWindow);
-
-		g_application->RemoveTickable(this);
-	}
-
-private:
-	Vector<String> m_profiles;
-	String m_currentProfile;
-	bool m_needsProfileReboot = false;
-
-	void InitProfile()
-	{
-		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-		m_profiles.push_back("Main");
-
-		Vector<FileInfo> profiles = Files::ScanFiles(Path::Absolute("profiles/"), "cfg", NULL);
-
-		for (const auto& file : profiles)
-		{
-			String profileName = "";
-			String unused = Path::RemoveLast(file.fullPath, &profileName);
-			profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
-			m_profiles.push_back(profileName);
-		}
-	}
-
-	void RefreshProfile()
-	{
-		String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-
-		// Save old settings
-		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, m_currentProfile);
-		Exit();
-
-		g_application->ApplySettings();
-
-		// Load in new settings
-		g_application->ReloadConfig(newProfile);
-
-		g_application->AddTickable(SettingsScreen::Create());
-	}
-
-private:
-	Vector<std::unique_ptr<SettingsPage>> m_pages;
-	size_t m_currPage = 0;
-
-	struct nk_rect m_pageHeaderRegion;
-	struct nk_rect m_pageContentRegion;
-
-	void InitPages()
-	{
-		m_pages.clear();
-
-		m_pages.emplace_back(std::make_unique<SettingsPage_Input>(m_nctx));
-		m_pages.emplace_back(std::make_unique<SettingsPage_Game>(m_nctx));
-		m_pages.emplace_back(std::make_unique<SettingsPage_Display>(m_nctx));
-		m_pages.emplace_back(std::make_unique<SettingsPage_System>(m_nctx));
-		m_pages.emplace_back(std::make_unique<SettingsPage_Online>(m_nctx));
-		m_pages.emplace_back(std::make_unique<SettingsPage_Skin>(m_nctx));
-
-		for (const auto& page : m_pages)
-		{
-			page->Init();
-		}
-
-		m_currPage = 0;
-	}
-
-	inline void UpdatePageRegions()
-	{
-		const float SETTINGS_DESIRED_CONTENTS_WIDTH = g_resolution.y / 1.4f;
-		const float SETTINGS_DESIRED_HEADERS_WIDTH = 120.0f;
-
-		const float SETTINGS_WIDTH = Math::Min(SETTINGS_DESIRED_CONTENTS_WIDTH + SETTINGS_DESIRED_HEADERS_WIDTH, g_resolution.x - 5.0f);
-		const float SETTINGS_CONTENTS_WIDTH = Math::Max(SETTINGS_WIDTH * 0.75f, SETTINGS_WIDTH - SETTINGS_DESIRED_HEADERS_WIDTH);
-		const float SETTINGS_HEADERS_WIDTH = SETTINGS_WIDTH - SETTINGS_CONTENTS_WIDTH;
-
-		// Better to keep current layout if there's not enough space
-		if (SETTINGS_CONTENTS_WIDTH < 10.0f || SETTINGS_HEADERS_WIDTH < 10.0f)
-		{
-			return;
-		}
-
-		const float SETTINGS_OFFSET_X = (g_resolution.x - SETTINGS_WIDTH) / 2;
-		const float SETTINGS_CONTENTS_OFFSET_X = SETTINGS_OFFSET_X + SETTINGS_HEADERS_WIDTH;
-
-		m_pageHeaderRegion = { SETTINGS_OFFSET_X, 0, SETTINGS_HEADERS_WIDTH, (float)g_resolution.y };
-		m_pageContentRegion = { SETTINGS_CONTENTS_OFFSET_X, 0, SETTINGS_CONTENTS_WIDTH, (float)g_resolution.y };
-	}
-
-	inline void RenderPages()
-	{
-		UpdatePageRegions();
-		RenderPageHeaders();
-		RenderPageContents();
-	}
-
-	inline void RenderPageHeaders()
-	{
-		if (nk_begin(m_nctx, "Pages", m_pageHeaderRegion, NK_WINDOW_NO_SCROLLBAR))
-		{
-			nk_layout_row_dynamic(m_nctx, 50, 1);
-			
-			for (size_t i = 0; i < m_pages.size(); ++i)
-			{
-				const auto& page = m_pages[i];
-				const String& name = page->GetName();
-
-				if (nk_button_text(m_nctx, name.c_str(), static_cast<int>(name.size())))
-				{
-					m_currPage = i;
-				}
-			}
-
-			if (nk_button_label(m_nctx, "Exit")) Exit();
-			nk_end(m_nctx);
-		}
-	}
-
-	inline void RenderPageContents()
-	{
-		if (m_currPage >= m_pages.size())
-		{
-			return;
-		}
-
-		m_pages[m_currPage]->Render(m_pageContentRegion);
+		pages.emplace_back(std::make_unique<SettingsPage_Input>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Game>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Display>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_System>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Online>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Skin>(m_nctx));
 	}
 };
 
 IApplicationTickable* SettingsScreen::Create()
 {
-	return new SettingsScreen_Impl_New();
+	return new SettingsScreen_Impl();
 }
 
 class ButtonBindingScreen_Impl : public ButtonBindingScreen
