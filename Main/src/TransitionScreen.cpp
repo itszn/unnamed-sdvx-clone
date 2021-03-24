@@ -3,9 +3,7 @@
 #include "Application.hpp"
 #include "Shared/Jobs.hpp"
 #include "AsyncLoadable.hpp"
-#include "lua.hpp"
 #include "Game.hpp"
-#include "nanovg.h"
 
 class TransitionScreen_Impl : public TransitionScreen
 {

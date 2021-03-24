@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "SettingsPage.hpp"
 
-#include <Shared/Files.hpp>
-
 #include "Application.hpp"
 #include "SettingsScreen.hpp"
 

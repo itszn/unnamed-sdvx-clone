@@ -1,8 +1,5 @@
 #pragma once
-#include "stdafx.h"
-#include "Shared/Thread.hpp"
 #include "LuaRequests.hpp"
-#include "json.hpp"
 
 //mostly based on SkinHttp, explained in .cpp
 

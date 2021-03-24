@@ -28,11 +28,17 @@
 
 #include <functional>
 #include <memory>
+#include <stack>
 #include <string>
 #include <queue>
 #include <unordered_set>
 
 #include <Shared/Shared.hpp>
+#include <Shared/Files.hpp>
+#include <Shared/Jobs.hpp>
+#include <Shared/Thread.hpp>
+
+#include <Audio/Sample.hpp>
 
 // Graphics components
 #include <Graphics/OpenGL.hpp>
@@ -50,8 +56,11 @@ using namespace Graphics;
 
 #include "archive.h"
 #include "archive_entry.h"
+#include "cpr/cpr.h"
+#include "discord_rpc.h"
 #include "json.hpp"
 #include "lua.hpp"
+#include "nanovg.h"
 
 // NK imports
 #define NK_INCLUDE_FIXED_TYPES
@@ -77,6 +86,10 @@ constexpr int MAX_ELEMENT_MEMORY = 128 * 1024;
 constexpr int FULL_FONT_TEXTURE_HEIGHT = 32768; //needed to load all CJK glyphs
 
 #include "BasicDefinitions.hpp"
+
+// Commonly-used headers which are unlikely to change
+#include "ApplicationTickable.hpp"
+#include "LuaRequests.hpp"
 
 // Asset loading macro
 #define CheckedLoad(__stmt) if(!(__stmt)){Logf("Failed to load asset [%s]", Logger::Severity::Error, #__stmt); return false; }

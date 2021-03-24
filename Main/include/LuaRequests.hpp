@@ -1,7 +1,4 @@
 #pragma once
-#include "stdafx.h"
-#include "lua.hpp"
-#include "cpr/cpr.h"
 
 struct AsyncRequest
 {

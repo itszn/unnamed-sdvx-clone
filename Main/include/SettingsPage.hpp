@@ -50,7 +50,8 @@ protected:
 	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, static_cast<float>(m_buttonHeight)); }
 	void LayoutRowDynamic(int num_columns, float height);
 
-	inline void Separator() { Separator(static_cast<float>(m_buttonHeight)); }
+	inline void Separator() { Separator(m_buttonHeight); }
+	inline void Separator(int height) { Separator(static_cast<float>(height)); }
 	void Separator(float height);
 
 	void Label(const std::string_view& label, enum nk_text_alignment alignment = nk_text_alignment::NK_TEXT_LEFT);

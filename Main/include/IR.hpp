@@ -1,7 +1,4 @@
 #pragma once
-#include "stdafx.h"
-#include "cpr/cpr.h"
-#include "json.hpp"
 #include <Beatmap/MapDatabase.hpp>
 #include <Beatmap/BeatmapObjects.hpp>
 

@@ -1,27 +1,12 @@
 #include "stdafx.h"
 #include "SettingsScreen.hpp"
 
-#include <Shared/Profiling.hpp>
-#include <Shared/Enum.hpp>
-#include <Shared/Files.hpp>
-
-#include <Audio/Audio.hpp>
-
 #include "Application.hpp"
-#include "GameConfig.hpp"
-#include "SkinConfig.hpp"
-#include "Scoring.hpp"
-#include "Track.hpp"
-#include "Camera.hpp"
-#include "Background.hpp"
-#include "Shared/Jobs.hpp"
-#include "ScoreScreen.hpp"
-#include "Input.hpp"
-#include "nanovg.h"
 #include "CalibrationScreen.hpp"
-#include "TransitionScreen.hpp"
-#include "GuiUtils.hpp"
+
 #include "SettingsPage.hpp"
+#include "SkinConfig.hpp"
+#include "TransitionScreen.hpp"
 
 static inline const char* GetKeyNameFromScancodeConfig(int scancode)
 {

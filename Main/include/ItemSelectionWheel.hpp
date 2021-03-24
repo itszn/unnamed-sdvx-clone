@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "SongSort.hpp"
 #include "SongFilter.hpp"
 #include <Beatmap/MapDatabase.hpp>
