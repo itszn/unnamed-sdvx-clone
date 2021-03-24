@@ -121,10 +121,8 @@ protected:
 
 		RenderKeyBindings();
 
+		Separator(m_buttonHeight * 2);
 		LayoutRowDynamic(1);
-
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, " ");
 
 		if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) OpenCalibrateSensitivity();
 
@@ -719,8 +717,11 @@ protected:
 			return;
 		}
 
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", m_skin.data());
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+
+		Separator(m_buttonHeight * 2);
+
+		LayoutRowDynamic(1);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "Settings for [%s] Skin", m_skin.data());
 
 		for (const SkinSetting& setting : m_skinConfig->GetSettings())
 		{
@@ -978,7 +979,7 @@ public:
 			}
 			if (m_knobs)
 			{
-				for (size_t i = 0; i < m_gamepad->NumAxes(); i++)
+				for (uint8 i = 0; i < m_gamepad->NumAxes(); i++)
 				{
 					m_gamepadAxes.Add(m_gamepad->GetAxis(i));
 				}
@@ -1042,14 +1043,14 @@ public:
 			if (m_knobs)
 			{
 				prompt = "Turn Knob";
-				for (size_t i = 0; i < m_gamepad->NumAxes(); i++)
+				for (uint8 i = 0; i < m_gamepad->NumAxes(); i++)
 				{
 					m_gamepadAxes.Add(m_gamepad->GetAxis(i));
 				}
 			}
 		}
 
-		g_application->FastText(prompt, g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+		g_application->FastText(prompt, static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2), 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 	}
 
 	void OnButtonPressed(uint8 key)
@@ -1157,19 +1158,21 @@ public:
 
 	void Render(float deltatime)
 	{
+		const Vector2 center = { static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2) };
+
 		if (m_state)
 		{
-			float sens = 6.0 / m_delta;
+			const float sens = 6.0f / m_delta;
 
-			g_application->FastText("Turn left knob one revolution clockwise", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
-			g_application->FastText("then press start.", g_resolution.x / 2, g_resolution.y / 2 + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
-			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), g_resolution.x / 2, g_resolution.y / 2 + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText("Turn left knob one revolution clockwise", center.x, center.y, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText("then press start.", center.x, center.y + 45, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText(Utility::Sprintf("Current Sens: %.2f", sens), center.x, center.y + 90, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 
 		}
 		else
 		{
 			m_delta = 0;
-			g_application->FastText("Press start twice", g_resolution.x / 2, g_resolution.y / 2, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
+			g_application->FastText("Press start twice", center.x, center.y, 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 		}
 	}
 
@@ -1181,8 +1184,8 @@ public:
 			{
 				if (m_state)
 				{
-					// calc sens and then call delagate
-					SensSet.Call(6.0 / m_delta);
+					// calc sens and then call delegate
+					SensSet.Call(6.0f / m_delta);
 					g_application->RemoveTickable(this);
 				}
 				else

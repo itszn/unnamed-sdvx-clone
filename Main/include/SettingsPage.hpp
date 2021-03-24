@@ -47,11 +47,13 @@ protected:
 	};
 
 	// Useful elements
-	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_buttonHeight); }
+	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, static_cast<float>(m_buttonHeight)); }
 	void LayoutRowDynamic(int num_columns, float height);
 
-	void Separator();
-	void Label(const std::string_view& label);
+	inline void Separator() { Separator(static_cast<float>(m_buttonHeight)); }
+	void Separator(float height);
+
+	void Label(const std::string_view& label, enum nk_text_alignment alignment = nk_text_alignment::NK_TEXT_LEFT);
 
 	bool ToggleInput(bool val, const std::string_view& label);
 	bool ToggleSetting(GameConfigKeys key, const std::string_view& label);

@@ -99,14 +99,15 @@ void SettingsPage::LayoutRowDynamic(int num_columns, float height)
 	nk_layout_row_dynamic(m_nctx, height, num_columns);
 }
 
-void SettingsPage::Separator()
+void SettingsPage::Separator(float height)
 {
-	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+	LayoutRowDynamic(1, height);
+	Label(" ", nk_text_alignment::NK_TEXT_CENTERED);
 }
 
-void SettingsPage::Label(const std::string_view& label)
+void SettingsPage::Label(const std::string_view& label, enum nk_text_alignment alignment)
 {
-	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
+	nk_label(m_nctx, label.data(), alignment);
 }
 
 bool SettingsPage::ToggleInput(bool val, const std::string_view& label)
@@ -330,8 +331,14 @@ void SettingsPage::Render(const struct nk_rect& rect)
 {
 	m_comboBoxSize.x = rect.x - 30;
 
-	if (nk_begin(m_nctx, m_name.data(), rect, NK_WINDOW_NO_SCROLLBAR))
+	m_nctx->style.window.padding.x = 6.0f;
+	m_nctx->style.window.padding.y = 0.0f;
+
+	if (nk_begin(m_nctx, m_name.data(), rect, 0))
 	{
+		LayoutRowDynamic(1, 60);
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Settings", m_name.data());
+
 		RenderContents();
 		nk_end(m_nctx);
 	}
@@ -486,6 +493,9 @@ void SettingsPageCollection::RenderPages()
 
 void SettingsPageCollection::RenderPageHeaders()
 {
+	m_nctx->style.window.padding.x = 0.0f;
+	m_nctx->style.window.padding.y = 0.0f;
+
 	if (nk_begin(m_nctx, "Pages", m_pageHeaderRegion, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_dynamic(m_nctx, 50, 1);
@@ -500,6 +510,9 @@ void SettingsPageCollection::RenderPageHeaders()
 				m_currPage = i;
 			}
 		}
+
+		nk_layout_row_dynamic(m_nctx, 25, 1);
+		nk_layout_row_dynamic(m_nctx, 50, 1);
 
 		if (nk_button_label(m_nctx, "Exit")) Exit();
 		nk_end(m_nctx);
