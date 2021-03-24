@@ -42,21 +42,20 @@ public:
 			src = (split == badVal) ? src : src.substr(split + 1);
 		}
 	}
-	auto begin()
-	{
-		return names.begin();
-	}
-	auto end()
-	{
-		return names.end();
-	}
-	const String& ToString(EnumType e)
+
+	inline auto begin() { return names.begin(); }
+	inline auto begin() const { return names.begin(); }
+	inline auto end() { return names.end(); }
+	inline auto end() const { return names.end(); }
+
+	const String& ToString(EnumType e) const
 	{
 		static String dummy = "<invalid>";
 		auto it = names.find(e);
 		return it == names.end() ? dummy : it->second;
 	}
-	EnumType FromString(const String& str)
+
+	EnumType FromString(const String& str) const
 	{
 		auto it = rev.find(str);
 		return it == rev.end() ? (EnumType)-1 : it->second;

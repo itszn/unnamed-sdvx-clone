@@ -23,69 +23,6 @@
 #include "GuiUtils.hpp"
 #include "SettingsPage.hpp"
 
-constexpr static int NK_PROPERTY_DEFAULT = 0;
-
-static inline void nk_sdl_text(nk_flags event)
-{
-	if (event & NK_EDIT_ACTIVATED)
-	{
-		    SDL_StartTextInput();
-	}
-	if (event & NK_EDIT_DEACTIVATED)
-	{
-		   SDL_StopTextInput();
-	}
-}
-
-static inline int nk_get_property_state(struct nk_context *ctx, const char *name)
-{
-    if (!ctx || !ctx->current || !ctx->current->layout) return NK_PROPERTY_DEFAULT;
-	struct nk_window* win = ctx->current;
-	nk_hash hash = 0;
-    if (name[0] == '#') {
-        hash = nk_murmur_hash(name, (int)nk_strlen(name), win->property.seq++);
-        name++; /* special number hash */
-    } else hash = nk_murmur_hash(name, (int)nk_strlen(name), 42);
-
-	if (win->property.active && hash == win->property.name)
-		return win->property.state;
-	return NK_PROPERTY_DEFAULT;
-}
-
-static inline int nk_propertyi_sdl_text(struct nk_context *ctx, const char *name, int min, int val,
-		    int max, int step, float inc_per_pixel)
-{
-	int oldState = nk_get_property_state(ctx, name);
-	int value = nk_propertyi(ctx, name, min, val, max, step, inc_per_pixel);
-	int newState = nk_get_property_state(ctx, name);
-
-	if (oldState != newState) {
-		if (newState == NK_PROPERTY_DEFAULT)
-			SDL_StopTextInput();
-		else
-			SDL_StartTextInput();
-	}
-
-	return value;
-}
-
-static inline float nk_propertyf_sdl_text(struct nk_context *ctx, const char *name, float min,
-		    float val, float max, float step, float inc_per_pixel)
-{
-	int oldState = nk_get_property_state(ctx, name);
-	float value = nk_propertyf(ctx, name, min, val, max, step, inc_per_pixel);
-	int newState = nk_get_property_state(ctx, name);
-
-	if (oldState != newState) {
-		if (newState == NK_PROPERTY_DEFAULT)
-			SDL_StopTextInput();
-		else
-			SDL_StartTextInput();
-	}
-
-	return value;
-}
-
 static inline const char* GetKeyNameFromScancodeConfig(int scancode)
 {
 	return SDL_GetKeyName(SDL_GetKeyFromScancode(static_cast<SDL_Scancode>(scancode)));
@@ -398,7 +335,7 @@ protected:
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
 
-	TextSettingData m_songsPath = { GameConfigKeys::SongFolder };
+	GameConfigTextData m_songsPath = { GameConfigKeys::SongFolder };
 
 protected:
 	void RenderContents() override
@@ -695,12 +632,12 @@ protected:
 		m_irToken.Save();
 	}
 
-	TextSettingData m_multiplayerHost = { GameConfigKeys::MultiplayerHost };
-	TextSettingData m_multiplayerPassword = { GameConfigKeys::MultiplayerPassword };
-	TextSettingData m_multiplayerUsername = { GameConfigKeys::MultiplayerUsername };
+	GameConfigTextData m_multiplayerHost = { GameConfigKeys::MultiplayerHost };
+	GameConfigTextData m_multiplayerPassword = { GameConfigKeys::MultiplayerPassword };
+	GameConfigTextData m_multiplayerUsername = { GameConfigKeys::MultiplayerUsername };
 
-	TextSettingData m_irBaseURL = { GameConfigKeys::IRBaseURL };
-	TextSettingData m_irToken = { GameConfigKeys::IRToken };
+	GameConfigTextData m_irBaseURL = { GameConfigKeys::IRBaseURL };
+	GameConfigTextData m_irToken = { GameConfigKeys::IRToken };
 
 	void RenderContents() override
 	{
@@ -731,12 +668,248 @@ public:
 	SettingsPage_Skin(nk_context* nctx) : SettingsPage(nctx, "Skin") {}
 
 protected:
-	void Load() override {}
-	void Save() override {}
+	void Load() override
+	{
+		m_skin = g_gameConfig.GetString(GameConfigKeys::Skin);
+		if (m_skin == g_application->GetCurrentSkin())
+		{
+			m_skinConfig = g_skinConfig;
+		}
+		else
+		{
+			m_skinConfig = new SkinConfig(m_skin);
+		}
+
+		m_allSkins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
+		m_skinConfigTextData.clear();
+		m_useHSVMap.clear();
+	}
+
+	void Save() override
+	{
+		if (m_skinConfig != g_skinConfig && m_skinConfig)
+		{
+			delete m_skinConfig;
+			m_skinConfig = nullptr;
+		}
+
+		for (auto& it : m_skinConfigTextData)
+		{
+			it.second.Save();
+		}
+	}
+
+	String m_skin;
+	SkinConfig* m_skinConfig = nullptr;
+
+	Vector<String> m_allSkins;
 
 	void RenderContents() override
 	{
 		LayoutRowDynamic(1);
+
+		if (SkinSelectionSetting("Selected Skin:"))
+		{
+			Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + g_gameConfig.GetString(GameConfigKeys::Skin) + "/textures/cursor.png"));
+			g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
+		}
+
+		if (m_skinConfig == nullptr)
+		{
+			return;
+		}
+
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", m_skin.data());
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+
+		for (const SkinSetting& setting : m_skinConfig->GetSettings())
+		{
+			RenderSkinSetting(setting);
+		}
+	}
+
+private:
+	class SkinConfigTextData : public SettingTextData
+	{
+	public:
+		SkinConfigTextData(SkinConfig* skinConfig, const String& key) : m_skinConfig(skinConfig), m_key(key) {}
+
+	protected:
+		String LoadConfig() override { return m_skinConfig ? m_skinConfig->GetString(m_key) : ""; }
+		void SaveConfig(const String& value) override { if(m_skinConfig) m_skinConfig->Set(m_key, value); }
+
+		SkinConfig* m_skinConfig = nullptr;
+		String m_key;
+	};
+
+	Map<String, SkinConfigTextData> m_skinConfigTextData;
+	Map<String, bool> m_useHSVMap;
+
+	bool SkinSelectionSetting(const std::string_view& label)
+	{
+		if (m_allSkins.empty())
+		{
+			return false;
+		}
+
+		if (StringSelectionSetting(GameConfigKeys::Skin, m_allSkins, label))
+		{
+			Save(); Load();
+			return true;
+		}
+
+		return false;
+	}
+
+	inline bool SkinToggleSetting(const SkinSetting& setting)
+	{
+		const bool value = m_skinConfig->GetBool(setting.key);
+		const bool newValue = ToggleInput(value, setting.label);
+
+		if (newValue != value)
+		{
+			m_skinConfig->Set(setting.key, newValue);
+			return true;
+		}
+
+		return false;
+	}
+
+	inline bool SkinStringSelectionSetting(const SkinSetting& setting)
+	{
+		if (setting.selectionSetting.numOptions == 0)
+		{
+			return false;
+		}
+
+		const String& value = m_skinConfig->GetString(setting.key);
+		int selection = 0;
+
+		const String* options = setting.selectionSetting.options;
+		const auto stringSearch = std::find(options, options + setting.selectionSetting.numOptions, value);
+		if (stringSearch != options + setting.selectionSetting.numOptions)
+		{
+			selection = static_cast<int>(stringSearch - options);
+		}
+
+		Vector<const char*> displayData;
+		for (int i=0; i<setting.selectionSetting.numOptions; ++i)
+		{
+			displayData.Add(setting.selectionSetting.options[i].data());
+		}
+
+		const int newSelection = SelectionInput(selection, displayData, setting.label);
+
+		if (newSelection != selection) {
+			m_skinConfig->Set(setting.key, options[newSelection]);
+			return true;
+		}
+
+		return false;
+	}
+
+	inline bool SkinIntSetting(const SkinSetting& setting)
+	{
+		const int value = m_skinConfig->GetInt(setting.key);
+		const int newValue = IntInput(value, setting.label,
+			setting.intSetting.min, setting.intSetting.max);
+
+		if (newValue != value) {
+			m_skinConfig->Set(setting.key, newValue);
+			return true;
+		}
+
+		return false;
+	}
+
+	inline bool SkinFloatSetting(const SkinSetting& setting)
+	{
+		float value = m_skinConfig->GetFloat(setting.key);
+		const float prevValue = value;
+		const float step = 0.01f;
+
+		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, setting.label.data(), value);
+		nk_slider_float(m_nctx, setting.floatSetting.min, &value, setting.floatSetting.max, step);
+		
+		if (prevValue != value) {
+			m_skinConfig->Set(setting.key, value);
+			return true;
+		}
+
+		return false;
+	}
+
+	inline void SkinTextSetting(const SkinSetting& setting)
+	{
+		auto it = m_skinConfigTextData.find(setting.key);
+		if (it == m_skinConfigTextData.end())
+		{
+			it = m_skinConfigTextData.emplace_hint(it, setting.key, SkinConfigTextData { m_skinConfig, setting.key });
+		}
+
+		if (it == m_skinConfigTextData.end())
+		{
+			return;
+		}
+
+
+		nk_label(m_nctx, setting.label.data(), nk_text_alignment::NK_TEXT_LEFT);
+
+		SkinConfigTextData& data = it->second;
+
+		if (setting.textSetting.secret)
+		{
+			data.RenderPassword(m_nctx);
+		}
+		else
+		{
+			data.Render(m_nctx);
+		}
+	}
+
+	inline bool SkinColorSetting(const SkinSetting& setting)
+	{
+		const Color value = m_skinConfig->GetColor(setting.key);
+		const Color newValue = ColorInput(value, setting.label, m_useHSVMap[setting.key]);
+
+		if (newValue != value)
+		{
+			m_skinConfig->Set(setting.key, newValue);
+			return true;
+		}
+
+		return false;
+	}
+
+	void RenderSkinSetting(const SkinSetting& setting)
+	{
+		switch (setting.type)
+		{
+		case SkinSetting::Type::Separator:
+			Separator();
+			break;
+		case SkinSetting::Type::Label:
+			Label(setting.key);
+			break;
+		case SkinSetting::Type::Boolean:
+			SkinToggleSetting(setting);
+			break;
+		case SkinSetting::Type::Selection:
+			SkinStringSelectionSetting(setting);
+			break;
+		case SkinSetting::Type::Integer:
+			SkinIntSetting(setting);
+			break;
+		case SkinSetting::Type::Float:
+			SkinFloatSetting(setting);
+			break;
+		case SkinSetting::Type::Text:
+			SkinTextSetting(setting);
+			break;
+		case SkinSetting::Type::Color:
+			SkinColorSetting(setting);
+			break;
+		}
 	}
 };
 
@@ -1048,292 +1221,3 @@ LaserSensCalibrationScreen* LaserSensCalibrationScreen::Create()
 	return impl;
 }
 
-
-bool SkinSettingsScreen::Init()
-{
-	m_allSkins = Path::GetSubDirs(Path::Normalize(Path::Absolute("skins/")));
-	return true;
-}
-
-bool SkinSettingsScreen::StringSelectionSetting(String key, String label, SkinSetting& setting)
-{
-	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
-
-	String value = m_skinConfig->GetString(key);
-	int selection;
-	String* options = setting.selectionSetting.options;
-	auto stringSearch = std::find(options, options + setting.selectionSetting.numOptions, value);
-	if (stringSearch != options + setting.selectionSetting.numOptions)
-		selection = (stringSearch - options);
-	else
-		selection = 0;
-	auto prevSelection = selection;
-	Vector<const char*> displayData;
-	for (int i = 0; i < setting.selectionSetting.numOptions; i++)
-	{
-		displayData.Add(*setting.selectionSetting.options[i]);
-	}
-
-	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-	nk_combobox(m_nctx, displayData.data(), setting.selectionSetting.numOptions, &selection, 30, nk_vec2(w - 30, 250));
-	if (prevSelection != selection) {
-		value = options[selection];
-		m_skinConfig->Set(key, value);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::MainConfigStringSelectionSetting(GameConfigKeys key, Vector<String> options, String label)
-{
-	String value = g_gameConfig.GetString(key);
-	int selection;
-	auto stringSearch = std::find(options.begin(), options.end(), value);
-	if (stringSearch != options.end())
-		selection = stringSearch - options.begin();
-	else
-		selection = 0;
-	int prevSelection = selection;
-	Vector<const char*> displayData;
-	for (String& s : options)
-	{
-		displayData.Add(*s);
-	}
-
-	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-	nk_combobox(m_nctx, displayData.data(), options.size(), &selection, 30, nk_vec2(1050, 250));
-	if (prevSelection != selection) {
-		value = options[selection];
-		g_gameConfig.Set(key, value);
-		return true;
-	}
-	return false;
-}
-
-void SkinSettingsScreen::Exit()
-{
-	g_application->RemoveTickable(this);
-}
-
-bool SkinSettingsScreen::IntSetting(String key, String label, int min, int max, int step, int perpixel)
-{
-	int value = m_skinConfig->GetInt(key);
-	auto prevValue = value;
-	value = nk_propertyi_sdl_text(m_nctx, *label, min, value, max, step, perpixel);
-	if (prevValue != value) {
-		m_skinConfig->Set(key, value);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::FloatSetting(String key, String label, float min, float max, float step)
-{
-	float value = m_skinConfig->GetFloat(key);
-	auto prevValue = value;
-
-	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value);
-	nk_slider_float(m_nctx, min, &value, max, step);
-	if (prevValue != value) {
-		m_skinConfig->Set(key, value);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::PercentSetting(String key, String label)
-{
-	float value = m_skinConfig->GetFloat(key);
-	auto prevValue = value;
-
-	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_LEFT, *label, value * 100);
-	nk_slider_float(m_nctx, 0, &value, 1, 0.005);
-	if (prevValue != value) {
-		m_skinConfig->Set(key, value);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::TextSetting(String key, String label, bool secret)
-{
-	String value = m_skinConfig->GetString(key);
-	char display[1024];
-	strcpy(display, value.c_str());
-	int len = value.length();
-
-	if (secret) //https://github.com/vurtun/nuklear/issues/587#issuecomment-354421477
-	{
-		char buf[1024];
-		int old_len = len;
-		for (int i = 0; i < len; i++)
-			buf[i] = '*';
-
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, buf, &len, 64, nk_filter_default));
-		if (old_len < len)
-		{
-			memcpy(&display[old_len], &buf[old_len], (nk_size)(len - old_len));
-		}
-	}
-	else
-	{
-		nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-		nk_sdl_text(nk_edit_string(m_nctx, NK_EDIT_FIELD, display, &len, 1024, nk_filter_default));
-	}
-	auto newValue = String(display, len);
-	if (newValue != value) {
-		m_skinConfig->Set(key, newValue);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::ColorSetting(String key, String label)
-{
-	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0) - 100;
-	Color value = m_skinConfig->GetColor(key);
-	nk_label(m_nctx, *label, nk_text_alignment::NK_TEXT_LEFT);
-	float r, g, b, a;
-	r = value.x;
-	g = value.y;
-	b = value.z;
-	a = value.w;
-	nk_colorf nkCol = { r,g,b,a };
-	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
-		enum color_mode { COL_RGB, COL_HSV };
-		nk_layout_row_dynamic(m_nctx, 120, 1);
-		nkCol = nk_color_picker(m_nctx, nkCol, NK_RGBA);
-
-		nk_layout_row_dynamic(m_nctx, 25, 2);
-		m_hsvMap[key] = nk_option_label(m_nctx, "RGB", m_hsvMap[key] ? 1 : 0) == 1;
-		m_hsvMap[key] = nk_option_label(m_nctx, "HSV", m_hsvMap[key] ? 0 : 1) == 0;
-
-		nk_layout_row_dynamic(m_nctx, 25, 1);
-		if (!m_hsvMap[key]) {
-			nkCol.r = nk_propertyf_sdl_text(m_nctx, "#R:", 0, nkCol.r, 1.0f, 0.01f, 0.005f);
-			nkCol.g = nk_propertyf_sdl_text(m_nctx, "#G:", 0, nkCol.g, 1.0f, 0.01f, 0.005f);
-			nkCol.b = nk_propertyf_sdl_text(m_nctx, "#B:", 0, nkCol.b, 1.0f, 0.01f, 0.005f);
-			nkCol.a = nk_propertyf_sdl_text(m_nctx, "#A:", 0, nkCol.a, 1.0f, 0.01f, 0.005f);
-		}
-		else {
-			float hsva[4];
-			nk_colorf_hsva_fv(hsva, nkCol);
-			hsva[0] = nk_propertyf_sdl_text(m_nctx, "#H:", 0, hsva[0], 1.0f, 0.01f, 0.05f);
-			hsva[1] = nk_propertyf_sdl_text(m_nctx, "#S:", 0, hsva[1], 1.0f, 0.01f, 0.05f);
-			hsva[2] = nk_propertyf_sdl_text(m_nctx, "#V:", 0, hsva[2], 1.0f, 0.01f, 0.05f);
-			hsva[3] = nk_propertyf_sdl_text(m_nctx, "#A:", 0, hsva[3], 1.0f, 0.01f, 0.05f);
-			nkCol = nk_hsva_colorfv(hsva);
-		}
-		nk_combo_end(m_nctx);
-	}
-	nk_layout_row_dynamic(m_nctx, 30, 1);
-
-	Color newValue = Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a);
-	if (newValue != value) {
-		m_skinConfig->Set(key, newValue);
-		return true;
-	}
-	return false;
-}
-
-bool SkinSettingsScreen::ToggleSetting(String key, String label)
-{
-	int value = m_skinConfig->GetBool(key) ? 0 : 1;
-	auto prevValue = value;
-	nk_checkbox_label(m_nctx, *label, &value);
-	if (prevValue != value) {
-		m_skinConfig->Set(key, value == 0);
-		return true;
-	}
-	return false;
-}
-
-SkinSettingsScreen::SkinSettingsScreen(String skin, nk_context* ctx)
-{
-	m_nctx = ctx;
-	m_skin = skin;
-	if (skin == g_application->GetCurrentSkin())
-	{
-		m_skinConfig = g_skinConfig;
-	}
-	else
-	{
-		m_skinConfig = new SkinConfig(skin);
-	}
-}
-
-SkinSettingsScreen::~SkinSettingsScreen()
-{
-	if (m_skinConfig != g_skinConfig && m_skinConfig)
-	{
-		delete m_skinConfig;
-		m_skinConfig = nullptr;
-	}
-}
-
-void SkinSettingsScreen::Tick(float deltatime)
-{
-
-}
-
-void SkinSettingsScreen::Render(float deltaTime)
-{
-	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
-	float x = g_resolution.x / 2 - w / 2;
-	if (nk_begin(m_nctx, *Utility::Sprintf("%s Settings", m_skin), nk_rect(x, 0, w, g_resolution.y), 0))
-	{
-		nk_layout_row_dynamic(m_nctx, 30, 1);
-
-		if (m_allSkins.size() > 0)
-		{
-			if (MainConfigStringSelectionSetting(GameConfigKeys::Skin, m_allSkins, "Selected Skin:"))
-			{
-				// Window cursor
-				Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + g_gameConfig.GetString(GameConfigKeys::Skin) + "/textures/cursor.png"));
-				g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
-				Exit();
-			}
-		}
-
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Skin Settings", *m_skin);
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
-		for (auto s : m_skinConfig->GetSettings())
-		{
-			if (s.type == SkinSetting::Type::Boolean)
-			{
-				ToggleSetting(s.key, s.label);
-			}
-			else if (s.type == SkinSetting::Type::Selection)
-			{
-				StringSelectionSetting(s.key, s.label, s);
-			}
-			else if (s.type == SkinSetting::Type::Float)
-			{
-				FloatSetting(s.key, s.label + " (%.2f):", s.floatSetting.min, s.floatSetting.max);
-			}
-			else if (s.type == SkinSetting::Type::Integer)
-			{
-				IntSetting(s.key, s.label, s.intSetting.min, s.intSetting.max);
-			}
-			else if (s.type == SkinSetting::Type::Label)
-			{
-				nk_label(m_nctx, *s.key, nk_text_alignment::NK_TEXT_LEFT);
-			}
-			else if (s.type == SkinSetting::Type::Separator)
-			{
-				nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
-			}
-			else if (s.type == SkinSetting::Type::Text)
-			{
-				TextSetting(s.key, s.label, s.textSetting.secret);
-			}
-			else if (s.type == SkinSetting::Type::Color)
-			{
-				ColorSetting(s.key, s.label);
-			}
-		}
-		if (nk_button_label(m_nctx, "Exit")) Exit();
-		nk_end(m_nctx);
-	}
-	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
-}

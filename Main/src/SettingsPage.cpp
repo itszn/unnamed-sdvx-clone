@@ -36,13 +36,13 @@ static inline int nk_get_property_state(struct nk_context* ctx, const char* name
 	return NK_PROPERTY_DEFAULT;
 }
 
-void SettingsPage::TextSettingData::Load()
+void SettingsPage::SettingTextData::Load()
 {
-	String str = g_gameConfig.GetString(m_key);
+	String str = LoadConfig();
 
 	if (str.length() >= m_buffer.size())
 	{
-		Logf("Config key=%d cropped due to being too long (%d)", Logger::Severity::Error, static_cast<int>(m_key), m_len);
+		Logf("A config has been cropped due to being too long (%d)", Logger::Severity::Error, m_len);
 		m_len = static_cast<int>(m_buffer.size() - 1);
 	}
 	else
@@ -53,22 +53,22 @@ void SettingsPage::TextSettingData::Load()
 	std::memcpy(m_buffer.data(), str.data(), m_len + 1);
 }
 
-void SettingsPage::TextSettingData::Save()
+void SettingsPage::SettingTextData::Save()
 {
 	String str = String(m_buffer.data(), m_len);
 
 	str.TrimBack('\n');
 	str.TrimBack(' ');
 
-	g_gameConfig.Set(m_key, str);
+	SaveConfig(str);
 }
 
-void SettingsPage::TextSettingData::Render(nk_context* nctx)
+void SettingsPage::SettingTextData::Render(nk_context* nctx)
 {
 	nk_sdl_text(nk_edit_string(nctx, NK_EDIT_FIELD, m_buffer.data(), &m_len, static_cast<int>(m_buffer.size()), nk_filter_default));
 }
 
-void SettingsPage::TextSettingData::RenderPassword(nk_context* nctx)
+void SettingsPage::SettingTextData::RenderPassword(nk_context* nctx)
 {
 	// Hack taken from https://github.com/vurtun/nuklear/blob/a9e5e7299c19b8a8831a07173211fa8752d0cc8c/demo/overview.c#L549
 	const int old_len = m_len;
@@ -84,21 +84,50 @@ void SettingsPage::TextSettingData::RenderPassword(nk_context* nctx)
 	}
 }
 
+String SettingsPage::GameConfigTextData::LoadConfig()
+{
+	return g_gameConfig.GetString(m_key);
+}
+
+void SettingsPage::GameConfigTextData::SaveConfig(const String& value)
+{
+	g_gameConfig.Set(m_key, value);
+}
+
 void SettingsPage::LayoutRowDynamic(int num_columns, float height)
 {
 	nk_layout_row_dynamic(m_nctx, height, num_columns);
 }
 
+void SettingsPage::Separator()
+{
+	nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "_______________________");
+}
+
+void SettingsPage::Label(const std::string_view& label)
+{
+	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
+}
+
+bool SettingsPage::ToggleInput(bool val, const std::string_view& label)
+{
+	constexpr static int TRUE_VAL = 0;
+	constexpr static int FALSE_VAL = 1;
+
+	int val_i = val ? TRUE_VAL : FALSE_VAL;
+	nk_checkbox_label(m_nctx, label.data(), &val_i);
+
+	return val_i == TRUE_VAL;
+}
+
 bool SettingsPage::ToggleSetting(GameConfigKeys key, const std::string_view& label)
 {
-	int value = g_gameConfig.GetBool(key) ? 0 : 1;
-	const int prevValue = value;
+	const bool value = g_gameConfig.GetBool(key);
+	const bool newValue = ToggleInput(value, label);
 
-	nk_checkbox_label(m_nctx, label.data(), &value);
-
-	if (value != prevValue)
+	if (newValue != value)
 	{
-		g_gameConfig.Set(key, value == 0);
+		g_gameConfig.Set(key, newValue);
 		return true;
 	}
 	else
@@ -107,19 +136,29 @@ bool SettingsPage::ToggleSetting(GameConfigKeys key, const std::string_view& lab
 	}
 }
 
+int SettingsPage::SelectionInput(int val, const Vector<const char*>& options, const std::string_view& label)
+{
+	assert(options.size() > 0);
+
+	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
+	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_buttonHeight, m_comboBoxSize);
+
+	return val;
+}
+
 bool SettingsPage::SelectionSetting(GameConfigKeys key, const Vector<const char*>& options, const std::string_view& label)
 {
 	assert(options.size() > 0);
 
-	int value = g_gameConfig.GetInt(key) % options.size();
-	const int prevValue = value;
+	const int value = g_gameConfig.GetInt(key) % options.size();
+	const int newValue = SelectionInput(value, options, label);
 
-	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &value, m_buttonHeight, m_comboBoxSize);
-	if (prevValue != value) {
-		g_gameConfig.Set(key, value);
+	if (newValue != value)
+	{
+		g_gameConfig.Set(key, newValue);
 		return true;
 	}
+
 	return false;
 }
 
@@ -134,21 +173,16 @@ bool SettingsPage::StringSelectionSetting(GameConfigKeys key, const Vector<Strin
 		selection = static_cast<int>(stringSearch - options.begin());
 	}
 
-	const int prevSelection = selection;
-
 	Vector<const char*> displayData;
 	for (const String& s : options)
 	{
 		displayData.Add(s.data());
 	}
 
-	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-	nk_combobox(m_nctx, displayData.data(), static_cast<int>(options.size()), &selection, m_buttonHeight, m_comboBoxSize);
+	const int newSelection = SelectionInput(selection, displayData, label);
 
-	if (prevSelection != selection) {
-		String newValue = options[selection];
-		value = newValue;
-		g_gameConfig.Set(key, value);
+	if (newSelection != selection) {
+		g_gameConfig.Set(key, options[newSelection]);
 		return true;
 	}
 	return false;
@@ -156,9 +190,9 @@ bool SettingsPage::StringSelectionSetting(GameConfigKeys key, const Vector<Strin
 	
 int SettingsPage::IntInput(int val, const std::string_view& label, int min, int max, int step, float perPixel)
 {
-	int oldState = nk_get_property_state(m_nctx, label.data());
-	int value = nk_propertyi(m_nctx, label.data(), min, val, max, step, perPixel);
-	int newState = nk_get_property_state(m_nctx, label.data());
+	const int oldState = nk_get_property_state(m_nctx, label.data());
+	val = nk_propertyi(m_nctx, label.data(), min, val, max, step, perPixel);
+	const int newState = nk_get_property_state(m_nctx, label.data());
 
 	if (oldState != newState) {
 		if (newState == NK_PROPERTY_DEFAULT)
@@ -167,12 +201,12 @@ int SettingsPage::IntInput(int val, const std::string_view& label, int min, int 
 			SDL_StartTextInput();
 	}
 
-	return value;
+	return val;
 }
 
 bool SettingsPage::IntSetting(GameConfigKeys key, const std::string_view& label, int min, int max, int step, float perPixel)
 {
-	int value = g_gameConfig.GetInt(key);
+	const int value = g_gameConfig.GetInt(key);
 	const int newValue = IntInput(value, label, min, max, step, perPixel);
 	if (newValue != value) {
 		g_gameConfig.Set(key, newValue);
@@ -183,9 +217,9 @@ bool SettingsPage::IntSetting(GameConfigKeys key, const std::string_view& label,
 
 float SettingsPage::FloatInput(float val, const std::string_view& label, float min, float max, float step, float perPixel)
 {
-	int oldState = nk_get_property_state(m_nctx, label.data());
-	float value = nk_propertyf(m_nctx, label.data(), min, val, max, step, perPixel);
-	int newState = nk_get_property_state(m_nctx, label.data());
+	const int oldState = nk_get_property_state(m_nctx, label.data());
+	val = nk_propertyf(m_nctx, label.data(), min, val, max, step, perPixel);
+	const int newState = nk_get_property_state(m_nctx, label.data());
 
 	if (oldState != newState) {
 		if (newState == NK_PROPERTY_DEFAULT)
@@ -194,13 +228,13 @@ float SettingsPage::FloatInput(float val, const std::string_view& label, float m
 			SDL_StartTextInput();
 	}
 
-	return value;
+	return val;
 }
 
 bool SettingsPage::FloatSetting(GameConfigKeys key, const std::string_view& label, float min, float max, float step)
 {
 	float value = g_gameConfig.GetFloat(key);
-	const auto prevValue = value;
+	const float prevValue = value;
 
 	// nuklear supports precision only up to 2 decimal places (wtf)
 	if (step >= 0.01f)
@@ -241,6 +275,45 @@ bool SettingsPage::PercentSetting(GameConfigKeys key, const std::string_view& la
 	{
 		return false;
 	}
+}
+
+Color SettingsPage::ColorInput(const Color& val, const std::string_view& label, bool& useHSV) {
+	LayoutRowDynamic(1);
+	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
+	nk_colorf nkCol = { val.x, val.y, val.z, val.w };
+
+	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
+		enum color_mode { COL_RGB, COL_HSV };
+
+		LayoutRowDynamic(1, 120);
+		nkCol = nk_color_picker(m_nctx, nkCol, NK_RGBA);
+
+		LayoutRowDynamic(2, 25);
+		useHSV = nk_option_label(m_nctx, "RGB", useHSV ? 1 : 0) == 1;
+		useHSV = nk_option_label(m_nctx, "HSV", useHSV ? 0 : 1) == 0;
+
+		LayoutRowDynamic(1, 25);
+		if (useHSV == false) {
+			nkCol.r = FloatInput(nkCol.r, "#R:", 0,  1.0f, 0.01f, 0.005f);
+			nkCol.g = FloatInput(nkCol.g, "#G:", 0, 1.0f, 0.01f, 0.005f);
+			nkCol.b = FloatInput(nkCol.b, "#B:", 0, 1.0f, 0.01f, 0.005f);
+			nkCol.a = FloatInput(nkCol.a, "#A:", 0, 1.0f, 0.01f, 0.005f);
+		}
+		else {
+			std::array<float, 4> hsva;
+			nk_colorf_hsva_fv(hsva.data(), nkCol);
+			hsva[0] = FloatInput(hsva[0], "#H:", 0, 1.0f, 0.01f, 0.05f);
+			hsva[1] = FloatInput(hsva[1], "#S:", 0, 1.0f, 0.01f, 0.05f);
+			hsva[2] = FloatInput(hsva[2], "#V:", 0, 1.0f, 0.01f, 0.05f);
+			hsva[3] = FloatInput(hsva[3], "#A:", 0, 1.0f, 0.01f, 0.05f);
+			nkCol = nk_hsva_colorfv(hsva.data());
+		}
+		nk_combo_end(m_nctx);
+	}
+
+	LayoutRowDynamic(1);
+
+	return Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a);
 }
 
 void SettingsPage::Init()

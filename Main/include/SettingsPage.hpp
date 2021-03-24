@@ -11,10 +11,10 @@ protected:
 
 	virtual void RenderContents() = 0;
 
-	class TextSettingData
+	class SettingTextData
 	{
 	public:
-		TextSettingData(GameConfigKeys key) : m_key(key) {}
+		SettingTextData() noexcept {}
 
 		void Load();
 		void Save();
@@ -25,40 +25,59 @@ protected:
 	protected:
 		constexpr static size_t BUFFER_SIZE = 1024;
 
-		GameConfigKeys m_key;
+		virtual String LoadConfig() { return ""; }
+		virtual void SaveConfig(const String& value) {}
+
+	private:
+
 		std::array<char, BUFFER_SIZE> m_buffer;
 		int m_len = 0;
+	};
+
+	class GameConfigTextData : public SettingTextData
+	{
+	public:
+		GameConfigTextData(GameConfigKeys key) : m_key(key) {}
+
+	protected:
+		String LoadConfig() override;
+		void SaveConfig(const String& value) override;
+
+		GameConfigKeys m_key;
 	};
 
 	// Useful elements
 	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_buttonHeight); }
 	void LayoutRowDynamic(int num_columns, float height);
 
+	void Separator();
+	void Label(const std::string_view& label);
+
+	bool ToggleInput(bool val, const std::string_view& label);
 	bool ToggleSetting(GameConfigKeys key, const std::string_view& label);
 
 	template<typename EnumClass>
 	bool EnumSetting(GameConfigKeys key, const std::string_view& label)
 	{
-		EnumStringMap<typename EnumClass::EnumType> nameMap = EnumClass::GetMap();
+		const auto& nameMap = EnumClass::GetMap();
 		Vector<const char*> names;
-
-		int value = (int)g_gameConfig.GetEnum<EnumClass>(key);
-		const int prevValue = value;
 
 		for (auto it = nameMap.begin(); it != nameMap.end(); it++)
 		{
-			names.Add(*(*it).second);
+			names.Add(it->second.data());
 		}
 
-		nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-		nk_combobox(m_nctx, names.data(), names.size(), &value, m_buttonHeight, m_comboBoxSize);
-		if (prevValue != value) {
-			g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[value]));
+		const int value = static_cast<int>(g_gameConfig.GetEnum<EnumClass>(key));
+		const int newValue = SelectionInput(value, names, label);
+
+		if (newValue != value) {
+			g_gameConfig.SetEnum<EnumClass>(key, nameMap.FromString(names[newValue]));
 			return true;
 		}
 		return false;
 	}
 
+	int SelectionInput(int val, const Vector<const char*>& options, const std::string_view& label);
 	bool SelectionSetting(GameConfigKeys key, const Vector<const char*>& options, const std::string_view& label);
 	bool StringSelectionSetting(GameConfigKeys key, const Vector<String>& options, const std::string_view& label);
 
@@ -68,6 +87,8 @@ protected:
 	float FloatInput(float val, const std::string_view& label, float min, float max, float step, float perPixel);
 	bool FloatSetting(GameConfigKeys key, const std::string_view& label, float min, float max, float step = 0.01f);
 	bool PercentSetting(GameConfigKeys key, const std::string_view& label);
+
+	Color ColorInput(const Color& val, const std::string_view& label, bool& useHSV);
 
 public:
 	void Init();
