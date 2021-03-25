@@ -137,6 +137,11 @@ private:
 
 private:
 	Vector<std::unique_ptr<SettingsPage>> m_pages;
+	
+	constexpr static int PAGE_BUTTON_HEIGHT = 40;
+	constexpr static int PAGE_NAME_SIZE = 20;
+	Vector<Ref<TextRes>> m_pageNames;
+
 	size_t m_currPage = 0;
 
 	struct nk_rect m_pageHeaderRegion;
@@ -149,4 +154,6 @@ private:
 	void UpdatePageRegions();
 	void RenderPageHeaders();
 	void RenderPageContents();
+
+	void OnMousePressed(MouseButton button);
 };

@@ -342,11 +342,12 @@ void SettingsPage::Render(const struct nk_rect& rect)
 	}
 }
 
-
 bool SettingsPageCollection::Init()
 {
 	BasicNuklearGui::Init();
 	InitPages();
+
+	g_gameWindow->OnMousePressed.Add(this, &SettingsPageCollection::OnMousePressed);
 
 	return true;
 }
@@ -359,6 +360,8 @@ SettingsPageCollection::~SettingsPageCollection()
 	}
 
 	g_application->ApplySettings();
+
+	g_gameWindow->OnMousePressed.RemoveAll(this);
 }
 
 void SettingsPageCollection::Tick(float deltaTime)
@@ -379,9 +382,15 @@ void SettingsPageCollection::Render(float deltaTime)
 		return;
 	}
 
+	NVGcontext* vg = g_application->GetVGContext();
+
+	nvgBeginFrame(vg, g_resolution.x, g_resolution.y, 1.0f);
 	RenderPages();
 
 	BasicNuklearGui::NKRender();
+
+	nvgEndFrame(vg);
+	g_application->GetRenderQueueBase()->Process();
 }
 
 void SettingsPageCollection::OnKeyPressed(SDL_Scancode code)
@@ -448,13 +457,18 @@ void SettingsPageCollection::RefreshProfile()
 
 void SettingsPageCollection::InitPages()
 {
+	const String fontPath = Path::Normalize(Path::Absolute("fonts/settings/NotoSans-Regular.ttf"));
+	Graphics::Font font = g_application->LoadFont(fontPath, true);
+
 	m_pages.clear();
+	m_pageNames.clear();
 
 	AddPages(m_pages);
 
 	for (const auto& page : m_pages)
 	{
 		page->Init();
+		m_pageNames.Add(font->CreateText(Utility::ConvertToWString(page->GetName()), PAGE_NAME_SIZE));
 	}
 
 	m_currPage = 0;
@@ -491,30 +505,38 @@ void SettingsPageCollection::RenderPages()
 
 void SettingsPageCollection::RenderPageHeaders()
 {
-	m_nctx->style.window.padding.x = 0.0f;
-	m_nctx->style.window.padding.y = 0.0f;
+	const float PAGE_BUTTON_WIDTH = m_pageHeaderRegion.w;
 
-	if (nk_begin(m_nctx, "Pages", m_pageHeaderRegion, NK_WINDOW_NO_SCROLLBAR))
+	MaterialParameterSet params;
+	params.SetParameter("color", Color::White);
+
+	NVGcontext* vg = g_application->GetVGContext();
+	
+	nvgReset(vg);
+	nvgTranslate(vg, m_pageHeaderRegion.x, m_pageHeaderRegion.y);
+
+	nvgStrokeWidth(vg, 1.0f);
+	nvgStrokeColor(vg, nvgRGBA(255, 255, 255, 255));
+
+	nvgBeginPath(vg);
+
+	for (size_t i = 0; i < m_pages.size(); ++i, nvgTranslate(vg, 0, PAGE_BUTTON_HEIGHT))
 	{
-		nk_layout_row_dynamic(m_nctx, 50, 1);
+		// Draw text
+		const Graphics::Text& pageName = m_pageNames[i];
 
-		for (size_t i = 0; i < m_pages.size(); ++i)
-		{
-			const auto& page = m_pages[i];
-			const String& name = page->GetName();
+		float text_x = m_pageHeaderRegion.x + (m_pageHeaderRegion.w - pageName->size.x) / 2;
+		float text_y = m_pageHeaderRegion.y + i * PAGE_BUTTON_HEIGHT + (PAGE_BUTTON_HEIGHT - pageName->size.y) / 2;
 
-			if (nk_button_text(m_nctx, name.c_str(), static_cast<int>(name.size())))
-			{
-				m_currPage = i;
-			}
-		}
+		Transform transform = Transform::Translation(Vector2(text_x, text_y));
 
-		nk_layout_row_dynamic(m_nctx, 25, 1);
-		nk_layout_row_dynamic(m_nctx, 50, 1);
+		g_application->GetRenderQueueBase()->Draw(transform, pageName, g_application->GetFontMaterial(), params);
 
-		if (nk_button_label(m_nctx, "Exit")) Exit();
-		nk_end(m_nctx);
+		// Draw tab
+		nvgRect(vg, 0, 0, PAGE_BUTTON_WIDTH, PAGE_BUTTON_HEIGHT);
 	}
+
+	nvgStroke(vg);
 }
 
 void SettingsPageCollection::RenderPageContents()
@@ -525,4 +547,31 @@ void SettingsPageCollection::RenderPageContents()
 	}
 
 	m_pages[m_currPage]->Render(m_pageContentRegion);
+}
+
+void SettingsPageCollection::OnMousePressed(MouseButton button)
+{
+	if (IsSuspended())
+	{
+		return;
+	}
+
+	const Vector2i mousePos = g_gameWindow->GetMousePos();
+	if (mousePos.x < m_pageHeaderRegion.x || m_pageHeaderRegion.x + m_pageHeaderRegion.w <= mousePos.x)
+	{
+		return;
+	}
+
+	if (mousePos.y < m_pageHeaderRegion.y || m_pageHeaderRegion.y + m_pageHeaderRegion.h <= mousePos.y)
+	{
+		return;
+	}
+
+	int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / PAGE_BUTTON_HEIGHT);
+	if (index < 0 || index >= m_pages.size())
+	{
+		return;
+	}
+
+	m_currPage = index;
 }
