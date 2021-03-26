@@ -472,6 +472,9 @@ void SettingsPageCollection::InitPages()
 	}
 
 	m_currPage = 0;
+
+	m_profileText = font->CreateText(L"Profile", PAGE_NAME_SIZE);
+	m_exitText = font->CreateText(L"Exit", PAGE_NAME_SIZE);
 }
 
 void SettingsPageCollection::UpdatePageRegions()
@@ -492,8 +495,24 @@ void SettingsPageCollection::UpdatePageRegions()
 	const float SETTINGS_OFFSET_X = (g_resolution.x - SETTINGS_WIDTH) / 2;
 	const float SETTINGS_CONTENTS_OFFSET_X = SETTINGS_OFFSET_X + SETTINGS_HEADERS_WIDTH;
 
-	m_pageHeaderRegion = { SETTINGS_OFFSET_X, 0, SETTINGS_HEADERS_WIDTH, (float)g_resolution.y };
 	m_pageContentRegion = { SETTINGS_CONTENTS_OFFSET_X, 0, SETTINGS_CONTENTS_WIDTH, (float)g_resolution.y };
+
+	m_pageButtonHeight = Math::Clamp(m_pageContentRegion.h / (2 + m_pages.size()), static_cast<float>(PAGE_NAME_SIZE), 40.0f);
+
+	float pageHeaderSpacing = Math::Max(0.0f, static_cast<float>(g_resolution.y) - m_pageButtonHeight * (2 + m_pages.size()));
+
+	const float PAGE_HEADER_SPACING_TOP = Math::Min(pageHeaderSpacing * 0.1f, m_pageButtonHeight * 0.5f);
+	pageHeaderSpacing -= PAGE_HEADER_SPACING_TOP;
+
+	const float PAGE_HEADER_SPACING_MIDDLE = Math::Min(pageHeaderSpacing * 0.2f, m_pageButtonHeight * 3.0f);
+	pageHeaderSpacing -= PAGE_HEADER_SPACING_MIDDLE;
+
+	m_pageHeaderRegion = { SETTINGS_OFFSET_X, PAGE_HEADER_SPACING_TOP, SETTINGS_HEADERS_WIDTH, PAGE_HEADER_SPACING_TOP + m_pageButtonHeight * m_pages.size() };
+
+	const float PAGE_HEADER_BOTTOM = static_cast<float>(g_resolution.y) - Math::Max(0.0f, pageHeaderSpacing);
+
+	m_profileButtonRegion = { SETTINGS_OFFSET_X, PAGE_HEADER_BOTTOM - m_pageButtonHeight*2, SETTINGS_HEADERS_WIDTH, m_pageButtonHeight };
+	m_exitButtonRegion = { SETTINGS_OFFSET_X, PAGE_HEADER_BOTTOM - m_pageButtonHeight, SETTINGS_HEADERS_WIDTH, m_pageButtonHeight };
 }
 
 void SettingsPageCollection::RenderPages()
@@ -503,40 +522,56 @@ void SettingsPageCollection::RenderPages()
 	RenderPageContents();
 }
 
-void SettingsPageCollection::RenderPageHeaders()
+static inline bool HitCheck(const struct nk_rect& rect, const Vector2i& pos)
 {
-	const float PAGE_BUTTON_WIDTH = m_pageHeaderRegion.w;
+	return rect.x <= pos.x && pos.x < rect.x + rect.w && rect.y <= pos.y && pos.y < rect.y + rect.h;
+}
 
+static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, Ref<TextRes> textRes, bool activated)
+{
+	// Draw the button
+	nvgStrokeWidth(vg, 1.0f);
+	nvgStrokeColor(vg, nvgRGB(255, 255, 255));
+
+	struct NVGcolor bgColor = activated ? nvgRGB(60, 60, 60) : nvgRGB(15, 15, 15);
+
+	nvgFillColor(vg, bgColor);
+
+	nvgBeginPath(vg);
+	nvgMoveTo(vg, rect.x + rect.w, rect.y);
+	nvgLineTo(vg, rect.x, rect.y);
+	nvgLineTo(vg, rect.x, rect.y + rect.h);
+	nvgLineTo(vg, rect.x + rect.w, rect.y + rect.h);
+
+	nvgStroke(vg);
+	nvgFill(vg);
+
+	// Draw the text
 	MaterialParameterSet params;
 	params.SetParameter("color", Color::White);
 
+	float text_x = rect.x + (rect.w - textRes->size.x) / 2;
+	float text_y = rect.y + (rect.h - textRes->size.y) / 2;
+
+	Transform transform = Transform::Translation(Vector2(Math::Round(text_x), Math::Round(text_y)));
+
+	g_application->GetRenderQueueBase()->Draw(transform, textRes, g_application->GetFontMaterial(), params);
+}
+
+void SettingsPageCollection::RenderPageHeaders()
+{
 	NVGcontext* vg = g_application->GetVGContext();
-	
-	nvgReset(vg);
-	nvgTranslate(vg, m_pageHeaderRegion.x, m_pageHeaderRegion.y);
+	const Vector2i mousePos = g_gameWindow->GetMousePos();
 
-	nvgStrokeWidth(vg, 1.0f);
-	nvgStrokeColor(vg, nvgRGBA(255, 255, 255, 255));
-
-	nvgBeginPath(vg);
-
-	for (size_t i = 0; i < m_pages.size(); ++i, nvgTranslate(vg, 0, PAGE_BUTTON_HEIGHT))
+	for (size_t i = 0; i < m_pages.size(); ++i)
 	{
-		// Draw text
-		const Graphics::Text& pageName = m_pageNames[i];
+		const struct nk_rect rect = { m_pageHeaderRegion.x, m_pageHeaderRegion.y + i * m_pageButtonHeight, m_pageHeaderRegion.w, m_pageButtonHeight };
 
-		float text_x = m_pageHeaderRegion.x + (m_pageHeaderRegion.w - pageName->size.x) / 2;
-		float text_y = m_pageHeaderRegion.y + i * PAGE_BUTTON_HEIGHT + (PAGE_BUTTON_HEIGHT - pageName->size.y) / 2;
-
-		Transform transform = Transform::Translation(Vector2(text_x, text_y));
-
-		g_application->GetRenderQueueBase()->Draw(transform, pageName, g_application->GetFontMaterial(), params);
-
-		// Draw tab
-		nvgRect(vg, 0, 0, PAGE_BUTTON_WIDTH, PAGE_BUTTON_HEIGHT);
+		RenderButton(vg, rect, m_pageNames[i], m_currPage == i);
 	}
 
-	nvgStroke(vg);
+	RenderButton(vg, m_profileButtonRegion, m_profileText, false);
+	RenderButton(vg, m_exitButtonRegion, m_exitText, false);
 }
 
 void SettingsPageCollection::RenderPageContents()
@@ -557,17 +592,21 @@ void SettingsPageCollection::OnMousePressed(MouseButton button)
 	}
 
 	const Vector2i mousePos = g_gameWindow->GetMousePos();
-	if (mousePos.x < m_pageHeaderRegion.x || m_pageHeaderRegion.x + m_pageHeaderRegion.w <= mousePos.x)
+
+	if (HitCheck(m_exitButtonRegion, mousePos))
+	{
+		Exit();
+		return;
+	}
+
+	if (HitCheck(m_profileButtonRegion, mousePos))
 	{
 		return;
 	}
 
-	if (mousePos.y < m_pageHeaderRegion.y || m_pageHeaderRegion.y + m_pageHeaderRegion.h <= mousePos.y)
-	{
-		return;
-	}
+	if (!HitCheck(m_pageHeaderRegion, mousePos)) return;
 
-	int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / PAGE_BUTTON_HEIGHT);
+	int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
 	if (index < 0 || index >= m_pages.size())
 	{
 		return;

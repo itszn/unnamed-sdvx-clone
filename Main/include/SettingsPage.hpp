@@ -138,14 +138,23 @@ private:
 private:
 	Vector<std::unique_ptr<SettingsPage>> m_pages;
 	
-	constexpr static int PAGE_BUTTON_HEIGHT = 40;
-	constexpr static int PAGE_NAME_SIZE = 20;
+	float m_pageButtonHeight = 40;
+
+	constexpr static int PAGE_NAME_SIZE = 18;
 	Vector<Ref<TextRes>> m_pageNames;
+
+	Ref<TextRes> m_profileText = nullptr;
+	Ref<TextRes> m_exitText = nullptr;
 
 	size_t m_currPage = 0;
 
 	struct nk_rect m_pageHeaderRegion;
 	struct nk_rect m_pageContentRegion;
+
+	struct nk_rect m_profileButtonRegion;
+	struct nk_rect m_exitButtonRegion;
+
+	Vector2i m_prevMousePos;
 
 	void InitPages();
 
