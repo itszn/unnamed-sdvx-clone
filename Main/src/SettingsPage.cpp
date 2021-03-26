@@ -372,6 +372,8 @@ void SettingsPageCollection::Tick(float deltaTime)
 		return;
 	}
 
+	ProcessTabHandleMouseHover(g_gameWindow->GetMousePos());
+
 	BasicNuklearGui::Tick(deltaTime);
 }
 
@@ -584,6 +586,44 @@ void SettingsPageCollection::RenderPageContents()
 	m_pages[m_currPage]->Render(m_pageContentRegion);
 }
 
+// Returns whether v is above(+1), on(0), or below(-1) the line connecting p1 and p2.
+int CompareLine(const Vector2i& p1, const Vector2& p2, const Vector2i& v)
+{
+	const float vv = (p2.x - p1.x) * (v.y - p1.y);
+	const float lv = (p2.y - p1.y) * (v.x - p1.x);
+
+	return vv < lv ? +1 : vv > lv ? -1 : 0;
+}
+
+void SettingsPageCollection::ProcessTabHandleMouseHover(const Vector2i& mousePos)
+{
+	int currInd = GetPageIndFromMousePos(mousePos);
+	if (currInd == -1 || currInd == m_prevMouseInd)
+	{
+		m_prevMousePos = mousePos;
+		m_prevMouseInd = currInd;
+		return;
+	}
+	
+	// The Amazon dropdown trick from https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown
+	if (m_prevMousePos.x <= mousePos.x && mousePos.x <= m_pageContentRegion.x)
+	{
+		if (CompareLine(m_prevMousePos, { m_pageContentRegion.x, m_pageContentRegion.y }, mousePos) <= 0
+			&& CompareLine(m_prevMousePos, { m_pageContentRegion.x, m_pageContentRegion.y + m_pageContentRegion.h}, mousePos) >= 0)
+		{
+			currInd = m_prevMouseInd;
+		}
+	}
+
+	if (currInd >= 0 && currInd < m_pages.size())
+	{
+		m_currPage = currInd;
+	}
+
+	m_prevMousePos = mousePos;
+	m_prevMouseInd = currInd;
+}
+
 void SettingsPageCollection::OnMousePressed(MouseButton button)
 {
 	if (IsSuspended())
@@ -604,13 +644,22 @@ void SettingsPageCollection::OnMousePressed(MouseButton button)
 		return;
 	}
 
-	if (!HitCheck(m_pageHeaderRegion, mousePos)) return;
-
-	int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
-	if (index < 0 || index >= m_pages.size())
-	{
-		return;
-	}
+	const int index = GetPageIndFromMousePos(mousePos);
+	if (index < 0) return;
 
 	m_currPage = index;
+}
+
+int SettingsPageCollection::GetPageIndFromMousePos(const Vector2i& mousePos) const
+{
+	if (!HitCheck(m_pageHeaderRegion, mousePos)) return -1;
+	
+	const int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
+
+	if (index < 0 || index >= m_pages.size())
+	{
+		return -1;
+	}
+
+	return index;
 }

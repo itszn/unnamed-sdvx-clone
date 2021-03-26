@@ -155,6 +155,7 @@ private:
 	struct nk_rect m_exitButtonRegion;
 
 	Vector2i m_prevMousePos;
+	int m_prevMouseInd = -1;
 
 	void InitPages();
 
@@ -164,5 +165,8 @@ private:
 	void RenderPageHeaders();
 	void RenderPageContents();
 
+	void ProcessTabHandleMouseHover(const Vector2i& mousePos);
+
 	void OnMousePressed(MouseButton button);
+	int GetPageIndFromMousePos(const Vector2i& mousePos) const;
 };
