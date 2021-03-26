@@ -131,6 +131,7 @@ protected:
 
 private:
 	bool m_forceReload = false;
+	bool m_forcePortrait = false;
 
 private:
 	Vector<std::unique_ptr<SettingsPage>> m_pages;

@@ -405,6 +405,7 @@ bool SettingsPageCollection::Init()
 	InitPages();
 
 	g_gameWindow->OnMousePressed.Add(this, &SettingsPageCollection::OnMousePressed);
+	m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait);
 
 	return true;
 }
@@ -443,6 +444,8 @@ void SettingsPageCollection::Render(float deltaTime)
 	{
 		return;
 	}
+
+	m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait);
 
 	NVGcontext* vg = g_application->GetVGContext();
 
@@ -492,6 +495,8 @@ void SettingsPageCollection::Reload()
 		page->Exit();
 		page->Init();
 	}
+
+	m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait);
 }
 
 void SettingsPageCollection::InitPages()
@@ -519,10 +524,10 @@ void SettingsPageCollection::InitPages()
 void SettingsPageCollection::UpdatePageRegions()
 {
 	const float SETTINGS_DESIRED_CONTENTS_WIDTH = g_resolution.y / 1.4f;
-	const float SETTINGS_DESIRED_HEADERS_WIDTH = 120.0f;
+	const float SETTINGS_DESIRED_HEADERS_WIDTH = 100.0f;
 
 	const float SETTINGS_WIDTH = Math::Min(SETTINGS_DESIRED_CONTENTS_WIDTH + SETTINGS_DESIRED_HEADERS_WIDTH, g_resolution.x - 5.0f);
-	const float SETTINGS_CONTENTS_WIDTH = Math::Max(SETTINGS_WIDTH * 0.75f, SETTINGS_WIDTH - SETTINGS_DESIRED_HEADERS_WIDTH);
+	const float SETTINGS_CONTENTS_WIDTH = Math::Max(SETTINGS_WIDTH * 0.85f, SETTINGS_WIDTH - SETTINGS_DESIRED_HEADERS_WIDTH);
 	const float SETTINGS_HEADERS_WIDTH = SETTINGS_WIDTH - SETTINGS_CONTENTS_WIDTH;
 
 	// Better to keep current layout if there's not enough space
@@ -531,7 +536,12 @@ void SettingsPageCollection::UpdatePageRegions()
 		return;
 	}
 
-	const float SETTINGS_OFFSET_X = (g_resolution.x - SETTINGS_WIDTH) / 2;
+	float SETTINGS_OFFSET_X = (g_resolution.x - SETTINGS_WIDTH) / 2;
+	if (m_forcePortrait)
+	{
+		SETTINGS_OFFSET_X += (g_gameWindow->GetWindowSize().x - g_resolution.x) / 2;
+	}
+
 	const float SETTINGS_CONTENTS_OFFSET_X = SETTINGS_OFFSET_X + SETTINGS_HEADERS_WIDTH;
 
 	m_pageContentRegion = { SETTINGS_CONTENTS_OFFSET_X, 0, SETTINGS_CONTENTS_WIDTH, (float)g_resolution.y };
@@ -566,8 +576,17 @@ static inline bool HitCheck(const struct nk_rect& rect, const Vector2i& pos)
 	return rect.x <= pos.x && pos.x < rect.x + rect.w && rect.y <= pos.y && pos.y < rect.y + rect.h;
 }
 
-static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, Ref<TextRes> textRes, bool activated, const Vector2i& mousePos)
+static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, bool forcePortrait, Ref<TextRes> textRes, bool activated, const Vector2i& mousePos)
 {
+	float scaleX = 1.0f;
+
+	nvgResetTransform(vg);
+	if (forcePortrait)
+	{
+		scaleX = static_cast<float>(g_resolution.x) / g_gameWindow->GetWindowSize().x;
+		nvgScale(vg, scaleX, 1.0f);
+	}
+
 	// Draw the button
 	nvgStrokeWidth(vg, 1.0f);
 	nvgStrokeColor(vg, nvgRGB(255, 255, 255));
@@ -594,23 +613,29 @@ static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, Ref<
 
 	Transform transform = Transform::Translation(Vector2(Math::Round(text_x), Math::Round(text_y)));
 
+	if (forcePortrait)
+	{
+		transform = Transform::Scale(Vector2(scaleX, 1.0f)) * transform;
+	}
+
 	g_application->GetRenderQueueBase()->Draw(transform, textRes, g_application->GetFontMaterial(), params);
 }
 
 void SettingsPageCollection::RenderPageHeaders()
 {
 	NVGcontext* vg = g_application->GetVGContext();
+
 	const Vector2i mousePos = g_gameWindow->GetMousePos();
 
 	for (size_t i = 0; i+1 < m_pages.size(); ++i)
 	{
 		const struct nk_rect rect = { m_pageHeaderRegion.x, m_pageHeaderRegion.y + i * m_pageButtonHeight, m_pageHeaderRegion.w, m_pageButtonHeight };
 
-		RenderButton(vg, rect, m_pageNames[i], m_currPage == i, mousePos);
+		RenderButton(vg, rect, m_forcePortrait, m_pageNames[i], m_currPage == i, mousePos);
 	}
 
-	RenderButton(vg, m_profileButtonRegion, *(m_pageNames.rbegin()), false, mousePos);
-	RenderButton(vg, m_exitButtonRegion, m_exitText, false, mousePos);
+	RenderButton(vg, m_profileButtonRegion, m_forcePortrait, *(m_pageNames.rbegin()), false, mousePos);
+	RenderButton(vg, m_exitButtonRegion, m_forcePortrait, m_exitText, false, mousePos);
 }
 
 void SettingsPageCollection::RenderPageContents()

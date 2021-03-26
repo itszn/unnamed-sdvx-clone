@@ -562,13 +562,18 @@ protected:
 protected:
 	void RenderContents() override
 	{
+		bool applySettings = false;
+		auto SetApply = [&applySettings](bool b) {
+			if (b) applySettings = true;
+		};
+
 		LayoutRowDynamic(1);
 
 		PercentSetting(GameConfigKeys::MasterVolume, "Master Volume (%.1f%%):");
-		ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen");
-		ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)");
-		ToggleSetting(GameConfigKeys::VSync, "VSync");
-		ToggleSetting(GameConfigKeys::ShowFps, "Show FPS");
+		SetApply(ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen"));
+		SetApply(ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait rendering (don't use if already in portrait)"));
+		SetApply(ToggleSetting(GameConfigKeys::VSync, "VSync"));
+		SetApply(ToggleSetting(GameConfigKeys::ShowFps, "Show FPS"));
 
 		SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti-aliasing (requires restart):");
 
@@ -585,7 +590,12 @@ protected:
 			StringSelectionSetting(GameConfigKeys::UpdateChannel, m_channels, "Update Channel:");
 		}
 
-		EnumSetting<Logger::Enum_Severity>(GameConfigKeys::LogLevel, "Logging level");
+		SetApply(EnumSetting<Logger::Enum_Severity>(GameConfigKeys::LogLevel, "Logging level"));
+
+		if (applySettings)
+		{
+			g_application->ApplySettings();
+		}
 	}
 };
 
