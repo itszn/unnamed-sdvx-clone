@@ -124,16 +124,13 @@ public:
 
 	void Exit();
 
+	void Reload();
+
 protected:
 	virtual void AddPages(Vector<std::unique_ptr<SettingsPage>>& pages) = 0;
 
 private:
-	Vector<String> m_profiles;
-	String m_currentProfile;
-	bool m_needsProfileReboot = false;
-
-	void InitProfile();
-	void RefreshProfile();
+	bool m_forceReload = false;
 
 private:
 	Vector<std::unique_ptr<SettingsPage>> m_pages;
@@ -143,7 +140,6 @@ private:
 	constexpr static int PAGE_NAME_SIZE = 18;
 	Vector<Ref<TextRes>> m_pageNames;
 
-	Ref<TextRes> m_profileText = nullptr;
 	Ref<TextRes> m_exitText = nullptr;
 
 	size_t m_currPage = 0;
@@ -154,6 +150,7 @@ private:
 	struct nk_rect m_profileButtonRegion;
 	struct nk_rect m_exitButtonRegion;
 
+	bool m_enableSwitchPageOnHover = false;
 	Vector2i m_prevMousePos;
 	int m_prevMouseInd = -1;
 

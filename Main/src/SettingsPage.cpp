@@ -2,7 +2,6 @@
 #include "SettingsPage.hpp"
 
 #include "Application.hpp"
-#include "SettingsScreen.hpp"
 
 constexpr static int NK_PROPERTY_DEFAULT = 0;
 
@@ -342,6 +341,64 @@ void SettingsPage::Render(const struct nk_rect& rect)
 	}
 }
 
+class SettingsPage_Profile : public SettingsPage
+{
+public:
+	SettingsPage_Profile(nk_context* nctx, bool& forceReload) : SettingsPage(nctx, "Profile"), m_forceReload(forceReload) {}
+
+protected:
+	bool& m_forceReload;
+
+	void Load() override
+	{
+		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+		m_profiles.clear();
+		m_profiles.push_back("Main");
+
+		Vector<FileInfo> profiles = Files::ScanFiles(Path::Absolute("profiles/"), "cfg", NULL);
+
+		for (const auto& file : profiles)
+		{
+			String profileName = "";
+			String unused = Path::RemoveLast(file.fullPath, &profileName);
+			profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
+			m_profiles.push_back(profileName);
+		}
+	}
+
+	void Save() override
+	{
+		String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+		if (newProfile == m_currentProfile)
+		{
+			return;
+		}
+
+		// Save old settings
+		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, m_currentProfile);
+		g_application->ApplySettings();
+
+		// Load new settings
+		g_application->ReloadConfig(newProfile);
+		m_forceReload = true;
+	}
+
+	Vector<String> m_profiles;
+	String m_currentProfile;
+
+	void RenderContents() override
+	{
+		LayoutRowDynamic(1);
+
+		if (StringSelectionSetting(GameConfigKeys::CurrentProfileName, m_profiles, "Selected Profile:"))
+		{
+			Save();
+			return;
+		}
+	}
+};
+
 bool SettingsPageCollection::Init()
 {
 	BasicNuklearGui::Init();
@@ -366,13 +423,16 @@ SettingsPageCollection::~SettingsPageCollection()
 
 void SettingsPageCollection::Tick(float deltaTime)
 {
-	if (m_needsProfileReboot)
+	if (m_forceReload)
 	{
-		RefreshProfile();
+		Reload();
 		return;
 	}
 
-	ProcessTabHandleMouseHover(g_gameWindow->GetMousePos());
+	if (m_enableSwitchPageOnHover)
+	{
+		ProcessTabHandleMouseHover(g_gameWindow->GetMousePos());
+	}
 
 	BasicNuklearGui::Tick(deltaTime);
 }
@@ -386,7 +446,7 @@ void SettingsPageCollection::Render(float deltaTime)
 
 	NVGcontext* vg = g_application->GetVGContext();
 
-	nvgBeginFrame(vg, g_resolution.x, g_resolution.y, 1.0f);
+	nvgBeginFrame(vg, static_cast<float>(g_resolution.x), static_cast<float>(g_resolution.y), 1.0f);
 	RenderPages();
 
 	BasicNuklearGui::NKRender();
@@ -423,38 +483,15 @@ void SettingsPageCollection::Exit()
 	g_application->RemoveTickable(this);
 }
 
-void SettingsPageCollection::InitProfile()
+void SettingsPageCollection::Reload()
 {
-	m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-	m_profiles.push_back("Main");
+	m_forceReload = false;
 
-	Vector<FileInfo> profiles = Files::ScanFiles(Path::Absolute("profiles/"), "cfg", NULL);
-
-	for (const auto& file : profiles)
+	for (auto& page : m_pages)
 	{
-		String profileName = "";
-		String unused = Path::RemoveLast(file.fullPath, &profileName);
-		profileName = profileName.substr(0, profileName.length() - 4); // Remove .cfg
-		m_profiles.push_back(profileName);
+		page->Exit();
+		page->Init();
 	}
-}
-
-void SettingsPageCollection::RefreshProfile()
-{
-	// TODO: just refresh pages and remove the include for SettingsScreen
-
-	String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-
-	// Save old settings
-	g_gameConfig.Set(GameConfigKeys::CurrentProfileName, m_currentProfile);
-	Exit();
-
-	g_application->ApplySettings();
-
-	// Load in new settings
-	g_application->ReloadConfig(newProfile);
-
-	g_application->AddTickable(SettingsScreen::Create());
 }
 
 void SettingsPageCollection::InitPages()
@@ -466,6 +503,7 @@ void SettingsPageCollection::InitPages()
 	m_pageNames.clear();
 
 	AddPages(m_pages);
+	m_pages.emplace_back(std::make_unique<SettingsPage_Profile>(m_nctx, m_forceReload));
 
 	for (const auto& page : m_pages)
 	{
@@ -475,7 +513,6 @@ void SettingsPageCollection::InitPages()
 
 	m_currPage = 0;
 
-	m_profileText = font->CreateText(L"Profile", PAGE_NAME_SIZE);
 	m_exitText = font->CreateText(L"Exit", PAGE_NAME_SIZE);
 }
 
@@ -529,13 +566,13 @@ static inline bool HitCheck(const struct nk_rect& rect, const Vector2i& pos)
 	return rect.x <= pos.x && pos.x < rect.x + rect.w && rect.y <= pos.y && pos.y < rect.y + rect.h;
 }
 
-static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, Ref<TextRes> textRes, bool activated)
+static inline void RenderButton(NVGcontext* vg, const struct nk_rect& rect, Ref<TextRes> textRes, bool activated, const Vector2i& mousePos)
 {
 	// Draw the button
 	nvgStrokeWidth(vg, 1.0f);
 	nvgStrokeColor(vg, nvgRGB(255, 255, 255));
 
-	struct NVGcolor bgColor = activated ? nvgRGB(60, 60, 60) : nvgRGB(15, 15, 15);
+	struct NVGcolor bgColor = activated ? nvgRGB(60, 60, 60) : HitCheck(rect, mousePos) ? nvgRGB(128, 128, 128) : nvgRGB(15, 15, 15);
 
 	nvgFillColor(vg, bgColor);
 
@@ -565,15 +602,15 @@ void SettingsPageCollection::RenderPageHeaders()
 	NVGcontext* vg = g_application->GetVGContext();
 	const Vector2i mousePos = g_gameWindow->GetMousePos();
 
-	for (size_t i = 0; i < m_pages.size(); ++i)
+	for (size_t i = 0; i+1 < m_pages.size(); ++i)
 	{
 		const struct nk_rect rect = { m_pageHeaderRegion.x, m_pageHeaderRegion.y + i * m_pageButtonHeight, m_pageHeaderRegion.w, m_pageButtonHeight };
 
-		RenderButton(vg, rect, m_pageNames[i], m_currPage == i);
+		RenderButton(vg, rect, m_pageNames[i], m_currPage == i, mousePos);
 	}
 
-	RenderButton(vg, m_profileButtonRegion, m_profileText, false);
-	RenderButton(vg, m_exitButtonRegion, m_exitText, false);
+	RenderButton(vg, m_profileButtonRegion, *(m_pageNames.rbegin()), false, mousePos);
+	RenderButton(vg, m_exitButtonRegion, m_exitText, false, mousePos);
 }
 
 void SettingsPageCollection::RenderPageContents()
@@ -639,11 +676,6 @@ void SettingsPageCollection::OnMousePressed(MouseButton button)
 		return;
 	}
 
-	if (HitCheck(m_profileButtonRegion, mousePos))
-	{
-		return;
-	}
-
 	const int index = GetPageIndFromMousePos(mousePos);
 	if (index < 0) return;
 
@@ -652,9 +684,14 @@ void SettingsPageCollection::OnMousePressed(MouseButton button)
 
 int SettingsPageCollection::GetPageIndFromMousePos(const Vector2i& mousePos) const
 {
+	if (HitCheck(m_profileButtonRegion, mousePos))
+	{
+		return static_cast<int>(m_pages.size()) - 1;
+	}
+
 	if (!HitCheck(m_pageHeaderRegion, mousePos)) return -1;
 	
-	const int index = Math::Floor((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
+	const int index = static_cast<int>((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
 
 	if (index < 0 || index >= m_pages.size())
 	{
