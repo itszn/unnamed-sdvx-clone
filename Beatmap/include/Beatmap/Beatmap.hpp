@@ -111,7 +111,7 @@ private:
 	Vector<TimingPoint*> m_timingPoints;
 	Vector<ChartStop*> m_chartStops;
 	Vector<LaneHideTogglePoint*> m_laneTogglePoints;
-	Vector<ObjectState*> m_objectStates;
+	Vector<ObjectTypeData_Base*> m_objectStates;
 	Vector<ZoomControlPoint*> m_zoomControlPoints;
 	Vector<String> m_samplePaths;
 	Vector<String> m_switchablePaths;

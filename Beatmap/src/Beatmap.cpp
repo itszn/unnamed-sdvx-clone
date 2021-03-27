@@ -9,8 +9,22 @@ Beatmap::~Beatmap()
 	// Perform cleanup
 	for(auto tp : m_timingPoints)
 		delete tp;
-	for(auto obj : m_objectStates)
-		delete obj;
+	for (auto obj : m_objectStates)
+	{
+		// There is weird typing here, so we need to make sure we call the correct destructor
+		if (auto s = dynamic_cast<ButtonObjectState*>(obj))
+			delete s;
+		else if (auto s = dynamic_cast<HoldObjectState*>(obj))
+			delete s;
+		else if (auto s = dynamic_cast<HoldObjectState*>(obj))
+			delete s;
+		else if (auto s = dynamic_cast<LaserObjectState*>(obj))
+			delete s;
+		else if (auto s = dynamic_cast<EventObjectState*>(obj))
+			delete s;
+		else
+			delete obj;
+	}
 	for (auto z : m_zoomControlPoints)
 		delete z;
 	for (auto z : m_laneTogglePoints)
@@ -127,7 +141,7 @@ MapTime Beatmap::GetLastObjectTime() const
 
 	for (auto it = m_objectStates.rbegin(); it != m_objectStates.rend(); ++it)
 	{
-		const ObjectState* obj = *it;
+		const ObjectTypeData_Base* obj = *it;
 		switch (obj->type)
 		{
 		case ObjectType::Event:
@@ -340,7 +354,7 @@ bool Beatmap::m_Serialize(BinaryStream& stream, bool metadataOnly)
 	LaserObjectState* prevLasers[2] = { 0 };
 	if(stream.IsReading())
 	{
-		for(ObjectState* obj : m_objectStates)
+		for(auto obj : m_objectStates)
 		{
 			if(obj->type == ObjectType::Laser)
 			{
