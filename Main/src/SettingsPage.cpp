@@ -703,7 +703,7 @@ void SettingsPageCollection::ProcessTabHandleMouseHover(const Vector2i& mousePos
 		}
 	}
 
-	if (currInd >= 0 && currInd < m_pages.size() && currInd != m_currPage)
+	if (currInd >= 0 && currInd < static_cast<int>(m_pages.size()) && currInd != m_currPage)
 	{
 		SetCurrPage(currInd);
 	}
@@ -744,7 +744,7 @@ int SettingsPageCollection::GetPageIndFromMousePos(const Vector2i& mousePos) con
 	
 	const int index = static_cast<int>((mousePos.y - m_pageHeaderRegion.y) / m_pageButtonHeight);
 
-	if (index < 0 || index >= m_pages.size())
+	if (index < 0 || index >= static_cast<int>(m_pages.size()))
 	{
 		return -1;
 	}
