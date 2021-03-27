@@ -338,6 +338,7 @@ private:
 			updateSongOffset = firstClear;
 			break;
 		default:
+			break;
 		}
 
 		if (!updateSongOffset)
@@ -357,6 +358,7 @@ private:
 				updateSongOffset = cleared;
 				break;
 			default:
+				break;
 			}
 		}
 
