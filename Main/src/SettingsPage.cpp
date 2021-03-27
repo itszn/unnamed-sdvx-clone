@@ -353,7 +353,7 @@ public:
 
 protected:
 	bool& m_forceReload;
-
+	
 	void Load() override
 	{
 		m_currentProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);

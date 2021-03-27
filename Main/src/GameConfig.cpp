@@ -103,6 +103,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
 	Set(GameConfigKeys::AutoComputeSongOffset, false);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, SongOffsetUpdateMethod::None);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, SongOffsetUpdateMethod::None);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 

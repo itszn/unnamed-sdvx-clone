@@ -2,6 +2,14 @@
 #include "Shared/Config.hpp"
 #include "Input.hpp"
 
+#ifdef Always
+#undef Always
+#endif
+
+#ifdef None
+#undef None
+#endif
+
 DefineEnum(GameConfigKeys,
 		   // Version of the config
 		   ConfigVersion,
@@ -58,6 +66,8 @@ DefineEnum(GameConfigKeys,
 		   DisableBackgrounds,
 		   ScoreDisplayMode,
 		   AutoComputeSongOffset,
+		   UpdateSongOffsetAfterFirstPlay,
+		   UpdateSongOffsetAfterEveryPlay,
 
 		   LeadInTime,
 		   PracticeLeadInTime,
@@ -204,13 +214,16 @@ DefineEnum(LaserAxisOption,
 	       Right,
 	       Both)
 
-#ifdef Always
-#undef Always
-#endif
 DefineEnum(AutoScoreScreenshotSettings,
 		   Off,
 		   Highscore,
 		   Always)
+
+DefineEnum(SongOffsetUpdateMethod,
+		   None,
+		   Play,
+		   PlayWholeChart,
+		   Clear)
 
 DefineEnum(ButtonComboModeSettings,
 		   Disabled,

@@ -379,6 +379,9 @@ protected:
 
 		ToggleSetting(GameConfigKeys::RevertToSetupAfterScoreScreen, "Revert to the practice setup after the score screen is shown");
 
+		EnumSetting<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, "Based on hit stats, update song offset for first:");
+		EnumSetting<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, "After having updated first time, update song offset for every:");
+
 		SectionHeader("Songs");
 		Label("Songs folder path:");
 		m_songsPath.Render(m_nctx);
