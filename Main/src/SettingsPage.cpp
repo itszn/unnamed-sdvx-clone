@@ -703,7 +703,7 @@ void SettingsPageCollection::ProcessTabHandleMouseHover(const Vector2i& mousePos
 		}
 	}
 
-	if (currInd >= 0 && currInd < static_cast<int>(m_pages.size()) && currInd != m_currPage)
+	if (currInd >= 0 && currInd < static_cast<int>(m_pages.size()) && currInd != static_cast<int>(m_currPage))
 	{
 		SetCurrPage(currInd);
 	}

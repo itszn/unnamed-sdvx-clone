@@ -1072,7 +1072,10 @@ class ButtonBindingScreen_Impl : public ButtonBindingScreen
 private:
 	Ref<Gamepad> m_gamepad;
 	//Label* m_prompt;
+
 	GameConfigKeys m_key;
+	String m_keyName;
+	
 	bool m_isGamepad;
 	int m_gamepadIndex;
 	bool m_completed = false;
@@ -1088,6 +1091,32 @@ public:
 		m_isGamepad = gamepad;
 		m_knobs = (key == GameConfigKeys::Controller_Laser0Axis || key == GameConfigKeys::Controller_Laser1Axis);
 		m_isAlt = isAlt;
+
+		// Oh, you like SDVX? Name every possible key bindings for it!
+		switch (m_key)
+		{
+		case GameConfigKeys::Controller_BTS: case GameConfigKeys::Key_BTS: case GameConfigKeys::Key_BTSAlt: m_keyName = "Start"; break;
+		case GameConfigKeys::Controller_Back: case GameConfigKeys::Key_Back: case GameConfigKeys::Key_BackAlt: m_keyName = "Back"; break;
+
+		case GameConfigKeys::Controller_BT0: case GameConfigKeys::Key_BT0: case GameConfigKeys::Key_BT0Alt: m_keyName = "BT-A"; break;
+		case GameConfigKeys::Controller_BT1: case GameConfigKeys::Key_BT1: case GameConfigKeys::Key_BT1Alt: m_keyName = "BT-B"; break;
+		case GameConfigKeys::Controller_BT2: case GameConfigKeys::Key_BT2: case GameConfigKeys::Key_BT2Alt: m_keyName = "BT-C"; break;
+		case GameConfigKeys::Controller_BT3: case GameConfigKeys::Key_BT3: case GameConfigKeys::Key_BT3Alt: m_keyName = "BT-D"; break;
+
+		case GameConfigKeys::Controller_FX0: case GameConfigKeys::Key_FX0: case GameConfigKeys::Key_FX0Alt: m_keyName = "FX-L"; break;
+		case GameConfigKeys::Controller_FX1: case GameConfigKeys::Key_FX1: case GameConfigKeys::Key_FX1Alt: m_keyName = "FX-R"; break;
+
+		case GameConfigKeys::Controller_Laser0Axis: m_keyName = "Left Laser"; break;
+		case GameConfigKeys::Controller_Laser1Axis: m_keyName = "Right Laser"; break;
+		default:
+			m_keyName = Enum_GameConfigKeys::ToString(key);
+			break;
+		}
+
+		if (isAlt)
+		{
+			m_keyName += " (alt)";
+		}
 	}
 
 	bool Init()
@@ -1149,30 +1178,32 @@ public:
 
 	void Render(float deltatime)
 	{
-		String prompt = "Press Key";
+		String prompt = "Press the key";
 
 		if (m_knobs)
 		{
-			prompt = "Press Left Key";
+			prompt = "Press the left key";
 			if (m_completed)
 			{
-				prompt = "Press Right Key";
+				prompt = "Press the right key";
 			}
 		}
 
 		if (m_isGamepad)
 		{
-			prompt = "Press Button";
+			prompt = "Press the button";
 			m_gamepad = g_gameWindow->OpenGamepad(m_gamepadIndex);
 			if (m_knobs)
 			{
-				prompt = "Turn Knob";
+				prompt = "Turn the knob";
 				for (uint8 i = 0; i < m_gamepad->NumAxes(); i++)
 				{
 					m_gamepadAxes.Add(m_gamepad->GetAxis(i));
 				}
 			}
 		}
+
+		prompt += " for " + m_keyName + ".";
 
 		g_application->FastText(prompt, static_cast<float>(g_resolution.x / 2), static_cast<float>(g_resolution.y / 2), 40, NVGalign::NVG_ALIGN_CENTER | NVGalign::NVG_ALIGN_MIDDLE);
 	}
