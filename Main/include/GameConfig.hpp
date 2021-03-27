@@ -227,10 +227,7 @@ public:
 	GameConfig();
 	void SetKeyBinding(GameConfigKeys key, Key value);
 
-
-	// When this should change, the UpdateVersion MUST be updated to update the old config files.
-	// If there's no need to update the UpdateVersion, there's no need to touch this too.
-	constexpr static int32 VERSION = 1;
+	static int32 VERSION;
 
 	// Update the version of the config file to VERSION.
 	void UpdateVersion();
