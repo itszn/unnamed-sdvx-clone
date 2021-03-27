@@ -108,6 +108,6 @@ if(WIN32)
 	debug ${PROJECT_SOURCE_DIR}/third_party/breakpad/common_Debug.lib
     )
     target_include_directories(usc-game PUBLIC ${PROJECT_SOURCE_DIR}/third_party/breakpad/include)
-    # Always generate pdb
-    target_compile_options(usc-game PRIVATE /Zi)
 endif()
+
+target_link_libraries(usc-game cc-common)
