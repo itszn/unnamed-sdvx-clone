@@ -3,6 +3,7 @@
 
 #include "Shared/Log.hpp"
 #include "HitStat.hpp"
+#include "Input.hpp"
 
 // When this should change, the UpdateVersion MUST be updated to update the old config files.
 // If there's no need to update the UpdateVersion, there's no need to touch this too.
@@ -74,6 +75,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::HitWindowPerfect, HitWindow::NORMAL.perfect);
 	Set(GameConfigKeys::HitWindowGood, HitWindow::NORMAL.good);
 	Set(GameConfigKeys::HitWindowHold, HitWindow::NORMAL.hold);
+	Set(GameConfigKeys::HitWindowSlam, HitWindow::NORMAL.slam);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);

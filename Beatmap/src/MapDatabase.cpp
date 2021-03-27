@@ -344,10 +344,12 @@ public:
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_good INTEGER");
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_hold INTEGER");
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_miss INTEGER");
+				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_slam INTEGER");
 				m_database.Exec("UPDATE Scores SET window_perfect=46");
 				m_database.Exec("UPDATE Scores SET window_good=92");
 				m_database.Exec("UPDATE Scores SET window_hold=138");
 				m_database.Exec("UPDATE Scores SET window_miss=250");
+				m_database.Exec("UPDATE Scores SET window_miss=75");
 				gotVersion = 16;
 			}
 			if (gotVersion == 16)
@@ -783,7 +785,7 @@ public:
 		DBStatement removeChart = m_database.Query("DELETE FROM Charts WHERE rowid=?");
 		DBStatement removeChallenge = m_database.Query("DELETE FROM Challenges WHERE rowid=?");
 		DBStatement removeFolder = m_database.Query("DELETE FROM Folders WHERE rowid=?");
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores WHERE chart_hash=?");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,window_slam FROM Scores WHERE chart_hash=?");
 		DBStatement moveScores = m_database.Query("UPDATE Scores set chart_hash=? where chart_hash=?");
 
 		Set<FolderIndex*> addedChartEvents;
@@ -972,6 +974,7 @@ public:
 					score->hitWindowGood = scoreScan.IntColumn(13);
 					score->hitWindowHold = scoreScan.IntColumn(14);
 					score->hitWindowMiss = scoreScan.IntColumn(15);
+					score->hitWindowSlam = scoreScan.IntColumn(16);
 
 					score->chartHash = chart->hash;
 					chart->scores.Add(score);
@@ -1192,7 +1195,7 @@ public:
 
 	void AddScore(ScoreIndex* score)
 	{
-		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+		DBStatement addScore = m_database.Query("INSERT INTO Scores(score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,window_slam) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 
 		m_database.Exec("BEGIN");
 		addScore.BindInt(1, score->score);
@@ -1211,6 +1214,7 @@ public:
 		addScore.BindInt(14, score->hitWindowGood);
 		addScore.BindInt(15, score->hitWindowHold);
 		addScore.BindInt(16, score->hitWindowMiss);
+		addScore.BindInt(17, score->hitWindowSlam);
 
 		addScore.Step();
 		addScore.Rewind();
@@ -1461,6 +1465,7 @@ private:
 			"window_good INTEGER,"
 			"window_hold INTEGER,"
 			"window_miss INTEGER,"
+			"window_slam INTEGER,"
 			"chart_hash TEXT)");
 
 		m_database.Exec("CREATE TABLE Collections"
@@ -1599,7 +1604,7 @@ private:
 		}
 
 		// Select Scores
-		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss FROM Scores");
+		DBStatement scoreScan = m_database.Query("SELECT rowid,score,crit,near,miss,gauge,gameflags,replay,timestamp,chart_hash,user_name,user_id,local_score,window_perfect,window_good,window_hold,window_miss,window_slam FROM Scores");
 		
 		while (scoreScan.StepRow())
 		{
@@ -1623,6 +1628,7 @@ private:
 			score->hitWindowGood = scoreScan.IntColumn(14);
 			score->hitWindowHold = scoreScan.IntColumn(15);
 			score->hitWindowMiss = scoreScan.IntColumn(16);
+			score->hitWindowSlam = scoreScan.IntColumn(17);
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);

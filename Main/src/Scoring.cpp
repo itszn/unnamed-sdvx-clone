@@ -720,7 +720,8 @@ void Scoring::m_UpdateTicks()
 				}
 			}
 
-			if (((tick->HasFlag(TickFlags::Slam) && delta >= hitWindow.slam) || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good)) && !processed)
+			bool miss = (tick->HasFlag(TickFlags::Slam) && delta >= hitWindow.slam) || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good);
+			if (miss && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
 				processed = true;
@@ -1284,21 +1285,6 @@ uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxH
 uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const
 {
 	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
-}
-
-MapTime ScoreTick::GetHitWindow(const HitWindow& hitWindow) const
-{
-	// Hold ticks don't have a hit window, but the first ones do
-	if (HasFlag(TickFlags::Hold) && !HasFlag(TickFlags::Start))
-		return 0;
-	// Laser ticks also don't have a hit window except for the first ticks and slam segments
-	if (HasFlag(TickFlags::Laser))
-	{
-		if (!HasFlag(TickFlags::Start) && !HasFlag(TickFlags::Slam))
-			return 0;
-		return hitWindow.perfect;
-	}
-	return hitWindow.miss;
 }
 
 ScoreHitRating ScoreTick::GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const

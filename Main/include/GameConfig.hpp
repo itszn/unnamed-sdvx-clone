@@ -1,6 +1,5 @@
 #pragma once
 #include "Shared/Config.hpp"
-#include "Input.hpp"
 
 DefineEnum(GameConfigKeys,
 		   // Version of the config
@@ -27,6 +26,7 @@ DefineEnum(GameConfigKeys,
 		   HitWindowPerfect,
 		   HitWindowGood,
 		   HitWindowHold,
+		   HitWindowSlam,
 		   HiSpeed,
 		   SpeedMod,
 		   ModSpeed,

@@ -28,8 +28,6 @@ public:
 	ScoreTick() = default;
 	ScoreTick(ObjectState* object) : object(object) {};
 
-	// Returns the time frame in which this tick can be hit
-	MapTime GetHitWindow(const HitWindow& hitWindow) const;
 	// Hit rating when hitting object give a delta 
 	ScoreHitRating GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const;
 	// Check a flag

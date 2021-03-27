@@ -756,7 +756,7 @@ public:
 
 			{
 				nk_label(m_nctx, "Timing Window:", nk_text_alignment::NK_TEXT_LEFT);
-				nk_layout_row_dynamic(m_nctx, 30, 3);
+				nk_layout_row_dynamic(m_nctx, 30, 4);
 
 				const int hitWindowPerfect = nk_propertyi_sdl_text(m_nctx, "Crit", 0, m_hitWindow.perfect, HitWindow::NORMAL.perfect, 1, 1);
 				if (hitWindowPerfect != m_hitWindow.perfect)
@@ -787,6 +787,10 @@ public:
 					if (m_hitWindow.hold < m_hitWindow.good)
 						m_hitWindow.good = m_hitWindow.hold;
 				}
+
+				const int hitWindowSlam = nk_propertyf_sdl_text(m_nctx, "Slam", 0, m_hitWindow.slam, HitWindow::NORMAL.slam, 1, 1);
+				if (hitWindowSlam != m_hitWindow.slam)
+					m_hitWindow.slam = hitWindowSlam;
 
 				nk_layout_row_dynamic(m_nctx, 30, 2);
 

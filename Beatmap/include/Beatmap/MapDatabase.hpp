@@ -36,6 +36,7 @@ struct ScoreIndex
 	int32 hitWindowGood;
 	int32 hitWindowHold;
 	int32 hitWindowMiss;
+	int32 hitWindowSlam;
 };
 
 
