@@ -9,18 +9,18 @@ namespace IR
 {
     struct ResponseState final
     {
-        constexpr static int Unused = 0;
-        constexpr static int Pending = 10;
-        constexpr static int Success = 20;
-        constexpr static int BadRequest = 40;
-        constexpr static int Unauthorized = 41;
-        constexpr static int ChartRefused = 42;
-        constexpr static int Forbidden = 43;
-        constexpr static int NotFound = 44;
-        constexpr static int ServerError = 50;
-        constexpr static int RequestFailure = 60;
+        const static int Unused = 0;
+        const static int Pending = 10;
+        const static int Success = 20;
+        const static int BadRequest = 40;
+        const static int Unauthorized = 41;
+        const static int ChartRefused = 42;
+        const static int Forbidden = 43;
+        const static int NotFound = 44;
+        const static int ServerError = 50;
+        const static int RequestFailure = 60;
 
-        constexpr static std::initializer_list<std::pair<const char*, int>> Values = {
+        inline const static std::initializer_list<std::pair<const char*, int>> Values = {
             {"Unused", IR::ResponseState::Unused},
             {"Pending", IR::ResponseState::Pending},
             {"Success", IR::ResponseState::Success},
