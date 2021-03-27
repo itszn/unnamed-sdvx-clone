@@ -329,16 +329,6 @@ Color SettingsPage::ColorInput(const Color& val, const std::string_view& label, 
 	return Color(nkCol.r, nkCol.g, nkCol.b, nkCol.a);
 }
 
-void SettingsPage::Init()
-{
-	Load();
-}
-
-void SettingsPage::Exit()
-{
-	Save();
-}
-
 void SettingsPage::Render(const struct nk_rect& rect)
 {
 	m_pageInnerWidth = rect.w - m_nctx->style.window.scrollbar_size.x;
@@ -430,7 +420,7 @@ SettingsPageCollection::~SettingsPageCollection()
 {
 	for (auto& page : m_pages)
 	{
-		page->Exit();
+		page->Close();
 	}
 
 	g_application->ApplySettings();
@@ -491,7 +481,7 @@ void SettingsPageCollection::Exit()
 {
 	for (auto& page : m_pages)
 	{
-		page->Exit();
+		page->Close();
 	}
 
 	g_gameWindow->OnAnyEvent.RemoveAll(this);
@@ -508,11 +498,29 @@ void SettingsPageCollection::Reload()
 
 	for (auto& page : m_pages)
 	{
-		page->Exit();
-		page->Init();
+		page->Close();
+	}
+
+	if (m_currPage < m_pages.size())
+	{
+		m_pages[m_currPage]->Open();
 	}
 
 	m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait);
+}
+
+void SettingsPageCollection::SetCurrPage(size_t ind)
+{
+	if (ind >= m_pages.size())
+	{
+		return;
+	}
+
+	m_pages[m_currPage]->Close();
+
+	m_currPage = ind;
+
+	m_pages[m_currPage]->Open();
 }
 
 void SettingsPageCollection::InitPages()
@@ -528,11 +536,12 @@ void SettingsPageCollection::InitPages()
 
 	for (const auto& page : m_pages)
 	{
-		page->Init();
 		m_pageNames.Add(font->CreateText(Utility::ConvertToWString(page->GetName()), PAGE_NAME_SIZE));
 	}
 
 	m_currPage = 0;
+
+	m_pages[m_currPage]->Open();
 
 	m_exitText = font->CreateText(L"Exit", PAGE_NAME_SIZE);
 }
@@ -694,9 +703,9 @@ void SettingsPageCollection::ProcessTabHandleMouseHover(const Vector2i& mousePos
 		}
 	}
 
-	if (currInd >= 0 && currInd < m_pages.size())
+	if (currInd >= 0 && currInd < m_pages.size() && currInd != m_currPage)
 	{
-		m_currPage = currInd;
+		SetCurrPage(currInd);
 	}
 
 	m_prevMousePos = mousePos;
@@ -721,7 +730,7 @@ void SettingsPageCollection::OnMousePressed(MouseButton button)
 	const int index = GetPageIndFromMousePos(mousePos);
 	if (index < 0) return;
 
-	m_currPage = index;
+	SetCurrPage(index);
 }
 
 int SettingsPageCollection::GetPageIndFromMousePos(const Vector2i& mousePos) const

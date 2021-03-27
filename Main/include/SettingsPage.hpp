@@ -6,7 +6,10 @@ class SettingsPage
 protected:
 	SettingsPage(nk_context* nctx, const std::string_view& name) : m_nctx(nctx), m_name(name) {}
 
+	/// Called when the page is opened; may be called multiple times.
 	virtual void Load() = 0;
+
+	/// Called when the page is closed; may be called multiple times.
 	virtual void Save() = 0;
 
 	virtual void RenderContents() = 0;
@@ -100,8 +103,8 @@ protected:
 	Color ColorInput(const Color& val, const std::string_view& label, bool& useHSV);
 
 public:
-	void Init();
-	void Exit();
+	void Open() { Load(); }
+	void Close() { Save(); }
 
 	void Render(const struct nk_rect& rect);
 
@@ -136,6 +139,8 @@ public:
 
 protected:
 	virtual void AddPages(Vector<std::unique_ptr<SettingsPage>>& pages) = 0;
+
+	void SetCurrPage(size_t ind);
 
 private:
 	bool m_forceReload = false;
