@@ -107,6 +107,13 @@ void SettingsPage::Label(const std::string_view& label, enum nk_text_alignment a
 	nk_label(m_nctx, label.data(), alignment);
 }
 
+void SettingsPage::SectionHeader(const std::string_view& label)
+{
+	Separator(m_lineHeight * 0.5f);
+	LayoutRowDynamic(1);
+	nk_label_colored(m_nctx, label.data(), nk_text_alignment::NK_TEXT_CENTERED, nk_rgb(64, 225, 255));
+}
+
 bool SettingsPage::ToggleInput(bool val, const std::string_view& label)
 {
 	constexpr static int TRUE_VAL = 0;
@@ -138,8 +145,8 @@ int SettingsPage::SelectionInput(int val, const Vector<const char*>& options, co
 {
 	assert(options.size() > 0);
 
-	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
-	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_buttonHeight, m_comboBoxSize);
+	Label(label);
+	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
 
 	return val;
 }
@@ -277,7 +284,8 @@ bool SettingsPage::PercentSetting(GameConfigKeys key, const std::string_view& la
 
 Color SettingsPage::ColorInput(const Color& val, const std::string_view& label, bool& useHSV) {
 	LayoutRowDynamic(1);
-	nk_label(m_nctx, label.data(), nk_text_alignment::NK_TEXT_LEFT);
+	Label(label);
+
 	nk_colorf nkCol = { val.x, val.y, val.z, val.w };
 
 	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
@@ -333,9 +341,6 @@ void SettingsPage::Render(const struct nk_rect& rect)
 
 	if (nk_begin(m_nctx, m_name.data(), rect, 0))
 	{
-		LayoutRowDynamic(1, 60);
-		nk_labelf(m_nctx, nk_text_alignment::NK_TEXT_CENTERED, "%s Settings", m_name.data());
-
 		RenderContents();
 		nk_end(m_nctx);
 	}

@@ -47,14 +47,16 @@ protected:
 	};
 
 	// Useful elements
-	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, static_cast<float>(m_buttonHeight)); }
+	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_lineHeight); }
+	inline void LayoutRowDynamic(int num_columns, int height) { LayoutRowDynamic(num_columns, static_cast<float>(height));  }
 	void LayoutRowDynamic(int num_columns, float height);
 
-	inline void Separator() { Separator(m_buttonHeight); }
+	inline void Separator() { Separator(m_lineHeight); }
 	inline void Separator(int height) { Separator(static_cast<float>(height)); }
 	void Separator(float height);
 
 	void Label(const std::string_view& label, enum nk_text_alignment alignment = nk_text_alignment::NK_TEXT_LEFT);
+	void SectionHeader(const std::string_view& label);
 
 	bool ToggleInput(bool val, const std::string_view& label);
 	bool ToggleSetting(GameConfigKeys key, const std::string_view& label);
@@ -105,7 +107,7 @@ protected:
 	nk_context* m_nctx = nullptr;
 	String m_name;
 
-	int m_buttonHeight = 30;
+	int m_lineHeight = 30;
 	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
 };
 
