@@ -688,7 +688,7 @@ void Scoring::m_UpdateTicks()
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
 						// TODO: Make slam window adjustable
-						if (autoplay || (dirSign == inputSign && delta < 75))
+						if (autoplay || (dirSign == inputSign && delta < hitWindow.slam))
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -720,7 +720,7 @@ void Scoring::m_UpdateTicks()
 				}
 			}
 
-			if (((tick->HasFlag(TickFlags::Slam) && delta >= 75) || delta > hitWindow.good) && !processed)
+			if (((tick->HasFlag(TickFlags::Slam) && delta >= hitWindow.slam) || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good)) && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
 				processed = true;
