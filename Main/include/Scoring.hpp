@@ -288,7 +288,7 @@ private:
 	float m_laserInput[2] = { 0.0f };
 	// Decides if the coming tick should be auto completed
 	float m_autoLaserTime[2] = { 0.0f };
-	const double m_laserDistanceLeniency = 21.3 / 128.;
+	const double m_laserDistanceLeniency = 1 / 6.;
 	const float m_autoLaserDuration = 4 / 60.f;
 	const float m_autoLaserDurationAfterSlam = 8 / 60.f;
 	
