@@ -5,6 +5,14 @@
 #include <Beatmap/MapDatabase.hpp>
 #include <Beatmap/BeatmapObjects.hpp>
 
+#ifdef Success
+#undef Success
+#endif
+
+#ifdef BadRequest
+#undef BadRequest
+#endif
+
 namespace IR
 {
     struct ResponseState final
