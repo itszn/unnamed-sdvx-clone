@@ -47,6 +47,10 @@ protected:
 	};
 
 	// Useful elements
+	inline void LayoutRowStatic(int num_columns, int item_width) { LayoutRowStatic(num_columns, item_width, m_lineHeight); }
+	inline void LayoutRowStatic(int num_columns, int item_width, int height) { LayoutRowStatic(num_columns, item_width, static_cast<float>(height)); }
+	void LayoutRowStatic(int num_columns, int item_width, float height);
+
 	inline void LayoutRowDynamic(int num_columns) { LayoutRowDynamic(num_columns, m_lineHeight); }
 	inline void LayoutRowDynamic(int num_columns, int height) { LayoutRowDynamic(num_columns, static_cast<float>(height));  }
 	void LayoutRowDynamic(int num_columns, float height);
@@ -109,6 +113,8 @@ protected:
 
 	int m_lineHeight = 30;
 	struct nk_vec2 m_comboBoxSize = nk_vec2(1050, 250);
+
+	float m_pageInnerWidth = 0.0f;
 };
 
 class SettingsPageCollection : public BasicNuklearGui

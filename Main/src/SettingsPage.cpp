@@ -91,9 +91,16 @@ void SettingsPage::GameConfigTextData::SaveConfig(const String& value)
 	g_gameConfig.Set(m_key, value);
 }
 
+void SettingsPage::LayoutRowStatic(int num_columns, int item_width, float height)
+{
+	nk_layout_row_static(m_nctx, height, item_width, num_columns);
+	m_comboBoxSize.x = item_width;
+}
+
 void SettingsPage::LayoutRowDynamic(int num_columns, float height)
 {
 	nk_layout_row_dynamic(m_nctx, height, num_columns);
+	m_comboBoxSize.x = m_pageInnerWidth / num_columns;
 }
 
 void SettingsPage::Separator(float height)
@@ -334,7 +341,11 @@ void SettingsPage::Exit()
 
 void SettingsPage::Render(const struct nk_rect& rect)
 {
-	m_comboBoxSize.x = rect.x - 30;
+	m_pageInnerWidth = rect.w - m_nctx->style.window.scrollbar_size.x;
+	m_pageInnerWidth -= 2 * m_nctx->style.window.padding.x;
+	m_pageInnerWidth -= 12.0f;
+
+	m_comboBoxSize.x = m_pageInnerWidth;
 
 	m_nctx->style.window.padding.x = 6.0f;
 	m_nctx->style.window.padding.y = 0.0f;
@@ -650,6 +661,7 @@ void SettingsPageCollection::RenderPageContents()
 		return;
 	}
 
+	m_nctx->style.window.scrollbar_size.y = 0.0f;
 	m_pages[m_currPage]->Render(m_pageContentRegion);
 }
 

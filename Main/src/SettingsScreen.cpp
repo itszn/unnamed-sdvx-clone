@@ -105,6 +105,7 @@ protected:
 		UpdateControllerInputNames();
 
 		SectionHeader("Key Bindings");
+
 		RenderKeyBindings();
 
 		SectionHeader("Offsets");
@@ -123,6 +124,7 @@ protected:
 		SectionHeader("Input Device");
 
 		LayoutRowDynamic(2, m_lineHeight * 6);
+
 		if (nk_group_begin(m_nctx, "Button Input", NK_WINDOW_NO_SCROLLBAR))
 		{
 			LayoutRowDynamic(1);
@@ -190,32 +192,129 @@ protected:
 	}
 
 private:
+	inline void RenderKeyBindingsLaserButton(int index)
+	{
+		const float laserHue = g_gameConfig.GetFloat(index == 0 ? GameConfigKeys::Laser0Color : GameConfigKeys::Laser1Color) / 360;
+
+		m_nctx->style.button.normal = nk_style_item_color(nk_hsv_f(laserHue, 1.0f, 1.0f));
+		m_nctx->style.button.hover = nk_style_item_color(nk_hsv_f(laserHue, 0.5f, 1.0f));
+		m_nctx->style.button.text_normal = nk_rgb(0, 0, 0);
+		m_nctx->style.button.text_hover = nk_rgb(0, 0, 0);
+		m_nctx->style.button.border_color = nk_hsv_f(laserHue, 0.5f, 0.5f);
+
+		if (nk_button_label(m_nctx, m_controllerLaserNames[index].data()))
+		{
+			OpenLaserBind(index == 0 ? GameConfigKeys::Controller_Laser0Axis : GameConfigKeys::Controller_Laser1Axis);
+		}
+	}
+
 	inline void RenderKeyBindings()
 	{
-		LayoutRowDynamic(3);
-		if (nk_button_label(m_nctx, m_controllerLaserNames[0].c_str())) OpenLeftLaserBind();
-		if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) OpenButtonBind((*m_activeBTKeys)[0]);
-		if (nk_button_label(m_nctx, m_controllerLaserNames[1].c_str())) OpenRightLaserBind();
+		const float DESIRED_BT_HEIGHT = m_lineHeight * 3;
+		const float DESIRED_BT_SPACING = m_lineHeight * 0.25F;
 
-		LayoutRowDynamic(4);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) OpenButtonBind((*m_activeBTKeys)[1]);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) OpenButtonBind((*m_activeBTKeys)[2]);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) OpenButtonBind((*m_activeBTKeys)[3]);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) OpenButtonBind((*m_activeBTKeys)[4]);
+		const float DESIRED_CONTROLLER_WIDTH = DESIRED_BT_HEIGHT*4 + DESIRED_BT_SPACING*3;
 
-		LayoutRowDynamic(2);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) OpenButtonBind((*m_activeBTKeys)[5]);
-		if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) OpenButtonBind((*m_activeBTKeys)[6]);
+		const float CONTROLLER_WIDTH = Math::Min(DESIRED_CONTROLLER_WIDTH, m_pageInnerWidth * 0.8f);
+		const float BT_SPACING = CONTROLLER_WIDTH / (DESIRED_CONTROLLER_WIDTH / DESIRED_BT_SPACING);
 
-		if (!m_useBTGamepad)
+		const float BT_HEIGHT = (CONTROLLER_WIDTH - BT_SPACING * 3)/ 4;
+		const float FX_HEIGHT = BT_HEIGHT / 2;
+		const float LASER_HEIGHT = BT_HEIGHT / 2;
+
+		const float CONTROLLER_HEIGHT = LASER_HEIGHT + BT_SPACING * 2 + BT_HEIGHT + BT_SPACING + FX_HEIGHT + m_lineHeight * 5;
+		const float CONTROLLER_MARGIN = (m_pageInnerWidth - CONTROLLER_WIDTH) / 2;
+
+		// Center align the whole thing
+		const float sizes[] = { CONTROLLER_MARGIN, CONTROLLER_WIDTH, CONTROLLER_MARGIN };
+		nk_layout_row(m_nctx, NK_STATIC, CONTROLLER_HEIGHT, 3, sizes);
+
+		Label("");
+
+		if (nk_group_begin(m_nctx, "Key Bindings Main", NK_WINDOW_NO_SCROLLBAR))
 		{
-			if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
-			if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
+			// Lasers and start
+			nk_style_push_float(m_nctx, &m_nctx->style.window.spacing.x, BT_SPACING * 2);
+			nk_style_push_float(m_nctx, &m_nctx->style.window.spacing.y, BT_SPACING * 2);
+
+			nk_style_push_style_item(m_nctx, &m_nctx->style.button.normal, nk_style_item_color(nk_rgb(0, 0, 0)));
+			nk_style_push_style_item(m_nctx, &m_nctx->style.button.hover, nk_style_item_color(nk_rgb(0, 0, 0)));
+			nk_style_push_color(m_nctx, &m_nctx->style.button.border_color, nk_rgb(0, 0, 0));
+			nk_style_push_color(m_nctx, &m_nctx->style.button.text_normal , nk_rgb(0, 0, 0));
+			nk_style_push_color(m_nctx, &m_nctx->style.button.text_hover, nk_rgb(0, 0, 0));
+
+			nk_style_push_float(m_nctx, &m_nctx->style.button.rounding, LASER_HEIGHT / 4);
+
+			LayoutRowDynamic(3, LASER_HEIGHT);
+
+			RenderKeyBindingsLaserButton(0);
+
+			m_nctx->style.button.normal = nk_style_item_color(nk_rgb(0, 111, 232));
+			m_nctx->style.button.hover = nk_style_item_color(nk_rgb(111, 180, 255));
+			m_nctx->style.button.text_normal = nk_rgb(255, 255, 255);
+			m_nctx->style.button.text_hover = nk_rgb(255, 255, 255);
+			m_nctx->style.button.border_color = nk_rgb(0, 67, 140);
+
+			m_nctx->style.button.rounding = 0;
+			if (nk_button_label(m_nctx, m_controllerButtonNames[0].c_str())) OpenButtonBind((*m_activeBTKeys)[0]);
+
+			m_nctx->style.button.rounding = LASER_HEIGHT / 4;
+
+			RenderKeyBindingsLaserButton(1);
+
+			nk_style_pop_float(m_nctx);
+
+			// BT
+			m_nctx->style.button.normal = nk_style_item_color(nk_rgb(224, 224, 224));
+			m_nctx->style.button.hover = nk_style_item_color(nk_rgb(255, 255, 255));
+			m_nctx->style.button.text_normal = nk_rgb(0, 0, 0);
+			m_nctx->style.button.text_hover = nk_rgb(0, 0, 0);
+			m_nctx->style.button.border_color = nk_rgb(128, 128, 128);
+
+			LayoutRowDynamic(4, BT_HEIGHT);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[1].c_str())) OpenButtonBind((*m_activeBTKeys)[1]);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[2].c_str())) OpenButtonBind((*m_activeBTKeys)[2]);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[3].c_str())) OpenButtonBind((*m_activeBTKeys)[3]);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[4].c_str())) OpenButtonBind((*m_activeBTKeys)[4]);
+
+			// FX
+			m_nctx->style.button.normal = nk_style_item_color(nk_rgb(255, 160, 0));
+			m_nctx->style.button.hover = nk_style_item_color(nk_rgb(255, 219, 157));
+			m_nctx->style.button.text_normal = nk_rgb(128, 80, 0);
+			m_nctx->style.button.text_hover = nk_rgb(128, 80, 0);
+			m_nctx->style.button.border_color = nk_rgb(128, 80, 0);
+
+			LayoutRowDynamic(2, FX_HEIGHT);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) OpenButtonBind((*m_activeBTKeys)[5]);
+			if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) OpenButtonBind((*m_activeBTKeys)[6]);
+
+			nk_style_pop_color(m_nctx);
+			nk_style_pop_color(m_nctx);
+			nk_style_pop_color(m_nctx);
+
+			nk_style_pop_style_item(m_nctx);
+			nk_style_pop_style_item(m_nctx);
+
+			nk_style_pop_float(m_nctx);
+			nk_style_pop_float(m_nctx);
+
+			LayoutRowDynamic(1);
+			Label("Back:");
+			if (nk_button_label(m_nctx, m_controllerButtonNames[7].c_str())) OpenButtonBind((*m_activeBTKeys)[7]);
+
+			if (!m_useBTGamepad)
+			{
+				Separator(m_lineHeight * 0.5f);
+				LayoutRowDynamic(2);
+
+				if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
+				if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
+			}
+
+			nk_group_end(m_nctx);
 		}
 
-		LayoutRowDynamic(1);
-		Label("Back:");
-		if (nk_button_label(m_nctx, m_controllerButtonNames[7].c_str())) OpenButtonBind((*m_activeBTKeys)[7]);
+		Label("");
 	}
 
 	inline void RenderLaserSensitivitySettings()
@@ -241,14 +340,6 @@ private:
 		if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) OpenCalibrateSensitivity();
 	}
 
-	inline void OpenLeftLaserBind()
-	{
-		OpenLaserBind(GameConfigKeys::Controller_Laser0Axis);
-	}
-	inline void OpenRightLaserBind()
-	{
-		OpenLaserBind(GameConfigKeys::Controller_Laser1Axis);
-	}
 	inline void OpenLaserBind(GameConfigKeys axis)
 	{
 		const InputDevice laserInputDevice = g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice);
