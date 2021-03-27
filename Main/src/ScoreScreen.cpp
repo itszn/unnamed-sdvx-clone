@@ -337,6 +337,7 @@ private:
 		case SongOffsetUpdateMethod::Clear:
 			updateSongOffset = firstClear;
 			break;
+		default:
 		}
 
 		if (!updateSongOffset)
@@ -355,6 +356,7 @@ private:
 			case SongOffsetUpdateMethod::Clear:
 				updateSongOffset = cleared;
 				break;
+			default:
 			}
 		}
 
@@ -363,7 +365,7 @@ private:
 			const int oldOffset = chart->custom_offset;
 			chart->custom_offset = oldOffset + m_medianHitDelta[0];
 
-			Logf("Updating song offset %d -> %d based on gameplay stat", Logger::Severity::Info, oldOffset, chart->custom_offset);
+			Logf("Updating song offset %d -> %d based on hitstat", Logger::Severity::Info, oldOffset, chart->custom_offset);
 			m_mapDatabase.UpdateChartOffset(chart);
 		}
 	}
