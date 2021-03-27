@@ -30,8 +30,6 @@ public:
 
 	// Returns the time frame in which this tick can be hit
 	MapTime GetHitWindow(const HitWindow& hitWindow) const;
-	// Hit rating when hitting object at given time
-	ScoreHitRating GetHitRating(const HitWindow& hitWindow, MapTime currentTime) const;
 	// Hit rating when hitting object give a delta 
 	ScoreHitRating GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const;
 	// Check a flag
@@ -292,6 +290,7 @@ private:
 	float m_autoLaserTime[2] = { 0.0f };
 	const double m_laserDistanceLeniency = 21.3 / 128.;
 	const float m_autoLaserDuration = 4 / 60.f;
+	const float m_autoLaserDurationAfterSlam = 8 / 60.f;
 	
 	// Saves the time when a button was hit, used to decide if a button was held before a hold object was active
 	MapTime m_buttonHitTime[6] = { 0, 0, 0, 0, 0, 0 };
