@@ -41,7 +41,7 @@ private:
 	std::array<float, 256> m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
-	int m_irState = IR::ResponseState["Unused"];
+	int m_irState = IR::ResponseState::Unused;
 	String m_chartHash;
 
 	//promote this to higher scope so i can use it in tick
@@ -483,7 +483,7 @@ public:
 
 			if(g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
 			{
-				m_irState = IR::ResponseState["Pending"];
+				m_irState = IR::ResponseState::Pending;
 				m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
 			}
 
@@ -610,7 +610,7 @@ public:
 		//description (for displaying any errors, etc)
 		if(m_irState >= 20)
 		{
-			if(m_irState == IR::ResponseState["RequestFailure"])
+			if(m_irState == IR::ResponseState::RequestFailure)
 				m_PushStringToTable("irDescription", "The request to the IR failed.");
 			else
 				m_PushStringToTable("irDescription", m_irResponseJson["description"]);
@@ -693,7 +693,7 @@ public:
 		}
 
 		//ir scores moved to be in multiplayer too, not yet tested
-		if(m_irState == IR::ResponseState["Success"])
+		if(m_irState == IR::ResponseState::Success)
 			m_PushIRScores();
 
 		if (isSelf)
@@ -872,7 +872,7 @@ public:
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 
 		//handle ir score submission request
-		if (m_irState == IR::ResponseState["Pending"])
+		if (m_irState == IR::ResponseState::Pending)
 		{
 			try {
 
@@ -884,14 +884,14 @@ public:
 		        	if(response.status_code != 200)
 					{
 						Logf("Submitting score to IR failed with code: %d", Logger::Severity::Error, response.status_code);
-						m_irState = IR::ResponseState["RequestFailure"];
+						m_irState = IR::ResponseState::RequestFailure;
 					}
 					else
 					{
 						try {
 							m_irResponseJson = nlohmann::json::parse(response.text);
 
-							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
+							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState::RequestFailure;
 							else
 							{
 								m_irState = m_irResponseJson["statusCode"];
