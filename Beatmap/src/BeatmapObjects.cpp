@@ -2,9 +2,9 @@
 #include "BeatmapObjects.hpp"
 
 // Object array sorting
-void TObjectState<void>::SortArray(Vector<ObjectTypeData_Base*>& arr)
+void TObjectState<void>::SortArray(Vector<ObjectState*>& arr)
 {
-	arr.Sort([](const ObjectTypeData_Base* l, const ObjectTypeData_Base* r)
+	arr.Sort([](const ObjectState* l, const ObjectState* r)
 	{
 		if(l->time == r->time)
 		{

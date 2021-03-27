@@ -82,7 +82,6 @@ TrackRollBehaviour operator&(const TrackRollBehaviour &l, const TrackRollBehavio
 struct ObjectTypeData_Base
 {
 	ObjectTypeData_Base(ObjectType type) : type(type){};
-	virtual ~ObjectTypeData_Base() = default;
 
 	// Position in ms when this object appears
 	MapTime time;
@@ -113,7 +112,7 @@ struct TObjectState<void> : public ObjectTypeData_Base
 	TObjectState() : ObjectTypeData_Base(ObjectType::Invalid){};
 
 	// Sort object states by their time and other properties
-	static void SortArray(Vector<ObjectTypeData_Base *> &arr);
+	static void SortArray(Vector<TObjectState<void> *> &arr);
 
 	// Always allow casting from typeless object to Union State object
 	operator MultiObjectState *() { return (MultiObjectState *)this; }
