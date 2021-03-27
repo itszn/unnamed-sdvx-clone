@@ -2496,8 +2496,8 @@ void Application::SetLuaBindings(lua_State *state)
 		lua_pushstring(state, "States");
 		lua_newtable(state);
 
-		for(auto& el : IR::ResponseState.items())
-			pushIntToTable(el.key().c_str(), el.value());
+		for(const auto& el : IR::ResponseState::Values)
+			pushIntToTable(el.first, el.second);
 
 		lua_settable(state, -3);
 
