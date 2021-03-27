@@ -687,7 +687,6 @@ void Scoring::m_UpdateTicks()
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-						// TODO: Make slam window adjustable
 						if (autoplay || (dirSign == inputSign && delta <= hitWindow.slam))
 						{
 							m_TickHit(tick, buttonCode);
