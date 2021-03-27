@@ -7,18 +7,36 @@
 
 namespace IR
 {
-    //honestly, this is really disgusting and i'd much rather have it as an enum, but this is just so much nicer to work with...
-    inline nlohmann::json const ResponseState = {
-        {"Unused", 0},
-        {"Pending", 10},
-        {"Success", 20},
-        {"BadRequest", 40},
-        {"Unauthorized", 41},
-        {"ChartRefused", 42},
-        {"Forbidden", 43},
-        {"NotFound", 44},
-        {"ServerError", 50},
-        {"RequestFailure", 60}};
+    struct ResponseState final
+    {
+        constexpr static int Unused = 0;
+        constexpr static int Pending = 10;
+        constexpr static int Success = 20;
+        constexpr static int BadRequest = 40;
+        constexpr static int Unauthorized = 41;
+        constexpr static int ChartRefused = 42;
+        constexpr static int Forbidden = 43;
+        constexpr static int NotFound = 44;
+        constexpr static int ServerError = 50;
+        constexpr static int RequestFailure = 60;
+
+        constexpr static std::initializer_list<std::pair<const char*, int>> Values = {
+            {"Unused", IR::ResponseState::Unused},
+            {"Pending", IR::ResponseState::Pending},
+            {"Success", IR::ResponseState::Success},
+            {"BadRequest", IR::ResponseState::BadRequest},
+            {"Unauthorized", IR::ResponseState::Unauthorized},
+            {"ChartRefused", IR::ResponseState::ChartRefused},
+            {"Forbidden", IR::ResponseState::Forbidden},
+            {"NotFound", IR::ResponseState::NotFound},
+            {"ServerError", IR::ResponseState::ServerError},
+            {"RequestFailure", IR::ResponseState::RequestFailure},
+        };
+
+    private:
+        ResponseState() = delete;
+        ~ResponseState() = delete;
+    };
 
     cpr::AsyncResponse PostScore(const ScoreIndex& score, const BeatmapSettings& map);
     cpr::AsyncResponse Heartbeat();
