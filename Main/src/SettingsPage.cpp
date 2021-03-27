@@ -394,9 +394,9 @@ protected:
 
 	void RenderContents() override
 	{
-		LayoutRowDynamic(1);
+		SectionHeader("Setting Profile");
 
-		if (StringSelectionSetting(GameConfigKeys::CurrentProfileName, m_profiles, "Selected Profile:"))
+		if (StringSelectionSetting(GameConfigKeys::CurrentProfileName, m_profiles, "Selected:"))
 		{
 			Save();
 			return;

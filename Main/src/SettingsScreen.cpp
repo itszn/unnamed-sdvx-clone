@@ -107,19 +107,47 @@ protected:
 		SectionHeader("Key Bindings");
 		RenderKeyBindings();
 
+		SectionHeader("Offsets");
+
+		LayoutRowDynamic(2);
+		IntSetting(GameConfigKeys::GlobalOffset, "Global offset", -1000, 1000);
+		IntSetting(GameConfigKeys::InputOffset, "Input offset", -1000, 1000);
+
+		LayoutRowDynamic(1);
+		if (nk_button_label(m_nctx, "Calibrate Offsets")) {
+			CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
+			g_transition->TransitionTo(cscreen);
+			return;
+		}
+
 		SectionHeader("Input Device");
 
-		LayoutRowDynamic(2, m_lineHeight * 3);
+		LayoutRowDynamic(2, m_lineHeight * 6);
 		if (nk_group_begin(m_nctx, "Button Input", NK_WINDOW_NO_SCROLLBAR))
 		{
 			LayoutRowDynamic(1);
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::ButtonInputDevice, "Button input mode:");
+			IntSetting(GameConfigKeys::InputBounceGuard, "Bounce guard:", 0, 100);
+			EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start for Back:");
+
 			nk_group_end(m_nctx);
 		}
 		if (nk_group_begin(m_nctx, "Laser Input", NK_WINDOW_NO_SCROLLBAR))
 		{
 			LayoutRowDynamic(1);
 			EnumSetting<Enum_InputDevice>(GameConfigKeys::LaserInputDevice, "Laser input mode:");
+
+			if (g_gameConfig.GetEnum<Enum_InputDevice>(GameConfigKeys::LaserInputDevice) == InputDevice::Mouse)
+			{
+				const bool mouseAxisFlipped = g_gameConfig.GetInt(GameConfigKeys::Mouse_Laser0Axis) != 0;
+				if (mouseAxisFlipped != ToggleInput(mouseAxisFlipped, "Flip mouse axes"))
+				{
+					g_gameConfig.Set(GameConfigKeys::Mouse_Laser0Axis, mouseAxisFlipped ? 0 : 1);
+					g_gameConfig.Set(GameConfigKeys::Mouse_Laser1Axis, mouseAxisFlipped ? 1 : 0);
+				}
+			}
+
+			EnumSetting<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, "Invert directions:");
 			nk_group_end(m_nctx);
 		}
 
@@ -129,49 +157,10 @@ protected:
 			SelectionSetting(GameConfigKeys::Controller_DeviceID, m_gamePads, "Selected controller:");
 		}
 
-		SectionHeader("Offsets");
-		
-		LayoutRowDynamic(2);
-		IntSetting(GameConfigKeys::GlobalOffset, "Global offset", -1000, 1000);
-		IntSetting(GameConfigKeys::InputOffset, "Input offset", -1000, 1000);
-
-		LayoutRowDynamic(1);
-		if (nk_button_label(m_nctx, "Calibrate Offsets")) {
-			CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
-			g_transition->TransitionTo(cscreen);
-		}
-
-		SectionHeader("Button");
-
-		EnumSetting<Enum_ButtonComboModeSettings>(GameConfigKeys::UseBackCombo, "Use 3xBT+Start = Back:");
-		IntSetting(GameConfigKeys::InputBounceGuard, "Button Bounce Guard:", 0, 100);
-
-		Separator();
-
-		EnumSetting<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod, "Restart with F5:");
-		if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod) == AbortMethod::Hold)
-		{
-			IntSetting(GameConfigKeys::RestartPlayHoldDuration, "Restart Hold Duration (ms):", 250, 10000, 250);
-		}
-
-		EnumSetting<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, "Exit gameplay with Back:");
-		if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod) == AbortMethod::Hold)
-		{
-			IntSetting(GameConfigKeys::ExitPlayHoldDuration, "Exit Hold Duration (ms):", 250, 10000, 250);
-		}
-
-		ToggleSetting(GameConfigKeys::DisableNonButtonInputsDuringPlay, "Disable non-buttons during gameplay");
-		ToggleSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the practice setup");
-
-		SectionHeader("Laser");
-
-		EnumSetting<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, "Invert laser directions:");
-
-		Separator();
+		SectionHeader("Laser Sensitivity");
 		RenderLaserSensitivitySettings();
 
 		// Note: remove this if #434 gets merged
-		Separator();
 		if (nk_tree_push(m_nctx, NK_TREE_NODE, "Laser Assist", NK_MINIMIZED))
 		{
 			FloatSetting(GameConfigKeys::LaserAssistLevel, "Base Laser Assist", 0.0f, 10.0f, 0.1f);
@@ -181,6 +170,23 @@ protected:
 
 			nk_tree_pop(m_nctx);
 		}
+
+		SectionHeader("In-Game Key Inputs");
+
+		EnumSetting<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod, "Restart with F5:");
+		if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::RestartPlayMethod) == AbortMethod::Hold)
+		{
+			IntSetting(GameConfigKeys::RestartPlayHoldDuration, "Restart hold duration (ms):", 250, 10000, 250);
+		}
+
+		EnumSetting<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod, "Exit gameplay with Back:");
+		if (g_gameConfig.GetEnum<Enum_AbortMethod>(GameConfigKeys::ExitPlayMethod) == AbortMethod::Hold)
+		{
+			IntSetting(GameConfigKeys::ExitPlayHoldDuration, "Restart hold duration (ms):", 250, 10000, 250);
+		}
+
+		ToggleSetting(GameConfigKeys::DisableNonButtonInputsDuringPlay, "Disable non-buttons during gameplay");
+		ToggleSetting(GameConfigKeys::PracticeSetupNavEnabled, "Enable navigation inputs for the practice setup");
 	}
 
 private:
@@ -229,10 +235,10 @@ private:
 			break;
 		}
 
-		FloatSetting(laserSensKey, "Laser Sensitivity (%g):", 0, 20, 0.001f);
-		if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) OpenCalibrateSensitivity();
-
+		FloatSetting(laserSensKey, "Laser sensitivity (%g):", 0, 20, 0.001f);
 		FloatSetting(GameConfigKeys::SongSelSensMult, "Song select sensitivity multiplier", 0.0f, 20.0f, 0.1f);
+
+		if (nk_button_label(m_nctx, "Calibrate Laser Sensitivity")) OpenCalibrateSensitivity();
 	}
 
 	inline void OpenLeftLaserBind()
@@ -365,7 +371,7 @@ protected:
 		IntSetting(GameConfigKeys::LeadInTime, "Lead-in time (ms)", 250, 10000, 250);
 		IntSetting(GameConfigKeys::PracticeLeadInTime, "(for practice mode)", 250, 10000, 250);
 
-		ToggleSetting(GameConfigKeys::AutoComputeSongOffset, "Before first-time play, compute and set the song offset");
+		ToggleSetting(GameConfigKeys::AutoComputeSongOffset, "Before first-time play, compute and set the song offset automatically");
 
 		SectionHeader("After Playing");
 		ToggleSetting(GameConfigKeys::SkipScore, "Skip score screen on manual exit");
