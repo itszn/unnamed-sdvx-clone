@@ -1,5 +1,6 @@
 #pragma once
 #include "Shared/Config.hpp"
+#include <unordered_set>
 
 DefineEnum(GameConfigKeys,
 		   // Version of the config
@@ -145,6 +146,7 @@ DefineEnum(GameConfigKeys,
 
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
+		   PrerenderEffects,
 
 		   CheckForUpdates,
 		   OnlyRelease,
@@ -155,17 +157,26 @@ DefineEnum(GameConfigKeys,
 		   MultiplayerPassword,
 		   MultiplayerUsername,
 
+		   IRBaseURL,
+		   IRToken,
+		   IRLowBandwidth,
+
 		   EnableFancyHighwayRoll,
 
 		   GameplaySettingsDialogLastTab,
 		   TransferScoresOnChartUpdate,
 
+		   CurrentProfileName,
+
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
 		   RandomizeChart,
-			  
+		   BackupGauge,
 		   UpdateChannel)
+
+// List of settings overriden by profiles
+extern ConfigBase::KeyList GameConfigProfileSettings;
 
 DefineEnum(GaugeTypes,
 		   Normal,

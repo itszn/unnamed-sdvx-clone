@@ -107,7 +107,7 @@ end
 
 function getScoreBadgeDesc(s)
     if s.badge == 1 then
-        if s.flags & 1 ~= 0 then return "crash"
+        if s.gauge_type == 1 then return "crash"
         else return string.format("%.1f%%", s.gauge * 100)
         end
     elseif 2 <= s.badge and s.badge <= 4 and s.misses < 10 then
@@ -400,7 +400,7 @@ draw_gauge_graph = function(chart, x, y, w, h, alpha, xfocus, xscale)
     end
     
     gfx.StrokeWidth(2.0)
-    if chart.flags & 1 ~= 0 then
+    if chart.gauge_type ~= 0 then
         gfx.StrokeColor(255,80,0,alpha)
         gfx.Stroke()
     else
@@ -744,18 +744,18 @@ draw_hidsud_icon = function(chart, x, y, s)
 end
 
 draw_mir_ran_icon = function(chart,x, y, s)
-    if chart.flags & 6 == 0 then return x end
+    if chart.mirror == false and chart.random == false then return x end
     
     gfx.FontSize(20)
     gfx.TextAlign(gfx.TEXT_ALIGN_CENTER + gfx.TEXT_ALIGN_MIDDLE)
     gfx.FillColor(255, 255, 255)
     
-    if chart.flags & 2 ~= 0 then
+    if chart.mirror then
         gfx.BeginPath()
         gfx.Text("MIR", x + s/2, y + s*0.3)
     end
     
-    if chart.flags & 4 ~= 0 then
+    if chart.random then
         gfx.BeginPath()
         gfx.Text("RAN", x + s/2, y + s*0.7)
     end

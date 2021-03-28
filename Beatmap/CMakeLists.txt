@@ -1,5 +1,7 @@
 # Beatmap library
 
+set(ENV{ASAN_OPTIONS}, "new_delete_type_mismatch=0")
+
 set(INCROOT ${CMAKE_CURRENT_SOURCE_DIR}/include/Beatmap/)
 set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
@@ -39,7 +41,4 @@ target_link_libraries(Beatmap Shared)
 target_link_libraries(Beatmap sqlite3)
 target_link_libraries(Beatmap nlohmann_json)
 
-if(WIN32)
-    target_compile_options(Beatmap PRIVATE /Zi)
-endif()
-
+target_link_libraries(Beatmap cc-common)

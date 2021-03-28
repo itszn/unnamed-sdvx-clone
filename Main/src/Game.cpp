@@ -24,8 +24,8 @@
 #include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
+#include "Gauge.hpp"
 
-#include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
 
@@ -101,8 +101,6 @@ private:
 	SpeedMods m_speedMod;
 	float m_modSpeed = 400;
 
-	// Game Canvas
-	Ref<HealthGauge> m_scoringGauge;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -149,10 +147,6 @@ private:
 	const TimingPoint* m_currentTiming;
 	// Currently visible gameplay objects
 	Vector<ObjectState*> m_currentObjectSet;
-
-	// Rate to sample gauge;
-	MapTime m_gaugeSampleRate;
-	float m_gaugeSamples[256] = { 0.0f };
 
 	// Combo gain animation
 	Timer m_comboAnimation;
@@ -284,7 +278,6 @@ public:
 		}
 				
 		m_endTime = m_beatmap->GetLastObjectTime();
-		m_gaugeSampleRate = Math::Max(1, m_endTime / 256);
 
 		if (IsMultiplayerGame())
 			m_hitWindow = HitWindow::NORMAL;
@@ -394,7 +387,7 @@ public:
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, g_gameConfig.GetBool(GameConfigKeys::PrerenderEffects)))
 			return false;
 
 		m_songOffset = 0;
@@ -524,10 +517,9 @@ public:
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
 		}
-		g_application->LoadGauge((GetFlags() & GameFlags::Hard) != GameFlags::None);
 
 		// Do this here so we don't get input events while still loading
-		m_scoring.SetFlags(GetFlags());
+		m_scoring.SetOptions(GetPlaybackOptions());
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
@@ -537,7 +529,7 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		if ((GetFlags() & GameFlags::Random) != GameFlags::None)
+		if (GetPlaybackOptions().random)
 		{
 			//Randomize
 			std::array<int,4> swaps = { 0,1,2,3 };
@@ -585,7 +577,7 @@ public:
 
 		}
 
-		if ((GetFlags() & GameFlags::Mirror) != GameFlags::None)
+		if (GetPlaybackOptions().mirror)
 		{
 			int buttonSwaps[] = { 3,2,1,0,5,4 };
 
@@ -1288,6 +1280,7 @@ public:
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
+		m_scoring.OnGaugeChanged.Add(this, &Game_Impl::OnGaugeChanged);
 
 		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
@@ -1369,12 +1362,8 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
-		// If failed in multiplayer, stop giving rate, so its clear you failed
-		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
-			m_scoring.currentGauge = 0.0f;
-		}
-		// Stop playing if gauge is on hard and at 0%
-		if ((GetFlags() & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
+		// Stop playing if last gauge has reached its failstate
+		if (m_scoring.IsFailOut())
 		{
 			// In multiplayer we don't stop, but we send the final score
 			if (m_multiplayer == nullptr) {
@@ -1382,8 +1371,9 @@ public:
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
 
-				m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
-				m_scoring.SetFlags(m_playOptions.flags);
+				//TODO(gauge refactor): ?
+				//m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
+				//m_scoring.SetFlags(m_playOptions.flags);
 			}
 		}
 
@@ -1392,15 +1382,6 @@ public:
 		if (!m_ended)
 		{
 			m_scoring.Tick(deltaTime);
-
-			// Update scoring gauge
-			if (delta >= 0)
-			{
-				int32 gaugeSampleSlot = playbackPositionMs;
-				gaugeSampleSlot /= m_gaugeSampleRate;
-				gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
-				m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
-			}
 		}
 
 		// Get the current timing point
@@ -1429,7 +1410,10 @@ public:
 		}
 		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
-			m_scoring.currentGauge = 0.0f;
+			Gauge* gauge = m_scoring.GetTopGauge();
+
+			if (gauge) 
+				gauge->SetValue(0.0f);
 			FailCurrentRun();
 		}
 	}
@@ -1648,7 +1632,7 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(diff, m_playOptions.flags);
+				game = Game::Create(diff, m_playOptions.playbackOptions);
 			}
 			game->GetScoring().autoplay = true;
 			game->SetDemoMode(true);
@@ -1803,7 +1787,12 @@ public:
 
 		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge)
+		{
+			textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+		}
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
 			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
@@ -2041,6 +2030,11 @@ public:
 		{
 			Logf("Lua error on calling update_score: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
+	}
+
+	void OnGaugeChanged(Gauge* from, Gauge* to) {
+		Logf("Gauge changed: %s -> %s", Logger::Severity::Info, from->GetName(), to->GetName());
+		//TODO: Lua call?
 	}
 
 	// These functions control if FX button DSP's are muted or not
@@ -2328,6 +2322,11 @@ public:
 	}
 	ClearMark m_getClearState()
 	{
+		Gauge* g = m_scoring.GetTopGauge();
+
+		if (g == nullptr)
+			return ClearMark::NotPlayed;
+
 		if (m_manualExit)
 			return ClearMark::NotPlayed;
 
@@ -2335,11 +2334,16 @@ public:
 			return ClearMark::Played;
 
 		ScoreIndex scoreData;
+		auto opts = GetPlaybackOptions();
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
-		scoreData.gameflags = (uint32) GetFlags();
-		scoreData.gauge = m_scoring.currentGauge;
+		scoreData.gaugeType = g->GetType();
+		scoreData.gaugeOption = g->GetOpts();
+		scoreData.mirror = opts.mirror;
+		scoreData.random = opts.random;
+		scoreData.autoFlags = opts.autoFlags;
+		scoreData.gauge = g->GetValue();
 		scoreData.score = m_scoring.CalculateCurrentScore();
 
 		return Scoring::CalculateBadge(scoreData);
@@ -2683,13 +2687,13 @@ public:
 	{
 		return m_scoring;
 	}
-	virtual float* GetGaugeSamples() override
+	virtual const std::array<float, 256>& GetGaugeSamples() override
 	{
-		return m_gaugeSamples;
+		return m_scoring.GetTopGauge()->GetSamples();
 	}
-	virtual GameFlags GetFlags() override
+	virtual PlaybackOptions GetPlaybackOptions() override
 	{
-		return m_playOptions.flags;
+		return m_playOptions.playbackOptions;
 	}
 	virtual lua_State* GetLuaState() override 
 	{
@@ -2697,7 +2701,15 @@ public:
 	}
 	virtual void SetGauge(float g) override
 	{
-		m_scoring.currentGauge = g;
+		auto gauge = m_scoring.GetTopGauge();
+		if (gauge)
+		{
+			gauge->SetValue(g);
+		}
+	}
+	virtual void SetAllGaugeValues(const Vector<float> values)
+	{
+		m_scoring.SetAllGaugeValues(values);
 	}
 	virtual bool IsStorableScore() override
 	{
@@ -2763,6 +2775,12 @@ public:
 	}
 	void SetGameplayLua(lua_State* L) override
 	{
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge == nullptr) //if gauge is null, assume something is wrong
+			return;
+
+
 		//set lua
 		lua_getglobal(L, "gameplay");
 
@@ -2832,9 +2850,29 @@ public:
 		lua_pushnumber(L, m_currentTiming->GetBPM());
 		lua_settable(L, -3);
 		// gauge
-		lua_pushstring(L, "gauge");
-		lua_pushnumber(L, m_scoring.currentGauge);
-		lua_settable(L, -3);
+		{
+			Gauge* gauge = m_scoring.GetTopGauge();
+			lua_getfield(L, -1, "gauge");
+
+
+			lua_pushstring(L, "type");
+			lua_pushinteger(L, (uint32)gauge->GetType());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "options");
+			lua_pushinteger(L, gauge->GetOpts());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "value");
+			lua_pushnumber(L, gauge->GetValue());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "name");
+			lua_pushstring(L, gauge->GetName());
+			lua_settable(L, -3);
+
+			lua_pop(L, 1);
+		}
 		// combo state
 		lua_pushstring(L, "comboState");
 		lua_pushnumber(L, m_scoring.comboState);
@@ -2977,7 +3015,22 @@ public:
 
 		pushIntToTable("difficulty", mapSettings.difficulty);
 		pushIntToTable("level", mapSettings.level);
-		pushIntToTable("gaugeType", (GetFlags() & GameFlags::Hard) != GameFlags::None ? 1 : 0);
+
+		//gauge table
+		{
+			PlaybackOptions opts = GetPlaybackOptions();
+
+			lua_pushstring(L, "gauge");
+			lua_newtable(L);
+			pushIntToTable("type", (uint32)opts.gaugeType);
+			pushIntToTable("options", opts.gaugeOption);
+			pushFloatToTable("value", 0.0f);
+			pushStringToTable("name", "");
+			lua_settable(L, -3);
+
+		}
+
+
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
@@ -3083,16 +3136,15 @@ GameFlags operator~(const GameFlags & a)
 	return (GameFlags)(~(uint32)a);
 }
 
-GameFlags Game::FlagsFromSettings()
+PlaybackOptions Game::PlaybackOptionsFromSettings()
 {
-	GameFlags flags = GameFlags::None;
+	PlaybackOptions options;
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
-		flags = flags | GameFlags::Hard;
-	if (g_gameConfig.GetBool(GameConfigKeys::MirrorChart))
-		flags = flags | GameFlags::Mirror;
-	if (g_gameConfig.GetBool(GameConfigKeys::RandomizeChart))
-		flags = flags | GameFlags::Random;
+		options.gaugeType = GaugeType::Hard;
+	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
+	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
+	options.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge);
 
-	return flags;
+	return options;
 }

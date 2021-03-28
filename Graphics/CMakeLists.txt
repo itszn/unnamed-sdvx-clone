@@ -57,6 +57,4 @@ if(UNIX)
     endif(APPLE)
 endif(UNIX)
 
-if(WIN32)
-    target_compile_options(Graphics PRIVATE /Zi)
-endif()
+target_link_libraries(Graphics cc-common)

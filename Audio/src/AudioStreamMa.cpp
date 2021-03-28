@@ -2,9 +2,9 @@
 #include "AudioStreamMa.hpp"
 
 #define DR_WAV_IMPLEMENTATION
-#include "extras/dr_wav.h"   // Enables WAV decoding.
+#include "extras/dr_wav.h" // Enables WAV decoding.
 #define DR_FLAC_IMPLEMENTATION
-#include "extras/dr_flac.h"  // Enables FLAC decoding.
+#include "extras/dr_flac.h" // Enables FLAC decoding.
 #define DR_MP3_IMPLEMENTATION
 #include "extras/dr_mp3.h"   // Enables MP3 decoding.
 #define STB_VORBIS_HEADER_ONLY
@@ -36,7 +36,7 @@ AudioStreamMa::~AudioStreamMa()
 	delete[] m_readBuffer;
 }
 
-bool AudioStreamMa::Init(Audio* audio, const String& path, bool preload)
+bool AudioStreamMa::Init(Audio *audio, const String &path, bool preload)
 {
 	if (!AudioStreamBase::Init(audio, path, preload)) // Always preload for now
 		return false;
@@ -46,10 +46,10 @@ bool AudioStreamMa::Init(Audio* audio, const String& path, bool preload)
 
 	if (m_preloaded)
 	{
-		result = ma_decode_memory((void*)m_data.data(), m_file.GetSize(), &config, &m_samplesTotal, (void**)&m_pcm);
+		result = ma_decode_memory((void *)m_data.data(), m_file.GetSize(), &config, &m_samplesTotal, (void **)&m_pcm);
 	}
 	else
-	{			
+	{
 		result = ma_decoder_init_file(*path, &config, &m_decoder);
 	}
 
@@ -75,7 +75,6 @@ void AudioStreamMa::SetPosition_Internal(int32 pos)
 		m_playbackPointer = 0;
 	else
 		m_playbackPointer = pos;
-
 
 	if (!m_preloaded)
 	{
@@ -127,7 +126,7 @@ int32 AudioStreamMa::DecodeData_Internal()
 	}
 	return 0;
 }
-float* AudioStreamMa::GetPCM_Internal()
+float *AudioStreamMa::GetPCM_Internal()
 {
 	return m_pcm;
 }
@@ -135,10 +134,18 @@ uint32 AudioStreamMa::GetSampleRate_Internal() const
 {
 	return sample_rate;
 }
-
-Ref<AudioStream> AudioStreamMa::Create(class Audio* audio, const String& path, bool preload)
+uint64 AudioStreamMa::GetSampleCount_Internal() const
 {
-	AudioStreamMa* impl = new AudioStreamMa();
+	if (m_preloaded)
+	{
+		return m_samplesTotal;
+	}
+	return 0;
+}
+
+Ref<AudioStream> AudioStreamMa::Create(class Audio *audio, const String &path, bool preload)
+{
+	AudioStreamMa *impl = new AudioStreamMa();
 	if (!impl->Init(audio, path, preload))
 	{
 		delete impl;

@@ -71,7 +71,7 @@ public:
 	// Needs to be set to handle input
 	void SetInput(Input* input);
 
-	void SetFlags(GameFlags flags);
+	void SetOptions(PlaybackOptions opts);
 	void SetEndTime(MapTime time);
 
 	inline void SetHitWindow(const HitWindow& window) { hitWindow = window; }
@@ -106,6 +106,11 @@ public:
 
 	// Checks if a laser is currently not used or needed soon
 	bool IsLaserIdle(uint32 index) const;
+
+	bool IsFailOut() const;
+	class Gauge* GetTopGauge() const;
+	void SetAllGaugeValues(const Vector<float>, bool zeroRest=true);
+	void GetAllGaugeValues(Vector<float>& out) const;
 
 	// Calculates the maximum score of the current map
 	MapTotals CalculateMapTotals() const;
@@ -157,6 +162,8 @@ public:
 	//	(New Score)
 	Delegate<> OnScoreChanged;
 
+	Delegate<class Gauge*, class Gauge*> OnGaugeChanged;
+
 	// Object timing window
 	HitWindow hitWindow = HitWindow::NORMAL;
 	static const float idleLaserSpeed;
@@ -169,8 +176,6 @@ public:
 	// The actual amount of gotten score
 	uint32 currentHitScore = 0;
 
-	// Amount of gauge to gain on a tick
-	float tickGaugeGain = 0.0f;
 	// Hits per type in order:
 	//	0 = Miss
 	//	1 = Good
@@ -182,11 +187,6 @@ public:
 	// 1 = Late
 	uint32 timedHits[2] = { 0 };
 
-	// Amount of gauge to gain on a short note
-	float shortGaugeGain = 0.0f;
-
-	// Current gauge 0 to 1
-	float currentGauge = 0.0f;
 
 	// Current combo
 	uint32 currentComboCounter;
@@ -239,7 +239,10 @@ private:
 	void m_OnTickProcessed(ScoreTick* tick, uint32 index);
 	void m_TickHit(ScoreTick* tick, uint32 index, MapTime delta = 0);
 	void m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta);
+	void m_UpdateGauges(ScoreHitRating rating, TickFlags flags);
+	void m_UpdateGaugeSamples();
 	void m_CleanupTicks();
+	void m_CleanupGauges();
 
 	// Called when score is gained
 	//	should only be called once for a single object since this also increments the combo counter
@@ -319,7 +322,13 @@ private:
 	Set<ObjectState*> m_heldObjects;
 	bool m_prevHoldHit[6];
 
-	GameFlags m_flags;
+	PlaybackOptions m_options;
 	MapTimeRange m_range;
+
+	// A stack of gauges which are all calculated at the same time.
+	// The top gauge is what the user should see and if that one raches its fail state
+	// then the next gauge is to be used. If the last gauge fails out then the player
+	// shall be put on the score screen.
+	Vector<class Gauge*> m_gaugeStack;
 };
 

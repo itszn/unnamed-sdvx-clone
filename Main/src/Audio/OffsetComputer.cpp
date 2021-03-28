@@ -46,7 +46,7 @@ bool OffsetComputer::Compute(const ChartIndex* chart, int& outOffset)
 	beatmapPlayback.Reset();
 
 	AudioPlayback audioPlayback;
-	if (!audioPlayback.Init(beatmapPlayback, chartRootPath))
+	if (!audioPlayback.Init(beatmapPlayback, chartRootPath, false))
 		return false;
 
 	return OffsetComputer(audioPlayback).Compute(outOffset);

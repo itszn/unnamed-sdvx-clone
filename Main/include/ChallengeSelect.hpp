@@ -94,6 +94,7 @@ struct ChallengeOptions{
 #define CHALLENGE_OPTIONS_ALL(v) \
 	v(bool, mirror) \
 	v(bool, excessive) \
+    v(bool, ars) \
 	v(bool, gauge_carry_over) \
 	v(bool, use_sdvx_complete_percentage) \
 	v(uint32, min_modspeed) \
@@ -105,6 +106,8 @@ struct ChallengeOptions{
 	v(uint32, hold_judge) \
 	v(uint32, slam_judge) \
 	v(bool, allow_cmod) \
+    v(bool, allow_excessive) \
+    v(bool, allow_ars) \
 	\
 	v(uint32, average_percentage) \
 	v(float, average_gauge) \
@@ -154,7 +157,10 @@ struct ChallengeRequirements
 	// if the second set doesn't have an active member, this one is used
 	bool Passed(struct ChallengeRequirements& over)
 	{
-#define CHALLENGE_REQ_PASSED_OVERRIDE(t, n) res = res && (over. n.PassedOrNull() || n.PassedOrIgnored());
+#define CHALLENGE_REQ_PASSED_OVERRIDE(t, n) res = res && (over. n.PassedOrNull() || n.PassedOrIgnored()); \
+if (!res) { \
+		Logf("[Challenge] Failed condition %s", Logger::Severity::Info, #n); return res; \
+}
 		bool res = true;
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_PASSED_OVERRIDE);
 		return res;
@@ -170,7 +176,10 @@ struct ChallengeRequirements
 	}
 	bool Passed()
 	{
-#define CHALLENGE_REQ_PASSED(t, n) res = res && (n.PassedOrIgnored());
+#define CHALLENGE_REQ_PASSED(t, n) res = res && (n.PassedOrIgnored()); \
+if (!res) { \
+		Logf("[Challenge] Failed condition %s", Logger::Severity::Info, #n); return res; \
+}
 		bool res = true;
 		CHALLENGE_REQS_ALL(CHALLENGE_REQ_PASSED);
 		return res;
@@ -190,7 +199,7 @@ struct ChallengeResult
 	String failString;
 	ClearMark badge;
 	float gauge;
-	GameFlags flags;
+	PlaybackOptions opts;
 	uint32 score;
 	float percent;
 	uint32 maxCombo;
@@ -270,7 +279,7 @@ private:
 	uint64 m_totalScore = 0;
 	float m_totalPercentage = 0;
 	float m_totalGauge = 0.0;
-	float m_lastGauge = -1.0;
+	Vector<float> m_lastGauges;
 public:
 	bool RunningChallenge() { return m_running; }
 	bool StartChallenge(class ChallengeSelect* sel, ChallengeIndex* chal);
