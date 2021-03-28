@@ -123,8 +123,8 @@ void SettingsPage::SectionHeader(const std::string_view& label)
 
 bool SettingsPage::ToggleInput(bool val, const std::string_view& label)
 {
-	constexpr static int TRUE_VAL = 0;
-	constexpr static int FALSE_VAL = 1;
+	constexpr static int TRUE_VAL = 1;
+	constexpr static int FALSE_VAL = 0;
 
 	int val_i = val ? TRUE_VAL : FALSE_VAL;
 	nk_checkbox_label(m_nctx, label.data(), &val_i);
@@ -302,8 +302,8 @@ Color SettingsPage::ColorInput(const Color& val, const std::string_view& label, 
 		nkCol = nk_color_picker(m_nctx, nkCol, NK_RGBA);
 
 		LayoutRowDynamic(2, 25);
-		useHSV = nk_option_label(m_nctx, "RGB", useHSV ? 1 : 0) == 1;
-		useHSV = nk_option_label(m_nctx, "HSV", useHSV ? 0 : 1) == 0;
+		useHSV = nk_option_label(m_nctx, "RGB", useHSV ? 0 : 1) == 0;
+		useHSV = nk_option_label(m_nctx, "HSV", useHSV ? 1 : 0) == 1;
 
 		LayoutRowDynamic(1, 25);
 		if (useHSV == false) {
@@ -336,9 +336,6 @@ void SettingsPage::Render(const struct nk_rect& rect)
 	m_pageInnerWidth -= 12.0f;
 
 	m_comboBoxSize.x = m_pageInnerWidth;
-
-	m_nctx->style.window.padding.x = 6.0f;
-	m_nctx->style.window.padding.y = 0.0f;
 
 	if (nk_begin(m_nctx, m_name.data(), rect, 0))
 	{
@@ -409,6 +406,7 @@ bool SettingsPageCollection::Init()
 {
 	BasicNuklearGui::Init();
 	InitPages();
+	InitStyles();
 
 	g_gameWindow->OnMousePressed.Add(this, &SettingsPageCollection::OnMousePressed);
 	m_forcePortrait = g_gameConfig.GetBool(GameConfigKeys::ForcePortrait);
@@ -521,6 +519,28 @@ void SettingsPageCollection::SetCurrPage(size_t ind)
 	m_currPage = ind;
 
 	m_pages[m_currPage]->Open();
+}
+
+void SettingsPageCollection::InitStyles()
+{
+	m_nctx->style.window.scrollbar_size.y = 0.0f;
+
+	m_nctx->style.window.padding.x = 6.0f;
+	m_nctx->style.window.padding.y = 0.0f;
+
+	auto set_toggle_style = [](struct nk_style_toggle& toggle) {
+		toggle.border_color = nk_rgb(100, 100, 100);
+		toggle.border = 2.0f;
+
+		toggle.normal = nk_style_item_color(nk_rgb(40, 40, 40));
+		toggle.cursor_normal = nk_style_item_color(nk_rgb(100, 100, 100));
+
+		toggle.hover = nk_style_item_color(nk_rgb(70, 70, 70));
+		toggle.cursor_hover = nk_style_item_color(nk_rgb(150, 150, 150));
+	};
+
+	set_toggle_style(m_nctx->style.option);
+	set_toggle_style(m_nctx->style.checkbox);
 }
 
 void SettingsPageCollection::InitPages()
@@ -670,7 +690,6 @@ void SettingsPageCollection::RenderPageContents()
 		return;
 	}
 
-	m_nctx->style.window.scrollbar_size.y = 0.0f;
 	m_pages[m_currPage]->Render(m_pageContentRegion);
 }
 

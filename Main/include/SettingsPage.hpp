@@ -147,6 +147,8 @@ private:
 	bool m_forcePortrait = false;
 
 private:
+	void InitStyles();
+
 	Vector<std::unique_ptr<SettingsPage>> m_pages;
 	
 	float m_pageButtonHeight = 40;

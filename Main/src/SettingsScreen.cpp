@@ -307,8 +307,8 @@ private:
 				Separator(m_lineHeight * 0.5f);
 				LayoutRowDynamic(2);
 
-				if (!nk_option_label(m_nctx, "Primary", m_altBinds ? 1 : 0)) m_altBinds = false;
-				if (!nk_option_label(m_nctx, "Alternate", m_altBinds ? 0 : 1)) m_altBinds = true;
+				if (nk_option_label(m_nctx, "Primary", m_altBinds ? 0 : 1) > 0) m_altBinds = false;
+				if (nk_option_label(m_nctx, "Alternate", m_altBinds ? 1 : 0) > 0) m_altBinds = true;
 			}
 
 			nk_group_end(m_nctx);
