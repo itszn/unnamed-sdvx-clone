@@ -242,7 +242,17 @@ local practice_info = {}
 
 function LoadGauge(type)
         
-    local name = type == 0 and "normal" or "hard"
+    local name;
+    if type == 1 then
+        name = "hard"
+    elseif type == 2 then
+        name = "permissive"
+    elseif type == 3 then
+        name = "blastive"
+    else
+        name = "normal"
+    end
+
     local gauge_verts = {
         {{gauge_info.posx, gauge_info.posy}, {0,1}},
         {{gauge_info.posx + gauge_info.width, gauge_info.posy}, {1,1}},
@@ -317,6 +327,8 @@ function ResetLayoutInformation()
         gauge_info.meshes = {}
         gauge_info.meshes[0] = LoadGauge(0)
         gauge_info.meshes[1] = LoadGauge(1)
+        gauge_info.meshes[2] = LoadGauge(2)
+        gauge_info.meshes[3] = LoadGauge(3)
     end
 
     do --update crit_base_info
@@ -881,6 +893,10 @@ function draw_gauge(gauge)
         else 
             c = {r = 0, g = 0.5, b = 1} 
         end
+    elseif gauge.type == 2 then
+        c = {r = 1, g = 148.0/255.0, b = 32/255.0}
+    elseif gauge.type == 3 then
+        c = {r = 62/255.0, g = 175/255.0, b = 151/255.0}
     else
         c = {r = 1, g = 0.5, b = 0}
     end

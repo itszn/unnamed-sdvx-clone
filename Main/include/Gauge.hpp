@@ -58,34 +58,63 @@ public:
 	const char* GetName() const;
 	GaugeType GetType() const;
 
-private:
+protected:
+	static constexpr float s_gainRate = 1.0f;
+	static constexpr float s_missDrainPercent = 0.02f;
+
 	float m_shortMissDrain;
 	float m_drainMultiplier;
 	float m_shortGaugeGain;
 	float m_tickGaugeGain;
 };
 
-class GaugeHard : public Gauge {
+class GaugeHard : public GaugeNormal {
 public:
 	GaugeHard() = default;
 	~GaugeHard() = default;
-	bool Init(MapTotals mapTotals, uint16 total, MapTime length);
-	void LongHit();
-	void CritHit();
-	void NearHit();
-	void LongMiss();
-	void ShortMiss();
+	bool Init(MapTotals mapTotals, uint16 total, MapTime length) override;
+	void LongMiss() override;
+	void ShortMiss() override;
 	bool GetClearState() const;
 	const char* GetName() const;
 	bool FailOut() const;
 	GaugeType GetType() const;
 
-private:
+protected:
+	static constexpr float s_gainRate = 12.f / 21.f;
+	static constexpr float s_missDrainPercent = 0.09f;
 	float DrainMultiplier() const;
-
-	float m_shortMissDrain;
-	float m_drainMultiplier;
-	float m_shortGaugeGain;
-	float m_tickGaugeGain;
 };
 
+class GaugePermissive : public GaugeHard {
+protected:
+	static constexpr float s_gainRate = 12.f / 21.f;
+	static constexpr float s_missDrainPercent = 0.034f;
+	const char* GetName() const;
+	GaugeType GetType() const;
+};
+
+class GaugeWithLevel : public GaugeHard {
+public:
+	GaugeWithLevel(float level) : m_level(level), GaugeHard() {};
+	void LongMiss() override;
+	void ShortMiss() override;
+	float GetLevel() { return m_level; }
+protected:
+	float m_level;
+};
+
+class GaugeBlastive : public GaugeWithLevel {
+public:
+	GaugeBlastive(float level) : GaugeWithLevel(level) {};
+	bool Init(MapTotals mapTotals, uint16 total, MapTime length) override;
+	void NearHit() override;
+	const char* GetName() const;
+	GaugeType GetType() const;
+protected:
+	static constexpr float s_gainRate = 12.f / 21.f;
+	static constexpr float s_missDrainPercent = 0.04f;
+	static constexpr float s_nearDrainPercent = 0.01f;
+
+	float m_shortNearDrain;
+};

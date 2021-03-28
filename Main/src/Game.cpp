@@ -2721,6 +2721,18 @@ public:
 
 		if (!(m_scoring.hitWindow <= HitWindow::NORMAL)) return false;
 
+		if (m_scoring.categorizedHits[0] == 0) // UC or PUC
+			return true;
+
+		// If the blastive rate is stricter than excessive, we can save
+		if (m_scoring.GetTopGauge()->GetType() == GaugeType::Blastive &&
+				dynamic_cast<GaugeWithLevel*>(m_scoring.GetTopGauge())->GetLevel() > 9.0f / 4.0f)
+			return true;
+
+		if (m_scoring.GetTopGauge()->GetType() == GaugeType::Blastive ||
+				m_scoring.GetTopGauge()->GetType() == GaugeType::Permissive)
+			return false;
+
 		return true;
 	}
 	float GetPlaybackSpeed() override
@@ -3138,6 +3150,14 @@ PlaybackOptions Game::PlaybackOptionsFromSettings()
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
 		options.gaugeType = GaugeType::Hard;
+	else if (gaugeType == GaugeTypes::Permissive)
+		options.gaugeType = GaugeType::Permissive;
+	else if (gaugeType == GaugeTypes::Blastive)
+	{
+		options.gaugeType = GaugeType::Blastive;
+		options.gaugeLevel = (float)g_gameConfig.GetInt(GameConfigKeys::BlastiveLevel) / 2.0f;
+	}
+
 	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
 	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
 	options.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge);

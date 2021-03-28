@@ -26,6 +26,14 @@ ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 		return ClearMark::FullCombo;
 	if (score.gaugeType == GaugeType::Hard && score.gauge > 0) //Hard Clear
 		return ClearMark::HardClear;
+
+	// TODO(itszn) should we have a different clear mark for these?
+	if (score.gaugeType == GaugeType::Permissive && score.gauge > 0) //Hard Clear
+		return ClearMark::NormalClear;
+	// Note this will only save if stricter than excessive
+	if (score.gaugeType == GaugeType::Blastive && score.gauge > 0) //Hard Clear
+		return ClearMark::HardClear;
+
 	if (score.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
 		return ClearMark::NormalClear;
 
@@ -154,6 +162,18 @@ void Scoring::Reset(const MapTimeRange& range)
 	if (m_options.gaugeType == GaugeType::Hard)
 	{
 		GaugeHard* gauge = new GaugeHard();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
+	}
+	else if (m_options.gaugeType == GaugeType::Permissive)
+	{
+		GaugeHard* gauge = new GaugePermissive();
+		gauge->Init(mapTotals, total, m_endTime);
+		m_gaugeStack.push_back(gauge);
+	}
+	else if (m_options.gaugeType == GaugeType::Blastive)
+	{
+		GaugeHard* gauge = new GaugeBlastive(m_options.gaugeLevel);
 		gauge->Init(mapTotals, total, m_endTime);
 		m_gaugeStack.push_back(gauge);
 	}
