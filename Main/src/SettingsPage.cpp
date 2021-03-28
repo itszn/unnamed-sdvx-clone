@@ -533,10 +533,10 @@ void SettingsPageCollection::InitStyles()
 		toggle.border = 2.0f;
 
 		toggle.normal = nk_style_item_color(nk_rgb(40, 40, 40));
-		toggle.cursor_normal = nk_style_item_color(nk_rgb(100, 100, 100));
+		toggle.cursor_normal = nk_style_item_color(nk_hsv(148, 200, 180));
 
-		toggle.hover = nk_style_item_color(nk_rgb(70, 70, 70));
-		toggle.cursor_hover = nk_style_item_color(nk_rgb(150, 150, 150));
+		toggle.hover = nk_style_item_color(nk_rgb(80, 80, 80));
+		toggle.cursor_hover = nk_style_item_color(nk_hsv(148, 200, 240));
 	};
 
 	set_toggle_style(m_nctx->style.option);

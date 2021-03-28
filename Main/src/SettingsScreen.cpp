@@ -262,7 +262,7 @@ private:
 
 			RenderKeyBindingsLaserButton(1);
 
-			nk_style_pop_float(m_nctx);
+			m_nctx->style.button.rounding = 2;
 
 			// BT
 			m_nctx->style.button.normal = nk_style_item_color(nk_rgb(224, 224, 224));
@@ -287,6 +287,8 @@ private:
 			LayoutRowDynamic(2, FX_HEIGHT);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[5].c_str())) OpenButtonBind((*m_activeBTKeys)[5]);
 			if (nk_button_label(m_nctx, m_controllerButtonNames[6].c_str())) OpenButtonBind((*m_activeBTKeys)[6]);
+
+			nk_style_pop_float(m_nctx);
 
 			nk_style_pop_color(m_nctx);
 			nk_style_pop_color(m_nctx);
