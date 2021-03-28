@@ -88,7 +88,7 @@ protected:
 
 class GaugePermissive : public GaugeHard {
 public:
-	GaugePermissive(float gainRate = 12.f / 21.f, float missDrainPercent = 0.034f) :
+	GaugePermissive(float gainRate = 16.f / 21.f, float missDrainPercent = 0.034f) :
 		GaugeHard(gainRate, missDrainPercent) {};
 protected:
 	const char* GetName() const;
@@ -101,6 +101,7 @@ public:
 		GaugeHard(gainRate, missDrainPercent), m_level(level) {};
 	void LongMiss() override;
 	void ShortMiss() override;
+	uint32 GetOpts() const override;
 	float GetLevel() { return m_level; }
 protected:
 	float m_level;

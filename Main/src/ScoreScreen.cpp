@@ -223,9 +223,6 @@ public:
 		m_finalGaugeValue = gauge->GetValue();
 		m_gaugeOption = gauge->GetOpts();
 		m_gaugeType = gauge->GetType();
-		// We can save blastive as hard if it is stricter than excessive
-		if (m_gaugeType == GaugeType::Blastive)
-			m_gaugeType = GaugeType::Hard;
 		m_timedHits[0] = scoring.timedHits[0];
 		m_timedHits[1] = scoring.timedHits[1];
 		m_options = game->GetPlaybackOptions();

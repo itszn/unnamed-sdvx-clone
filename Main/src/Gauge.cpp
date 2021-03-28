@@ -185,3 +185,8 @@ GaugeType GaugeBlastive::GetType() const
 {
 	return GaugeType::Blastive;
 }
+
+uint32 GaugeWithLevel::GetOpts() const
+{
+	return (uint32)(2 * m_level);
+}

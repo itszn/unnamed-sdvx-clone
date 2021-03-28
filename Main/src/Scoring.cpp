@@ -30,9 +30,14 @@ ClearMark Scoring::CalculateBadge(const ScoreIndex& score)
 	// TODO(itszn) should we have a different clear mark for these?
 	if (score.gaugeType == GaugeType::Permissive && score.gauge > 0) //Hard Clear
 		return ClearMark::NormalClear;
-	// Note this will only save if stricter than excessive
+
 	if (score.gaugeType == GaugeType::Blastive && score.gauge > 0) //Hard Clear
-		return ClearMark::HardClear;
+	{
+		if (score.gaugeOption > 4) // stricter than hard
+			return ClearMark::HardClear;
+
+		return ClearMark::NormalClear;
+	}
 
 	if (score.gaugeType == GaugeType::Normal && score.gauge >= 0.70) //Normal Clear
 		return ClearMark::NormalClear;

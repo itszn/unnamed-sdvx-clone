@@ -2721,18 +2721,6 @@ public:
 
 		if (!(m_scoring.hitWindow <= HitWindow::NORMAL)) return false;
 
-		if (m_scoring.categorizedHits[0] == 0) // UC or PUC
-			return true;
-
-		// If the blastive rate is stricter than excessive, we can save
-		if (m_scoring.GetTopGauge()->GetType() == GaugeType::Blastive &&
-				dynamic_cast<GaugeWithLevel*>(m_scoring.GetTopGauge())->GetLevel() > 9.0f / 4.0f)
-			return true;
-
-		if (m_scoring.GetTopGauge()->GetType() == GaugeType::Blastive ||
-				m_scoring.GetTopGauge()->GetType() == GaugeType::Permissive)
-			return false;
-
 		return true;
 	}
 	float GetPlaybackSpeed() override
