@@ -59,6 +59,4 @@ target_link_libraries(Audio ${SDL2_LIBRARY})
 target_link_libraries(Audio ${OGG_LIBRARIES})
 target_link_libraries(Audio ${Vorbis_LIBRARIES})
 
-if(WIN32)
-    target_compile_options(Graphics PRIVATE /Zi)
-endif()
+target_link_libraries(Audio cc-common)

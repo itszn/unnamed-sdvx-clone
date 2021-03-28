@@ -52,6 +52,4 @@ target_include_directories(Shared SYSTEM PRIVATE ${Iconv_INCLUDE_DIRS})
 target_link_libraries(Shared ${LibArchive_LIBRARIES})
 target_include_directories(Shared SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 
-if(WIN32)
-    target_compile_options(Shared PRIVATE /Zi)
-endif()
+target_link_libraries(Shared cc-common)

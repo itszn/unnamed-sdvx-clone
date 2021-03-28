@@ -58,6 +58,13 @@ find_package(Iconv REQUIRED)
 # this is mainly for windows functions either being defined to call A or W prefixed functions
 add_definitions(-DUNICODE -D_UNICODE)
 
+#https://stackoverflow.com/questions/60041896/reuse-target-compile-options-from-variable-for-multiple-targets-cmake/60047012#60047012
+add_library(cc-common INTERFACE)
+
+if(WIN32)
+    target_compile_options(cc-common INTERFACE /Zi)
+endif()
+
 OPTION(EMBEDDED "Enable embedded build" OFF)
 
 if(EMBEDDED)
@@ -69,6 +76,14 @@ OPTION(CRASHDUMP "Enable collecting crash dumps" ON)
 if(CRASHDUMP)
     message("Enabling crash dumps")
     add_definitions(-DCRASHDUMP)
+endif()
+
+OPTION(ASAN "Build With ASAN" OFF)
+if(ASAN)
+    target_compile_options(cc-common INTERFACE
+        -fsanitize=address
+        -fno-omit-frame-pointer
+    )
 endif()
 
 # Include macros

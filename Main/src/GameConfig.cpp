@@ -4,6 +4,10 @@
 #include "Shared/Log.hpp"
 #include "HitStat.hpp"
 
+// When this should change, the UpdateVersion MUST be updated to update the old config files.
+// If there's no need to update the UpdateVersion, there's no need to touch this too.
+int32 GameConfig::VERSION = 1;
+
 inline static void ConvertKeyCodeToScanCode(GameConfig& config, std::vector<GameConfigKeys> keys)
 {
 	// To use SDL_GetScancodeFromKey, SDL must be initialized before.
