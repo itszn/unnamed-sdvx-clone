@@ -287,12 +287,9 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(HitWindowPerfect),
 	Key(HitWindowGood),
 	Key(HitWindowHold),
+	Key(HitWindowSlam),
 	Key(GlobalOffset),
 	Key(InputOffset),
-	Key(LaserAssistLevel),
-	Key(LaserPunish),
-	Key(LaserChangeTime),
-	Key(LaserChangeExponent),
 
 	Key(HiddenCutoff),
 	Key(HiddenFade),
