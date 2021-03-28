@@ -59,8 +59,8 @@ public:
 	GaugeType GetType() const;
 
 protected:
-	static constexpr float s_gainRate = 1.0f;
-	static constexpr float s_missDrainPercent = 0.02f;
+	static const inline float s_gainRate = 1.0f;
+	static const inline float s_missDrainPercent = 0.02f;
 
 	float m_shortMissDrain;
 	float m_drainMultiplier;
@@ -81,22 +81,22 @@ public:
 	GaugeType GetType() const;
 
 protected:
-	static constexpr float s_gainRate = 12.f / 21.f;
-	static constexpr float s_missDrainPercent = 0.09f;
+	static const inline float s_gainRate = 12.f / 21.f;
+	static const inline float s_missDrainPercent = 0.09f;
 	float DrainMultiplier() const;
 };
 
 class GaugePermissive : public GaugeHard {
 protected:
-	static constexpr float s_gainRate = 12.f / 21.f;
-	static constexpr float s_missDrainPercent = 0.034f;
+	static const inline float s_gainRate = 12.f / 21.f;
+	static inline float s_missDrainPercent = 0.034f;
 	const char* GetName() const;
 	GaugeType GetType() const;
 };
 
 class GaugeWithLevel : public GaugeHard {
 public:
-	GaugeWithLevel(float level) : m_level(level), GaugeHard() {};
+	GaugeWithLevel(float level) : GaugeHard(), m_level(level) {};
 	void LongMiss() override;
 	void ShortMiss() override;
 	float GetLevel() { return m_level; }
@@ -112,9 +112,9 @@ public:
 	const char* GetName() const;
 	GaugeType GetType() const;
 protected:
-	static constexpr float s_gainRate = 12.f / 21.f;
-	static constexpr float s_missDrainPercent = 0.04f;
-	static constexpr float s_nearDrainPercent = 0.01f;
+	static const inline float s_gainRate = 12.f / 21.f;
+	static const inline float s_missDrainPercent = 0.04f;
+	static const inline float s_nearDrainPercent = 0.01f;
 
 	float m_shortNearDrain;
 };
