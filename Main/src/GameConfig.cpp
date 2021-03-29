@@ -107,6 +107,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
 	Set(GameConfigKeys::AutoComputeSongOffset, false);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, SongOffsetUpdateMethod::None);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, SongOffsetUpdateMethod::None);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
@@ -190,8 +192,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AutoResetSettings, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
-
-	Set(GameConfigKeys::SettingsTreesOpen, 1);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 

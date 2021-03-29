@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "ChatOverlay.hpp"
-#include <time.h>
 #include "GuiUtils.hpp"
-
 
 #include "MultiplayerScreen.hpp"
 

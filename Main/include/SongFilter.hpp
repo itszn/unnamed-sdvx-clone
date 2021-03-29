@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include "SongSelect.hpp"
 #include "ChallengeSelect.hpp"
 #include <Beatmap/MapDatabase.hpp>

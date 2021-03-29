@@ -1,6 +1,4 @@
 #pragma once
-#include "stdafx.h"
-#include "Shared/Thread.hpp"
 #include "LuaRequests.hpp"
 
 //structs have been moved into shared LuaRequests header to stop IR from including Http or vice versa
