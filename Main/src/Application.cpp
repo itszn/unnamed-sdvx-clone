@@ -1300,12 +1300,15 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
-	//clear fonts before freeing library
+	// Clear fonts before freeing library
+
 	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
 	}
 	g_guiState.currentFont.reset();
+
+	m_fonts.clear();
 
 	Discord_Shutdown();
 
