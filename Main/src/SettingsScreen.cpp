@@ -474,7 +474,7 @@ protected:
 private:
 	inline void RenderTimingWindowSettings()
 	{
-		LayoutRowDynamic(3);
+		LayoutRowDynamic(4);
 
 		const int hitWindowPerfect = IntInput(m_hitWindow.perfect, "Crit", 0, HitWindow::NORMAL.perfect);
 		if (hitWindowPerfect != m_hitWindow.perfect)
