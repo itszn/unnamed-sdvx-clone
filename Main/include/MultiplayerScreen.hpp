@@ -2,13 +2,10 @@
 #include "ApplicationTickable.hpp"
 #include "Shared/LuaBindable.hpp"
 #include "Input.hpp"
-#include "Shared/Thread.hpp"
 #include "GameConfig.hpp"
-#include "cpr/cpr.h"
 #include "Beatmap/MapDatabase.hpp"
-#include "json.hpp"
 #include "TCPSocket.hpp"
-#include <Scoring.hpp>
+#include "Scoring.hpp"
 #include "DBUpdateScreen.hpp"
 #include "PreviewPlayer.hpp"
 

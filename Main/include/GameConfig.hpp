@@ -1,6 +1,14 @@
 #pragma once
 #include "Shared/Config.hpp"
-#include <unordered_set>
+#include "Input.hpp"
+
+#ifdef Always
+#undef Always
+#endif
+
+#ifdef None
+#undef None
+#endif
 
 DefineEnum(GameConfigKeys,
 		   // Version of the config
@@ -55,6 +63,8 @@ DefineEnum(GameConfigKeys,
 		   DisableBackgrounds,
 		   ScoreDisplayMode,
 		   AutoComputeSongOffset,
+		   UpdateSongOffsetAfterFirstPlay,
+		   UpdateSongOffsetAfterEveryPlay,
 
 		   LeadInTime,
 		   PracticeLeadInTime,
@@ -137,8 +147,6 @@ DefineEnum(GameConfigKeys,
 		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
 
-		   SettingsTreesOpen,
-
 		   EditorPath,
 		   EditorParamsFormat,
 
@@ -203,13 +211,16 @@ DefineEnum(LaserAxisOption,
 	       Right,
 	       Both)
 
-#ifdef Always
-#undef Always
-#endif
 DefineEnum(AutoScoreScreenshotSettings,
 		   Off,
 		   Highscore,
 		   Always)
+
+DefineEnum(SongOffsetUpdateMethod,
+		   None,
+		   Play,
+		   PlayWholeChart,
+		   Clear)
 
 DefineEnum(ButtonComboModeSettings,
 		   Disabled,

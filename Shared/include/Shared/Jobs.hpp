@@ -10,6 +10,9 @@
 	Additional job flags,
 	this allows clustering IO operation onto the same thread as to not lock up the system
 */
+#ifdef None
+#undef None
+#endif
 enum class JobFlags : uint8
 {
 	None = 0,

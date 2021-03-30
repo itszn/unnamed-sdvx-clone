@@ -14,11 +14,6 @@
 #include "GameConfig.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
-#include "lua.hpp"
-#include "nanovg.h"
-#include "discord_rpc.h"
-#include "cpr/cpr.h"
-#include "json.hpp"
 #include "SkinConfig.hpp"
 #include "SkinHttp.hpp"
 #include "SkinIR.hpp"
@@ -1300,12 +1295,15 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
-	//clear fonts before freeing library
+	// Clear fonts before freeing library
+
 	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
 	}
 	g_guiState.currentFont.reset();
+
+	m_fonts.clear();
 
 	Discord_Shutdown();
 

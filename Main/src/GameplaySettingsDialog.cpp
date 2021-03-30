@@ -3,7 +3,6 @@
 #include "HitStat.hpp"
 #include "Application.hpp"
 #include "SongSelect.hpp"
-#include <Shared/Files.hpp>
 #include "GuiUtils.hpp"
 
 GameplaySettingsDialog::GameplaySettingsDialog(SongSelect* songSelectScreen)
