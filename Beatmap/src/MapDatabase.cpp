@@ -1696,10 +1696,10 @@ private:
 			score->hitWindowMiss = scoreScan.IntColumn(16);
 			score->hitWindowSlam = scoreScan.IntColumn(17);
 
-			score->gaugeType = (GaugeType)scoreScan.IntColumn(17);
-			score->gaugeOption = scoreScan.IntColumn(18);
-			score->mirror = scoreScan.IntColumn(19) == 1;
-			score->random = scoreScan.IntColumn(20) == 1;
+			score->gaugeType = (GaugeType)scoreScan.IntColumn(18);
+			score->gaugeOption = scoreScan.IntColumn(19);
+			score->mirror = scoreScan.IntColumn(20) == 1;
+			score->random = scoreScan.IntColumn(21) == 1;
 
 			// Add difficulty to map and resort difficulties
 			auto diffIt = m_chartsByHash.find(score->chartHash);
