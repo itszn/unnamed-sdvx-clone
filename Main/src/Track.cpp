@@ -23,6 +23,7 @@ Track::Track()
 	else
 		trackLength = 10.0f;
 }
+
 Track::~Track()
 {
 	if(loader)
@@ -40,6 +41,7 @@ Track::~Track()
 	if(timedHitEffect)
 		delete timedHitEffect;
 }
+
 bool Track::AsyncLoad()
 {
 	loader = new AsyncAssetLoader();
@@ -49,6 +51,36 @@ bool Track::AsyncLoad()
 	laserHues[0] = g_gameConfig.GetFloat(GameConfigKeys::Laser0Color);
 	laserHues[1] = g_gameConfig.GetFloat(GameConfigKeys::Laser1Color);
 	m_btOverFxScale = Math::Clamp(g_gameConfig.GetFloat(GameConfigKeys::BTOverFXScale), 0.01f, 1.0f);
+	bool delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
+
+	for (int i = 0; i < 6; ++i)
+	{
+		ButtonHitEffect& bfx = m_buttonHitEffects[i];
+		if (delayedHitEffects)
+		{
+			if (i < 4)
+			{
+				bfx.delayFadeDuration = BT_DELAY_FADE_DURATION;
+				bfx.hitEffectDuration = BT_HIT_EFFECT_DURATION;
+				bfx.btAlphaScale = 0.8;
+			}
+			else
+			{
+				bfx.delayFadeDuration = FX_DELAY_FADE_DURATION;
+				bfx.hitEffectDuration = FX_HIT_EFFECT_DURATION;
+				bfx.fxAlphaScale = 0.5;
+			}
+		}
+		else
+		{
+			bfx.delayFadeDuration = 0;
+			bfx.hitEffectDuration = 0.2f;
+			bfx.btAlphaScale = 1;
+			bfx.fxAlphaScale = 1;
+		}
+		bfx.buttonCode = i;
+		bfx.track = this;
+	}
 
 	for (uint32 i = 0; i < 2; i++)
 		laserColors[i] = Color::FromHSV(laserHues[i],1.0,1.0);
@@ -236,16 +268,13 @@ bool Track::AsyncFinalize()
 void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 {
 	const TimingPoint& currentTimingPoint = playback.GetCurrentTimingPoint();
-	if(&currentTimingPoint != m_lastTimingPoint)
+	if (&currentTimingPoint != m_lastTimingPoint)
 	{
 		m_lastTimingPoint = &currentTimingPoint;
 	}
 
-	// Calculate track origin transform
-	uint8 portrait = g_aspectRatio > 1.0f ? 0 : 1;
-
 	// Button Hit FX
-	for(auto it = m_hitEffects.begin(); it != m_hitEffects.end();)
+	for (auto it = m_hitEffects.begin(); it != m_hitEffects.end();)
 	{
 		(*it)->Tick(deltaTime);
 		if((*it)->time <= 0.0f)
@@ -256,6 +285,9 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 		}
 		it++;
 	}
+	for (auto& bfx : m_buttonHitEffects)
+		bfx.Tick(deltaTime);
+		
 	timedHitEffect->Tick(deltaTime);
 
 	MapTime currentTime = playback.GetLastTime();
@@ -280,7 +312,7 @@ void Track::Tick(class BeatmapPlayback& playback, float deltaTime)
 	// Add first tick
 	m_barTicks.Add(playback.TimeToViewDistance((MapTime)tickTime));
 
-	while(tickTime < rangeEnd)
+	while (tickTime < rangeEnd)
 	{
 		double next = tickTime + stepTime;
 
@@ -582,13 +614,15 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 void Track::DrawOverlays(class RenderQueue& rq)
 {
 	// Draw button hit effect sprites
-	for(auto& hfx : m_hitEffects)
-	{
+	for (auto& hfx : m_hitEffects)
 		hfx->Draw(rq);
-	}
-	if(timedHitEffect->time > 0.0f)
+	for (auto& bfx : m_buttonHitEffects)
+		bfx.Draw(rq);
+		
+	if (timedHitEffect->time > 0.0f)
 		timedHitEffect->Draw(rq);
 }
+
 void Track::DrawTrackOverlay(RenderQueue& rq, Texture texture, float heightOffset /*= 0.05f*/, float widthScale /*= 1.0f*/)
 {
 	MaterialParameterSet params;
@@ -598,6 +632,7 @@ void Track::DrawTrackOverlay(RenderQueue& rq, Texture texture, float heightOffse
 	transform *= Transform::Translation({ 0.0f, heightOffset, 0.0f });
 	rq.Draw(transform, trackMesh, trackOverlay, params);
 }
+
 void Track::DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, Color color /*= Color::White*/, float tilt /*= 0.0f*/)
 {
 	Transform spriteTransform = trackOrigin;
@@ -611,6 +646,7 @@ void Track::DrawSprite(RenderQueue& rq, Vector3 pos, Vector2 size, Texture tex, 
 	params.SetParameter("color", color);
 	rq.Draw(spriteTransform, centeredTrackMesh, spriteMaterial, params);
 }
+
 void Track::DrawCombo(RenderQueue& rq, uint32 score, Color color, float scale)
 {
 	if(score == 0)
@@ -690,12 +726,18 @@ Vector3 Track::TransformPoint(const Vector3 & p)
 	return trackOrigin.TransformPoint(p);
 }
 
-TimedEffect* Track::AddEffect(TimedEffect* effect)
+void Track::AddEffect(TimedEffect* effect)
 {
 	m_hitEffects.Add(effect);
 	effect->track = this;
-	return effect;
 }
+
+void Track::AddHitEffect(uint32 buttonCode, Color color)
+{
+	assert(buttonCode < 6);
+	m_buttonHitEffects[buttonCode].Reset(buttonCode, color);
+}
+
 void Track::ClearEffects()
 {
 	m_trackHide = 0.0f;
@@ -771,3 +813,8 @@ float Track::GetButtonPlacement(uint32 buttonIdx)
 	}
 }
 
+void Track::OnButtonReleased(Input::Button buttonCode)
+{
+	const uint32 buttonIndex = (uint32)buttonCode;
+	m_buttonHitEffects[buttonIndex].held = false;
+}

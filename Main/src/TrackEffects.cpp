@@ -16,46 +16,64 @@ void TimedEffect::Tick(float deltaTime)
 	time -= deltaTime;
 }
 
-ButtonHitEffect::ButtonHitEffect(uint32 buttonCode, Color color) : TimedEffect(0.2f), buttonCode(buttonCode), color(color)
+ButtonHitEffect::ButtonHitEffect() : TimedEffect(0)
+{
+}
+
+void ButtonHitEffect::Reset(int buttonCode, Color color)
 {
 	assert(buttonCode < 6);
+	this->color = color;
+	duration = hitEffectDuration;
+	time = hitEffectDuration;
+	delayFadeTime = delayFadeDuration;
+	held = autoplay || buttonCode >= 4 ? false : true;
 }
+
+void ButtonHitEffect::Tick(float deltaTime)
+{
+	if (delayFadeDuration > 0 && held)
+		return;
+
+	if (delayFadeTime > 0)
+	{
+		delayFadeTime -= deltaTime;
+		return;
+	}
+	time = Math::Max(time - deltaTime, 0.f);
+}
+
 void ButtonHitEffect::Draw(class RenderQueue& rq)
 {
-	float x = 0.0f;
-	float w = track->buttonWidth;
+	float x;
+	float w;
+	float alphaScale;
 	float yMult = 2.0f;
-	if(buttonCode < 4)
+	if (buttonCode < 4)
 	{
-		w = track->buttonWidth;
-		x = (-track->buttonWidth * 1.5f) + w * buttonCode;
+		alphaScale = btAlphaScale;
+		w = Track::buttonWidth;
+		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;
 		if (buttonCode < 2)
-		{
-			x -= 0.5 * track->centerSplit * track->buttonWidth;
-		}
+			x -= 0.5 * track->centerSplit * Track::buttonWidth;
 		else
-		{
-			x += 0.5 * track->centerSplit * track->buttonWidth;
-		}
+			x += 0.5 * track->centerSplit * Track::buttonWidth;
 	}
 	else
 	{
+		alphaScale = fxAlphaScale;
 		yMult = 1.0f;
 		w = track->buttonWidth * 2.0f;
 		x = -track->buttonWidth + w * (buttonCode - 4);
 		if (buttonCode < 5)
-		{
-			x -= 0.5 * track->centerSplit * track->buttonWidth;
-		}
+			x -= 0.5 * track->centerSplit * Track::buttonWidth;
 		else
-		{
-			x += 0.5 * track->centerSplit * track->buttonWidth;
-		}
+			x += 0.5 * track->centerSplit * Track::buttonWidth;
 	}
 
 	Vector2 hitEffectSize = Vector2(w, 0.0f);
 	hitEffectSize.y = track->scoreHitTexture->CalculateHeight(hitEffectSize.x) * yMult;
-	Color c = color.WithAlpha(GetRate());
+	Color c = color.WithAlpha(GetRate() * alphaScale);
 	c.w *= yMult / 2.f;
 	track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
 }
@@ -66,6 +84,7 @@ ButtonHitRatingEffect::ButtonHitRatingEffect(uint32 buttonCode, ScoreHitRating r
 	if(rating == ScoreHitRating::Miss)
 		Reset(0.4f);
 }
+
 void ButtonHitRatingEffect::Draw(class RenderQueue& rq)
 {
 	float x = 0.0f;

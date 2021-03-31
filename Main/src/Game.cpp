@@ -476,6 +476,9 @@ public:
 
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
+		
+		g_input.OnButtonReleased.Add(m_track, &Track::OnButtonReleased);
+		ButtonHitEffect::autoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
 
 		#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
@@ -1923,7 +1926,7 @@ public:
 		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
 			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
 
-		m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
+		m_track->AddHitEffect(buttonIdx, c);
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -1990,7 +1993,7 @@ public:
 			ButtonObjectState* st = (ButtonObjectState*)object;
 			//m_hiddenObjects.insert(object);
 			Color c = m_track->hitColors[0];
-			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
+			m_track->AddHitEffect(buttonIdx, c);
 		}
 		m_track->AddEffect(new ButtonHitRatingEffect(buttonIdx, ScoreHitRating::Miss));
 
