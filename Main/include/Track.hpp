@@ -30,16 +30,15 @@ struct ButtonHitEffect : TimedEffect
 	void Draw(class RenderQueue& rq) override;
 	void Tick(float deltaTime) override;
 	void Reset(int buttonCode, Color color, bool autoplayHold = false);
+	float GetRate() const { return Math::Min(time, hitEffectDuration) / duration; }
 	static void SetHiSpeed(float hiSpeed);
 
 	uint32 buttonCode; // Only used for Draw
 	Color color;
 	float delayFadeDuration;
-	float delayFadeTime = 0;
 	bool held = false;
 	float hitEffectDuration;
 	inline static bool autoplay = false;
-
 	float alphaScale;
 
 private:

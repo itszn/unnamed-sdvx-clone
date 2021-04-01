@@ -25,21 +25,14 @@ void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold)
 	assert(buttonCode < 6);
 	this->color = color;
 	duration = hitEffectDuration;
-	time = hitEffectDuration;
-	delayFadeTime = delayFadeDuration;
+	time = hitEffectDuration + delayFadeDuration;
 	held = buttonCode >= 4 || (autoplay && !autoplayHold) ? false : true;
 }
 
 void ButtonHitEffect::Tick(float deltaTime)
 {
-	if (delayFadeDuration > 0 && held)
+	if (held)
 		return;
-
-	if (delayFadeTime > 0)
-	{
-		delayFadeTime -= deltaTime;
-		return;
-	}
 	time = Math::Max(time - deltaTime, 0.f);
 }
 
