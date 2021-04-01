@@ -30,6 +30,7 @@ struct ButtonHitEffect : TimedEffect
 	void Draw(class RenderQueue& rq) override;
 	void Tick(float deltaTime) override;
 	void Reset(int buttonCode, Color color);
+	static void SetHiSpeed(float hiSpeed);
 
 	uint32 buttonCode; // Only used for Draw
 	Color color;
@@ -39,8 +40,10 @@ struct ButtonHitEffect : TimedEffect
 	float hitEffectDuration;
 	inline static bool autoplay = false;
 
-	float btAlphaScale;
-	float fxAlphaScale;
+	float alphaScale;
+
+private:
+	inline static float m_hispeed = 0;
 };
 
 // Button hit rating effect

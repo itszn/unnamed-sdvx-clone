@@ -210,6 +210,7 @@ public:
 
 	~Game_Impl()
 	{
+		g_input.OnButtonReleased.Remove(m_track, &Track::OnButtonReleased);
 		if(m_track)
 			delete m_track;
 		if(m_background)
@@ -823,9 +824,15 @@ public:
 
 		// 8 beats (2 measures) in view at 1x hi-speed
 		if (m_speedMod == SpeedMods::CMod)
+		{
 			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
+			ButtonHitEffect::SetHiSpeed(m_playback.cModSpeed);
+		}
 		else
-			m_track->SetViewRange(8.0f / (m_hispeed)); 
+		{
+			m_track->SetViewRange(8.0f / m_hispeed);
+			ButtonHitEffect::SetHiSpeed(m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM());
+		}
 
 		// Get render state from the camera
 		// Get roll when there's no laser slam roll and roll ignore being applied

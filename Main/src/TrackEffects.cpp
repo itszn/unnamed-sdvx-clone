@@ -43,15 +43,20 @@ void ButtonHitEffect::Tick(float deltaTime)
 	time = Math::Max(time - deltaTime, 0.f);
 }
 
+void ButtonHitEffect::SetHiSpeed(float hiSpeed)
+{
+	m_hispeed = hiSpeed;
+}
+
 void ButtonHitEffect::Draw(class RenderQueue& rq)
 {
 	float x;
 	float w;
-	float alphaScale;
+	float hiSpeedAlphaOffset;
 	float yMult = 2.0f;
 	if (buttonCode < 4)
 	{
-		alphaScale = btAlphaScale;
+		hiSpeedAlphaOffset = 0.26 * (Math::Clamp(m_hispeed - 100, 0.f, 500.f) / 500);
 		w = Track::buttonWidth;
 		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;
 		if (buttonCode < 2)
@@ -61,7 +66,7 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	}
 	else
 	{
-		alphaScale = fxAlphaScale;
+		hiSpeedAlphaOffset = 0;
 		yMult = 1.0f;
 		w = track->buttonWidth * 2.0f;
 		x = -track->buttonWidth + w * (buttonCode - 4);
@@ -73,7 +78,7 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 
 	Vector2 hitEffectSize = Vector2(w, 0.0f);
 	hitEffectSize.y = track->scoreHitTexture->CalculateHeight(hitEffectSize.x) * yMult;
-	Color c = color.WithAlpha(GetRate() * alphaScale);
+	Color c = color.WithAlpha(GetRate() * (alphaScale + hiSpeedAlphaOffset));
 	c.w *= yMult / 2.f;
 	track->DrawSprite(rq, Vector3(x, hitEffectSize.y * 0.5f, 0.0f), hitEffectSize, track->scoreHitTexture, c);
 }

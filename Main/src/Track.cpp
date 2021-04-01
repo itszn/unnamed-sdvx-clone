@@ -62,21 +62,20 @@ bool Track::AsyncLoad()
 			{
 				bfx.delayFadeDuration = BT_DELAY_FADE_DURATION;
 				bfx.hitEffectDuration = BT_HIT_EFFECT_DURATION;
-				bfx.btAlphaScale = 0.8;
+				bfx.alphaScale = 0.6f; // Ranges from 0.6 to 0.86 depending on hispeed
 			}
 			else
 			{
 				bfx.delayFadeDuration = FX_DELAY_FADE_DURATION;
 				bfx.hitEffectDuration = FX_HIT_EFFECT_DURATION;
-				bfx.fxAlphaScale = 0.5;
+				bfx.alphaScale = 0.45f;
 			}
 		}
 		else
 		{
 			bfx.delayFadeDuration = 0;
 			bfx.hitEffectDuration = 0.2f;
-			bfx.btAlphaScale = 1;
-			bfx.fxAlphaScale = 1;
+			bfx.alphaScale = 1;
 		}
 		bfx.buttonCode = i;
 		bfx.track = this;
@@ -547,8 +546,6 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 	}
 	else if(obj->type == ObjectType::Laser) // Draw laser
 	{
-		
-
 		position = playback.TimeToViewDistance(obj->time);
 		float posmult = trackLength / (m_viewRange * laserSpeedOffset);
 		LaserObjectState* laser = (LaserObjectState*)obj;
@@ -816,5 +813,7 @@ float Track::GetButtonPlacement(uint32 buttonIdx)
 void Track::OnButtonReleased(Input::Button buttonCode)
 {
 	const uint32 buttonIndex = (uint32)buttonCode;
+	if (buttonIndex >= 6)
+		return;
 	m_buttonHitEffects[buttonIndex].held = false;
 }
