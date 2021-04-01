@@ -93,8 +93,7 @@ public:
 	Color hitColors[4] = {};
 
 	class AsyncAssetLoader* loader = nullptr;
-
-public:
+	
 	Track();
 	~Track();
 	virtual bool AsyncLoad() override;

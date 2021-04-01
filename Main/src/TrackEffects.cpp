@@ -49,7 +49,7 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	float yMult = 2.0f;
 	if (buttonCode < 4)
 	{
-		hiSpeedAlphaOffset = 0.26 * (Math::Clamp(m_hispeed - 100, 0.f, 500.f) / 500);
+		hiSpeedAlphaOffset = delayFadeDuration ? 0.26 * (Math::Clamp(m_hispeed - 100, 0.f, 500.f) / 500) : 0;
 		w = Track::buttonWidth;
 		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;
 		if (buttonCode < 2)
