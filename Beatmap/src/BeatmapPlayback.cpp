@@ -222,6 +222,8 @@ void BeatmapPlayback::Update(MapTime newTime)
 		if (obj->type == ObjectType::Hold)
 		{
 			MapTime endTime = obj->hold.duration + obj->time;
+			if (endTime < m_playbackTime)
+				OnHoldLeave.Call((HoldObjectState*)obj);
 			if (endTime < objectPassTime)
 			{
 				OnObjectLeaved.Call(*it);

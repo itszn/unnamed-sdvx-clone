@@ -29,7 +29,7 @@ struct ButtonHitEffect : TimedEffect
 	ButtonHitEffect();
 	void Draw(class RenderQueue& rq) override;
 	void Tick(float deltaTime) override;
-	void Reset(int buttonCode, Color color);
+	void Reset(int buttonCode, Color color, bool autoplayHold = false);
 	static void SetHiSpeed(float hiSpeed);
 
 	uint32 buttonCode; // Only used for Draw
@@ -122,7 +122,7 @@ public:
 
 	// Adds a sprite effect to the track
 	void AddEffect(struct TimedEffect* effect);
-	void AddHitEffect(uint32 buttonCode, Color color);
+	void AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold = false);
 	void ClearEffects();
 
 	void SetViewRange(float newRange);
@@ -132,6 +132,9 @@ public:
 
 	// Normal/FX button X-axis placement
 	float GetButtonPlacement(uint32 buttonIdx);
+
+	// Only used to make hit effects for holds appear correctly in autoplay
+	void OnHoldLeave(HoldObjectState* obj);
 	
 	void OnButtonReleased(Input::Button buttonCode);
 

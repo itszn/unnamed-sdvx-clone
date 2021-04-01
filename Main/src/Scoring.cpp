@@ -1015,10 +1015,7 @@ void Scoring::m_UpdateGaugeSamples()
 	{
 		g->Update(currentTime);
 	}
-
 }
-
-
 
 void Scoring::m_CleanupTicks()
 {
@@ -1050,6 +1047,7 @@ void Scoring::m_AddScore(uint32 score)
 	maxComboCounter = Math::Max(maxComboCounter, currentComboCounter);
 	OnComboChanged.Call(currentComboCounter);
 }
+
 void Scoring::m_ResetCombo()
 {
 	comboState = 0;

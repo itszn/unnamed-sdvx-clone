@@ -479,6 +479,9 @@ public:
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 		
 		g_input.OnButtonReleased.Add(m_track, &Track::OnButtonReleased);
+
+		if (m_scoring.autoplay || m_scoring.autoplayButtons)
+			m_playback.OnHoldLeave.Add(m_track, &Track::OnHoldLeave);
 		ButtonHitEffect::autoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
 
 		#ifdef EMBEDDED
@@ -2053,6 +2056,7 @@ public:
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
 			}
+			m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
 		}
 	}
 	void OnObjectReleased(Input::Button, ObjectState* object)

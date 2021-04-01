@@ -729,10 +729,10 @@ void Track::AddEffect(TimedEffect* effect)
 	effect->track = this;
 }
 
-void Track::AddHitEffect(uint32 buttonCode, Color color)
+void Track::AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold)
 {
 	assert(buttonCode < 6);
-	m_buttonHitEffects[buttonCode].Reset(buttonCode, color);
+	m_buttonHitEffects[buttonCode].Reset(buttonCode, color, autoplayHold);
 }
 
 void Track::ClearEffects()
@@ -808,6 +808,11 @@ float Track::GetButtonPlacement(uint32 buttonIdx)
 		}
 		return x;
 	}
+}
+
+void Track::OnHoldLeave(HoldObjectState* obj)
+{
+	OnButtonReleased((Input::Button)obj->index);
 }
 
 void Track::OnButtonReleased(Input::Button buttonCode)
