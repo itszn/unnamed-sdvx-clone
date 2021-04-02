@@ -26,7 +26,7 @@ void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold)
 	this->color = color;
 	duration = hitEffectDuration;
 	time = hitEffectDuration + delayFadeDuration;
-	held = buttonCode >= 4 || (autoplay && !autoplayHold) ? false : true;
+	held = !(buttonCode >= 4 || (autoplay && !autoplayHold));
 }
 
 void ButtonHitEffect::Tick(float deltaTime)

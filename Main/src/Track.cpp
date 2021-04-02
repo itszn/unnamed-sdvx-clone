@@ -4,8 +4,6 @@
 #include "Game.hpp"
 #include "Track.hpp"
 #include "LaserTrackBuilder.hpp"
-#include <Beatmap/BeatmapPlayback.hpp>
-#include <Beatmap/BeatmapObjects.hpp>
 #include "AsyncAssetLoader.hpp"
 #include <unordered_set>
 
@@ -74,7 +72,7 @@ bool Track::AsyncLoad()
 		else
 		{
 			bfx.delayFadeDuration = 0;
-			bfx.hitEffectDuration = 0.2f;
+			bfx.hitEffectDuration = 7 / 60.f;
 			bfx.alphaScale = 1;
 		}
 		bfx.buttonCode = i;
