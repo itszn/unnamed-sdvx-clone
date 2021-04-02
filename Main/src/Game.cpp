@@ -2060,7 +2060,8 @@ public:
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
 			}
-			m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], ButtonHitEffect::autoplay);
+			if (ButtonHitEffect::autoplay)
+				m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
 		}
 	}
 
