@@ -222,8 +222,6 @@ void BeatmapPlayback::Update(MapTime newTime)
 		if (obj->type == ObjectType::Hold)
 		{
 			MapTime endTime = obj->hold.duration + obj->time;
-			if (endTime < m_playbackTime)
-				OnHoldLeave.Call((HoldObjectState*)obj);
 			if (endTime < objectPassTime)
 			{
 				OnObjectLeaved.Call(*it);
@@ -292,6 +290,7 @@ void BeatmapPlayback::Update(MapTime newTime)
 					OnFXEnd.Call((HoldObjectState*)*it);
 					m_effectObjects.erase(*it);
 				}
+				OnHoldLeave.Call((HoldObjectState*)obj);
 			}
 		}
 		else if (obj->type == ObjectType::Laser)

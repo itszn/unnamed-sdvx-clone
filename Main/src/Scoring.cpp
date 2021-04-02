@@ -632,6 +632,9 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 				t->SetFlag(TickFlags::End);
 			t->time = holdTicks[i];
 		}
+		ScoreTick* t = m_ticks[hold->index].Add(new ScoreTick(obj));
+		t->SetFlag(TickFlags::Hold | TickFlags::Ignore);
+		t->time = obj->time + ((HoldObjectState*)obj)->duration;
 	}
 	else if (obj->type == ObjectType::Laser)
 	{
@@ -712,21 +715,24 @@ void Scoring::m_UpdateTicks()
 				if (tick->HasFlag(TickFlags::Hold))
 				{
 					assert(buttonCode < 6);
-					if (m_IsBeingHold(tick) || autoplay || autoplayButtons)
+					if (!tick->HasFlag(TickFlags::Ignore))
 					{
-						m_TickHit(tick, buttonCode);
-						HitStat* stat = new HitStat(tick->object);
-						stat->time = currentTime;
-						stat->rating = ScoreHitRating::Perfect;
-						hitStats.Add(stat);
+						if (m_IsBeingHold(tick) || autoplay || autoplayButtons)
+						{
+							m_TickHit(tick, buttonCode);
+							HitStat* stat = new HitStat(tick->object);
+							stat->time = currentTime;
+							stat->rating = ScoreHitRating::Perfect;
+							hitStats.Add(stat);
 
-						m_prevHoldHit[buttonCode] = true;
-					}
-					else
-					{
-						m_TickMiss(tick, buttonCode, 0);
+							m_prevHoldHit[buttonCode] = true;
+						}
+						else
+						{
+							m_TickMiss(tick, buttonCode, 0);
 
-						m_prevHoldHit[buttonCode] = false;
+							m_prevHoldHit[buttonCode] = false;
+						}
 					}
 					processed = true;
 				}
@@ -830,7 +836,7 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 			// Ignore laser and hold ticks
 			return nullptr;
 		}
-		else if (tick->HasFlag(TickFlags::Hold))
+		if (tick->HasFlag(TickFlags::Hold))
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
@@ -1334,12 +1340,8 @@ void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 	{
 		int32 guardDelta = m_playback->GetLastTime() - m_buttonGuardTime[(uint32)buttonCode];
 		if (guardDelta < m_bounceGuard && guardDelta >= 0 && m_playback->GetLastTime() > 0.0)
-		{
-			//Logf("Button %d press bounce guard hit at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 			return;
-		}
 
-		//Logf("Button %d pressed at %dms", Logger::Severity::Info, buttonCode, m_playback->GetLastTime());
 		m_buttonHitTime[(uint32)buttonCode] = m_playback->GetLastTime();
 		m_buttonGuardTime[(uint32)buttonCode] = m_playback->GetLastTime();
 		ObjectState* obj = m_ConsumeTick((uint32)buttonCode);
