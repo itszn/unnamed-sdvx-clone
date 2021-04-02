@@ -1944,11 +1944,16 @@ public:
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
+		bool skipEffect = false;
 
 		// Show crit color on idle if a hold not is hit
 		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
+		{
 			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
-		if (!st || (st && st->type == ObjectType::Hold && m_delayedHitEffects))
+			if (!m_delayedHitEffects)
+				skipEffect = true;
+		}
+		if (!skipEffect)
 			m_track->AddHitEffect(buttonIdx, c);
 
 		if (st != nullptr && st->hasSample)
@@ -2070,7 +2075,7 @@ public:
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
 			}
-			if (ButtonHitEffect::autoplay && m_delayedHitEffects);
+			if (ButtonHitEffect::autoplay && m_delayedHitEffects)
 				m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
 		}
 	}
