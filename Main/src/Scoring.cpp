@@ -201,7 +201,7 @@ void Scoring::Tick(float deltaTime)
 	{
 		for (size_t i = 0; i < 6; i++)
 		{
-			if (m_ticks[i].size() > 0)
+			if (!m_ticks[i].empty())
 			{
 				auto tick = m_ticks[i].front();
 				if (tick->HasFlag(TickFlags::Hold))

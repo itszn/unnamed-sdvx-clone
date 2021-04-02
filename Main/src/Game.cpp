@@ -2050,6 +2050,7 @@ public:
 	}
 
 	// These functions control if FX button DSP's are muted or not
+	// OnObjectHold also adds hit effects for holds on autoplay
 	void OnObjectHold(Input::Button, ObjectState* object)
 	{
 		if(object->type == ObjectType::Hold)
@@ -2059,9 +2060,10 @@ public:
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
 			}
-			m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
+			m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], ButtonHitEffect::autoplay);
 		}
 	}
+
 	void OnObjectReleased(Input::Button, ObjectState* object)
 	{
 		if(object->type == ObjectType::Hold)
