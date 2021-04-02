@@ -31,7 +31,7 @@ void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold)
 
 void ButtonHitEffect::Tick(float deltaTime)
 {
-	if (held)
+	if (held && delayFadeDuration)
 		return;
 	time = Math::Max(time - deltaTime, 0.f);
 }

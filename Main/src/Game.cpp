@@ -1948,7 +1948,7 @@ public:
 		// Show crit color on idle if a hold not is hit
 		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
 			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
-		if (hitObject->type == ObjectType::Hold && m_delayedHitEffects)
+		if (!st || (st && st->type == ObjectType::Hold && m_delayedHitEffects))
 			m_track->AddHitEffect(buttonIdx, c);
 
 		if (st != nullptr && st->hasSample)
