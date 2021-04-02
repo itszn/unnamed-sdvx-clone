@@ -78,6 +78,7 @@ void CalibrationScreen::Render(float deltaTime)
 	m_track.DrawBase(renderQueue);
 	std::unordered_set<MapTime> chipFXTimes[2];
 
+	m_track.DrawOverlays(renderQueue);
 	for (auto& object : currentObjectSet)
 	{
 		m_track.DrawObjectState(renderQueue, m_playback, object, false, chipFXTimes);
@@ -86,7 +87,6 @@ void CalibrationScreen::Render(float deltaTime)
 	{
 		m_track.DrawTrackCover(renderQueue);
 	}
-	m_track.DrawOverlays(renderQueue);
 	m_track.DrawCalibrationCritLine(renderQueue);
 	renderQueue.Process();
 
