@@ -521,7 +521,7 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 
 		Transform buttonTransform = trackOrigin;
 		buttonTransform *= Transform::Translation(buttonPos);
-		float scale = 1.0f;
+		float scale;
 		if(isHold) // Hold Note?
 		{
 			float trackScale = (playback.DurationToViewDistanceAtTime(mobj->time, mobj->hold.duration) / viewRange) / length;
@@ -608,16 +608,21 @@ void Track::DrawObjectState(RenderQueue& rq, class BeatmapPlayback& playback, Ob
 		}
 	}
 }
+
 void Track::DrawOverlays(class RenderQueue& rq)
 {
 	// Draw button hit effect sprites
 	for (auto& hfx : m_hitEffects)
 		hfx->Draw(rq);
-	for (auto& bfx : m_buttonHitEffects)
-		bfx.Draw(rq);
-		
+
 	if (timedHitEffect->time > 0.0f)
 		timedHitEffect->Draw(rq);
+}
+
+void Track::DrawHitEffects(RenderQueue& rq)
+{
+	for (auto& bfx : m_buttonHitEffects)
+		bfx.Draw(rq);
 }
 
 void Track::DrawTrackOverlay(RenderQueue& rq, Texture texture, float heightOffset /*= 0.05f*/, float widthScale /*= 1.0f*/)
