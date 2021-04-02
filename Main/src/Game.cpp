@@ -884,10 +884,9 @@ public:
 			{
 				if (a->type == ObjectType::Single)
 					return (((ButtonObjectState*)a)->index < 4) ? 1 : 2;
-				else if (a->type == ObjectType::Hold)
+				if (a->type == ObjectType::Hold)
 					return (((ButtonObjectState*)a)->index < 4) ? 3 : 4;
-				else
-					return 0;
+				return 0;
 			};
 			uint32 renderPriorityA = ObjectRenderPriorty(a);
 			uint32 renderPriorityB = ObjectRenderPriorty(b);
@@ -905,6 +904,7 @@ public:
 			}
 		}
 
+		RenderQueue fxHoldObjectsRq(g_gl, rs);
 		RenderQueue hitObjectsRq(g_gl, rs);
 
 		/// TODO: Performance impact analysis.
@@ -916,7 +916,13 @@ public:
 		for(auto& object : m_currentObjectSet)
 		{
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
-				m_track->DrawObjectState(hitObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+			{
+				MultiObjectState* mobj = (MultiObjectState*)object;
+				if (object->type == ObjectType::Hold && (mobj->button.index == 4 || mobj->button.index == 5))
+					m_track->DrawObjectState(fxHoldObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+				else
+					m_track->DrawObjectState(hitObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+			}
 		}
 		if(m_showCover)
 			m_track->DrawTrackCover(renderQueue);
@@ -948,6 +954,7 @@ public:
 		m_track->DrawOverlays(scoringRq);
 		// Render queues
 		renderQueue.Process();
+		fxHoldObjectsRq.Process();
 		hitEffectsRq.Process();
 		hitObjectsRq.Process();
 		scoringRq.Process();
