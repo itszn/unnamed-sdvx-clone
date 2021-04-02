@@ -101,6 +101,7 @@ private:
 	SpeedMods m_speedMod;
 	float m_modSpeed = 400;
 
+	bool m_delayedHitEffects;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -415,6 +416,8 @@ public:
 		InitPlaybacks(0);
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
+
+		m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
@@ -1945,8 +1948,8 @@ public:
 		// Show crit color on idle if a hold not is hit
 		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
 			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
-
-		m_track->AddHitEffect(buttonIdx, c);
+		if (hitObject->type == ObjectType::Hold && m_delayedHitEffects)
+			m_track->AddHitEffect(buttonIdx, c);
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -2067,7 +2070,7 @@ public:
 			{
 				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
 			}
-			if (ButtonHitEffect::autoplay)
+			if (ButtonHitEffect::autoplay && m_delayedHitEffects);
 				m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
 		}
 	}
