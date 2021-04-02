@@ -373,7 +373,7 @@ protected:
 	void Save() override
 	{
 		String newProfile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
-		if (newProfile == m_currentProfile)
+		if (newProfile == m_currentProfile || newProfile.empty() || m_currentProfile.empty())
 		{
 			return;
 		}
