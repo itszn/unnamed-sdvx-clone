@@ -810,12 +810,13 @@ void Scoring::m_UpdateTicks()
 			    if (tick->HasFlag(TickFlags::Start))
                 {
                     if (obj->time <= currentTime && (m_IsBeingHold(tick) || autoplay || autoplayButtons))
-                            OnHoldEnter.Call(button);
+                        OnHoldEnter.Call(button);
                 }
 			    else if (obj->time + obj->duration > currentTime)
                 {
-			        // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past
-			        if (m_input && m_input->GetButton(button))
+			        // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
+			        // including when the final scorable tick has been processed
+			        if (m_buttonHitTime[i] > obj->time && m_buttonHitTime[i] < obj->time + obj->duration)
                         OnHoldEnter.Call(button);
                 }
             }

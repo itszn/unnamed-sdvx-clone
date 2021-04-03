@@ -1946,16 +1946,8 @@ public:
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
-		bool skipEffect = false;
 
-		if (m_scoring.IsObjectHeld((uint32)button) && hitObject)
-		{
-			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
-			if (!m_delayedHitEffects)
-				skipEffect = true;
-		}
-		if (!skipEffect)
-			m_track->AddHitEffect(buttonIdx, c);
+        m_track->AddHitEffect(buttonIdx, c);
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -2014,6 +2006,7 @@ public:
 		}
 		lua_settop(m_lua, 0);
 	}
+
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
 	{
 		uint32 buttonIdx = (uint32)button;
@@ -2040,6 +2033,7 @@ public:
 		}
 		lua_settop(m_lua, 0);
 	}
+
 	void OnComboChanged(uint32 newCombo)
 	{
 		m_comboAnimation.Restart();
@@ -2050,6 +2044,7 @@ public:
 			Logf("Lua error on calling update_combo: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
 	}
+
 	void OnScoreChanged()
 	{
 		lua_getglobal(m_lua, "update_score");
