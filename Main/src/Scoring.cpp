@@ -191,21 +191,21 @@ void Scoring::Tick(float deltaTime)
 	m_UpdateTicks();
 	m_UpdateGaugeSamples();
 
-	if (autoplay || autoplayButtons)
-	{
-		for (size_t i = 0; i < 6; i++)
-		{
-			if (!m_ticks[i].empty())
-			{
-				auto tick = m_ticks[i].front();
-				if (tick->HasFlag(TickFlags::Hold))
-				{
-					if (tick->object->time <= m_playback->GetLastTime())
-						m_SetHoldObject(tick->object, i);
-				}
-			}
-		}
-	}
+    for (size_t i = 0; i < 6; i++)
+    {
+        if (!m_ticks[i].empty())
+        {
+            auto tick = m_ticks[i].front();
+            if (tick->HasFlag(TickFlags::Hold))
+            {
+                if ((autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime())
+                    m_SetHoldObject(tick->object, i);
+                // This check is only relevant if delay fade hit effects are on
+                if (autoplay || autoplayButtons || HoldObjectAvailable(i, true))
+                    OnHoldEnter.Call(static_cast<Input::Button>(i));
+            }
+        }
+    }
 }
 
 float Scoring::GetLaserPosition(uint32 index, float pos)
@@ -777,30 +777,9 @@ void Scoring::m_UpdateTicks()
 					}
 				}
 			}
-			else if (tick->HasFlag(TickFlags::Hold))
-            {
-			    // These checks are only relevant if delay fade hit effects are on.
-			    // When a hold crosses the crit line and we're eligible to hit the starting tick,
-			    // change the idle hit effect to the crit hit effect
-			    auto obj = (HoldObjectState*)tick->object;
-			    bool createHitEffect = false;
-			    if (tick->HasFlag(TickFlags::Start))
-                {
-                    if (obj->time <= currentTime && (m_IsBeingHold(tick) || autoplay || autoplayButtons))
-                        createHitEffect = true;
-                }
-			    else if (obj->time + obj->duration > currentTime)
-                {
-			        // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
-			        // including when the final scorable tick has been processed
-			        if (m_buttonHitTime[i] > obj->time && m_buttonHitTime[i] < obj->time + obj->duration)
-                        createHitEffect = true;
-                }
-			    if (createHitEffect)
-                    OnHoldEnter.Call(button);
-            }
 
-			bool miss = (tick->HasFlag(TickFlags::Slam) && delta > hitWindow.slam) || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good);
+			bool miss = (tick->HasFlag(TickFlags::Slam) && delta > hitWindow.slam)
+			        || (!tick->HasFlag(TickFlags::Slam) && delta > hitWindow.good);
 			if (miss && !processed)
 			{
 				m_TickMiss(tick, buttonCode, delta);
@@ -1431,7 +1410,7 @@ uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) 
 	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
 }
 
-bool Scoring::HoldObjectAvailable(uint32 index)
+bool Scoring::HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine)
 {
     if (m_ticks[index].empty())
         return false;
@@ -1439,14 +1418,14 @@ bool Scoring::HoldObjectAvailable(uint32 index)
     auto currentTime = m_playback->GetLastTime();
     auto tick = m_ticks[index].front();
     auto obj = (HoldObjectState*)tick->object;
-    if (tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick))
-        return true;
-    else if (obj->time + obj->duration > currentTime)
-    {
-        if (m_buttonHitTime[index] > obj->time && m_buttonHitTime[index] < obj->time + obj->duration)
-            return true;
-    }
-    return false;
+    // When a hold passes the crit line and we're eligible to hit the starting tick,
+    // change the idle hit effect to the crit hit effect
+    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
+    // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
+    // including when the final scorable tick has been processed
+    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] > obj->time;
+
+    return withinHoldStartWindow || holdObjectHittable;
 }
 
 ScoreHitRating ScoreTick::GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const

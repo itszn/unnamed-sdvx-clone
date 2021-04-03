@@ -139,7 +139,7 @@ public:
 	inline bool IsPerfect() const { return GetMisses() == 0 && GetGoods() == 0; }
 	inline bool IsFullCombo() const { return GetMisses() == 0; }
 
-	bool HoldObjectAvailable(uint32 index);
+	bool HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine);
 
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))

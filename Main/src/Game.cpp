@@ -1950,7 +1950,7 @@ public:
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
-		bool skipEffect = m_scoring.HoldObjectAvailable((uint32) button) && !m_delayedHitEffects;
+		bool skipEffect = m_scoring.HoldObjectAvailable((uint32) button, false) && !m_delayedHitEffects;
 
 		if (!skipEffect)
             m_track->AddHitEffect(buttonIdx, c);
