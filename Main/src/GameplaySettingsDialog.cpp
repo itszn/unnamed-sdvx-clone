@@ -55,9 +55,10 @@ void GameplaySettingsDialog::InitTabs()
 
     Tab judgeWindowTab = std::make_unique<TabData>();
     judgeWindowTab->name = "Judgement";
-    judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowPerfect, "Crit Window", {0, HitWindow::NORMAL.perfect}));
+    judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowPerfect, "Crit Window", { 0, HitWindow::NORMAL.perfect }));
     judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowGood, "Near Window", { 0, HitWindow::NORMAL.good }));
     judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowHold, "Hold Window", { 0, HitWindow::NORMAL.hold }));
+	judgeWindowTab->settings.push_back(CreateIntSetting(GameConfigKeys::HitWindowSlam, "Slam Window", { 0, HitWindow::NORMAL.slam }));
     judgeWindowTab->settings.push_back(CreateButton("Set to NORMAL", [](const auto&) { HitWindow::NORMAL.SaveConfig(); }));
     judgeWindowTab->settings.push_back(CreateButton("Set to HARD", [](const auto&) { HitWindow::HARD.SaveConfig(); }));
 
