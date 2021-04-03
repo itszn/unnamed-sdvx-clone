@@ -841,6 +841,7 @@ void Scoring::m_UpdateTicks()
 		}
 	}
 }
+
 ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 {
 	const MapTime currentTime = m_playback->GetLastTime() + m_inputOffset;
@@ -1498,6 +1499,24 @@ uint32 Scoring::CalculateCurrentMaxPossibleScore(uint32 currHit, uint32 currMaxH
 uint32 Scoring::CalculateCurrentAverageScore(uint32 currHit, uint32 currMaxHit) const
 {
 	return ::CalculateScore(currHit, currMaxHit, MAX_SCORE);
+}
+
+bool Scoring::HoldObjectAvailable(uint32 index)
+{
+    if (m_ticks[index].empty())
+        return false;
+
+    auto currentTime = m_playback->GetLastTime();
+    auto tick = m_ticks[index].front();
+    auto obj = (HoldObjectState*)tick->object;
+    if (tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick))
+        return true;
+    else if (obj->time + obj->duration > currentTime)
+    {
+        if (m_buttonHitTime[index] > obj->time && m_buttonHitTime[index] < obj->time + obj->duration)
+            return true;
+    }
+    return false;
 }
 
 MapTime ScoreTick::GetHitWindow(const HitWindow& hitWindow) const
