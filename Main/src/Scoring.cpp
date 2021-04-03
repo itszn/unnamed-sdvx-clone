@@ -804,21 +804,25 @@ void Scoring::m_UpdateTicks()
 			}
 			else if (tick->HasFlag(TickFlags::Hold))
             {
+			    // These checks are only relevant if delay fade hit effects are on.
 			    // When a hold crosses the crit line and we're eligible to hit the starting tick,
 			    // change the idle hit effect to the crit hit effect
 			    auto obj = (HoldObjectState*)tick->object;
+			    bool createHitEffect = false;
 			    if (tick->HasFlag(TickFlags::Start))
                 {
                     if (obj->time <= currentTime && (m_IsBeingHold(tick) || autoplay || autoplayButtons))
-                        OnHoldEnter.Call(button);
+                        createHitEffect = true;
                 }
 			    else if (obj->time + obj->duration > currentTime)
                 {
 			        // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
 			        // including when the final scorable tick has been processed
 			        if (m_buttonHitTime[i] > obj->time && m_buttonHitTime[i] < obj->time + obj->duration)
-                        OnHoldEnter.Call(button);
+                        createHitEffect = true;
                 }
+			    if (createHitEffect)
+                    OnHoldEnter.Call(button);
             }
 
 			if (delta > hitWindow.good && !processed)
