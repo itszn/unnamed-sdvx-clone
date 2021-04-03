@@ -813,14 +813,17 @@ float Track::GetButtonPlacement(uint32 buttonIdx)
 	}
 }
 
-void Track::OnHoldLeave(HoldObjectState* obj)
+void Track::OnHoldEnter(Input::Button buttonCode)
 {
-	OnButtonReleased((Input::Button)obj->index);
+    const auto buttonIndex = (uint32)buttonCode;
+    if (buttonIndex >= 6)
+        return;
+    m_buttonHitEffects[buttonIndex].Reset(buttonIndex, hitColors[(size_t)ScoreHitRating::Perfect], ButtonHitEffect::autoplay);
 }
 
 void Track::OnButtonReleased(Input::Button buttonCode)
 {
-	const uint32 buttonIndex = (uint32)buttonCode;
+	const auto buttonIndex = (uint32)buttonCode;
 	if (buttonIndex >= 6)
 		return;
 	m_buttonHitEffects[buttonIndex].held = false;

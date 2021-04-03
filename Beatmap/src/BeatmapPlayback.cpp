@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "BeatmapPlayback.hpp"
-#include "Shared/Profiling.hpp"
 
 BeatmapPlayback::BeatmapPlayback(Beatmap& beatmap) : m_beatmap(&beatmap)
 {
@@ -290,7 +289,6 @@ void BeatmapPlayback::Update(MapTime newTime)
 					OnFXEnd.Call((HoldObjectState*)*it);
 					m_effectObjects.erase(*it);
 				}
-				OnHoldLeave.Call((HoldObjectState*)obj);
 			}
 		}
 		else if (obj->type == ObjectType::Laser)

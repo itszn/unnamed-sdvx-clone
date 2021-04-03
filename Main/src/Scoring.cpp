@@ -616,8 +616,7 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 	}
 	else if (obj->type == ObjectType::Hold)
 	{
-		const TimingPoint* tp = m_playback->GetTimingPointAt(obj->time);
-		HoldObjectState* hold = (HoldObjectState*)obj;
+        HoldObjectState* hold = (HoldObjectState*)obj;
 
 		// Add all hold ticks
 		Vector<MapTime> holdTicks;
@@ -632,9 +631,9 @@ void Scoring::m_OnObjectEntered(ObjectState* obj)
 				t->SetFlag(TickFlags::End);
 			t->time = holdTicks[i];
 		}
-		ScoreTick* t = m_ticks[hold->index].Add(new ScoreTick(obj));
-		t->SetFlag(TickFlags::Hold | TickFlags::Ignore);
-		t->time = obj->time + ((HoldObjectState*)obj)->duration;
+		auto t = m_ticks[hold->index].Add(new ScoreTick(obj));
+		t->SetFlag(TickFlags::Hold | TickFlags::End | TickFlags::Ignore);
+		t->time = hold->time + hold->duration;
 	}
 	else if (obj->type == ObjectType::Laser)
 	{
@@ -734,6 +733,10 @@ void Scoring::m_UpdateTicks()
 							m_prevHoldHit[buttonCode] = false;
 						}
 					}
+					else if (tick->HasFlag(TickFlags::End))
+					    // Simulate releasing a held button on autoplay
+					    OnHoldLeave.Call(button);
+
 					processed = true;
 				}
 				else if (tick->HasFlag(TickFlags::Laser))
@@ -799,6 +802,23 @@ void Scoring::m_UpdateTicks()
 					processed = true;
 				}
 			}
+			else if (tick->HasFlag(TickFlags::Hold))
+            {
+			    // When a hold crosses the crit line and we're eligible to hit the starting tick,
+			    // change the idle hit effect to the crit hit effect
+			    auto obj = (HoldObjectState*)tick->object;
+			    if (tick->HasFlag(TickFlags::Start))
+                {
+                    if (obj->time <= currentTime && (m_IsBeingHold(tick) || autoplay || autoplayButtons))
+                            OnHoldEnter.Call(button);
+                }
+			    else if (obj->time + obj->duration > currentTime)
+                {
+			        // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past
+			        if (m_input && m_input->GetButton(button))
+                        OnHoldEnter.Call(button);
+                }
+            }
 
 			if (delta > hitWindow.good && !processed)
 			{
@@ -825,7 +845,7 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 	const MapTime currentTime = m_playback->GetLastTime() + m_inputOffset;
 	assert(buttonCode < 8);
 
-	if (m_ticks[buttonCode].size() > 0)
+	if (!m_ticks[buttonCode].empty())
 	{
 		ScoreTick* tick = m_ticks[buttonCode].front();
 
@@ -1071,6 +1091,7 @@ void Scoring::m_SetHoldObject(ObjectState* obj, uint32 index)
 		OnObjectHold.Call((Input::Button)index, obj);
 	}
 }
+
 void Scoring::m_ReleaseHoldObject(ObjectState* obj)
 {
 	auto it = m_heldObjects.find(obj);

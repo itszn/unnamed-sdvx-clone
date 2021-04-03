@@ -132,10 +132,7 @@ public:
 	// Normal/FX button X-axis placement
 	float GetButtonPlacement(uint32 buttonIdx);
 
-	// Only used to make hit effects for holds appear correctly in autoplay
-	void OnHoldLeave(HoldObjectState* obj);
-	
-	void OnButtonReleased(Input::Button buttonCode);
+    void OnButtonReleased(Input::Button buttonCode);
 
 	// Laser positions, as shown on the overlay
 	float laserPositions[2];
@@ -210,6 +207,8 @@ public:
 	// Track Origin position
 	Transform trackOrigin;
 
+    void OnHoldEnter(Input::Button buttonCode);
+
 private:
 	// Laser track generators
 	class LaserTrackBuilder* m_laserTrackBuilder[2] = { 0 };
@@ -241,4 +240,5 @@ private:
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
 	float m_btOverFxScale = 0.8f;
-}; 
+
+};

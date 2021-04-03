@@ -18,6 +18,7 @@ enum class TickFlags : uint8
 	Laser = 0x10,
 	Slam = 0x20,
 
+	// Used to make hit effects appear correctly for holds
 	Ignore = 0x40
 };
 TickFlags operator|(const TickFlags& a, const TickFlags& b);
@@ -152,6 +153,9 @@ public:
 	Delegate<Input::Button, ObjectState*> OnObjectHold;
 	// Called when an object is let go of
 	Delegate<Input::Button, ObjectState*> OnObjectReleased;
+
+	Delegate<Input::Button> OnHoldEnter;
+	Delegate<Input::Button> OnHoldLeave;
 
 	// Called when a laser slam was hit
 	// (Laser slam segment)

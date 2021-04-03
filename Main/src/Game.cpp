@@ -358,7 +358,6 @@ public:
 			CheckChallengeHispeed(m_beatmap->GetLinearTimingPoints().front()->GetBPM());
 		}
 
-
 		// Load replays
 		if (m_chartIndex)
 			for (ScoreIndex* score : m_chartIndex->scores)
@@ -379,6 +378,8 @@ public:
 					}
 				}
 			}
+
+        m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
 		// Initialize input/scoring
 		if(!InitGameplay())
@@ -416,8 +417,6 @@ public:
 		InitPlaybacks(0);
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
-
-		m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
@@ -482,9 +481,12 @@ public:
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 		
 		g_input.OnButtonReleased.Add(m_track, &Track::OnButtonReleased);
-
-		if (m_scoring.autoplay || m_scoring.autoplayButtons)
-			m_playback.OnHoldLeave.Add(m_track, &Track::OnHoldLeave);
+        if (m_delayedHitEffects)
+        {
+            m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
+            if (m_scoring.autoplay || m_scoring.autoplayButtons)
+                m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
+        }
 		ButtonHitEffect::autoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
 
 		#ifdef EMBEDDED
@@ -1946,8 +1948,7 @@ public:
 		Color c = m_track->hitColors[(size_t)rating];
 		bool skipEffect = false;
 
-		// Show crit color on idle if a hold not is hit
-		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
+		if (m_scoring.IsObjectHeld((uint32)button) && hitObject)
 		{
 			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
 			if (!m_delayedHitEffects)
@@ -1965,7 +1966,7 @@ public:
 			}
 		}
 
-		if(rating != ScoreHitRating::Idle)
+		if (rating != ScoreHitRating::Idle)
 		{
 			// Floating text effect
 			m_track->AddEffect(new ButtonHitRatingEffect(buttonIdx, rating));
@@ -2065,7 +2066,6 @@ public:
 	}
 
 	// These functions control if FX button DSP's are muted or not
-	// OnObjectHold also adds hit effects for holds on autoplay
 	void OnObjectHold(Input::Button, ObjectState* object)
 	{
 		if(object->type == ObjectType::Hold)
@@ -2073,10 +2073,8 @@ public:
 			HoldObjectState* hold = (HoldObjectState*)object;
 			if(hold->effectType != EffectType::None)
 			{
-				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
-			}
-			if (ButtonHitEffect::autoplay && m_delayedHitEffects)
-				m_track->AddHitEffect(hold->index, m_track->hitColors[(size_t)ScoreHitRating::Perfect], true);
+                m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
+            }
 		}
 	}
 
