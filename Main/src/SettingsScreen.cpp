@@ -814,15 +814,17 @@ protected:
 
 	void Save() override
 	{
+		for (auto& it : m_skinConfigTextData)
+		{
+			it.second.Save();
+		}
+
 		if (m_skinConfig != g_skinConfig && m_skinConfig)
 		{
 			delete m_skinConfig;
 			m_skinConfig = nullptr;
-		}
-
-		for (auto& it : m_skinConfigTextData)
-		{
-			it.second.Save();
+			// These keep a ref to skinConfig so clear too
+			m_skinConfigTextData.clear();
 		}
 	}
 

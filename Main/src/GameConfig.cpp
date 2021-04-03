@@ -224,6 +224,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::BackupGauge, false);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
+	Set(GameConfigKeys::SettingsLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
 
 	Set(GameConfigKeys::CurrentProfileName, "Main");

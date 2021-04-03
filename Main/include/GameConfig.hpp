@@ -175,6 +175,7 @@ DefineEnum(GameConfigKeys,
 		   EnableFancyHighwayRoll,
 
 		   GameplaySettingsDialogLastTab,
+		   SettingsLastTab,
 		   TransferScoresOnChartUpdate,
 
 		   CurrentProfileName,
