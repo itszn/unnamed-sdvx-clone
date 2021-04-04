@@ -931,10 +931,10 @@ public:
 		}
 
 		RenderQueue fxHoldObjectsRq(g_gl, rs);
-		RenderQueue hitObjectsRq(g_gl, rs);
+		RenderQueue hitObjectsTrackCoverRq(g_gl, rs);
 
 		/// TODO: Performance impact analysis.
-		m_track->DrawLaserBase(hitObjectsRq, m_playback, m_currentObjectSet);
+		m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
 
 		// Draw the base track + time division ticks
 		m_track->DrawBase(renderQueue);
@@ -947,11 +947,11 @@ public:
 				if (object->type == ObjectType::Hold && (mobj->button.index == 4 || mobj->button.index == 5))
 					m_track->DrawObjectState(fxHoldObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
 				else
-					m_track->DrawObjectState(hitObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+					m_track->DrawObjectState(hitObjectsTrackCoverRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
 			}
 		}
 		if(m_showCover)
-			m_track->DrawTrackCover(renderQueue);
+			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
 
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to
@@ -982,7 +982,7 @@ public:
 		renderQueue.Process();
 		fxHoldObjectsRq.Process();
 		hitEffectsRq.Process();
-		hitObjectsRq.Process();
+		hitObjectsTrackCoverRq.Process();
 		scoringRq.Process();
 		glFlush();
 
