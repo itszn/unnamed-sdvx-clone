@@ -1972,7 +1972,7 @@ public:
 		bool skipEffect = m_scoring.HoldObjectAvailable((uint32) button, false) && !m_delayedHitEffects;
 
 		if (!skipEffect)
-            m_track->AddHitEffect(buttonIdx, c);
+            m_track->AddHitEffect(buttonIdx, c, false, st && st->type == ObjectType::Hold);
 
         m_autoplayButtonAnimationTimer[buttonIdx] = AUTOPLAY_BUTTON_HIT_DURATION;
 

@@ -20,12 +20,12 @@ ButtonHitEffect::ButtonHitEffect() : TimedEffect(0)
 {
 }
 
-void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold)
+void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold, bool hold)
 {
 	assert(buttonCode < 6);
 	this->color = color;
 	duration = hitEffectDuration;
-	time = hitEffectDuration + delayFadeDuration;
+	time = hitEffectDuration + (hold ? 0 : delayFadeDuration);
 	held = !(buttonCode >= 4 || (autoplay && !autoplayHold));
 }
 

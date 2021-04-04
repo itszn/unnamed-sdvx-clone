@@ -29,7 +29,7 @@ struct ButtonHitEffect : TimedEffect
 	ButtonHitEffect();
 	void Draw(class RenderQueue& rq) override;
 	void Tick(float deltaTime) override;
-	void Reset(int buttonCode, Color color, bool autoplayHold = false);
+	void Reset(int buttonCode, Color color, bool autoplayHold = false, bool hold = false);
 	float GetRate() const { return Math::Min(time, hitEffectDuration) / duration; }
 	static void SetHiSpeed(float hiSpeed);
 
@@ -121,7 +121,7 @@ public:
 
 	// Adds a sprite effect to the track
 	void AddEffect(struct TimedEffect* effect);
-	void AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold = false);
+	void AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold = false, bool hold = false);
 	void ClearEffects();
 
 	void SetViewRange(float newRange);
