@@ -198,11 +198,11 @@ void Scoring::Tick(float deltaTime)
             auto tick = m_ticks[i].front();
             if (tick->HasFlag(TickFlags::Hold))
             {
-                if ((autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime())
+                bool autoplayHold = (autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime();
+                if (autoplayHold)
                     m_SetHoldObject(tick->object, i);
                 // This check is only relevant if delay fade hit effects are on
-                if (((autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime())
-                || HoldObjectAvailable(i, true) && m_input->GetButton(static_cast<Input::Button>(i)))
+                if (autoplayHold || (HoldObjectAvailable(i, true) && m_input->GetButton((Input::Button)i)))
                     OnHoldEnter.Call(static_cast<Input::Button>(i));
             }
         }
