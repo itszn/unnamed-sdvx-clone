@@ -132,6 +132,7 @@ public:
 	// Normal/FX button X-axis placement
 	float GetButtonPlacement(uint32 buttonIdx);
 
+    void OnHoldEnter(Input::Button buttonCode);
     void OnButtonReleased(Input::Button buttonCode);
 
 	// Laser positions, as shown on the overlay
@@ -206,8 +207,6 @@ public:
 
 	// Track Origin position
 	Transform trackOrigin;
-
-    void OnHoldEnter(Input::Button buttonCode);
 
 private:
 	// Laser track generators

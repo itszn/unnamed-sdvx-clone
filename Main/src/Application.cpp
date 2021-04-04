@@ -2030,12 +2030,6 @@ static int lLog(lua_State *L)
 	return 0;
 }
 
-static int lGetButton(lua_State *L /* int button */)
-{
-	int button = luaL_checkinteger(L, 1);
-	lua_pushboolean(L, g_input.GetButton((Input::Button)button));
-	return 1;
-}
 static int lGetKnob(lua_State *L /* int knob */)
 {
 	int knob = luaL_checkinteger(L, 1);
@@ -2456,7 +2450,6 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("StopSample", lStopSample);
 		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
 		pushFuncToTable("GetLaserColor", lGetLaserColor);
-		pushFuncToTable("GetButton", lGetButton);
 		pushFuncToTable("GetKnob", lGetKnob);
 		pushFuncToTable("UpdateAvailable", lGetUpdateAvailable);
 		pushFuncToTable("GetSkin", lGetSkin);

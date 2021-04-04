@@ -6,7 +6,6 @@
 #include <random>
 #include <unordered_set>
 #include <Beatmap/BeatmapPlayback.hpp>
-#include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
 #include <Audio/Audio.hpp>
 
@@ -28,8 +27,6 @@
 
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
-
-#include <SDL2/SDL.h>
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -151,6 +148,8 @@ private:
 
 	// Combo gain animation
 	Timer m_comboAnimation;
+
+	inline static float m_autoplayButtonAnimationTimer[6] = { 0 };
 
 	Sample m_slamSample;
 	Sample m_clickSamples[2];
@@ -446,6 +445,17 @@ public:
 		
 		return true;
 	}
+
+    static int lGetButton(lua_State *L /* int button */)
+    {
+        int button = luaL_checkinteger(L, 1);
+        if (ButtonHitEffect::autoplay)
+            lua_pushboolean(L, m_autoplayButtonAnimationTimer[button] > 0);
+        else
+            lua_pushboolean(L, g_input.GetButton((Input::Button)button));
+        return 1;
+    }
+
 	virtual bool AsyncFinalize() override
 	{
 		if (!loader.Finalize())
@@ -458,6 +468,11 @@ public:
 		m_lua = g_application->LoadScript("gameplay");
 		if (!m_lua)
 			return false;
+
+        lua_getglobal(m_lua, "game");
+        lua_pushstring(m_lua, "GetButton");
+        lua_pushcfunction(m_lua, lGetButton);
+        lua_settable(m_lua, -3);
 
 		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
 			m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
@@ -1360,6 +1375,8 @@ public:
 			}
 		}
 
+		for (auto& timer : m_autoplayButtonAnimationTimer)
+		    timer -= deltaTime;
 		const BeatmapSettings& beatmapSettings = m_beatmap->GetMapSettings();
 
 		// Update beatmap playback
@@ -1955,6 +1972,8 @@ public:
 		if (!skipEffect)
             m_track->AddHitEffect(buttonIdx, c);
 
+        m_autoplayButtonAnimationTimer[buttonIdx] = 0.05f;
+
 		if (st != nullptr && st->hasSample)
 		{
 			if (m_fxSamples[st->sampleIndex])
@@ -2067,8 +2086,9 @@ public:
 	}
 
 	// These functions control if FX button DSP's are muted or not
-	void OnObjectHold(Input::Button, ObjectState* object)
+	void OnObjectHold(Input::Button buttonCode, ObjectState* object)
 	{
+	    auto buttonIdx = (int)buttonCode;
 		if(object->type == ObjectType::Hold)
 		{
 			HoldObjectState* hold = (HoldObjectState*)object;
@@ -2076,6 +2096,7 @@ public:
 			{
                 m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
             }
+            m_autoplayButtonAnimationTimer[buttonIdx] = hold->duration / 1000.f;
 		}
 	}
 
