@@ -202,7 +202,7 @@ void Scoring::Tick(float deltaTime)
                     m_SetHoldObject(tick->object, i);
                 // This check is only relevant if delay fade hit effects are on
                 if (((autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime())
-                || HoldObjectAvailable(i, true))
+                || HoldObjectAvailable(i, true) && m_input->GetButton(static_cast<Input::Button>(i)))
                     OnHoldEnter.Call(static_cast<Input::Button>(i));
             }
         }
