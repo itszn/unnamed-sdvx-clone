@@ -28,6 +28,8 @@
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
 
+#define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
+
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
 {
@@ -1972,7 +1974,7 @@ public:
 		if (!skipEffect)
             m_track->AddHitEffect(buttonIdx, c);
 
-        m_autoplayButtonAnimationTimer[buttonIdx] = 0.05f;
+        m_autoplayButtonAnimationTimer[buttonIdx] = AUTOPLAY_BUTTON_HIT_DURATION;
 
 		if (st != nullptr && st->hasSample)
 		{
