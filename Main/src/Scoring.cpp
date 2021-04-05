@@ -206,6 +206,7 @@ void Scoring::Tick(float deltaTime)
                     OnHoldEnter.Call(static_cast<Input::Button>(i));
             }
         }
+        autoplayButtonAnimationTimer[i] -= deltaTime;
     }
 }
 
@@ -865,6 +866,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 		}
 		m_AddScore((uint32)stat->rating);
+        autoplayButtonAnimationTimer[index] = AUTOPLAY_BUTTON_HIT_DURATION;
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
@@ -898,6 +900,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 	// Count hits per category (miss,perfect,etc.)
 	categorizedHits[(uint32)stat->rating]++;
+
 }
 void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 {
@@ -1047,6 +1050,8 @@ void Scoring::m_SetHoldObject(ObjectState* obj, uint32 index)
 		m_heldObjects.Add(obj);
 		m_holdObjects[index] = obj;
 		OnObjectHold.Call((Input::Button)index, obj);
+		if (index < 6)
+            autoplayButtonAnimationTimer[index] = ((HoldObjectState*)obj)->duration / 1000.f;
 	}
 }
 

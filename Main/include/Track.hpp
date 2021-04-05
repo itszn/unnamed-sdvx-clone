@@ -38,11 +38,10 @@ struct ButtonHitEffect : TimedEffect
 	float delayFadeDuration;
 	bool held = false;
 	float hitEffectDuration;
-	inline static bool autoplay = false;
 	float alphaScale;
 
 private:
-	inline static float m_hispeed = 0;
+	inline static float m_hiSpeed = 0;
 };
 
 // Button hit rating effect

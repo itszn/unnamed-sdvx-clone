@@ -28,8 +28,6 @@
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
 
-#define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
-
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
 {
@@ -150,8 +148,6 @@ private:
 
 	// Combo gain animation
 	Timer m_comboAnimation;
-
-	inline static float m_autoplayButtonAnimationTimer[6] = { 0 };
 
 	Sample m_slamSample;
 	Sample m_clickSamples[2];
@@ -448,16 +444,6 @@ public:
 		return true;
 	}
 
-    static int lGetButton(lua_State *L /* int button */)
-    {
-        int button = luaL_checkinteger(L, 1);
-        if (ButtonHitEffect::autoplay)
-            lua_pushboolean(L, m_autoplayButtonAnimationTimer[button] > 0);
-        else
-            lua_pushboolean(L, g_input.GetButton((Input::Button)button));
-        return 1;
-    }
-
 	virtual bool AsyncFinalize() override
 	{
 		if (!loader.Finalize())
@@ -470,11 +456,6 @@ public:
 		m_lua = g_application->LoadScript("gameplay");
 		if (!m_lua)
 			return false;
-
-        lua_getglobal(m_lua, "game");
-        lua_pushstring(m_lua, "GetButton");
-        lua_pushcfunction(m_lua, lGetButton);
-        lua_settable(m_lua, -3);
 
 		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
 			m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
@@ -505,10 +486,9 @@ public:
         if (m_delayedHitEffects)
         {
             m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
-            if (m_scoring.autoplay || m_scoring.autoplayButtons)
+            if (Scoring::autoplay || Scoring::autoplayButtons)
                 m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
         }
-		ButtonHitEffect::autoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
 
 		#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
@@ -847,6 +827,7 @@ public:
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Tick(deltaTime);
 	}
+
 	virtual void Render(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
@@ -1335,7 +1316,7 @@ public:
 
 		if(g_application->GetAppCommandLine().Contains("-autobuttons"))
 		{
-			m_scoring.autoplayButtons = true;
+			Scoring::autoplayButtons = true;
 		}
 
 		return true;
@@ -1377,8 +1358,6 @@ public:
 			}
 		}
 
-		for (auto& timer : m_autoplayButtonAnimationTimer)
-		    timer -= deltaTime;
 		const BeatmapSettings& beatmapSettings = m_beatmap->GetMapSettings();
 
 		// Update beatmap playback
@@ -1974,8 +1953,6 @@ public:
 		if (!skipEffect)
             m_track->AddHitEffect(buttonIdx, c, false, st && st->type == ObjectType::Hold);
 
-        m_autoplayButtonAnimationTimer[buttonIdx] = AUTOPLAY_BUTTON_HIT_DURATION;
-
 		if (st != nullptr && st->hasSample)
 		{
 			if (m_fxSamples[st->sampleIndex])
@@ -2098,7 +2075,6 @@ public:
 			{
                 m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
             }
-            m_autoplayButtonAnimationTimer[buttonIdx] = hold->duration / 1000.f;
 		}
 	}
 
@@ -2766,8 +2742,8 @@ public:
 	}
 	virtual bool IsStorableScore() override
 	{
-		if (m_scoring.autoplay) return false;
-		if (m_scoring.autoplayButtons) return false;
+		if (Scoring::autoplay) return false;
+		if (Scoring::autoplayButtons) return false;
 		if (m_isPracticeSetup) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song

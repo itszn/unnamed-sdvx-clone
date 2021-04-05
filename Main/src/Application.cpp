@@ -6,17 +6,13 @@
 #include "SongSelect.hpp"
 #include "TitleScreen.hpp"
 #include <Audio/Audio.hpp>
-#include <Graphics/Window.hpp>
 #include <Graphics/ResourceManagers.hpp>
-#include "Shared/Jobs.hpp"
 #include <Shared/Profiling.hpp>
 #include "Scoring.hpp"
 #include "GameConfig.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
 #include "SkinConfig.hpp"
-#include "SkinHttp.hpp"
-#include "SkinIR.hpp"
 #include "ShadedMesh.hpp"
 #include "IR.hpp"
 
@@ -28,7 +24,6 @@
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
-#include <Windows.h>
 #ifdef CRASHDUMP
 #include "exception_handler.h"
 #include "client_info.h"
@@ -2030,6 +2025,16 @@ static int lLog(lua_State *L)
 	return 0;
 }
 
+static int lGetButton(lua_State *L /* int button */)
+{
+    int button = luaL_checkinteger(L, 1);
+    if ((Scoring::autoplay || Scoring::autoplayButtons) && button < 6)
+        lua_pushboolean(L, Scoring::autoplayButtonAnimationTimer[button] > 0);
+    else
+        lua_pushboolean(L, g_input.GetButton((Input::Button)button));
+    return 1;
+}
+
 static int lGetKnob(lua_State *L /* int knob */)
 {
 	int knob = luaL_checkinteger(L, 1);
@@ -2450,6 +2455,7 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("StopSample", lStopSample);
 		pushFuncToTable("IsSamplePlaying", lIsSamplePlaying);
 		pushFuncToTable("GetLaserColor", lGetLaserColor);
+		pushFuncToTable("GetButton", lGetButton);
 		pushFuncToTable("GetKnob", lGetKnob);
 		pushFuncToTable("UpdateAvailable", lGetUpdateAvailable);
 		pushFuncToTable("GetSkin", lGetSkin);

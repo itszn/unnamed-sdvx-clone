@@ -4,6 +4,8 @@
 #include "Input.hpp"
 #include "Game.hpp"
 
+#define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
+
 enum class TickFlags : uint8
 {
 	None = 0,
@@ -210,9 +212,10 @@ public:
 	Vector<HitStat*> hitStats;
 
 	// Autoplay mode
-	bool autoplay = false;
+	inline static bool autoplay = false;
 	// Autoplay but for buttons
-	bool autoplayButtons = false;
+	inline static bool autoplayButtons = false;
+    inline static float autoplayButtonAnimationTimer[6] = { 0 };
 
 	// Actual positions of the laser
 	float laserPositions[2];
