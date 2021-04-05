@@ -31,7 +31,7 @@ struct ButtonHitEffect : TimedEffect
 	void Tick(float deltaTime) override;
 	void Reset(int buttonCode, Color color, bool autoplayHold = false, bool hold = false);
 	float GetRate() const { return Math::Min(time, hitEffectDuration) / duration; }
-	static void SetHiSpeed(float hiSpeed);
+	inline static void SetHiSpeed(float hiSpeed) { m_hiSpeed = hiSpeed; };
 
 	uint32 buttonCode; // Only used for Draw
 	Color color;

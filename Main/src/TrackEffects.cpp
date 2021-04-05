@@ -36,11 +36,6 @@ void ButtonHitEffect::Tick(float deltaTime)
 	time = Math::Max(time - deltaTime, 0.f);
 }
 
-void ButtonHitEffect::SetHiSpeed(float hiSpeed)
-{
-    m_hiSpeed = hiSpeed;
-}
-
 void ButtonHitEffect::Draw(class RenderQueue& rq)
 {
 	float x;
