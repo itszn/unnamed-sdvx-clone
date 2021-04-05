@@ -60,7 +60,7 @@ bool Track::AsyncLoad()
 			{
 				bfx.delayFadeDuration = BT_DELAY_FADE_DURATION;
 				bfx.hitEffectDuration = BT_HIT_EFFECT_DURATION;
-				bfx.alphaScale = 0.6f; // Ranges from 0.6 to 0.86 depending on hispeed
+				bfx.alphaScale = 0.6f; // Ranges from 0.6 to 0.85 depending on hispeed
 			}
 			else
 			{
