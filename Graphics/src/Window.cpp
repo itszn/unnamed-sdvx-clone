@@ -374,61 +374,93 @@ namespace Graphics
 			return !m_closed;
 		}
 
-		void SwitchFullscreen(int w, int h, int fsw, int fsh, uint32 monitorID, bool windowedFullscreen)
+		void TurnOffFullscreen(uint32 monitorID, const Vector2i& size)
 		{
 			if (monitorID == (uint32)-1)
 			{
 				monitorID = SDL_GetWindowDisplayIndex(m_window);
 			}
 
-			if (m_fullscreen)
-			{
-				SDL_SetWindowFullscreen(m_window, 0);
-				SDL_RestoreWindow(m_window);
-				SDL_SetWindowSize(m_window, w, h);
-				SDL_SetWindowResizable(m_window, SDL_TRUE);
-				SDL_SetWindowBordered(m_window, SDL_TRUE);
-				SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
-				m_fullscreen = false;
-			}
-			else if (windowedFullscreen)
-			{
-				SDL_DisplayMode dm;
-				SDL_GetDesktopDisplayMode(monitorID, &dm);
-				SDL_Rect bounds;
-				SDL_GetDisplayBounds(monitorID, &bounds);
+			SDL_SetWindowFullscreen(m_window, 0);
+			SDL_RestoreWindow(m_window);
+			SDL_SetWindowSize(m_window, size.x, size.y);
+			SDL_SetWindowResizable(m_window, SDL_TRUE);
+			SDL_SetWindowBordered(m_window, SDL_TRUE);
+			SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
+			m_fullscreen = false;
+		}
 
-				SDL_RestoreWindow(m_window);
-				SDL_SetWindowSize(m_window, dm.w, dm.h);
-				SDL_SetWindowPosition(m_window, bounds.x, bounds.y);
-				SDL_SetWindowResizable(m_window, SDL_FALSE);
-				m_fullscreen = true;
+		void TurnOnWindowedFullscreen(uint32 monitorID)
+		{
+			if (monitorID == (uint32)-1)
+			{
+				monitorID = SDL_GetWindowDisplayIndex(m_window);
+			}
+
+			SDL_DisplayMode dm;
+			SDL_GetDesktopDisplayMode(monitorID, &dm);
+			SDL_Rect bounds;
+			SDL_GetDisplayBounds(monitorID, &bounds);
+
+			SDL_RestoreWindow(m_window);
+			SDL_SetWindowSize(m_window, dm.w, dm.h);
+			SDL_SetWindowPosition(m_window, bounds.x, bounds.y);
+			SDL_SetWindowResizable(m_window, SDL_FALSE);
+			m_fullscreen = true;
+		}
+
+		void TurnOnFullscreen(uint32 monitorID, const Vector2i& res)
+		{
+			if (monitorID == (uint32)-1)
+			{
+				monitorID = SDL_GetWindowDisplayIndex(m_window);
+			}
+
+			SDL_DisplayMode dm;
+			SDL_GetDesktopDisplayMode(monitorID, &dm);
+			if (res.x != -1)
+			{
+				dm.w = res.x;
+			}
+
+			if (res.y != -1)
+			{
+				dm.h = res.y;
+			}
+
+			// move to correct display
+			SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
+
+			SDL_SetWindowDisplayMode(m_window, &dm);
+			SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
+			m_fullscreen = true;
+		}
+
+		void SetFullscreen(uint32 monitorID, const Vector2i& windowSize, const Vector2i& fullscreenSize, bool fullscreen, bool windowedFullscreen)
+		{
+			if (monitorID == (uint32)-1)
+			{
+				monitorID = SDL_GetWindowDisplayIndex(m_window);
+			}
+
+			if (fullscreen)
+			{
+				if (windowedFullscreen)
+				{
+					TurnOnWindowedFullscreen(monitorID);
+				}
+				else
+				{
+					TurnOnFullscreen(monitorID, fullscreenSize);
+				}
 			}
 			else
 			{
-				SDL_DisplayMode dm;
-				SDL_GetDesktopDisplayMode(monitorID, &dm);
-				if (fsw != -1)
-				{
-					dm.w = fsw;
-				}
-				if (fsh != -1)
-				{
-					dm.h = fsh;
-				}
-
-				// move to correct display
-				SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
-
-				SDL_SetWindowDisplayMode(m_window, &dm);
-				SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
-				m_fullscreen = true;
+				TurnOffFullscreen(monitorID, windowSize);
 			}
 		}
-		bool IsFullscreen() const
-		{
-			return m_fullscreen;
-		}
+
+		inline bool IsFullscreen() const { return m_fullscreen; }
 
 		SDL_Window *m_window;
 
@@ -449,7 +481,10 @@ namespace Graphics
 		// Various window state
 		bool m_active = true;
 		bool m_closed = false;
+
 		bool m_fullscreen = false;
+		bool m_windowedFullscreen = false;
+
 		uint32 m_style;
 		Vector2i m_clntSize;
 		WString m_caption;
@@ -528,9 +563,9 @@ namespace Graphics
 	{
 		m_impl->SetWindowSize(size);
 	}
-	void Window::SwitchFullscreen(int w, int h, int fsw, int fsh, uint32 monitorID, bool windowedFullscreen)
+	void Window::SetFullscreen(uint32 monitorID, const Vector2i& windowSize, const Vector2i& fullscreenSize, bool fullscreen, bool windowedFullscreen)
 	{
-		m_impl->SwitchFullscreen(w, h, fsw, fsh, monitorID, windowedFullscreen);
+		m_impl->SetFullscreen(monitorID, windowSize, fullscreenSize, fullscreen, windowedFullscreen);
 	}
 	bool Window::IsFullscreen() const
 	{

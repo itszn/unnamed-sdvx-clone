@@ -697,7 +697,11 @@ protected:
 
 		SectionHeader("Render");
 
+		SetApply(ToggleSetting(GameConfigKeys::Fullscreen, "Fullscreen"));
 		SetApply(ToggleSetting(GameConfigKeys::WindowedFullscreen, "Use windowed fullscreen"));
+
+		ToggleSetting(GameConfigKeys::AdjustWindowPositionOnStartup, "Adjust window positions to be in-bound on startup");
+
 		SetApply(ToggleSetting(GameConfigKeys::ForcePortrait, "Force portrait (don't use if already in portrait)"));
 
 		SelectionSetting(GameConfigKeys::AntiAliasing, m_aaModes, "Anti-aliasing (requires restart):");

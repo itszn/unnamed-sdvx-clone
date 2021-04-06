@@ -115,6 +115,8 @@ private:
 	void m_Cleanup();
 	void m_OnKeyPressed(SDL_Scancode code);
 	void m_OnKeyReleased(SDL_Scancode code);
+	void m_SetFullscreen();
+	void m_AdjustWindowPosition();
 	void m_OnWindowResized(const Vector2i& newSize);
 	void m_OnFocusChanged(bool focused);
 	void m_unpackSkins();
