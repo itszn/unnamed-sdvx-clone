@@ -199,8 +199,8 @@ private:
 
 	inline void RenderKeyBindings()
 	{
-		const float DESIRED_BT_HEIGHT = m_lineHeight * 3;
-		const float DESIRED_BT_SPACING = m_lineHeight * 0.25F;
+		const float DESIRED_BT_HEIGHT = m_lineHeight * 3.0f;
+		const float DESIRED_BT_SPACING = m_lineHeight * 0.25f;
 
 		const float DESIRED_CONTROLLER_WIDTH = DESIRED_BT_HEIGHT*4 + DESIRED_BT_SPACING*3;
 

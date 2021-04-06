@@ -97,7 +97,7 @@ void SettingsPage::GameConfigTextData::SaveConfig(const String& value)
 void SettingsPage::LayoutRowStatic(int num_columns, int item_width, float height)
 {
 	nk_layout_row_static(m_nctx, height, item_width, num_columns);
-	m_comboBoxSize.x = item_width;
+	m_comboBoxSize.x = static_cast<float>(item_width);
 }
 
 void SettingsPage::LayoutRowDynamic(int num_columns, float height)
@@ -156,7 +156,9 @@ int SettingsPage::SelectionInput(int val, const Vector<const char*>& options, co
 	assert(options.size() > 0);
 
 	Label(label);
+	
 	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
+	UpdateLayoutMaxY((m_lineHeight + 5) * static_cast<int>(options.size()));
 
 	return val;
 }
@@ -298,6 +300,8 @@ Color SettingsPage::ColorInput(const Color& val, const std::string_view& label, 
 
 	nk_colorf nkCol = { val.x, val.y, val.z, val.w };
 
+	UpdateLayoutMaxY(280);
+
 	if (nk_combo_begin_color(m_nctx, nk_rgb_cf(nkCol), nk_vec2(200, 400))) {
 		enum color_mode { COL_RGB, COL_HSV };
 
@@ -339,10 +343,25 @@ void SettingsPage::Render(const struct nk_rect& rect)
 	m_pageInnerWidth -= 12.0f;
 
 	m_comboBoxSize.x = m_pageInnerWidth;
+	m_layout_max_y = 0.0f;
 
 	if (nk_begin(m_nctx, m_name.data(), rect, 0))
 	{
 		RenderContents();
+
+		UpdateLayoutMaxY();
+
+		// Adjust bottom padding so that every control is visible.
+		const float bottom_padding_surplus = m_layout_max_y - m_nctx->current->layout->at_y;
+		const float overflow = m_layout_max_y - m_nctx->current->bounds.h + m_lineHeight;
+		const float minimal_padding = m_lineHeight * 0.5f;
+		const float bottom_padding = bottom_padding_surplus + Math::Clamp(overflow + minimal_padding, 0.0f, minimal_padding);
+
+		if (bottom_padding >= m_lineHeight)
+		{
+			Separator(bottom_padding);
+		}
+
 		nk_end(m_nctx);
 	}
 }
