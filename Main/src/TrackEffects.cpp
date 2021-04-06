@@ -40,12 +40,13 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 {
 	float x;
 	float w;
-	float hiSpeedAlphaOffset;
+	float hiSpeedAlphaOffset = 0;
 	float yMult = 2.0f;
 	if (buttonCode < 4)
 	{
 		// Scale hit effect alpha between hispeed range of 100 to 600
-		hiSpeedAlphaOffset = delayFadeDuration ? 0.25 * (Math::Clamp(m_hiSpeed - 100, 0.f, 500.f) / 500) : 0;
+		if (delayFadeDuration)
+            hiSpeedAlphaOffset = 0.25 * (Math::Clamp(m_hiSpeed - 100, 0.f, 500.f) / 500);
 
 		w = Track::buttonWidth;
 		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;
@@ -56,7 +57,6 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	}
 	else
 	{
-		hiSpeedAlphaOffset = 0;
 		yMult = 1.0f;
 		w = Track::buttonWidth * 2.0f;
 		x = -Track::buttonWidth + w * (buttonCode - 4);
