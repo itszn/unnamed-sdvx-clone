@@ -114,7 +114,7 @@ void Application::ApplySettings()
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
 
-	m_SetFullscreen();
+	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 	m_SaveConfig();
 }
@@ -839,7 +839,7 @@ bool Application::m_Init()
 	m_allowMapConversion = false;
 	bool debugMute = false;
 	bool startFullscreen = false;
-	uint32 fullscreenMonitor = -1;
+	int32 fullscreenMonitor = -1;
 
 	// Fullscreen settings from config
 	if (g_gameConfig.GetBool(GameConfigKeys::Fullscreen))
@@ -891,11 +891,6 @@ bool Application::m_Init()
 
 	g_gameWindow = new Graphics::Window(g_resolution, samplecount);
 
-	if (g_gameConfig.GetBool(GameConfigKeys::AdjustWindowPositionOnStartup))
-	{
-		m_AdjustWindowPosition();
-	}
-
 	// Versioning up config uses some SDL util functions, so it must be called after SDL is initialized.
 	// SDL is initialized in the constructor of Graphics::Window.
 	// The awkward placement of this call may be avoided by initializing SDL earlier, but to avoid unwanted side-effects I'll put this here for now.
@@ -906,6 +901,7 @@ bool Application::m_Init()
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
 	g_gameWindow->OnKeyReleased.Add(this, &Application::m_OnKeyReleased);
 	g_gameWindow->OnResized.Add(this, &Application::m_OnWindowResized);
+	g_gameWindow->OnMoved.Add(this, &Application::m_OnWindowMoved);
 	g_gameWindow->OnFocusChanged.Add(this, &Application::m_OnFocusChanged);
 
 	// Initialize Input
@@ -924,19 +920,12 @@ bool Application::m_Init()
 	}
 
 	g_skinConfig = new SkinConfig(m_skin);
+
 	// Window cursor
 	Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + m_skin + "/textures/cursor.png"));
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
 
-	if (startFullscreen)
-	{
-		g_gameWindow->SetFullscreen(
-			fullscreenMonitor,
-			{ g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight) },
-			{ g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight) },
-			true, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen)
-		);
-	}
+	m_UpdateWindowPosAndShape(fullscreenMonitor, startFullscreen, g_gameConfig.GetBool(GameConfigKeys::AdjustWindowPositionOnStartup));
 
 	// Set render state variables
 	m_renderStateBase.aspectRatio = g_aspectRatio;
@@ -1881,7 +1870,7 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
 			g_gameConfig.Set(GameConfigKeys::Fullscreen, !g_gameWindow->IsFullscreen());
-			m_SetFullscreen();
+			m_UpdateWindowPosAndShape();
 
 			return;
 		}
@@ -1955,65 +1944,34 @@ void Application::m_OnWindowResized(const Vector2i &newSize)
 	}
 }
 
-void Application::m_SetFullscreen()
+void Application::m_OnWindowMoved(const Vector2i& newPos)
 {
-	g_gameWindow->SetFullscreen(
-		static_cast<uint32>(-1),
-		{ g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight) },
-		{ g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight) },
+	if (g_gameWindow->IsActive() && !g_gameWindow->IsFullscreen())
+	{
+		g_gameConfig.Set(GameConfigKeys::ScreenX, newPos.x);
+		g_gameConfig.Set(GameConfigKeys::ScreenY, newPos.y);
+	}
+}
+
+void Application::m_UpdateWindowPosAndShape()
+{
+	m_UpdateWindowPosAndShape(
+		g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex),
 		g_gameConfig.GetBool(GameConfigKeys::Fullscreen),
-		g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen)
+		false
 	);
 }
 
-/// Adjust window / monitor related settings so that the window is visible
-void Application::m_AdjustWindowPosition()
+void Application::m_UpdateWindowPosAndShape(int32 monitorId, bool fullscreen, bool ensureInBound)
 {
-	SDL_DisplayMode dm;
-	dm.w = 0;
-	dm.h = 0;
+	const Vector2i windowPos(g_gameConfig.GetInt(GameConfigKeys::ScreenX), g_gameConfig.GetInt(GameConfigKeys::ScreenY));
+	const Vector2i windowSize(g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
+	const Vector2i fullscreenSize(g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight));
 
-	// Check that the monitor exists
-	int32 monitorId = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
-	SDL_GetDesktopDisplayMode(monitorId, &dm);
-
-	if (dm.w <= 0 || dm.h <= 0)
-	{
-		int32 newMonitorId = SDL_GetWindowDisplayIndex((SDL_Window*)g_gameWindow->Handle());
-		SDL_GetDesktopDisplayMode(newMonitorId, &dm);
-
-		Logf("Monitor switched from %d to %d (window size: %d x %d).", Logger::Severity::Info, monitorId, newMonitorId, dm.w, dm.h);
-
-		monitorId = newMonitorId;
-
-		g_gameConfig.Set(GameConfigKeys::FullscreenMonitorIndex, monitorId);
-		g_gameConfig.Set(GameConfigKeys::FullScreenWidth, dm.w);
-		g_gameConfig.Set(GameConfigKeys::FullScreenHeight, dm.h);
-	}
-
-	if (dm.w > 0 && dm.h > 0)
-	{
-		int screenWidth = g_gameConfig.GetInt(GameConfigKeys::ScreenWidth);
-		int screenHeight = g_gameConfig.GetInt(GameConfigKeys::ScreenHeight);
-
-		if (screenWidth > dm.w)
-		{
-			Logf("Width adjusted from %d to %d.", Logger::Severity::Info, screenWidth, dm.w);
-			screenWidth = dm.w;
-			g_gameConfig.Set(GameConfigKeys::ScreenWidth, screenWidth);
-		}
-
-		if (screenHeight > dm.h)
-		{
-			Logf("Height adjusted from %d to %d.", Logger::Severity::Info, screenHeight, dm.h);
-			screenHeight = dm.h;
-			g_gameConfig.Set(GameConfigKeys::ScreenHeight, screenHeight);
-		}
-
-		// Reassign the global variables
-		g_resolution = { screenWidth, screenHeight };
-		g_aspectRatio = (float)g_resolution.x / (float)g_resolution.y;
-	}
+	g_gameWindow->SetPosAndShape(Window::PosAndShape {
+		fullscreen, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen),
+		windowPos, windowSize, monitorId, fullscreenSize
+	}, ensureInBound);
 }
 
 void Application::m_OnFocusChanged(bool focused)
