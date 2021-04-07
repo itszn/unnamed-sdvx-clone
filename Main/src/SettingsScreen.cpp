@@ -108,20 +108,12 @@ protected:
 
 		RenderKeyBindings();
 
-		SectionHeader("Offsets");
-
-		LayoutRowDynamic(2);
-		IntSetting(GameConfigKeys::GlobalOffset, "Global offset", -1000, 1000);
-		IntSetting(GameConfigKeys::InputOffset, "Input offset", -1000, 1000);
-
-		LayoutRowDynamic(1);
-		if (nk_button_label(m_nctx, "Calibrate Offsets")) {
-			CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
-			g_transition->TransitionTo(cscreen);
-			return;
-		}
-
 		SectionHeader("Input Device");
+
+		if (m_gamePads.size() > 0)
+		{
+			SelectionSetting(GameConfigKeys::Controller_DeviceID, m_gamePads, "Controller to use:");
+		}
 
 		LayoutRowDynamic(2, m_lineHeight * 6);
 
@@ -151,12 +143,6 @@ protected:
 
 			EnumSetting<Enum_LaserAxisOption>(GameConfigKeys::InvertLaserInput, "Invert directions:");
 			nk_group_end(m_nctx);
-		}
-
-		if (m_gamePads.size() > 0)
-		{
-			LayoutRowDynamic(1);
-			SelectionSetting(GameConfigKeys::Controller_DeviceID, m_gamePads, "Selected controller:");
 		}
 
 		SectionHeader("Laser Sensitivity");
@@ -440,6 +426,19 @@ protected:
 protected:
 	void RenderContents() override
 	{
+		SectionHeader("Offsets");
+
+		LayoutRowDynamic(2);
+		IntSetting(GameConfigKeys::GlobalOffset, "Global offset", -1000, 1000);
+		IntSetting(GameConfigKeys::InputOffset, "Input offset", -1000, 1000);
+
+		LayoutRowDynamic(1);
+		if (nk_button_label(m_nctx, "Calibrate Offsets")) {
+			CalibrationScreen* cscreen = new CalibrationScreen(m_nctx);
+			g_transition->TransitionTo(cscreen);
+			return;
+		}
+
 		SectionHeader("Speed Mod");
 		EnumSetting<Enum_SpeedMods>(GameConfigKeys::SpeedMod, "Speed mod type:");
 		FloatSetting(GameConfigKeys::HiSpeed, "HiSpeed", 0.25f, 20, 0.05f);
@@ -524,10 +523,10 @@ private:
 	}
 };
 
-class SettingsPage_Display : public SettingsPage
+class SettingsPage_Visual : public SettingsPage
 {
 public:
-	SettingsPage_Display(nk_context* nctx) : SettingsPage(nctx, "Display") {}
+	SettingsPage_Visual(nk_context* nctx) : SettingsPage(nctx, "Visual") {}
 
 protected:
 	void Load() override
@@ -1057,7 +1056,7 @@ protected:
 	{
 		pages.emplace_back(std::make_unique<SettingsPage_Input>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Game>(m_nctx));
-		pages.emplace_back(std::make_unique<SettingsPage_Display>(m_nctx));
+		pages.emplace_back(std::make_unique<SettingsPage_Visual>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_System>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Online>(m_nctx));
 		pages.emplace_back(std::make_unique<SettingsPage_Skin>(m_nctx));
@@ -1129,7 +1128,13 @@ public:
 			if (!m_gamepad)
 			{
 				Logf("Failed to open gamepad: %d", Logger::Severity::Error, m_gamepadIndex);
-				g_gameWindow->ShowMessageBox("Warning", "Could not open selected gamepad.\nEnsure the controller is connected and in the correct mode (if applicable) and selected in the previous menu.", 1);
+				g_gameWindow->ShowMessageBox("Warning",
+					"The controller configured to use is unavailable.\n"
+					"Ensure the controller is connected, or (if applicable) set the controller in the correct mode.          \n"
+					, 1);
+				g_gameWindow->ShowMessageBox("Warning",
+					"Otherwise, select another controller to use in the settings page.          \n"
+					, 1);
 				return false;
 			}
 			if (m_knobs)
@@ -1193,7 +1198,7 @@ public:
 
 		if (m_isGamepad)
 		{
-			prompt = "Press the button";
+			prompt = "Press the controller button";
 			m_gamepad = g_gameWindow->OpenGamepad(m_gamepadIndex);
 			if (m_knobs)
 			{
@@ -1254,6 +1259,16 @@ public:
 			{
 				g_application->RemoveTickable(this);
 			}
+		}
+		
+		if (m_isGamepad && code == SDL_Scancode::SDL_SCANCODE_ESCAPE)
+		{
+			if (m_gamepad)
+			{
+				m_gamepad->OnButtonPressed.RemoveAll(this);
+			}
+
+			g_application->RemoveTickable(this);
 		}
 	}
 

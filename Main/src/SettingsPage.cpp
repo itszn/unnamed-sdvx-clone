@@ -155,10 +155,26 @@ int SettingsPage::SelectionInput(int val, const Vector<const char*>& options, co
 {
 	assert(options.size() > 0);
 
-	Label(label);
-	
-	nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
-	UpdateLayoutMaxY((m_lineHeight + 5) * static_cast<int>(options.size()));
+	if (0 <= val && val < static_cast<int>(options.size()))
+	{
+		Label(label);
+
+		nk_combobox(m_nctx, const_cast<const char**>(options.data()), static_cast<int>(options.size()), &val, m_lineHeight, m_comboBoxSize);
+		UpdateLayoutMaxY((m_lineHeight + 5) * static_cast<int>(options.size()));
+	}
+	else
+	{
+		std::stringstream str;
+		str << std::string(label) << " [currently set to an unknown value " << val << "]";
+
+		Label(str.str().data());
+		str.clear();
+
+		if (nk_button_label(m_nctx, "Press this button to reset."))
+		{
+			val = 0;
+		}
+	}
 
 	return val;
 }
@@ -167,7 +183,7 @@ bool SettingsPage::SelectionSetting(GameConfigKeys key, const Vector<const char*
 {
 	assert(options.size() > 0);
 
-	const int value = g_gameConfig.GetInt(key) % options.size();
+	const int value = g_gameConfig.GetInt(key);
 	const int newValue = SelectionInput(value, options, label);
 
 	if (newValue != value)
