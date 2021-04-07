@@ -1968,7 +1968,7 @@ void Application::m_UpdateWindowPosAndShape(int32 monitorId, bool fullscreen, bo
 	const Vector2i windowSize(g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
 	const Vector2i fullscreenSize(g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight));
 
-	g_gameWindow->SetPosAndShape(Window::PosAndShape {
+	g_gameWindow->SetPosAndShape(Graphics::Window::PosAndShape {
 		fullscreen, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen),
 		windowPos, windowSize, monitorId, fullscreenSize
 	}, ensureInBound);
