@@ -3,7 +3,23 @@
 #include "KeyMap.hpp"
 #include "Image.hpp"
 #include "Gamepad_Impl.hpp"
+
+#include <Shared/Rect.hpp>
 #include <Shared/Profiling.hpp>
+
+static void GetDisplayBounds(Vector<Shared::Recti>& bounds)
+{
+	const int displayNum = SDL_GetNumVideoDisplays();
+	if (displayNum <= 0) return;
+
+	for (int monitorId = 0; monitorId < displayNum; ++monitorId)
+	{
+		SDL_Rect rect;
+		if (SDL_GetDisplayBounds(monitorId, &rect) < 0) break;
+
+		bounds.emplace_back(Shared::Recti{ {rect.x, rect.y}, {rect.w, rect.h} });
+	}
+}
 
 namespace Graphics
 {
@@ -103,6 +119,12 @@ namespace Graphics
 		{
 			SDL_SetWindowPosition(m_window, pos.x, pos.y);
 		}
+
+		void SetWindowPosToCenter(int32 monitorId)
+		{
+			SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorId), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorId));
+		}
+
 		void ShowMessageBox(String title, String message, int severity)
 		{
 			uint32 flags = 0;
@@ -119,6 +141,7 @@ namespace Graphics
 			}
 			SDL_ShowSimpleMessageBox(flags, title.c_str(), message.c_str(), m_window);
 		}
+
 		bool ShowYesNoMessage(String title, String message)
 		{
 			const SDL_MessageBoxButtonData buttons[] =
@@ -143,6 +166,7 @@ namespace Graphics
 			}
 			return buttonid == 1;
 		}
+
 		Vector2i GetWindowPos() const
 		{
 			Vector2i res;
@@ -154,6 +178,7 @@ namespace Graphics
 		{
 			SDL_SetWindowSize(m_window, size.x, size.y);
 		}
+
 		Vector2i GetWindowSize() const
 		{
 			Vector2i res;
@@ -351,6 +376,11 @@ namespace Graphics
 						{
 							outer.OnFocusChanged.Call(false);
 						}
+						else if (evt.window.event == SDL_WindowEventID::SDL_WINDOWEVENT_MOVED)
+						{
+							Vector2i newPos(evt.window.data1, evt.window.data2);
+							outer.OnMoved.Call(newPos);
+						}
 					}
 				}
 				else if (evt.type == SDL_EventType::SDL_TEXTINPUT)
@@ -374,50 +404,52 @@ namespace Graphics
 			return !m_closed;
 		}
 
-		void TurnOffFullscreen(uint32 monitorID, const Vector2i& size)
+		void SetWindowed(const Vector2i& pos, const Vector2i& size)
 		{
-			if (monitorID == (uint32)-1)
-			{
-				monitorID = SDL_GetWindowDisplayIndex(m_window);
-			}
-
 			SDL_SetWindowFullscreen(m_window, 0);
 			SDL_RestoreWindow(m_window);
-			SDL_SetWindowSize(m_window, size.x, size.y);
+
+			SetWindowSize(size);
+
 			SDL_SetWindowResizable(m_window, SDL_TRUE);
 			SDL_SetWindowBordered(m_window, SDL_TRUE);
-			SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
+
+			SetWindowPos(pos);
+
 			m_fullscreen = false;
 		}
 
-		void TurnOnWindowedFullscreen(uint32 monitorID)
+		void SetWindowedFullscreen(int32 monitorId)
 		{
-			if (monitorID == (uint32)-1)
+			if (monitorId == -1)
 			{
-				monitorID = SDL_GetWindowDisplayIndex(m_window);
+				monitorId = SDL_GetWindowDisplayIndex(m_window);
 			}
 
 			SDL_DisplayMode dm;
-			SDL_GetDesktopDisplayMode(monitorID, &dm);
+			SDL_GetDesktopDisplayMode(monitorId, &dm);
+
 			SDL_Rect bounds;
-			SDL_GetDisplayBounds(monitorID, &bounds);
+			SDL_GetDisplayBounds(monitorId, &bounds);
 
 			SDL_RestoreWindow(m_window);
 			SDL_SetWindowSize(m_window, dm.w, dm.h);
 			SDL_SetWindowPosition(m_window, bounds.x, bounds.y);
 			SDL_SetWindowResizable(m_window, SDL_FALSE);
+
 			m_fullscreen = true;
 		}
 
-		void TurnOnFullscreen(uint32 monitorID, const Vector2i& res)
+		void SetFullscreen(int32 monitorId, const Vector2i& res)
 		{
-			if (monitorID == (uint32)-1)
+			if (monitorId == -1)
 			{
-				monitorID = SDL_GetWindowDisplayIndex(m_window);
+				monitorId = SDL_GetWindowDisplayIndex(m_window);
 			}
 
 			SDL_DisplayMode dm;
-			SDL_GetDesktopDisplayMode(monitorID, &dm);
+			SDL_GetDesktopDisplayMode(monitorId, &dm);
+
 			if (res.x != -1)
 			{
 				dm.w = res.x;
@@ -429,34 +461,121 @@ namespace Graphics
 			}
 
 			// move to correct display
-			SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID), SDL_WINDOWPOS_CENTERED_DISPLAY(monitorID));
+			SetWindowPosToCenter(monitorId);
 
 			SDL_SetWindowDisplayMode(m_window, &dm);
 			SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
+
 			m_fullscreen = true;
 		}
 
-		void SetFullscreen(uint32 monitorID, const Vector2i& windowSize, const Vector2i& fullscreenSize, bool fullscreen, bool windowedFullscreen)
+		void SetPosAndShape(const Window::PosAndShape& posAndShape, bool ensureInBound)
 		{
-			if (monitorID == (uint32)-1)
+			int32 monitorId = posAndShape.monitorId;
+			if (monitorId == -1)
 			{
-				monitorID = SDL_GetWindowDisplayIndex(m_window);
+				monitorId = SDL_GetWindowDisplayIndex(m_window);
 			}
 
-			if (fullscreen)
+			if (ensureInBound)
 			{
-				if (windowedFullscreen)
+				// Adjust the monitor to use, if the monitor does not exist.
+				SDL_DisplayMode dm;
+				if (SDL_GetDesktopDisplayMode(monitorId, &dm) < 0)
 				{
-					TurnOnWindowedFullscreen(monitorID);
-				}
-				else
-				{
-					TurnOnFullscreen(monitorID, fullscreenSize);
+					Logf("Monitor %d is not available; using 0 instead", Logger::Severity::Warning, monitorId);
+					monitorId = 0;
 				}
 			}
-			else
+
+			switch (posAndShape.mode)
 			{
-				TurnOffFullscreen(monitorID, windowSize);
+			case Window::PosAndShape::Mode::Windowed:
+			{
+				Vector2i windowPos = posAndShape.windowPos;
+				Vector2i windowSize = posAndShape.windowSize;
+
+				SetWindowed(windowPos, windowSize);
+
+				// Adjust window position and size, if the window can't be fit into the display region.
+				if (ensureInBound)
+				{
+					int borderTop = 0, borderLeft = 0, borderBottom = 0, borderRight = 0;
+					SDL_GetWindowBordersSize(m_window, &borderTop, &borderLeft, &borderBottom, &borderRight);
+
+					Shared::Recti windowRect(windowPos - Vector2i{ borderLeft, borderTop }, windowSize + Vector2i{ borderLeft+borderRight, borderTop+borderBottom });
+
+					Vector<Shared::Recti> bounds;
+					GetDisplayBounds(bounds);
+
+					if (bounds.empty())
+					{
+						break;
+					}
+
+					Logf("Adjusting window size for %u windows...", Logger::Severity::Info, bounds.size());
+
+					if (monitorId >= static_cast<int>(bounds.size()))
+					{
+						monitorId = 0;
+					}
+
+					bool foundContained = bounds[monitorId].Contains(windowRect);
+					if (foundContained)
+					{
+						break;
+					}
+
+					bool foundLargeEnough = bounds[monitorId].NotSmallerThan(windowRect.size);
+					if (!foundLargeEnough)
+					{
+
+						for (int i = 0; i < static_cast<int>(bounds.size()); ++i)
+						{
+							if (bounds[i].Contains(windowRect))
+							{
+								foundContained = true;
+								monitorId = i;
+								break;
+							}
+
+							if (bounds[i].NotSmallerThan(windowRect.size))
+							{
+								foundLargeEnough = true;
+								monitorId = i;
+								break;
+							}
+						}
+					}
+
+					if (foundContained)
+					{
+						break;
+					}
+
+					// Optimally, this should be set to the largest rectangle inside `bounds intersect windowRect`.
+					Shared::Recti adjustedRect = bounds[monitorId];
+					if (foundLargeEnough)
+					{
+						adjustedRect.size = windowRect.size;
+					}
+
+					adjustedRect.pos = bounds[monitorId].pos + (bounds[monitorId].size - adjustedRect.size) / 2;
+					
+					windowPos = adjustedRect.pos + Vector2i{ borderLeft, borderTop };
+					windowSize = adjustedRect.size - Vector2i{ borderLeft+borderRight, borderTop+borderBottom };
+
+					SetWindowSize(windowSize);
+					SetWindowPosToCenter(monitorId);
+				}
+			}
+				break;
+			case Window::PosAndShape::Mode::WindowedFullscreen:
+				SetWindowedFullscreen(monitorId);
+				break;
+			case Window::PosAndShape::Mode::Fullscreen:
+				SetFullscreen(monitorId, posAndShape.fullscreenSize);
+				break;
 			}
 		}
 
@@ -542,31 +661,27 @@ namespace Graphics
 	{
 		m_impl->SetWindowStyle(style);
 	}
+
 	Vector2i Window::GetWindowPos() const
 	{
 		return m_impl->GetWindowPos();
-	}
-	void Window::SetWindowPos(const Vector2i &pos)
-	{
-		m_impl->SetWindowPos(pos);
 	}
 
 	Vector2i Window::GetWindowSize() const
 	{
 		return m_impl->GetWindowSize();
 	}
+
 	void Window::SetVSync(int8 setting)
 	{
 		m_impl->SetVSync(setting);
 	}
-	void Window::SetWindowSize(const Vector2i &size)
+
+	void Window::SetPosAndShape(const PosAndShape& posAndShape, bool ensureInBound)
 	{
-		m_impl->SetWindowSize(size);
+		m_impl->SetPosAndShape(posAndShape, ensureInBound);
 	}
-	void Window::SetFullscreen(uint32 monitorID, const Vector2i& windowSize, const Vector2i& fullscreenSize, bool fullscreen, bool windowedFullscreen)
-	{
-		m_impl->SetFullscreen(monitorID, windowSize, fullscreenSize, fullscreen, windowedFullscreen);
-	}
+
 	bool Window::IsFullscreen() const
 	{
 		return m_impl->IsFullscreen();
