@@ -9,7 +9,7 @@ protected:
 	/// Called when the page is opened; may be called multiple times.
 	virtual void Load() = 0;
 
-	/// Called when the page is closed; may be called multiple times.
+	/// Called when the page is closed; may be called multiple times, but only after `Load` is called.
 	virtual void Save() = 0;
 
 	virtual void RenderContents() = 0;
@@ -32,7 +32,7 @@ protected:
 		virtual void SaveConfig(const String& value) {}
 
 	private:
-
+		bool m_loaded = false;
 		std::array<char, BUFFER_SIZE> m_buffer;
 		int m_len = 0;
 	};
@@ -105,20 +105,15 @@ protected:
 public:
 	void Open()
 	{
-		if (!m_opened)
-		{
-			Load();
-			m_opened = true;
-		}
+		Load();
+		m_opened = true;
 	}
 
 	void Close()
 	{
-		if (m_opened)
-		{
-			Save();
-			m_opened = false;
-		}
+		if (!m_opened) return;
+
+		Save();
 	}
 
 	void Render(const struct nk_rect& rect);
