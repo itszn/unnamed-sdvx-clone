@@ -901,8 +901,8 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 	// Count hits per category (miss,perfect,etc.)
 	categorizedHits[(uint32)stat->rating]++;
-
 }
+
 void Scoring::m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta)
 {
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
