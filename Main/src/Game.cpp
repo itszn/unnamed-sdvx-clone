@@ -484,7 +484,7 @@ public:
         if (m_delayedHitEffects)
         {
             m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
-            if (m_scoring.autoplay || m_scoring.autoplayButtons)
+            if (m_scoring.autoplayInfo.IsAutoplayButtons())
                 m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
         }
 
@@ -536,7 +536,7 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		m_track->hitEffectAutoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
+		m_track->hitEffectAutoplay = m_scoring.autoplayInfo.IsAutoplayButtons();
 
 		if (GetPlaybackOptions().random)
 		{
@@ -1315,7 +1315,7 @@ public:
 
 		if(g_application->GetAppCommandLine().Contains("-autobuttons"))
 		{
-			m_scoring.autoplayButtons = true;
+			m_scoring.autoplayInfo.autoplayButtons = true;
 		}
 
 		return true;
@@ -1433,7 +1433,7 @@ public:
 		{
 			EndCurrentRun();
 		}
-		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
+		else if (!m_scoring.autoplayInfo.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
 			Gauge* gauge = m_scoring.GetTopGauge();
 
@@ -1463,7 +1463,7 @@ public:
 				ChartIndex* chart = m_db->GetRandomChart();
 				game = Game::Create(chart, std::move(m_playOptions));
 			}
-			game->GetScoring().autoplay = true;
+			game->GetScoring().autoplayInfo.autoplay = true;
 			game->SetDemoMode(true);
 			game->SetSongDB(m_db);
 
@@ -1659,7 +1659,7 @@ public:
 				ChartIndex* diff = m_db->GetRandomChart();
 				game = Game::Create(diff, m_playOptions.playbackOptions);
 			}
-			game->GetScoring().autoplay = true;
+			game->GetScoring().autoplayInfo.autoplay = true;
 			game->SetDemoMode(true);
 			game->SetSongDB(m_db);
 
@@ -1834,7 +1834,7 @@ public:
 			{
 				textPos.y += RenderText("Practice setup", textPos, Color::Magenta).y;
 			}
-			else if(m_scoring.autoplay)
+			else if(m_scoring.autoplayInfo.autoplay)
 			{
 				textPos.y += RenderText("Autoplay enabled", textPos, Color::Magenta).y;
 			}
@@ -2463,7 +2463,7 @@ public:
 
 		m_isPracticeSetupNavEnabled = g_gameConfig.GetBool(GameConfigKeys::PracticeSetupNavEnabled);
 
-		m_scoring.autoplay = true;
+		m_scoring.autoplayInfo.autoplay = true;
 
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
@@ -2582,7 +2582,7 @@ public:
 		assert(m_isPracticeMode);
 
 		m_isPracticeSetup = true;
-		m_scoring.autoplay = true;
+		m_scoring.autoplayInfo.autoplay = true;
 
 		m_playOptions.range = { 0, 0 };
 		m_playOnDialogClose = true;
@@ -2618,7 +2618,7 @@ public:
 		assert(m_isPracticeMode && m_isPracticeSetup);
 
 		m_isPracticeSetup = false;
-		m_scoring.autoplay = false;
+		m_scoring.autoplayInfo.autoplay = false;
 
 		m_paused = false;
 		m_triggerPause = false;
@@ -2741,8 +2741,7 @@ public:
 	}
 	virtual bool IsStorableScore() override
 	{
-		if (m_scoring.autoplay) return false;
-		if (m_scoring.autoplayButtons) return false;
+		if (m_scoring.autoplayInfo.IsAutoplayButtons()) return false;
 		if (m_isPracticeSetup) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song
@@ -2816,7 +2815,7 @@ public:
 
 		//set autoplay here as it's not set during the creation of the gameplay
 		lua_pushstring(L, "autoplay");
-		lua_pushboolean(L, m_scoring.autoplay);
+		lua_pushboolean(L, m_scoring.autoplayInfo.autoplay);
 		lua_settable(L, -3);
 
 		if (m_isPracticeMode)
@@ -3094,7 +3093,7 @@ public:
 		}
 
 		lua_pushstring(L, "autoplay");
-		lua_pushboolean(L, m_scoring.autoplay);
+		lua_pushboolean(L, m_scoring.autoplayInfo.autoplay);
 		lua_settable(L, -3);
 
 		if (m_isPracticeMode)

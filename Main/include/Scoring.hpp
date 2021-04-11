@@ -44,6 +44,17 @@ public:
 	ObjectState* object = nullptr;
 };
 
+struct AutoplayInfo
+{
+    // Autoplay mode
+    bool autoplay = false;
+    // Autoplay but for buttons
+    bool autoplayButtons = false;
+    float buttonAnimationTimer[6] = { 0 };
+
+    bool IsAutoplayButtons() const { return autoplay || autoplayButtons; };
+};
+
 // Various information about all the objects in a map
 struct MapTotals
 {
@@ -196,7 +207,6 @@ public:
 	// 1 = Late
 	uint32 timedHits[2] = { 0 };
 
-
 	// Current combo
 	uint32 currentComboCounter;
 
@@ -210,11 +220,7 @@ public:
 	// these are used for debugging
 	Vector<HitStat*> hitStats;
 
-	// Autoplay mode
-	bool autoplay = false;
-	// Autoplay but for buttons
-	bool autoplayButtons = false;
-    float autoplayButtonAnimationTimer[6] = { 0 };
+	struct AutoplayInfo autoplayInfo;
 
 	// Actual positions of the laser
 	float laserPositions[2];

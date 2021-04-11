@@ -136,7 +136,7 @@ int32 Application::Run()
 				auto &cmdLine = g_application->GetAppCommandLine();
 				if (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
 				{
-					game->GetScoring().autoplay = true;
+					game->GetScoring().autoplayInfo.autoplay = true;
 				}
 				mapLaunched = true;
 			}
@@ -2027,9 +2027,9 @@ static int lLog(lua_State *L)
 static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
-    if (g_application->scoring
-    && (g_application->scoring->autoplay || g_application->scoring->autoplayButtons) && button < 6)
-        lua_pushboolean(L, g_application->scoring->autoplayButtonAnimationTimer[button] > 0);
+    if (g_application->autoplayInfo
+        && (g_application->autoplayInfo->IsAutoplayButtons()) && button < 6)
+        lua_pushboolean(L, g_application->autoplayInfo->buttonAnimationTimer[button] > 0);
     else
         lua_pushboolean(L, g_input.GetButton((Input::Button)button));
     return 1;

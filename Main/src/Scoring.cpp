@@ -7,12 +7,12 @@
 
 Scoring::Scoring()
 {
-    g_application->scoring = this;
+    g_application->autoplayInfo = &autoplayInfo;
 }
 
 Scoring::~Scoring()
 {
-    g_application->scoring = nullptr;
+    g_application->autoplayInfo = nullptr;
 	m_CleanupInput();
 	m_CleanupHitStats();
 	m_CleanupTicks();
@@ -199,7 +199,7 @@ void Scoring::Tick(float deltaTime)
             auto tick = m_ticks[i].front();
             if (tick->HasFlag(TickFlags::Hold))
             {
-                bool autoplayHold = (autoplay || autoplayButtons) && tick->object->time <= m_playback->GetLastTime();
+                bool autoplayHold = autoplayInfo.IsAutoplayButtons() && tick->object->time <= m_playback->GetLastTime();
                 if (autoplayHold)
                     m_SetHoldObject(tick->object, i);
                 // This check is only relevant if delay fade hit effects are on
@@ -207,7 +207,7 @@ void Scoring::Tick(float deltaTime)
                     OnHoldEnter.Call(static_cast<Input::Button>(i));
             }
         }
-        autoplayButtonAnimationTimer[i] -= deltaTime;
+        autoplayInfo.buttonAnimationTimer[i] -= deltaTime;
     }
 }
 
@@ -601,7 +601,7 @@ void Scoring::m_CalculateLaserTicks(LaserObjectState* laserRoot, Vector<ScoreTic
 }
 void Scoring::m_OnFXBegin(HoldObjectState* obj)
 {
-	if (autoplay || autoplayButtons)
+	if (autoplayInfo.IsAutoplayButtons())
 		m_SetHoldObject((ObjectState*)obj, obj->index);
 }
 
@@ -707,7 +707,7 @@ void Scoring::m_UpdateTicks()
 			if (delta >= 0)
 			{
 				// Buttons are handled entirely by m_ConsumeTick, this is here to make sure auto doesn't get misses
-				if (tick->HasFlag(TickFlags::Button) && (autoplay || autoplayButtons))
+				if (tick->HasFlag(TickFlags::Button) && autoplayInfo.IsAutoplayButtons())
 				{
 					m_TickHit(tick, buttonCode);
 					processed = true;
@@ -718,7 +718,7 @@ void Scoring::m_UpdateTicks()
 					assert(buttonCode < 6);
 					if (!tick->HasFlag(TickFlags::Ignore))
 					{
-						if (m_IsBeingHold(tick) || autoplay || autoplayButtons)
+						if (m_IsBeingHold(tick) || autoplayInfo.IsAutoplayButtons())
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -749,7 +749,7 @@ void Scoring::m_UpdateTicks()
 						// Check if slam hit
 						float dirSign = Math::Sign(laserObject->GetDirection());
 						float inputSign = Math::Sign(m_input->GetInputLaserDir(buttonCode - 6));
-						if (autoplay || (dirSign == inputSign && delta <= hitWindow.slam))
+						if (autoplayInfo.autoplay || (dirSign == inputSign && delta <= hitWindow.slam))
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -764,7 +764,7 @@ void Scoring::m_UpdateTicks()
 						// Check laser input
 						uint8 index = laserObject->index;
 						float laserDelta = fabs(laserPositions[index] - laserTargetPositions[index]);
-						if (autoplay || laserDelta <= m_laserDistanceLeniency)
+						if (autoplayInfo.autoplay || laserDelta <= m_laserDistanceLeniency)
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
@@ -867,7 +867,7 @@ void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 
 		}
 		m_AddScore((uint32)stat->rating);
-        autoplayButtonAnimationTimer[index] = AUTOPLAY_BUTTON_HIT_DURATION;
+        autoplayInfo.buttonAnimationTimer[index] = AUTOPLAY_BUTTON_HIT_DURATION;
 	}
 	else if (tick->HasFlag(TickFlags::Hold))
 	{
@@ -1052,7 +1052,7 @@ void Scoring::m_SetHoldObject(ObjectState* obj, uint32 index)
 		m_holdObjects[index] = obj;
 		OnObjectHold.Call((Input::Button)index, obj);
 		if (index < 6)
-            autoplayButtonAnimationTimer[index] = ((HoldObjectState*)obj)->duration / 1000.f;
+            autoplayInfo.buttonAnimationTimer[index] = ((HoldObjectState*)obj)->duration / 1000.f;
 	}
 }
 
@@ -1200,7 +1200,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			}
 		}
 
-		m_laserInput[i] = autoplay ? 0.0f : m_input->GetInputLaserDir(i);
+		m_laserInput[i] = autoplayInfo.autoplay ? 0.0f : m_input->GetInputLaserDir(i);
 
 		if (currentSegment)
 		{
@@ -1253,7 +1253,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 
 		if (currentlySlamNextSegmentStraight[i])
 			m_autoLaserTime[i] = 0;
-		if (autoplay || m_autoLaserTime[i] > 0)
+		if (autoplayInfo.autoplay || m_autoLaserTime[i] > 0)
 			laserPositions[i] = laserTargetPositions[i];
 
 		// Clamp cursor between 0 and 1
@@ -1271,7 +1271,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 void Scoring::m_OnButtonPressed(Input::Button buttonCode)
 {
 	// Ignore buttons on autoplay
-	if (autoplay)
+	if (autoplayInfo.IsAutoplayButtons())
 		return;
 
 	if (buttonCode < Input::Button::BT_S)
