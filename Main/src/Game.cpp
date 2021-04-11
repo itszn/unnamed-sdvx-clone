@@ -208,13 +208,11 @@ public:
 
 	~Game_Impl()
 	{
-		g_input.OnButtonReleased.Remove(m_track, &Track::OnButtonReleased);
-		if(m_track)
-			delete m_track;
-		if(m_background)
-			delete m_background;
-		if (m_foreground)
-			delete m_foreground;
+		if (m_track)
+            g_input.OnButtonReleased.Remove(m_track, &Track::OnButtonReleased);
+        delete m_track;
+		delete m_background;
+		delete m_foreground;
 		if (m_lua)
 		{
 			g_application->DisposeLua(m_lua);
@@ -222,8 +220,7 @@ public:
 			if (m_multiplayer != nullptr)
 				m_multiplayer->GetTCP().ClearState(m_lua);
 		}
-		if (m_fxSamples)
-			delete[] m_fxSamples;
+		delete[] m_fxSamples;
 		
 		// Save hispeed
 		if (m_saveSpeed)
