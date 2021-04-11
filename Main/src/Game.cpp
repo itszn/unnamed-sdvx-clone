@@ -484,7 +484,7 @@ public:
         if (m_delayedHitEffects)
         {
             m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
-            if (Scoring::autoplay || Scoring::autoplayButtons)
+            if (m_scoring.autoplay || m_scoring.autoplayButtons)
                 m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
         }
 
@@ -535,6 +535,8 @@ public:
 		m_scoring.SetHitWindow(GetHitWindow());
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
+
+		m_track->hitEffectAutoplay = m_scoring.autoplay || m_scoring.autoplayButtons;
 
 		if (GetPlaybackOptions().random)
 		{
@@ -833,12 +835,12 @@ public:
 		if (m_speedMod == SpeedMods::CMod)
 		{
 			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
-			ButtonHitEffect::SetHiSpeed(m_playback.cModSpeed);
+            m_track->scrollSpeed = m_playback.cModSpeed;
 		}
 		else
 		{
 			m_track->SetViewRange(8.0f / m_hispeed);
-			ButtonHitEffect::SetHiSpeed(m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM());
+            m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
 		}
 
 		// Get render state from the camera
@@ -1313,7 +1315,7 @@ public:
 
 		if(g_application->GetAppCommandLine().Contains("-autobuttons"))
 		{
-			Scoring::autoplayButtons = true;
+			m_scoring.autoplayButtons = true;
 		}
 
 		return true;
@@ -1948,7 +1950,7 @@ public:
 		bool skipEffect = m_scoring.HoldObjectAvailable((uint32) button, false) && !m_delayedHitEffects;
 
 		if (!skipEffect)
-            m_track->AddHitEffect(buttonIdx, c, false, st && st->type == ObjectType::Hold);
+            m_track->AddHitEffect(buttonIdx, c, st && st->type == ObjectType::Hold);
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -2739,8 +2741,8 @@ public:
 	}
 	virtual bool IsStorableScore() override
 	{
-		if (Scoring::autoplay) return false;
-		if (Scoring::autoplayButtons) return false;
+		if (m_scoring.autoplay) return false;
+		if (m_scoring.autoplayButtons) return false;
 		if (m_isPracticeSetup) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song

@@ -176,7 +176,6 @@ public:
 
 	// Object timing window
 	HitWindow hitWindow = HitWindow::NORMAL;
-	static const float idleLaserSpeed;
 
 	// Map total infos
 	MapTotals mapTotals;
@@ -212,10 +211,10 @@ public:
 	Vector<HitStat*> hitStats;
 
 	// Autoplay mode
-	inline static bool autoplay = false;
+	bool autoplay = false;
 	// Autoplay but for buttons
-	inline static bool autoplayButtons = false;
-    inline static float autoplayButtonAnimationTimer[6] = { 0 };
+	bool autoplayButtons = false;
+    float autoplayButtonAnimationTimer[6] = { 0 };
 
 	// Actual positions of the laser
 	float laserPositions[2];

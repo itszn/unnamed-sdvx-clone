@@ -29,9 +29,8 @@ struct ButtonHitEffect : TimedEffect
 	ButtonHitEffect();
 	void Draw(class RenderQueue& rq) override;
 	void Tick(float deltaTime) override;
-	void Reset(int buttonCode, Color color, bool autoplayHold = false, bool hold = false);
+	void Reset(int buttonCode, Color color, bool hold);
 	float GetRate() const { return Math::Min(time, hitEffectDuration) / duration; }
-	inline static void SetHiSpeed(float hiSpeed) { m_hiSpeed = hiSpeed; };
 
 	uint32 buttonCode; // Only used for Draw
 	Color color;
@@ -39,9 +38,6 @@ struct ButtonHitEffect : TimedEffect
 	bool held = false;
 	float hitEffectDuration;
 	float alphaScale;
-
-private:
-	inline static float m_hiSpeed = 0;
 };
 
 // Button hit rating effect
@@ -120,7 +116,7 @@ public:
 
 	// Adds a sprite effect to the track
 	void AddEffect(struct TimedEffect* effect);
-	void AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold = false, bool hold = false);
+	void AddHitEffect(uint32 buttonCode, Color color, bool hold = false);
 	void ClearEffects();
 
 	void SetViewRange(float newRange);
@@ -207,6 +203,9 @@ public:
 	// Track Origin position
 	Transform trackOrigin;
 
+    bool hitEffectAutoplay;
+    float scrollSpeed;
+
 private:
 	// Laser track generators
 	class LaserTrackBuilder* m_laserTrackBuilder[2] = { 0 };
@@ -238,5 +237,4 @@ private:
 	float m_trackHide = 0.0f;
 	float m_trackHideSpeed = 0.0f;
 	float m_btOverFxScale = 0.8f;
-
 };

@@ -732,10 +732,9 @@ void Track::AddEffect(TimedEffect* effect)
 	effect->track = this;
 }
 
-void Track::AddHitEffect(uint32 buttonCode, Color color, bool autoplayHold, bool hold)
+void Track::AddHitEffect(uint32 buttonCode, Color color, bool hold)
 {
-	assert(buttonCode < 6);
-	m_buttonHitEffects[buttonCode].Reset(buttonCode, color, autoplayHold, hold);
+	m_buttonHitEffects[buttonCode].Reset(buttonCode, color, hold);
 }
 
 void Track::ClearEffects()
@@ -818,8 +817,7 @@ void Track::OnHoldEnter(Input::Button buttonCode)
     const auto buttonIndex = (uint32)buttonCode;
     if (buttonIndex >= 6)
         return;
-    m_buttonHitEffects[buttonIndex].Reset(buttonIndex, hitColors[(size_t)ScoreHitRating::Perfect],
-                                          Scoring::autoplay || Scoring::autoplayButtons, true);
+    m_buttonHitEffects[buttonIndex].Reset(buttonIndex, hitColors[(size_t)ScoreHitRating::Perfect], true);
 }
 
 void Track::OnButtonReleased(Input::Button buttonCode)

@@ -8,7 +8,6 @@
 #include <Audio/Audio.hpp>
 #include <Graphics/ResourceManagers.hpp>
 #include <Shared/Profiling.hpp>
-#include "Scoring.hpp"
 #include "GameConfig.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
@@ -2028,8 +2027,9 @@ static int lLog(lua_State *L)
 static int lGetButton(lua_State *L /* int button */)
 {
     int button = luaL_checkinteger(L, 1);
-    if ((Scoring::autoplay || Scoring::autoplayButtons) && button < 6)
-        lua_pushboolean(L, Scoring::autoplayButtonAnimationTimer[button] > 0);
+    if (g_application->scoring
+    && (g_application->scoring->autoplay || g_application->scoring->autoplayButtons) && button < 6)
+        lua_pushboolean(L, g_application->scoring->autoplayButtonAnimationTimer[button] > 0);
     else
         lua_pushboolean(L, g_input.GetButton((Input::Button)button));
     return 1;
@@ -2041,6 +2041,7 @@ static int lGetKnob(lua_State *L /* int knob */)
 	lua_pushnumber(L, g_input.GetAbsoluteLaser(knob));
 	return 1;
 }
+
 static int lGetUpdateAvailable(lua_State *L)
 {
 	Vector<String> info = g_application->GetUpdateAvailable();

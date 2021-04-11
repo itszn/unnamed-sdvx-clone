@@ -20,13 +20,13 @@ ButtonHitEffect::ButtonHitEffect() : TimedEffect(0)
 {
 }
 
-void ButtonHitEffect::Reset(int buttonCode, Color color, bool autoplayHold, bool hold)
+void ButtonHitEffect::Reset(int buttonCode, Color color, bool hold)
 {
 	assert(buttonCode < 6);
 	this->color = color;
 	duration = hitEffectDuration;
 	time = hitEffectDuration + (hold ? 0 : delayFadeDuration);
-	held = !(buttonCode >= 4 || ((Scoring::autoplay || Scoring::autoplayButtons) && !autoplayHold));
+	held = buttonCode < 4 && ((track->hitEffectAutoplay && hold) || !track->hitEffectAutoplay);
 }
 
 void ButtonHitEffect::Tick(float deltaTime)
@@ -45,8 +45,8 @@ void ButtonHitEffect::Draw(class RenderQueue& rq)
 	if (buttonCode < 4)
 	{
 		// Scale hit effect alpha between hispeed range of 100 to 600
-		if (delayFadeDuration)
-            hiSpeedAlphaOffset = 0.25 * (Math::Clamp(m_hiSpeed - 100, 0.f, 500.f) / 500);
+		if (delayFadeDuration > 0)
+            hiSpeedAlphaOffset = 0.25f * (Math::Clamp(track->scrollSpeed - 100, 0.f, 500.f) / 500);
 
 		w = Track::buttonWidth;
 		x = (-Track::buttonWidth * 1.5f) + w * buttonCode;

@@ -1,17 +1,18 @@
 #include "stdafx.h"
 #include "Scoring.hpp"
-#include <Beatmap/BeatmapPlayback.hpp>
 #include <math.h>
+#include <Application.hpp>
 #include "GameConfig.hpp"
 #include "Gauge.hpp"
 
-const float Scoring::idleLaserSpeed = 1.0f;
-
 Scoring::Scoring()
 {
+    g_application->scoring = this;
 }
+
 Scoring::~Scoring()
 {
+    g_application->scoring = nullptr;
 	m_CleanupInput();
 	m_CleanupHitStats();
 	m_CleanupTicks();
