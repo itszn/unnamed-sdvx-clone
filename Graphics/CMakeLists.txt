@@ -58,3 +58,8 @@ if(UNIX)
 endif(UNIX)
 
 target_link_libraries(Graphics cc-common)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(Graphics PRIVATE /MP)
+endif(MSVC)

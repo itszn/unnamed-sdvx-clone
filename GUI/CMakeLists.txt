@@ -37,3 +37,8 @@ target_link_libraries(GUI Graphics)
 target_link_libraries(GUI lua)
 
 target_link_libraries(GUI cc-common)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(GUI PRIVATE /MP)
+endif(MSVC)

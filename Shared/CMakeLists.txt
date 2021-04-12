@@ -53,3 +53,8 @@ target_link_libraries(Shared ${LibArchive_LIBRARIES})
 target_include_directories(Shared SYSTEM PRIVATE ${LibArchive_INCLUDE_DIRS})
 
 target_link_libraries(Shared cc-common)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(Shared PRIVATE /MP)
+endif(MSVC)

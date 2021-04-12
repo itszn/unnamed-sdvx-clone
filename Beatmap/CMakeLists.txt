@@ -42,3 +42,8 @@ target_link_libraries(Beatmap sqlite3)
 target_link_libraries(Beatmap nlohmann_json)
 
 target_link_libraries(Beatmap cc-common)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(Beatmap PRIVATE /MP)
+endif(MSVC)

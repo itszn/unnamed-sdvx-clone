@@ -101,3 +101,15 @@ add_library(GLEW
 # GLEW is included statically and also doesn't need GLU(Which doesn't even exist on linux)
 target_compile_definitions(GLEW PUBLIC -DGLEW_NO_GLU -DGLEW_STATIC)
 target_include_directories(GLEW PUBLIC glew/include)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(cpr PRIVATE /MP)
+    target_compile_options(discord-rpc PRIVATE /MP)
+    target_compile_options(GLEW PRIVATE /MP)
+    target_compile_options(lua PRIVATE /MP)
+    target_compile_options(minimp3 PRIVATE /MP)
+    target_compile_options(nanovg PRIVATE /MP)
+    target_compile_options(soundtouch PRIVATE /MP)
+    target_compile_options(sqlite3 PRIVATE /MP)
+endif(MSVC)
