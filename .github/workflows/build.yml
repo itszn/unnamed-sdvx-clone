@@ -61,7 +61,7 @@ jobs:
             - name: cmake
               run: cmake -DCMAKE_BUILD_TYPE=Release .
             - name: make
-              run: make
+              run: make -j
             - name: Prepare for bundling AppImage
               run: |
                 sudo apt-get install appstream
@@ -91,7 +91,7 @@ jobs:
             - name: cmake
               run: cmake . -DLibArchive_LIBRARY=/usr/local/opt/libarchive/lib/libarchive.dylib -DLibArchive_INCLUDE_DIR=/usr/local/opt/libarchive/include -DCMAKE_BUILD_TYPE=Release
             - name: make
-              run: make
+              run: make -j
             - name: Upload artifact
               uses: actions/upload-artifact@master
               with:

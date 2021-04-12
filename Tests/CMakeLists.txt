@@ -22,7 +22,7 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${TESTS_SRC}" ${PCH_SRC})
 
 add_library(Tests ${TESTS_SRC} ${PCH_FILES})
-target_compile_features(Tests PUBLIC cxx_std_14)
+target_compile_features(Tests PUBLIC cxx_std_17)
 # Public include paths for library
 target_include_directories(Tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Tests PRIVATE

@@ -9,7 +9,7 @@ source_group("Sources" FILES ${SRC})
 set(MAIN_SRC ${SRC})
 
 add_executable(Tests.Shared ${MAIN_SRC})
-target_compile_features(Tests.Shared PUBLIC cxx_std_14)
+target_compile_features(Tests.Shared PUBLIC cxx_std_17)
 target_include_directories(Tests.Shared PRIVATE
     ${SRCROOT}
 )
