@@ -24,7 +24,7 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${BEATMAP_SRC}" ${PCH_SRC})
 
 add_library(Beatmap ${BEATMAP_SRC} ${PCH_FILES})
-target_compile_features(Beatmap PUBLIC cxx_std_14)
+target_compile_features(Beatmap PUBLIC cxx_std_17)
 target_include_directories(Beatmap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Beatmap PRIVATE
     ${INCROOT}

@@ -22,7 +22,7 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${GRAPHICS_SRC}" ${PCH_SRC})
 
 add_library(Graphics ${GRAPHICS_SRC} ${PCH_FILES})
-target_compile_features(Graphics PUBLIC cxx_std_14)
+target_compile_features(Graphics PUBLIC cxx_std_17)
 target_include_directories(Graphics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Graphics PRIVATE
     ${INCROOT}
