@@ -89,7 +89,7 @@ jobs:
             - name: brew update
               run: brew update
             - name: Install packages
-              run: brew install cmake freetype libvorbis sdl2 libpng jpeg libarchive
+              run: brew install freetype libvorbis sdl2 libpng jpeg libarchive
             - name: cmake
               run: cmake . -DLibArchive_LIBRARY=/usr/local/opt/libarchive/lib/libarchive.dylib -DLibArchive_INCLUDE_DIR=/usr/local/opt/libarchive/include -DCMAKE_BUILD_TYPE=Release
             - name: make
