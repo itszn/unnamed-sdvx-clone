@@ -136,5 +136,4 @@ if(MSVC)
     set_target_properties(Tests.Shared PROPERTIES FOLDER "Tests")
     set_target_properties(Tests.Game PROPERTIES FOLDER "Tests")
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 endif(MSVC)
