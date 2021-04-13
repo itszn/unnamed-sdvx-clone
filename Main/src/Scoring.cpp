@@ -1116,6 +1116,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 {
 	MapTime mapTime = m_playback->GetLastTime() + m_inputOffset;
 	bool currentlySlamNextSegmentStraight[2] = { false };
+
 	// Check for new laser segments in laser queue
 	for (auto it = m_laserSegmentQueue.begin(); it != m_laserSegmentQueue.end();)
 	{
@@ -1181,6 +1182,7 @@ void Scoring::m_UpdateLasers(float deltaTime)
 		}
 
 		m_laserInput[i] = autoplay ? 0.0f : m_input->GetInputLaserDir(i);
+        float inputDir = Math::Sign(m_laserInput[i]);
 
 		if (currentSegment)
 		{
@@ -1188,7 +1190,6 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			float positionDelta = laserTargetPositions[i] - laserPositions[i];
 			float laserDir = currentSegment->GetDirection();
 			float input = m_laserInput[i];
-			float inputDir = Math::Sign(input);
 
 			if (inputDir != 0)
 			{
@@ -1224,8 +1225,14 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			timeSinceLaserUsed[i] += deltaTime;
 
 			// Always snap laser to start sections
-			if (m_GetLaserObjectWithinTwoBeats(i))
-				m_autoLaserTime[i] = m_autoLaserDuration;
+			auto incomingLaser = m_GetLaserObjectWithinTwoBeats(i);
+			if (incomingLaser)
+			{
+				laserPositions[i] = incomingLaser->points[0];
+				m_autoLaserTime[i] = inputDir == incomingLaser->GetDirection() || inputDir == 0
+									 ? m_autoLaserDuration
+									 : 0;
+			}
 		}
 		
 		if (currentlySlamNextSegmentStraight[i])
