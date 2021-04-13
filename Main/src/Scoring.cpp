@@ -1227,12 +1227,12 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			// Always snap laser to start sections
 			auto incomingLaser = m_GetLaserObjectWithinTwoBeats(i);
 			if (incomingLaser)
-            {
+			{
 				laserPositions[i] = incomingLaser->points[0];
 				m_autoLaserTime[i] = inputDir == incomingLaser->GetDirection() || inputDir == 0
 									 ? m_autoLaserDuration
 									 : 0;
-            }
+			}
 		}
 		
 		if (currentlySlamNextSegmentStraight[i])
