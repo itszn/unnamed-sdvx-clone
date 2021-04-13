@@ -60,3 +60,8 @@ target_link_libraries(Audio ${OGG_LIBRARIES})
 target_link_libraries(Audio ${Vorbis_LIBRARIES})
 
 target_link_libraries(Audio cc-common)
+
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(Audio PRIVATE /MP)
+endif(MSVC)

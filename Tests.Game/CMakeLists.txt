@@ -18,7 +18,7 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${TESTS_GAME_SRC}" ${PCH_SRC})
 
 add_executable(Tests.Game ${TESTS_GAME_SRC} ${PCH_FILES})
-target_compile_features(Tests.Game PUBLIC cxx_std_14)
+target_compile_features(Tests.Game PUBLIC cxx_std_17)
 set_output_postfixes(Tests.Game)
 target_include_directories(Tests.Game PRIVATE
     ${SRCROOT}
