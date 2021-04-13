@@ -1228,10 +1228,10 @@ void Scoring::m_UpdateLasers(float deltaTime)
 			auto incomingLaser = m_GetLaserObjectWithinTwoBeats(i);
 			if (incomingLaser)
             {
-			    laserPositions[i] = incomingLaser->points[0];
-                m_autoLaserTime[i] = inputDir == incomingLaser->GetDirection() || inputDir == 0
-                                     ? m_autoLaserDuration
-                                     : 0;
+				laserPositions[i] = incomingLaser->points[0];
+				m_autoLaserTime[i] = inputDir == incomingLaser->GetDirection() || inputDir == 0
+									 ? m_autoLaserDuration
+									 : 0;
             }
 		}
 		
