@@ -939,7 +939,6 @@ void Scoring::m_UpdateGauges(ScoreHitRating rating, TickFlags flags)
 		return;
 	}
 
-
 	bool isLong = (flags & TickFlags::Hold) != TickFlags::None
 	|| ((flags & TickFlags::Laser) != TickFlags::None
 	&& (flags & TickFlags::Slam) == TickFlags::None);
@@ -1227,11 +1226,8 @@ void Scoring::m_UpdateLasers(float deltaTime)
 				}
 
 				positionDelta = laserTargetPositions[i] - laserPositions[i];
-				if (inputDir == laserDir || laserDir == 0)
-				{
-					if (fabsf(positionDelta) <= m_laserDistanceLeniency)
-						m_autoLaserTime[i] = m_autoLaserDuration;
-				}
+				if ((inputDir == laserDir || laserDir == 0) && fabsf(positionDelta) <= m_laserDistanceLeniency)
+                    m_autoLaserTime[i] = m_autoLaserDuration;
 				else
 					m_autoLaserTime[i] -= deltaTime;
 			}
