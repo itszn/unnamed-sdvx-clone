@@ -460,7 +460,7 @@ end
 -- -------------------------------------------------------------------------- --
 -- GetConsoleCenteringOffset:                                                 --
 -- Utility function which returns the magnitude of an offset to center the    --
---  console on the screen based on its position and rotation.                              --
+--  console on the screen based on its position and rotation.                 --
 function GetConsoleCenteringOffset()
     return resx / 2 - gameplay.critLine.x
 end
