@@ -1086,9 +1086,6 @@ bool Scoring::m_IsBeingHeld(const ScoreTick* tick) const
 	// (Unless `tick` is the end of a long note; see below)
 	if (m_input && m_input->GetButton((Input::Button) index))
 	{
-		auto buttonHitTime = m_buttonHitTime[index] + m_inputOffset;
-		if (tick->HasFlag(TickFlags::Start) && obj->time - buttonHitTime <= hitWindow.hold) return true;
-
 		// The object currently being held must be the given hold object.
 		const ObjectState* heldObject = m_holdObjects[index];
 		if (!heldObject || heldObject->type != ObjectType::Hold) return false;
