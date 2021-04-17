@@ -479,14 +479,13 @@ public:
 
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
-		
-		g_input.OnButtonReleased.Add(m_track, &Track::OnButtonReleased);
-        if (m_delayedHitEffects)
-        {
-            m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
-            if (m_scoring.autoplayInfo.IsAutoplayButtons())
-                m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
-        }
+
+		if (m_delayedHitEffects)
+		{
+			m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
+			if (m_scoring.autoplayInfo.IsAutoplayButtons())
+				m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
+		}
 
 		#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
