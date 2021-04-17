@@ -316,7 +316,7 @@ private:
 	MapTime m_buttonGuardTime[6] = { 0, 0, 0, 0, 0, 0 };
 
 	// Offet to use for calculating judge (ms)
-	uint32 m_inputOffset = 0;
+	int32 m_inputOffset = 0;
 	int32 m_bounceGuard = 0;
 	float m_drainMultiplier = 1.0f;
 	MapTime m_endTime = 180000;
@@ -347,4 +347,3 @@ private:
 	// shall be put on the score screen.
 	Vector<class Gauge*> m_gaugeStack;
 };
-
