@@ -162,7 +162,6 @@ void Scoring::Reset(const MapTimeRange& range)
 	m_heldObjects.clear();
 	
 	memset(m_holdObjects, 0, sizeof(m_holdObjects));
-	memset(m_prevHoldHit, 0, sizeof(m_prevHoldHit));
 	memset(m_currentLaserSegments, 0, sizeof(m_currentLaserSegments));
 
 	memset(m_buttonHitTime, 0, sizeof(m_buttonHitTime));
@@ -718,22 +717,16 @@ void Scoring::m_UpdateTicks()
 					assert(buttonCode < 6);
 					if (!tick->HasFlag(TickFlags::Ignore))
 					{
-						if (m_IsBeingHold(tick) || autoplayInfo.IsAutoplayButtons())
+						if (m_IsBeingHeld(tick) || autoplayInfo.IsAutoplayButtons())
 						{
 							m_TickHit(tick, buttonCode);
 							HitStat* stat = new HitStat(tick->object);
 							stat->time = currentTime;
 							stat->rating = ScoreHitRating::Perfect;
 							hitStats.Add(stat);
-
-							m_prevHoldHit[buttonCode] = true;
 						}
 						else
-						{
 							m_TickMiss(tick, buttonCode, 0);
-
-							m_prevHoldHit[buttonCode] = false;
-						}
 					}
 					else if (tick->HasFlag(TickFlags::End))
 					    // Simulate releasing a held button on autoplay
@@ -1080,7 +1073,7 @@ void Scoring::m_ReleaseHoldObject(uint32 index)
 	m_ReleaseHoldObject(m_holdObjects[index]);
 }
 
-bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
+bool Scoring::m_IsBeingHeld(const ScoreTick* tick) const
 {
 	// NOTE: all these are just heuristics. If there's a better heuristic, change this.
 	// See issue #355 for more detail.
@@ -1093,6 +1086,9 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 	// (Unless `tick` is the end of a long note; see below)
 	if (m_input && m_input->GetButton((Input::Button) index))
 	{
+		auto buttonHitTime = m_buttonHitTime[index] + m_inputOffset;
+		if (tick->HasFlag(TickFlags::Start) && obj->time - buttonHitTime <= hitWindow.hold) return true;
+
 		// The object currently being held must be the given hold object.
 		const ObjectState* heldObject = m_holdObjects[index];
 		if (!heldObject || heldObject->type != ObjectType::Hold) return false;
@@ -1106,17 +1102,12 @@ bool Scoring::m_IsBeingHold(const ScoreTick* tick) const
 		return false;
 	}
 
-	// If this is the end of an hold but the button is not being held,
-	// it will still be counted as a hit hit as long as following two conditions are met.
-
-	// a) The previous tick for this hold object was hit.
-	if (tick->HasFlag(TickFlags::Start) || !tick->HasFlag(TickFlags::End)) return false;
-	if (!m_prevHoldHit[index]) return false;
-
-	// b) The last button release happened inside the 'near window' for the end of this hold object.
-	if (obj->time + obj->duration - m_buttonReleaseTime[index] - static_cast<MapTime>(m_inputOffset) > hitWindow.hold) return false;
-
-	return true;
+	// If this is the end of a hold but the button is not being held,
+	// it will still be counted as a hit as long as the following condition is met:
+	// The last button release happened inside the crit window of the last tick.
+	if (!tick->HasFlag(TickFlags::End)) return false;
+	auto buttonReleaseTime = m_buttonReleaseTime[index] + m_inputOffset;
+	return tick->time - buttonReleaseTime > hitWindow.perfect;
 }
 
 bool Scoring::m_IsRoot(const LaserObjectState* laser) const
@@ -1425,15 +1416,15 @@ bool Scoring::HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine)
     if (m_ticks[index].empty())
         return false;
 
-    auto currentTime = m_playback->GetLastTime();
+    auto currentTime = m_playback->GetLastTime() + m_inputOffset;
     auto tick = m_ticks[index].front();
     auto obj = (HoldObjectState*)tick->object;
     // When a hold passes the crit line and we're eligible to hit the starting tick,
     // change the idle hit effect to the crit hit effect
-    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
+    bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHeld(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
     // This allows us to have a crit hit effect anytime a hold hasn't fully scrolled past,
     // including when the final scorable tick has been processed
-    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] > obj->time;
+    bool holdObjectHittable = obj->time + obj->duration > currentTime && m_buttonHitTime[index] + m_inputOffset > obj->time;
 
     return withinHoldStartWindow || holdObjectHittable;
 }
