@@ -462,7 +462,7 @@ end
 -- Utility function which returns the magnitude of an offset to center the    --
 --  console on the screen based on its position and rotation.                 --
 function GetConsoleCenteringOffset()
-    return resx / 2 - gameplay.critLine.x
+    return (resx / 2 - gameplay.critLine.x) * (5 / 6)
 end
 -- -------------------------------------------------------------------------- --
 -- render_crit_base:                                                          --
@@ -607,7 +607,7 @@ function render_crit_overlay(deltaTime)
     if portrait then
         -- We're going to make temporary modifications to the transform
         gfx.Save()
-        gfx.Translate(xOffset * 0.85, 0)
+        gfx.Translate(xOffset, 0)
 
         local bfw, bfh = gfx.ImageSize(bottomFill)
 
