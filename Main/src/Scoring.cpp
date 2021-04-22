@@ -817,14 +817,14 @@ ObjectState* Scoring::m_ConsumeTick(uint32 buttonCode)
 		ObjectState* hitObject = tick->object;
 		if (tick->HasFlag(TickFlags::Laser))
 		{
-			// Ignore laser and hold ticks
+			// Ignore laser ticks
 			return nullptr;
 		}
 		if (tick->HasFlag(TickFlags::Hold))
 		{
 			HoldObjectState* hos = (HoldObjectState*)hitObject;
 			hos = hos->GetRoot();
-			if (hos->time - hitWindow.hold <= currentTime)
+			if (hos->time - currentTime <= hitWindow.hold)
 				m_SetHoldObject(hitObject, buttonCode);
 			return nullptr;
 		}
@@ -849,6 +849,7 @@ void Scoring::m_OnTickProcessed(ScoreTick* tick, uint32 index)
 		OnScoreChanged.Call();
 	}
 }
+
 void Scoring::m_TickHit(ScoreTick* tick, uint32 index, MapTime delta /*= 0*/)
 {
 	HitStat* stat = m_AddOrUpdateHitStat(tick->object);
