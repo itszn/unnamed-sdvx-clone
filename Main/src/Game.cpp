@@ -479,14 +479,13 @@ public:
 
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
-		
-		g_input.OnButtonReleased.Add(m_track, &Track::OnButtonReleased);
-        if (m_delayedHitEffects)
-        {
-            m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
-            if (m_scoring.autoplayInfo.IsAutoplayButtons())
-                m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
-        }
+
+		if (m_delayedHitEffects)
+		{
+			m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
+			if (m_scoring.autoplayInfo.IsAutoplayButtons())
+				m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
+		}
 
 		#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
@@ -2584,6 +2583,9 @@ public:
 		m_isPracticeSetup = true;
 		m_scoring.autoplayInfo.autoplay = true;
 
+		m_track->hitEffectAutoplay = true;
+		m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
+
 		m_playOptions.range = { 0, 0 };
 		m_playOnDialogClose = true;
 
@@ -2619,6 +2621,9 @@ public:
 
 		m_isPracticeSetup = false;
 		m_scoring.autoplayInfo.autoplay = false;
+
+		m_track->hitEffectAutoplay = false;
+		m_scoring.OnHoldLeave.Remove(m_track, &Track::OnButtonReleased);
 
 		m_paused = false;
 		m_triggerPause = false;
