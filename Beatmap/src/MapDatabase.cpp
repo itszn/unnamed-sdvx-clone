@@ -90,7 +90,7 @@ public:
 	List<Event> m_pendingChanges;
 	mutex m_pendingChangesLock;
 
-	static const int32 m_version = 20;
+	static const int32 m_version = 19;
 
 public:
 	MapDatabase_Impl(MapDatabase& outer, bool transferScores) : m_outer(outer)
@@ -415,14 +415,6 @@ public:
 				m_database.Exec("ALTER TABLE Scores ADD COLUMN window_slam INTEGER");
 				m_database.Exec("UPDATE Scores SET window_slam=84");
 				gotVersion = 19;
-			}
-			if (gotVersion == 19)
-			{
-				m_database.Exec("UPDATE Scores SET window_good=150 WHERE window_good=92");
-				m_database.Exec("UPDATE Scores SET window_hold=150 WHERE window_hold=138");
-				m_database.Exec("UPDATE Scores SET window_miss=300 WHERE window_miss=250");
-				m_database.Exec("UPDATE Scores SET window_slam=84 WHERE window_slam=75");
-				gotVersion = 20;
 			}
 			m_database.Exec(Utility::Sprintf("UPDATE Database SET `version`=%d WHERE `rowid`=1", m_version));
 
