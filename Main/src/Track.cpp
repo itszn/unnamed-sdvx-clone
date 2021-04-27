@@ -24,7 +24,11 @@ Track::Track()
 
 Track::~Track()
 {
-	delete loader;
+	if (loader)
+	{
+		delete loader;
+		g_input.OnButtonReleased.Remove(this, &Track::OnButtonReleased);
+	}
 
 	for (auto & i : m_laserTrackBuilder)
 		delete i;
