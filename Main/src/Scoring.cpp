@@ -1429,6 +1429,8 @@ bool Scoring::HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine)
     auto currentTime = m_playback->GetLastTime();
     auto tick = m_ticks[index].front();
     auto obj = (HoldObjectState*)tick->object;
+    if (obj->type != ObjectType::Hold)
+		return false;
     // When a hold passes the crit line and we're eligible to hit the starting tick,
     // change the idle hit effect to the crit hit effect
     bool withinHoldStartWindow = tick->HasFlag(TickFlags::Start) && m_IsBeingHold(tick) && (!checkIfPassedCritLine || obj->time <= currentTime);
