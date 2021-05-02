@@ -736,7 +736,6 @@ void Scoring::m_UpdateTicks()
 						}
 					}
 					else if (tick->HasFlag(TickFlags::End))
-					    // Simulate releasing a held button on autoplay
 					    OnHoldLeave.Call(button);
 
 					processed = true;
