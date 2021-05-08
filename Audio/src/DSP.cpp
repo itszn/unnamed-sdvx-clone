@@ -384,8 +384,8 @@ void RetriggerDSP::Process(float *out, uint32 numSamples)
 		if (m_currentSample > m_gateLength)
 			gating = 0;
 		// Sample from buffer
-		assert(pcmSample < maxSample);
-		if (pcmSample < maxSample) //TODO: Improve whatever is necessary to make sure this never happens
+		assert(static_cast<uint64>(pcmSample) < maxSample);
+		if (static_cast<uint64>(pcmSample) < maxSample) //TODO: Improve whatever is necessary to make sure this never happens
 		{
 			out[i * 2] = gating * pcmSource[pcmSample * 2] * mix + out[i * 2] * (1 - mix);
 			out[i * 2 + 1] = gating * pcmSource[pcmSample * 2 + 1] * mix + out[i * 2 + 1] * (1 - mix);
