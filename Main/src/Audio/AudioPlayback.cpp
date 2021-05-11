@@ -498,14 +498,14 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 	}
 	case EffectType::Gate:
 	{
-		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
+		m_laserDSP->mix = 1; // TODO: This should get the mix value from custom fx parameters
 		GateDSP *gd = (GateDSP *)m_laserDSP;
 		// gd->SetLength(actualLength);
 		break;
 	}
 	case EffectType::Retrigger:
 	{
-		m_laserDSP->mix = m_laserEffect.mix.Sample(input);
+		m_laserDSP->mix = 1; // TODO: This should get the mix value from custom fx parameters
 		RetriggerDSP *rt = (RetriggerDSP *)m_laserDSP;
 		rt->SetLength(actualLength);
 		break;
