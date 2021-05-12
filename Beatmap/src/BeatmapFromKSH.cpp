@@ -198,14 +198,7 @@ struct MultiParamRange
 static MultiParam ParseParam(const String &in)
 {
 	MultiParam ret;
-	if (in.find("%") != -1)
-	{
-		ret.type = MultiParam::Float;
-		int percentage = 0;
-		sscanf(*in, "%i", &percentage);
-		ret.fval = percentage / 100.0;
-	}
-	else if (in.find('/') != -1)
+	if (in.find('/') != -1)
 	{
 		ret.type = MultiParam::Float;
 		String a, b;
@@ -216,6 +209,13 @@ static MultiParam ParseParam(const String &in)
 	{
 		ret.type = MultiParam::Samples;
 		sscanf(*in, "%i", &ret.ival);
+	}
+	else if (in.find("%") != -1)
+	{
+		ret.type = MultiParam::Float;
+		int percentage = 0;
+		sscanf(*in, "%i", &percentage);
+		ret.fval = percentage / 100.0;
 	}
 	else if (in.find('.') != -1)
 	{
