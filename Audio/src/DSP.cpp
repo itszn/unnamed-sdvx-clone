@@ -217,6 +217,7 @@ void GateDSP::SetLength(double length)
 }
 void GateDSP::SetGating(float gating)
 {
+	gating = Math::Clamp(gating, 0.f, 1.f);
 	float flength = (float)m_length;
 	m_gating = gating;
 	m_halfway = (uint32)(flength * gating);
@@ -335,6 +336,7 @@ void RetriggerDSP::SetResetDuration(uint32 resetDuration)
 }
 void RetriggerDSP::SetGating(float gating)
 {
+	gating = Math::Clamp(gating, 0.f, 1.f);
 	m_gating = gating;
 	m_gateLength = (uint32)((float)m_length * gating);
 }
