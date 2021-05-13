@@ -253,7 +253,7 @@ void AudioPlayback::SetLaserEffect(EffectType type)
 }
 void AudioPlayback::SetLaserFilterInput(float input, bool active)
 {
-	if (m_laserEffect.type != EffectType::None && (active || (input != 0.0f)))
+	if (m_laserEffect.type != EffectType::None && active)
 	{
 		if (m_laserEffect.type == EffectType::SwitchAudio)
 		{
@@ -292,6 +292,7 @@ void AudioPlayback::SetLaserFilterInput(float input, bool active)
 
 		// Set params
 		m_SetLaserEffectParameter(input);
+		m_laserDSP->mix = Math::Clamp(m_laserDSP->mix, 0.f, 1.f);
 		m_laserInput = input;
 	}
 	else
@@ -508,8 +509,6 @@ void AudioPlayback::m_SetLaserEffectParameter(float input)
 	default:
 		break;
 	}
-
-	m_laserDSP->mix = Math::Clamp(m_laserDSP->mix, 0.f, 1.f);
 }
 
 void AudioPlayback::m_PreRenderDSPTrack()
