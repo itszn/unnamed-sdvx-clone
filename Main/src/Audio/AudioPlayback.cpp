@@ -251,9 +251,15 @@ void AudioPlayback::SetLaserEffect(EffectType type)
 		m_laserEffect = m_beatmap->GetFilter(type);
 	}
 }
+bool AudioPlayback::m_SkipEffectIfInputIsZero()
+{
+	return m_laserEffect.type == EffectType::PeakingFilter || m_laserEffect.type == EffectType::HighPassFilter
+		|| m_laserEffect.type == EffectType::LowPassFilter || m_laserEffect.type == EffectType::PitchShift
+		|| m_laserEffect.type == EffectType::Bitcrush;
+}
 void AudioPlayback::SetLaserFilterInput(float input, bool active)
 {
-	if (m_laserEffect.type != EffectType::None && active)
+	if (m_laserEffect.type != EffectType::None && (active && (input != 0.0f || !m_SkipEffectIfInputIsZero())))
 	{
 		if (m_laserEffect.type == EffectType::SwitchAudio)
 		{
