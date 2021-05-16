@@ -2,7 +2,6 @@
 #include "DSP.hpp"
 #include "AudioOutput.hpp"
 #include "Audio_Impl.hpp"
-#include <Shared/Interpolation.hpp>
 
 void PanDSP::Process(float *out, uint32 numSamples)
 {
@@ -677,12 +676,8 @@ private:
 	Vector<float> m_receiveBuffer;
 
 public:
-	PitchShiftDSP_Impl()
-	{
-	}
-	~PitchShiftDSP_Impl()
-	{
-	}
+	PitchShiftDSP_Impl() = default;
+	~PitchShiftDSP_Impl() = default;
 	void Init(uint32 sampleRate)
 	{
 		m_soundtouch.setChannels(2);
