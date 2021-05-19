@@ -547,6 +547,10 @@ bool Beatmap::m_ProcessKShootMap(BinaryStream &input, bool metadataOnly)
 		{
 			m_settings.musicVolume = (float)atoi(*s.second) / 100.0f;
 		}
+		else if (s.first == "to")
+		{
+			m_settings.speedBpm = atof(*s.second);
+		}
 	}
 
 	// Temporary map for timing points

@@ -52,6 +52,7 @@ public:
 	void OnKeyReleased(SDL_Scancode code) override;
 	void MousePressed(MouseButton button);
 
+
 	void OnSuspend() override;
 	void OnRestore() override;
 	bool AsyncLoad() override;
@@ -149,6 +150,7 @@ private:
 	void m_render(float deltaTime);
 
 	void m_joinRoomWithToken();
+	bool m_returnToMainList();
 
 	void OnSearchStatusUpdated(String status);
 

@@ -783,11 +783,13 @@ end
 -- Toggle hard gauage
 function toggle_hard()
     Tcp.SendLine(json.encode({topic="user.hard.toggle"}))
+    hard_mode = not hard_mode
 end
 
 -- Toggle hard gauage
 function toggle_mirror()
     Tcp.SendLine(json.encode({topic="user.mirror.toggle"}))
+    mirror_mode = not mirror_mode
 end
 
 function new_room()
@@ -835,6 +837,23 @@ function join_room(room)
     end
 end
 
+function go_back()
+    if screenState == "roomList" then
+        did_exit = true;
+        mpScreen.Exit();
+        return
+    end
+
+    -- Reset room data
+    screenState = "roomList" -- have to update here
+    selected_room = nil;
+    rooms = {};
+    selected_song = nil
+    selected_song_index = 1;
+    jacket = 0;
+end
+
+
 -- Handle button presses to advance the UI
 button_released = function(button)
     if button == game.BUTTON_STA then
@@ -872,26 +891,18 @@ button_released = function(button)
     if button == game.BUTTON_FXR then
         toggle_mirror();
     end
+    if button == game.BUTTON_BCK then
+        go_back();
+    end
+    if button == game.BUTTON_BTA then
+        if screenState == "roomList" then
+            new_room()
+        end
+    end
 end
 
--- Handle the escape key around the UI
+-- Handle the keys around the UI
 function key_pressed(key)
-    if key == 27 then --escape pressed
-        if screenState == "roomList" then
-            did_exit = true;
-            mpScreen.Exit();
-            return
-        end
-
-        -- Reset room data
-        screenState = "roomList" -- have to update here
-        selected_room = nil;
-        rooms = {};
-        selected_song = nil
-        selected_song_index = 1;
-        jacket = 0;
-    end
-
 end
 
 -- Handle mouse clicks in the UI
