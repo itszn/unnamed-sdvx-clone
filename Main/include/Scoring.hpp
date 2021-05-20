@@ -317,6 +317,7 @@ private:
 
 	// Offet to use for calculating judge (ms)
 	int32 m_inputOffset = 0;
+	int32 m_laserOffset = 0;
 	int32 m_bounceGuard = 0;
 	float m_drainMultiplier = 1.0f;
 	MapTime m_endTime = 180000;

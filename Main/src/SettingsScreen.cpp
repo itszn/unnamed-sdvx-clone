@@ -430,7 +430,8 @@ protected:
 
 		LayoutRowDynamic(2);
 		IntSetting(GameConfigKeys::GlobalOffset, "Global offset", -1000, 1000);
-		IntSetting(GameConfigKeys::InputOffset, "Input offset", -1000, 1000);
+		IntSetting(GameConfigKeys::InputOffset, "Button Input offset", -1000, 1000);
+		IntSetting(GameConfigKeys::LaserOffset, "Laser Input offset", -1000, 1000);
 
 		LayoutRowDynamic(1);
 		if (nk_button_label(m_nctx, "Calibrate Offsets")) {

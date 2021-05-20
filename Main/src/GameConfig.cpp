@@ -80,6 +80,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);
+	Set(GameConfigKeys::LaserOffset, 0);
 	Set(GameConfigKeys::FPSTarget, 0);
 	Set(GameConfigKeys::GaugeDrainNormal, 180);
 	Set(GameConfigKeys::GaugeDrainHalf, 300);
@@ -293,6 +294,7 @@ ConfigBase::KeyList GameConfigProfileSettings = {
 	Key(HitWindowSlam),
 	Key(GlobalOffset),
 	Key(InputOffset),
+	Key(LaserOffset),
 
 	Key(HiddenCutoff),
 	Key(HiddenFade),

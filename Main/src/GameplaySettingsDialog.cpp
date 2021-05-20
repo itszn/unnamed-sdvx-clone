@@ -10,7 +10,8 @@ void GameplaySettingsDialog::InitTabs()
     Tab offsetTab = std::make_unique<TabData>();
     offsetTab->name = "Offsets";
     offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::GlobalOffset, "Global Offset", { -200, 200 }));
-    offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::InputOffset, "Input Offset", { -200, 200 }));
+    offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::InputOffset, "Button Input Offset", { -200, 200 }));
+    offsetTab->settings.push_back(CreateIntSetting(GameConfigKeys::LaserOffset, "Laser Input Offset", { -200, 200 }));
     if (m_songSelectScreen != nullptr || m_multiPlayerScreen != nullptr)
     {
         offsetTab->settings.push_back(m_CreateSongOffsetSetting());

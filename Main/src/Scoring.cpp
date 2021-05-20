@@ -128,6 +128,7 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	// Get input offset
 	m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
+	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset);
 	// Get bounce guard duration
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
 
@@ -705,7 +706,16 @@ void Scoring::m_UpdateTicks()
 		for (uint32 i = 0; i < ticks.size(); i++)
 		{
 			ScoreTick* tick = ticks[i];
-			MapTime delta = currentTime - ticks[i]->time + m_inputOffset;
+			MapTime delta;
+			if (tick->HasFlag(TickFlags::Laser))
+			{
+				delta = currentTime - ticks[i]->time + m_laserOffset;
+			}
+			else 
+			{
+				delta = currentTime - ticks[i]->time + m_inputOffset;
+			}
+			
 			bool processed = false;
 			if (delta >= 0)
 			{
@@ -1136,7 +1146,7 @@ bool Scoring::m_IsRoot(const HoldObjectState* hold) const
 
 void Scoring::m_UpdateLasers(float deltaTime)
 {
-	MapTime mapTime = m_playback->GetLastTime() + m_inputOffset;
+	MapTime mapTime = m_playback->GetLastTime() + m_laserOffset;
 	bool currentlySlamNextSegmentStraight[2] = { false };
 
 	// Check for new laser segments in laser queue
