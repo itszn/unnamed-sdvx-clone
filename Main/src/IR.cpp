@@ -10,14 +10,20 @@ static void PopulateScoreJSON(nlohmann::json& json, const ScoreIndex& score, con
         {"near", score.almost},
         {"error", score.miss},
         {"gauge", score.gauge},
-        //TODO: replace legacy flags
-        {"gameflags", 0},
+        {"options", {
+            {"gaugeType", score.gaugeType},
+            {"gaugeOpt", score.gaugeOption},
+            {"mirror", score.mirror},
+            {"random", score.random},
+            {"autoFlags", score.autoFlags}
+        }},
         {"timestamp", score.timestamp},
         {"windows", {
             {"perfect", score.hitWindowPerfect},
             {"good", score.hitWindowGood},
             {"hold", score.hitWindowHold},
-            {"miss", score.hitWindowMiss}
+            {"miss", score.hitWindowMiss},
+            {"slam", score.hitWindowSlam}
         }}
     };
 
