@@ -794,7 +794,7 @@ void Scoring::m_UpdateTicks()
 					}
 				}
 			}
-			else if (tick->HasFlag(TickFlags::Slam))
+			else if (tick->HasFlag(TickFlags::Slam)) // Check early for slam input
 			{
 				auto* laserObject = (LaserObjectState*)tick->object;
 				float dirSign = Math::Sign(laserObject->GetDirection());
