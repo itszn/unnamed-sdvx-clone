@@ -1214,6 +1214,7 @@ void MultiplayerScreen::m_OnButtonPressed(Input::Button buttonCode)
 				break;
 			}
 			// Otherwise fall though
+            [[fallthrough]];
 		default:
 			if (m_returnToMainList())
 				return;
