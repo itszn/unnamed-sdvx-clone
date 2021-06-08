@@ -64,11 +64,6 @@ Mesh LaserTrackBuilder::GenerateTrackMesh(class BeatmapPlayback& playback, Laser
 		float slamLength = playback.DurationToViewDistanceAtTime(laser->time, slamDuration) * laserLengthScale;
 		float halfLength = slamLength * 0.5;
 		Rect3D centerMiddle = Rect3D(left, slamLength + halfLength, right, -halfLength);
-		Rect3D centerBottom = centerMiddle;
-		centerBottom.size.y = realBorderSize;
-		centerBottom.pos.y = centerMiddle.Bottom() - centerBottom.size.y;
-		Rect3D centerTop = centerBottom;
-		centerTop.pos.y = centerMiddle.Top();
 
 		Vector<MeshGenerators::SimpleVertex> verts =
 		{
