@@ -3,9 +3,7 @@
 #include "Application.hpp"
 #include "Shared/Jobs.hpp"
 #include "AsyncLoadable.hpp"
-#include "lua.hpp"
 #include "Game.hpp"
-#include "nanovg.h"
 
 class TransitionScreen_Impl : public TransitionScreen
 {
@@ -361,7 +359,7 @@ public:
 				delete m_tickableToLoad;
 				m_tickableToLoad = nullptr;
 			}
-			if (m_tickableToLoad && !m_tickableToLoad->Init()) //if it isn't null and init fails
+			if (m_tickableToLoad && !m_tickableToLoad->DoInit()) //if it isn't null and init fails
 			{
 				Log("[Transition] Failed to initialize tickable", Logger::Severity::Error);
 				delete m_tickableToLoad;

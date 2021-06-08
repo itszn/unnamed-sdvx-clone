@@ -4,6 +4,8 @@
 #include "Input.hpp"
 #include "Game.hpp"
 
+#define AUTOPLAY_BUTTON_HIT_DURATION (4 / 60.f)
+
 enum class TickFlags : uint8
 {
 	None = 0,
@@ -17,6 +19,11 @@ enum class TickFlags : uint8
 	// For lasers only
 	Laser = 0x10,
 	Slam = 0x20,
+
+	// Used to make hit effects appear correctly for holds
+	Ignore = 0x40,
+
+	Processed = 0x80
 };
 TickFlags operator|(const TickFlags& a, const TickFlags& b);
 TickFlags operator&(const TickFlags& a, const TickFlags& b);
@@ -28,10 +35,6 @@ public:
 	ScoreTick() = default;
 	ScoreTick(ObjectState* object) : object(object) {};
 
-	// Returns the time frame in which this tick can be hit
-	MapTime GetHitWindow(const HitWindow& hitWindow) const;
-	// Hit rating when hitting object at given time
-	ScoreHitRating GetHitRating(const HitWindow& hitWindow, MapTime currentTime) const;
 	// Hit rating when hitting object give a delta 
 	ScoreHitRating GetHitRatingFromDelta(const HitWindow& hitWindow, MapTime delta) const;
 	// Check a flag
@@ -41,6 +44,17 @@ public:
 	TickFlags flags = TickFlags::None;
 	MapTime time;
 	ObjectState* object = nullptr;
+};
+
+struct AutoplayInfo
+{
+    // Autoplay mode
+    bool autoplay = false;
+    // Autoplay but for buttons
+    bool autoplayButtons = false;
+    float buttonAnimationTimer[6] = { 0 };
+
+    bool IsAutoplayButtons() const { return autoplay || autoplayButtons; };
 };
 
 // Various information about all the objects in a map
@@ -75,7 +89,7 @@ public:
 	// Needs to be set to handle input
 	void SetInput(Input* input);
 
-	void SetFlags(GameFlags flags);
+	void SetOptions(PlaybackOptions opts);
 	void SetEndTime(MapTime time);
 
 	inline void SetHitWindow(const HitWindow& window) { hitWindow = window; }
@@ -111,6 +125,11 @@ public:
 	// Checks if a laser is currently not used or needed soon
 	bool IsLaserIdle(uint32 index) const;
 
+	bool IsFailOut() const;
+	class Gauge* GetTopGauge() const;
+	void SetAllGaugeValues(const Vector<float>, bool zeroRest=true);
+	void GetAllGaugeValues(Vector<float>& out) const;
+
 	// Calculates the maximum score of the current map
 	MapTotals CalculateMapTotals() const;
 
@@ -135,6 +154,8 @@ public:
 	inline bool IsPerfect() const { return GetMisses() == 0 && GetGoods() == 0; }
 	inline bool IsFullCombo() const { return GetMisses() == 0; }
 
+	bool HoldObjectAvailable(uint32 index, bool checkIfPassedCritLine);
+
 	// Called when a hit is recorded on a given button index (excluding hold notes)
 	// (Hit Button, Score, Hit Object(optional))
 	Delegate<Input::Button, ScoreHitRating, ObjectState*, MapTime> OnButtonHit;
@@ -145,6 +166,9 @@ public:
 	Delegate<Input::Button, ObjectState*> OnObjectHold;
 	// Called when an object is let go of
 	Delegate<Input::Button, ObjectState*> OnObjectReleased;
+
+	Delegate<Input::Button> OnHoldEnter;
+	Delegate<Input::Button> OnHoldLeave;
 
 	// Called when a laser slam was hit
 	// (Laser slam segment)
@@ -161,9 +185,10 @@ public:
 	//	(New Score)
 	Delegate<> OnScoreChanged;
 
+	Delegate<class Gauge*, class Gauge*> OnGaugeChanged;
+
 	// Object timing window
 	HitWindow hitWindow = HitWindow::NORMAL;
-	static const float idleLaserSpeed;
 
 	// Map total infos
 	MapTotals mapTotals;
@@ -173,8 +198,6 @@ public:
 	// The actual amount of gotten score
 	uint32 currentHitScore = 0;
 
-	// Amount of gauge to gain on a tick
-	float tickGaugeGain = 0.0f;
 	// Hits per type in order:
 	//	0 = Miss
 	//	1 = Good
@@ -185,14 +208,6 @@ public:
 	// 0 = Early
 	// 1 = Late
 	uint32 timedHits[2] = { 0 };
-
-
-
-	// Amount of gauge to gain on a short note
-	float shortGaugeGain = 0.0f;
-
-	// Current gauge 0 to 1
-	float currentGauge = 0.0f;
 
 	// Current combo
 	uint32 currentComboCounter;
@@ -207,12 +222,7 @@ public:
 	// these are used for debugging
 	Vector<HitStat*> hitStats;
 
-	// Autoplay mode
-	bool autoplay = false;
-	// Autoplay but for buttons
-	bool autoplayButtons = false;
-
-	float laserDistanceLeniency = 1.0f / 12.0f;
+	struct AutoplayInfo autoplayInfo;
 
 	// Actual positions of the laser
 	float laserPositions[2];
@@ -247,7 +257,10 @@ private:
 	void m_OnTickProcessed(ScoreTick* tick, uint32 index);
 	void m_TickHit(ScoreTick* tick, uint32 index, MapTime delta = 0);
 	void m_TickMiss(ScoreTick* tick, uint32 index, MapTime delta);
+	void m_UpdateGauges(ScoreHitRating rating, TickFlags flags);
+	void m_UpdateGaugeSamples();
 	void m_CleanupTicks();
+	void m_CleanupGauges();
 
 	// Called when score is gained
 	//	should only be called once for a single object since this also increments the combo counter
@@ -259,7 +272,7 @@ private:
 	void m_SetHoldObject(ObjectState* obj, uint32 index);
 	void m_ReleaseHoldObject(ObjectState* obj);
 	void m_ReleaseHoldObject(uint32 index);
-	bool m_IsBeingHold(const ScoreTick* tick) const;
+	bool m_IsBeingHeld(const ScoreTick* tick) const;
 
 	// Check whether the laser segment is the beginning
 	bool m_IsRoot(const LaserObjectState* laser) const;
@@ -277,6 +290,8 @@ private:
 	HitStat* m_AddOrUpdateHitStat(ObjectState* object);
 	void m_CleanupHitStats();
 
+	LaserObjectState* m_GetLaserObjectWithinTwoBeats(uint8 index);
+
 	// Updates laser output with or without interpolation
 	bool m_interpolateLaserOutput = false;
 
@@ -291,7 +306,10 @@ private:
 	// Input values for laser [-1,1]
 	float m_laserInput[2] = { 0.0f };
 	// Decides if the coming tick should be auto completed
-	float m_autoLaserTime[2] = { 0,0 };
+	float m_autoLaserTime[2] = { 0.0f };
+	const double m_laserDistanceLeniency = 1 / 6.;
+	const float m_autoLaserDuration = 4 / 60.f;
+	const float m_autoLaserDurationAfterSlam = 8 / 60.f;
 	
 	// Saves the time when a button was hit, used to decide if a button was held before a hold object was active
 	MapTime m_buttonHitTime[6] = { 0, 0, 0, 0, 0, 0 };
@@ -299,14 +317,9 @@ private:
 	// Saves the time when a button was hit or released for bounce guarding
 	MapTime m_buttonGuardTime[6] = { 0, 0, 0, 0, 0, 0 };
 
-	// Max number of ticks to assist
-	float m_assistLevel = 1.5f;
-	float m_assistPunish = 1.5f;
-	float m_assistChangePeriod = 50.0f;
-	float m_assistChangeExponent = 1.0f;
-	float m_assistTime = 0.0f;
 	// Offet to use for calculating judge (ms)
-	uint32 m_inputOffset = 0;
+	int32 m_inputOffset = 0;
+	int32 m_laserOffset = 0;
 	int32 m_bounceGuard = 0;
 	float m_drainMultiplier = 1.0f;
 	MapTime m_endTime = 180000;
@@ -328,7 +341,12 @@ private:
 	Set<ObjectState*> m_heldObjects;
 	bool m_prevHoldHit[6];
 
-	GameFlags m_flags;
+	PlaybackOptions m_options;
 	MapTimeRange m_range;
-};
 
+	// A stack of gauges which are all calculated at the same time.
+	// The top gauge is what the user should see and if that one raches its fail state
+	// then the next gauge is to be used. If the last gauge fails out then the player
+	// shall be put on the score screen.
+	Vector<class Gauge*> m_gaugeStack;
+};

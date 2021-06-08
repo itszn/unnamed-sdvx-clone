@@ -20,6 +20,7 @@
 #include "SongFilter.hpp"
 #include "ItemSelectionWheel.hpp"
 #include <Audio/Audio.hpp>
+#include "Gauge.hpp"
 
 
 using ChalItemSelectionWheel = ItemSelectionWheel<ChallengeSelectIndex, ChallengeIndex>;
@@ -1399,10 +1400,13 @@ ChallengeOptions ChallengeManager::m_processOptions(nlohmann::json j)
 	ChallengeOptions out;
 	out.mirror =       m_getOptionAsBool(j,            "mirror");
 	out.excessive =    m_getOptionAsBool(j,            "excessive_gauge");
+	out.ars       =    m_getOptionAsBool(j,            "ars");
 	out.gauge_carry_over =    m_getOptionAsBool(j,	   "gauge_carry_over");
 	out.min_modspeed = m_getOptionAsPositiveInteger(j, "min_modspeed");
 	out.max_modspeed = m_getOptionAsPositiveInteger(j, "max_modspeed");
 	out.allow_cmod =   m_getOptionAsBool(j,            "allow_cmod");
+	out.allow_excessive =   m_getOptionAsBool(j,       "allow_excessive");
+	out.allow_ars =    m_getOptionAsBool(j,            "allow_ars");
 	out.hidden_min =   m_getOptionAsFloat(j,           "hidden_min",     0.0, 1.0);
 	out.sudden_min =   m_getOptionAsFloat(j,           "sudden_min",     0.0, 1.0);
 	out.crit_judge =   m_getOptionAsPositiveInteger(j, "crit_judgement", 0,   46);
@@ -1461,7 +1465,7 @@ bool ChallengeManager::StartChallenge(ChallengeSelect* sel, ChallengeIndex* chal
 	m_totalScore = 0;
 	m_totalPercentage = 0;
 	m_totalGauge = 0.0;
-	m_lastGauge = -1.0; // Negative means no saved yet
+	m_lastGauges.clear();
 
 	m_globalReqs.Reset();
 	m_globalOpts.Reset();
@@ -1663,34 +1667,38 @@ bool ChallengeManager::m_setupNextChart()
 		m_currentOptions.max_modspeed = ChallengeOption<uint32>::IgnoreOption();
 	}
 
-	GameFlags flags;
-	if (m_currentOptions.excessive.Get(false))
-		flags = GameFlags::Hard;
-	else
-		flags = GameFlags::None;
+	PlaybackOptions opts;
 
-	//TODO(itszn) should we have an option to force effective
+	// By default use gauge settings from user
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
-	if (gaugeType == GaugeTypes::Hard)
-		flags = flags | GameFlags::Hard;
+	if (gaugeType == GaugeTypes::Hard && m_currentOptions.allow_excessive.Get(true))
+		opts.gaugeType = GaugeType::Hard;
+	opts.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge) && m_currentOptions.allow_ars.Get(true);
 
-	if (m_currentOptions.mirror.Get(false))
-		flags = flags | GameFlags::Mirror;
+	// Check if we have overrides
+	if (m_currentOptions.excessive.Get(false) || m_currentOptions.ars.Get(false))
+	{
+		opts.gaugeType = GaugeType::Hard;
+	}
+	if (m_currentOptions.ars.Get(false))
+		opts.backupGauge = true;
 
-	Game* game = Game::Create(this, m_currentChart, flags);
+	// atm there are not modifiers for mirror mode
+	opts.mirror = m_currentOptions.mirror.Get(false);
+
+	Game* game = Game::Create(this, m_currentChart, opts);
 	if (!game)
 	{
 		Log("Failed to start game", Logger::Severity::Error);
 		return false;
 	}
 
-	// Negative means we have not saved a gauge yet
-	if (m_currentOptions.gauge_carry_over.Get(false) && m_lastGauge >= 0)
+	if (m_currentOptions.gauge_carry_over.Get(false) && m_lastGauges.size() > 0)
 	{
 		auto setGauge = [=](void *screen) {
 			if (screen == nullptr)
 				return;
-			game->SetGauge(m_lastGauge);
+			game->SetAllGaugeValues(this->m_lastGauges);
 		};
 		auto handle = g_transition->OnLoadingComplete.AddLambda(std::move(setGauge));
 		g_transition->RemoveOnComplete(handle);
@@ -1717,7 +1725,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	uint32 finalScore = scoring.CalculateCurrentScore();
 	res.score = finalScore;
-	res.flags = game->GetFlags();
+	res.opts = game->GetPlaybackOptions();
 	float percentage = std::max((finalScore - 8000000.0f) / 10000.0f, 0.0f);
 
 	if (m_globalOpts.use_sdvx_complete_percentage.Get(false))
@@ -1729,7 +1737,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 		}
 		else if (clearMark < ClearMark::NormalClear)
 		{
-			bool canFail = (game->GetFlags() & GameFlags::Hard) != GameFlags::None;
+			bool canFail = game->GetPlaybackOptions().gaugeType == GaugeType::Hard;
 			if (canFail)
 			{
 				// If we failed part way though we can use our distance as our percentage
@@ -1755,8 +1763,9 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 
 	m_totalScore += finalScore;
 	m_totalPercentage += percentage;
-	m_lastGauge = scoring.currentGauge;
-	m_totalGauge += m_lastGauge;
+	m_lastGauges.clear();
+	scoring.GetAllGaugeValues(m_lastGauges);
+	m_totalGauge += scoring.GetTopGauge()->GetValue();
 
 	res.badge = clearMark;
 	if (req.clear.Get(false))
@@ -1765,6 +1774,10 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 			req.clear.MarkPassed();
 		else if (res.failString == "")
 			res.failString = "Chart was not cleared";
+	}
+	else
+	{
+		req.clear.MarkPassed();
 	}
 
 	if (req.min_percentage.HasValue())
@@ -1776,7 +1789,7 @@ void ChallengeManager::ReportScore(Game* game, ClearMark clearMark)
 				static_cast<uint32>(percentage), *req.min_percentage);
 	}
 
-	res.gauge = scoring.currentGauge;
+	res.gauge = scoring.GetTopGauge()->GetValue();
 	if (req.min_gauge.HasValue())
 	{
 		if (res.gauge >= *req.min_gauge)

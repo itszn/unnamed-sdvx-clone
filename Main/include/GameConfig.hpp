@@ -2,6 +2,14 @@
 #include "Shared/Config.hpp"
 #include "Input.hpp"
 
+#ifdef Always
+#undef Always
+#endif
+
+#ifdef None
+#undef None
+#endif
+
 DefineEnum(GameConfigKeys,
 		   // Version of the config
 		   ConfigVersion,
@@ -16,6 +24,8 @@ DefineEnum(GameConfigKeys,
 		   Fullscreen,
 		   FullscreenMonitorIndex,
 		   WindowedFullscreen,
+		   AdjustWindowPositionOnStartup,
+
 		   AntiAliasing,
 		   MasterVolume,
 		   VSync,
@@ -27,6 +37,7 @@ DefineEnum(GameConfigKeys,
 		   HitWindowPerfect,
 		   HitWindowGood,
 		   HitWindowHold,
+		   HitWindowSlam,
 		   HiSpeed,
 		   SpeedMod,
 		   ModSpeed,
@@ -34,15 +45,12 @@ DefineEnum(GameConfigKeys,
 		   SkipScore,
 		   GlobalOffset,
 		   InputOffset,
+		   LaserOffset,
 		   SongFolder,
 		   Skin,
 		   Laser0Color,
 		   Laser1Color,
 		   FPSTarget,
-		   LaserAssistLevel,
-		   LaserPunish,
-		   LaserChangeTime,
-		   LaserChangeExponent,
 		   GaugeDrainNormal,
 		   GaugeDrainHalf,
 
@@ -58,6 +66,8 @@ DefineEnum(GameConfigKeys,
 		   DisableBackgrounds,
 		   ScoreDisplayMode,
 		   AutoComputeSongOffset,
+		   UpdateSongOffsetAfterFirstPlay,
+		   UpdateSongOffsetAfterEveryPlay,
 
 		   LeadInTime,
 		   PracticeLeadInTime,
@@ -139,8 +149,7 @@ DefineEnum(GameConfigKeys,
 		   AutoResetSettings,		//Reset game settings after each song (good for convention setups)
 		   AutoResetToSpeed,		//Mod-Speed to reset to after each song (when AutoResetSettings is true)
 		   SlamThicknessMultiplier, //TODO: Remove after better values have been found(?)
-
-		   SettingsTreesOpen,
+		   DelayedHitEffects,		// TODO: Think of a better name
 
 		   EditorPath,
 		   EditorParamsFormat,
@@ -149,6 +158,7 @@ DefineEnum(GameConfigKeys,
 
 		   WASAPI_Exclusive,
 		   MuteUnfocused,
+		   PrerenderEffects,
 
 		   CheckForUpdates,
 		   OnlyRelease,
@@ -159,17 +169,27 @@ DefineEnum(GameConfigKeys,
 		   MultiplayerPassword,
 		   MultiplayerUsername,
 
+		   IRBaseURL,
+		   IRToken,
+		   IRLowBandwidth,
+
 		   EnableFancyHighwayRoll,
 
 		   GameplaySettingsDialogLastTab,
+		   SettingsLastTab,
 		   TransferScoresOnChartUpdate,
+
+		   CurrentProfileName,
 
 		   // Gameplay options
 		   GaugeType,
 		   MirrorChart,
 		   RandomizeChart,
-			  
+		   BackupGauge,
 		   UpdateChannel)
+
+// List of settings overriden by profiles
+extern ConfigBase::KeyList GameConfigProfileSettings;
 
 DefineEnum(GaugeTypes,
 		   Normal,
@@ -196,13 +216,16 @@ DefineEnum(LaserAxisOption,
 	       Right,
 	       Both)
 
-#ifdef Always
-#undef Always
-#endif
 DefineEnum(AutoScoreScreenshotSettings,
 		   Off,
 		   Highscore,
 		   Always)
+
+DefineEnum(SongOffsetUpdateMethod,
+		   None,
+		   Play,
+		   PlayWholeChart,
+		   Clear)
 
 DefineEnum(ButtonComboModeSettings,
 		   Disabled,

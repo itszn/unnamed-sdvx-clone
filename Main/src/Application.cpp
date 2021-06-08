@@ -6,23 +6,14 @@
 #include "SongSelect.hpp"
 #include "TitleScreen.hpp"
 #include <Audio/Audio.hpp>
-#include <Graphics/Window.hpp>
 #include <Graphics/ResourceManagers.hpp>
-#include "Shared/Jobs.hpp"
 #include <Shared/Profiling.hpp>
-#include "Scoring.hpp"
 #include "GameConfig.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
-#include "GUI/HealthGauge.hpp"
-#include "lua.hpp"
-#include "nanovg.h"
-#include "discord_rpc.h"
-#include "cpr/cpr.h"
-#include "json.hpp"
 #include "SkinConfig.hpp"
-#include "SkinHttp.hpp"
 #include "ShadedMesh.hpp"
+#include "IR.hpp"
 
 #ifdef EMBEDDED
 #define NANOVG_GLES2_IMPLEMENTATION
@@ -32,7 +23,6 @@
 #include "nanovg_gl.h"
 #include "GUI/nanovg_lua.h"
 #ifdef _WIN32
-#include <Windows.h>
 #ifdef CRASHDUMP
 #include "exception_handler.h"
 #include "client_info.h"
@@ -117,6 +107,8 @@ void Application::ApplySettings()
 	Logger::Get().SetLogLevel(g_gameConfig.GetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel));
 	g_gameWindow->SetVSync(g_gameConfig.GetBool(GameConfigKeys::VSync) ? 1 : 0);
 	m_showFps = g_gameConfig.GetBool(GameConfigKeys::ShowFps);
+
+	m_UpdateWindowPosAndShape();
 	m_OnWindowResized(g_gameWindow->GetWindowSize());
 	m_SaveConfig();
 }
@@ -146,7 +138,7 @@ int32 Application::Run()
 				auto &cmdLine = g_application->GetAppCommandLine();
 				if (cmdLine.Contains("-autoplay") || cmdLine.Contains("-auto"))
 				{
-					game->GetScoring().autoplay = true;
+					game->GetScoring().autoplayInfo.autoplay = true;
 				}
 				mapLaunched = true;
 			}
@@ -427,24 +419,60 @@ void Application::m_unpackSkins()
 	}
 }
 
-bool Application::m_LoadConfig()
+bool Application::ReloadConfig(const String& profile)
+{
+	return m_LoadConfig(profile);
+}
+
+bool Application::m_LoadConfig(String profileName /* must be by value */)
 {
 
-	File configFile;
-	if (configFile.OpenRead(Path::Absolute("Main.cfg")))
+	bool successful = false;
+
+	String configPath = "Main.cfg";
+	File mainConfigFile;
+	if (mainConfigFile.OpenRead(Path::Absolute(configPath)))
 	{
-		FileReader reader(configFile);
-		if (g_gameConfig.Load(reader))
-			return true;
+		FileReader reader(mainConfigFile);
+		successful = g_gameConfig.Load(reader);
+		mainConfigFile.Close();
+	}
+	else
+	{
+        // Clear here to apply defaults
+        g_gameConfig.Clear();
+		g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
+	}
+
+	if (profileName == "")
+		profileName = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+
+	// First load main config over
+	if (profileName == "Main") {
+		// If only loading main, then we are done
+		g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+		return successful;
+	}
+
+	// Otherwise we are going to load the profile information over top
+	configPath = Path::Normalize("profiles/" + profileName + ".cfg");
+
+	File profileConfigFile;
+	if (profileConfigFile.OpenRead(Path::Absolute(configPath)))
+	{
+		FileReader reader(profileConfigFile);
+		successful |= g_gameConfig.Load(reader, false); // Do not reset
+
+		profileConfigFile.Close();
 	}
     else
     {
-        // Clear here to apply defaults
-        g_gameConfig.Clear();
+		// We couldn't load this, but we are not going to do anything about it
+		successful = false;
     }
 
-	g_gameConfig.Set(GameConfigKeys::ConfigVersion, GameConfig::VERSION);
-	return false;
+	g_gameConfig.Set(GameConfigKeys::CurrentProfileName, profileName);
+	return successful;
 }
 
 void Application::m_UpdateConfigVersion()
@@ -457,11 +485,86 @@ void Application::m_SaveConfig()
 	if (!g_gameConfig.IsDirty())
 		return;
 
+	String profile = g_gameConfig.GetString(GameConfigKeys::CurrentProfileName);
+	String configPath = "Main.cfg";
+	if (profile == "Main")
+	{
+		//Save everything into main.cfg
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			g_gameConfig.Save(writer);
+			configFile.Close();
+		}
+		return;
+	}
+	// We are going to save the config excluding profile settings
+	{
+		GameConfig tmp_gc;
+		{
+			// First load the current Main.cfg
+			File configFile;
+			if (configFile.OpenRead(Path::Absolute(configPath)))
+			{
+				FileReader reader(configFile);
+				tmp_gc.Load(reader);
+				configFile.Close();
+			}
+			else
+			{
+				tmp_gc.Clear();
+			}
+		}
+
+		// Now merge our new settings (ignoring profile settings)
+		tmp_gc.Update(g_gameConfig, &GameConfigProfileSettings);
+
+		// Finally save the updated version to file
+		File configFile;
+		if (configFile.OpenWrite(Path::Absolute(configPath)))
+		{
+			FileWriter writer(configFile);
+			tmp_gc.Save(writer);
+			configFile.Close();
+		}
+	}
+
+	// Now save the profile only settings
+	configPath = Path::Normalize("profiles/" + profile + ".cfg");
+
+	GameConfig tmp_gc;
+	{
+		// First load the current profile (including extra settings)
+		File configFile;
+		if (configFile.OpenRead(Path::Absolute(configPath)))
+		{
+			FileReader reader(configFile);
+			tmp_gc.Load(reader);
+			configFile.Close();
+		}
+		else
+		{
+			tmp_gc.Clear();
+		}
+	}
+
+	// Now merge our new settings (only profile settings)
+	tmp_gc.Update(g_gameConfig, nullptr, &GameConfigProfileSettings);
+
+	// If there are any extra keys in the profile config, add them
+	ConfigBase::KeyList toSave(GameConfigProfileSettings);
+	for (uint32 k : tmp_gc.GetKeysInFile())
+	{
+		toSave.insert(k);
+	}
+
 	File configFile;
-	if (configFile.OpenWrite(Path::Absolute("Main.cfg")))
+	if (configFile.OpenWrite(Path::Absolute(configPath)))
 	{
 		FileWriter writer(configFile);
-		g_gameConfig.Save(writer);
+		tmp_gc.Save(writer, nullptr, &toSave);
+		configFile.Close();
 	}
 }
 
@@ -730,11 +833,12 @@ bool Application::m_Init()
 	m_allowMapConversion = false;
 	bool debugMute = false;
 	bool startFullscreen = false;
-	uint32 fullscreenMonitor = -1;
+	int32 fullscreenMonitor = -1;
 
 	// Fullscreen settings from config
 	if (g_gameConfig.GetBool(GameConfigKeys::Fullscreen))
 		startFullscreen = true;
+
 	fullscreenMonitor = g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex);
 
 	// Flags read _after_ config load
@@ -791,6 +895,7 @@ bool Application::m_Init()
 	g_gameWindow->OnKeyPressed.Add(this, &Application::m_OnKeyPressed);
 	g_gameWindow->OnKeyReleased.Add(this, &Application::m_OnKeyReleased);
 	g_gameWindow->OnResized.Add(this, &Application::m_OnWindowResized);
+	g_gameWindow->OnMoved.Add(this, &Application::m_OnWindowMoved);
 	g_gameWindow->OnFocusChanged.Add(this, &Application::m_OnFocusChanged);
 
 	// Initialize Input
@@ -805,18 +910,16 @@ bool Application::m_Init()
 	if (!Path::FileExists(Path::Absolute("skins/" + m_skin)))
 	{
 		m_skin = "Default";
+		g_gameConfig.Set(GameConfigKeys::Skin, m_skin);
 	}
 
 	g_skinConfig = new SkinConfig(m_skin);
+
 	// Window cursor
 	Image cursorImg = ImageRes::Create(Path::Absolute("skins/" + m_skin + "/textures/cursor.png"));
 	g_gameWindow->SetCursor(cursorImg, Vector2i(5, 5));
 
-	if (startFullscreen)
-		g_gameWindow->SwitchFullscreen(
-			g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
-			g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-			fullscreenMonitor, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
+	m_UpdateWindowPosAndShape(fullscreenMonitor, startFullscreen, g_gameConfig.GetBool(GameConfigKeys::AdjustWindowPositionOnStartup));
 
 	// Set render state variables
 	m_renderStateBase.aspectRatio = g_aspectRatio;
@@ -895,8 +998,7 @@ bool Application::m_Init()
 	m_fillMaterial->opaque = false;
 	CheckedLoad(m_guiTex = LoadMaterial("guiTex"));
 	m_guiTex->opaque = false;
-	m_gauge = new HealthGauge();
-	LoadGauge(false);
+
 
 	//m_skinHtpp = new SkinHttp();
 	// call the initial OnWindowResized now that we have intialized OpenGL
@@ -1056,6 +1158,9 @@ void Application::m_Tick()
 	// Process async lua http callbacks
 	m_skinHttp.ProcessCallbacks();
 
+	// likewise for IR
+	m_skinIR.ProcessCallbacks();
+
 	// Tick all items
 	for (auto &tickable : g_tickables)
 	{
@@ -1168,11 +1273,7 @@ void Application::m_Cleanup()
 		delete g_skinConfig;
 		g_skinConfig = nullptr;
 	}
-	if (m_gauge)
-	{
-		delete m_gauge;
-		m_gauge = nullptr;
-	}
+
 	if (g_transition)
 	{
 		delete g_transition;
@@ -1218,7 +1319,8 @@ void Application::m_Cleanup()
 
 class Game *Application::LaunchMap(const String &mapPath)
 {
-	Game *game = Game::Create(mapPath, GameFlags::None);
+	PlaybackOptions opt;
+	Game *game = Game::Create(mapPath, opt);
 	g_transition->TransitionTo(game);
 	return game;
 }
@@ -1470,6 +1572,7 @@ void Application::ReloadScript(const String &name, lua_State *L)
 	String commonPath = "skins/" + m_skin + "/scripts/" + "common.lua";
 	DisposeGUI(L);
 	m_skinHttp.ClearState(L);
+	m_skinIR.ClearState(L);
 	path = Path::Absolute(path);
 	commonPath = Path::Absolute(commonPath);
 	if (luaL_dofile(L, commonPath.c_str()) || luaL_dofile(L, path.c_str()))
@@ -1542,6 +1645,7 @@ void Application::ReloadSkin()
 	//nvgCreateFont(g_guiState.vg, "fallback", *Path::Absolute("fonts/NotoSansCJKjp-Regular.otf"));
 
 	//push new titlescreen
+	m_gaugeRemovedWarn = true;
 	TitleScreen *t = TitleScreen::Create();
 	AddTickable(t);
 }
@@ -1549,22 +1653,10 @@ void Application::DisposeLua(lua_State *state)
 {
 	DisposeGUI(state);
 	m_skinHttp.ClearState(state);
+	m_skinIR.ClearState(state);
 	lua_close(state);
 }
-void Application::SetGaugeColor(int i, Color c)
-{
-	m_gaugeColors[i] = c;
-	if (m_gauge->colorBorder < 0.5f)
-	{
-		m_gauge->lowerColor = m_gaugeColors[2];
-		m_gauge->upperColor = m_gaugeColors[3];
-	}
-	else
-	{
-		m_gauge->lowerColor = m_gaugeColors[0];
-		m_gauge->upperColor = m_gaugeColors[1];
-	}
-}
+
 void Application::DiscordError(int errorCode, const char *message)
 {
 	Logf("[Discord] %s", Logger::Severity::Warning, message);
@@ -1661,41 +1753,17 @@ void Application::JoinMultiFromInvite(String secret)
 	}
 }
 
-void Application::LoadGauge(bool hard)
-{
-	String gaugePath = "gauges/normal/";
-	if (hard)
-	{
-		gaugePath = "gauges/hard/";
-		m_gauge->colorBorder = 0.3f;
-		m_gauge->lowerColor = m_gaugeColors[2];
-		m_gauge->upperColor = m_gaugeColors[3];
-	}
-	else
-	{
-		m_gauge->colorBorder = 0.7f;
-		m_gauge->lowerColor = m_gaugeColors[0];
-		m_gauge->upperColor = m_gaugeColors[1];
-	}
-	m_gauge->fillTexture = LoadTexture(gaugePath + "gauge_fill.png");
-	m_gauge->frontTexture = LoadTexture(gaugePath + "gauge_front.png");
-	m_gauge->backTexture = LoadTexture(gaugePath + "gauge_back.png");
-	m_gauge->maskTexture = LoadTexture(gaugePath + "gauge_mask.png");
-	m_gauge->fillTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->frontTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->backTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->maskTexture->SetWrap(Graphics::TextureWrap::Clamp, Graphics::TextureWrap::Clamp);
-	m_gauge->fillMaterial = LoadMaterial("gauge");
-	m_gauge->fillMaterial->opaque = false;
-	m_gauge->baseMaterial = LoadMaterial("guiTex");
-	m_gauge->baseMaterial->opaque = false;
-}
 
-void Application::DrawGauge(float rate, float x, float y, float w, float h, float deltaTime)
+
+void Application::WarnGauge()
 {
-	m_gauge->rate = rate;
-	Mesh m = MeshGenerators::Quad(g_gl, Vector2(x, y), Vector2(w, h));
-	m_gauge->Render(m, deltaTime);
+	if (m_gaugeRemovedWarn)
+	{
+		g_gameWindow->ShowMessageBox("Gauge functions removed.",
+			"gfx.DrawGauge and gfx.SetGaugeColor have been removed in favour of drawing the gauge with the other gfx functions.\n"
+			"Please update your skin or contact the skin author.", 1);
+		m_gaugeRemovedWarn = false;
+	}
 }
 
 float Application::GetRenderFPS() const
@@ -1795,12 +1863,9 @@ void Application::m_OnKeyPressed(SDL_Scancode code)
 	{
 		if ((g_gameWindow->GetModifierKeys() & ModifierKeys::Alt) == ModifierKeys::Alt)
 		{
-			g_gameWindow->SwitchFullscreen(
-				g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight),
-				g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight),
-				-1, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen));
-			g_gameConfig.Set(GameConfigKeys::Fullscreen, g_gameWindow->IsFullscreen());
-			//m_OnWindowResized(g_gameWindow->GetWindowSize());
+			g_gameConfig.Set(GameConfigKeys::Fullscreen, !g_gameWindow->IsFullscreen());
+			m_UpdateWindowPosAndShape();
+
 			return;
 		}
 	}
@@ -1870,6 +1935,43 @@ void Application::m_OnWindowResized(const Vector2i &newSize)
 			g_gameConfig.Set(GameConfigKeys::ScreenWidth, newSize.x);
 			g_gameConfig.Set(GameConfigKeys::ScreenHeight, newSize.y);
 		}
+	}
+}
+
+void Application::m_OnWindowMoved(const Vector2i& newPos)
+{
+	if (g_gameWindow->IsActive() && !g_gameWindow->IsFullscreen())
+	{
+		g_gameConfig.Set(GameConfigKeys::ScreenX, newPos.x);
+		g_gameConfig.Set(GameConfigKeys::ScreenY, newPos.y);
+	}
+}
+
+void Application::m_UpdateWindowPosAndShape()
+{
+	m_UpdateWindowPosAndShape(
+		g_gameConfig.GetInt(GameConfigKeys::FullscreenMonitorIndex),
+		g_gameConfig.GetBool(GameConfigKeys::Fullscreen),
+		false
+	);
+}
+
+void Application::m_UpdateWindowPosAndShape(int32 monitorId, bool fullscreen, bool ensureInBound)
+{
+	const Vector2i windowPos(g_gameConfig.GetInt(GameConfigKeys::ScreenX), g_gameConfig.GetInt(GameConfigKeys::ScreenY));
+	const Vector2i windowSize(g_gameConfig.GetInt(GameConfigKeys::ScreenWidth), g_gameConfig.GetInt(GameConfigKeys::ScreenHeight));
+	const Vector2i fullscreenSize(g_gameConfig.GetInt(GameConfigKeys::FullScreenWidth), g_gameConfig.GetInt(GameConfigKeys::FullScreenHeight));
+
+	g_gameWindow->SetPosAndShape(Graphics::Window::PosAndShape {
+		fullscreen, g_gameConfig.GetBool(GameConfigKeys::WindowedFullscreen),
+		windowPos, windowSize, monitorId, fullscreenSize
+	}, ensureInBound);
+	
+	if (ensureInBound && !fullscreen)
+	{
+		Vector2i windowPos = g_gameWindow->GetWindowPos();
+		g_gameConfig.Set(GameConfigKeys::ScreenX, windowPos.x);
+		g_gameConfig.Set(GameConfigKeys::ScreenY, windowPos.y);
 	}
 }
 
@@ -1957,31 +2059,24 @@ static int lLog(lua_State *L)
 	return 0;
 }
 
-static int lDrawGauge(lua_State *L)
-{
-	float rate, x, y, w, h, deltaTime;
-	rate = luaL_checknumber(L, 1);
-	x = luaL_checknumber(L, 2);
-	y = luaL_checknumber(L, 3);
-	w = luaL_checknumber(L, 4);
-	h = luaL_checknumber(L, 5);
-	deltaTime = luaL_checknumber(L, 6);
-	g_application->DrawGauge(rate, x, y, w, h, deltaTime);
-	return 0;
-}
-
 static int lGetButton(lua_State *L /* int button */)
 {
-	int button = luaL_checkinteger(L, 1);
-	lua_pushboolean(L, g_input.GetButton((Input::Button)button));
-	return 1;
+    int button = luaL_checkinteger(L, 1);
+    if (g_application->autoplayInfo
+        && (g_application->autoplayInfo->IsAutoplayButtons()) && button < 6)
+        lua_pushboolean(L, g_application->autoplayInfo->buttonAnimationTimer[button] > 0);
+    else
+        lua_pushboolean(L, g_input.GetButton((Input::Button)button));
+    return 1;
 }
+
 static int lGetKnob(lua_State *L /* int knob */)
 {
 	int knob = luaL_checkinteger(L, 1);
 	lua_pushnumber(L, g_input.GetAbsoluteLaser(knob));
 	return 1;
 }
+
 static int lGetUpdateAvailable(lua_State *L)
 {
 	Vector<String> info = g_application->GetUpdateAvailable();
@@ -2138,15 +2233,9 @@ static int lLoadWebImageJob(lua_State *L /* char* url, int placeholder, int w = 
 	return 1;
 }
 
-static int lSetGaugeColor(lua_State *L /*int colorIndex, int r, int g, int b*/)
+static int lWarnGauge(lua_State *L)
 {
-	int colorindex, r, g, b;
-	colorindex = luaL_checkinteger(L, 1);
-	r = luaL_checkinteger(L, 2);
-	g = luaL_checkinteger(L, 3);
-	b = luaL_checkinteger(L, 4);
-
-	g_application->SetGaugeColor(colorindex, Colori(r, g, b));
+	g_application->WarnGauge();
 	return 0;
 }
 
@@ -2300,8 +2389,8 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("Stroke", lStroke);
 		pushFuncToTable("StrokeColor", lStrokeColor);
 		pushFuncToTable("UpdateLabel", lUpdateLabel);
-		pushFuncToTable("DrawGauge", lDrawGauge);
-		pushFuncToTable("SetGaugeColor", lSetGaugeColor);
+		pushFuncToTable("DrawGauge", lWarnGauge);
+		pushFuncToTable("SetGaugeColor", lWarnGauge);
 		pushFuncToTable("RoundedRect", lRoundedRect);
 		pushFuncToTable("RoundedRectVarying", lRoundedRectVarying);
 		pushFuncToTable("Ellipse", lEllipse);
@@ -2432,6 +2521,27 @@ void Application::SetLuaBindings(lua_State *state)
 		lua_newtable(state);
 		pushFuncToTable("Absolute", lPathAbsolute);
 		lua_setglobal(state, "path");
+	}
+
+	//ir
+	{
+		lua_newtable(state);
+
+		lua_pushstring(state, "States");
+		lua_newtable(state);
+
+		for(const auto& el : IR::ResponseState::Values)
+			pushIntToTable(el.first, el.second);
+
+		lua_settable(state, -3);
+
+		lua_pushstring(state, "Active");
+		lua_pushboolean(state, g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "");
+		lua_settable(state, -3);
+
+		lua_setglobal(state, "IRData");
+
+		m_skinIR.PushFunctions(state);
 	}
 
 	//http

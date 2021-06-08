@@ -19,11 +19,11 @@ Color::Color(float r, float g, float b) : Color(r,g,b,1.0f)
 Color::Color(float all) : Color(all, all, all, 1.0f)
 {
 }
-bool Color::operator ==(const Color& other)
+bool Color::operator ==(const Color& other) const
 {
 	return this->x == other.x && this->y == other.y && this->z == other.y && this->w == other.w;
 }
-bool Color::operator !=(const Color& other)
+bool Color::operator !=(const Color& other) const
 {
 	return !(*this == other);
 }

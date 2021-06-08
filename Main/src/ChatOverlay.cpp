@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "ChatOverlay.hpp"
-#include <time.h>
-
+#include "GuiUtils.hpp"
 
 #include "MultiplayerScreen.hpp"
 
@@ -54,31 +53,8 @@ void ChatOverlay::InitNuklearIfNeeded()
 		nk_sdl_font_stash_begin(&atlas);
 		struct nk_font *fallback = nk_font_atlas_add_from_file(atlas, Path::Normalize( Path::Absolute("fonts/settings/NotoSans-Regular.ttf")).c_str(), 24, 0);
 
-		// struct nk_font_config cfg_kr = nk_font_config(24);
-		// cfg_kr.merge_mode = nk_true;
-		// cfg_kr.range = nk_font_korean_glyph_ranges();
-
-		// NK_STORAGE const nk_rune jp_ranges[] = {
-		// 	0x0020, 0x00FF,
-		// 	0x3000, 0x303f,
-		// 	0x3040, 0x309f,
-		// 	0x30a0, 0x30ff,
-		// 	0x4e00, 0x9faf,
-		// 	0xff00, 0xffef,
-		// 	0
-		// };
-		// struct nk_font_config cfg_jp = nk_font_config(24);
-		// cfg_jp.merge_mode = nk_true;
-		// cfg_jp.range = jp_ranges;
-
 		NK_STORAGE const nk_rune cjk_ranges[] = {
-			0x0020, 0x00FF,
-			0x3000, 0x30FF,
-			0x3131, 0x3163,
-			0xAC00, 0xD79D,
-			0x31F0, 0x31FF,
-			0xFF00, 0xFFEF,
-			0x4e00, 0x9FAF,
+			0x0E3F, 0xFFFF,
 			0
 		};
 
@@ -94,9 +70,9 @@ void ChatOverlay::InitNuklearIfNeeded()
 			nk_font_atlas_add_from_file(atlas, Path::Normalize(Path::Absolute("fonts/settings/DroidSansFallback.ttf")).c_str(), 24, &cfg_cjk);
 		}
 		
-		nk_sdl_font_stash_end();
+		usc_nk_sdl_font_stash_end();
 		nk_font_atlas_cleanup(atlas);
-		//nk_style_load_all_cursors(m_nctx, atlas->cursors);
+
 		nk_style_set_font(m_nctx, &fallback->handle);
 	}
 	
@@ -132,16 +108,6 @@ void ChatOverlay::Tick(float deltatime)
 void ChatOverlay::NKRender()
 {
 	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
-}
-
-bool
-nk_edit_isfocused(struct nk_context *ctx)
-{
-	struct nk_window *win;
-	if (!ctx || !ctx->current) return false;
-
-	win = ctx->current;
-	return win->edit.active;
 }
 
 void ChatOverlay::m_drawChatAlert()
@@ -291,7 +257,8 @@ void ChatOverlay::m_drawWindow()
 	nk_end(m_nctx);
 }
 
-void ChatOverlay::Render(float deltatime) {
+void ChatOverlay::Render(float deltatime)
+{
 	float w = Math::Min(g_resolution.y / 1.4, g_resolution.x - 5.0);
 	float x = g_resolution.x / 2 - w / 2;
 

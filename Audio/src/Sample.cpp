@@ -11,13 +11,12 @@
 
 #include "miniaudio.h"
 
-
 class Sample_Impl : public SampleRes
 {
 public:
 	Buffer m_data;
-	Audio* m_audio;
-	float* m_pcm = nullptr;
+	Audio *m_audio;
+	float *m_pcm = nullptr;
 
 	mutex m_lock;
 
@@ -41,7 +40,7 @@ public:
 		m_playing = true;
 		m_playbackPointer = 0;
 		m_looping = looping;
-		m_lock.unlock();	
+		m_lock.unlock();
 	}
 	virtual void Stop() override
 	{
@@ -50,30 +49,30 @@ public:
 		m_looping = false;
 		m_lock.unlock();
 	}
-	bool Init(const String& path)
+	bool Init(const String &path)
 	{
 
 		ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 2, g_audio->GetSampleRate());
 		ma_result result;
-		result = ma_decode_file( *path, &config, &m_length, (void**)&m_pcm);
+		result = ma_decode_file(*path, &config, &m_length, (void **)&m_pcm);
 
 		if (result != MA_SUCCESS)
 			return false;
 
 		return true;
 	}
-	virtual void Process(float* out, uint32 numSamples) override
+	virtual void Process(float *out, uint32 numSamples) override
 	{
-		if(!m_playing)
+		if (!m_playing)
 			return;
 
 		m_lock.lock();
 
-		for(uint32 i = 0; i < numSamples; i++)
+		for (uint32 i = 0; i < numSamples; i++)
 		{
-			if(m_playbackPointer >= m_length)
+			if (m_playbackPointer >= m_length)
 			{
-				if(m_looping)
+				if (m_looping)
 				{
 					m_playbackPointer = 0;
 				}
@@ -91,7 +90,7 @@ public:
 		}
 		m_lock.unlock();
 	}
-	const Buffer& GetData() const override
+	const Buffer &GetData() const override
 	{
 		return m_data;
 	}
@@ -107,7 +106,7 @@ public:
 	{
 		return m_playbackPointer;
 	}
-	float* GetPCM() override
+	float *GetPCM() override
 	{
 		return nullptr;
 	}
@@ -123,15 +122,19 @@ public:
 	{
 		return m_playing;
 	}
-
+	void PreRenderDSPs(Vector<DSP *> &DSPs) override {}
+	uint64 GetSamplePos() const override
+	{
+		return m_playbackPointer;
+	}
 };
 
-Sample SampleRes::Create(Audio* audio, const String& path)
+Sample SampleRes::Create(Audio *audio, const String &path)
 {
-	Sample_Impl* res = new Sample_Impl();
+	Sample_Impl *res = new Sample_Impl();
 	res->m_audio = audio;
 
-	if(!res->Init(path))
+	if (!res->Init(path))
 	{
 		delete res;
 		return Sample();

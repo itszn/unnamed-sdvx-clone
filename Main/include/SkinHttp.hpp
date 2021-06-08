@@ -1,21 +1,7 @@
 #pragma once
-#include "stdafx.h"
-#include "Shared/Thread.hpp"
-#include "cpr/cpr.h"
+#include "LuaRequests.hpp"
 
-struct AsyncRequest
-{
-	struct lua_State* L;
-	cpr::AsyncResponse r;
-	int callback;
-};
-
-struct CompleteRequest
-{
-	struct lua_State* L;
-	cpr::Response r;
-	int callback;
-};
+//structs have been moved into shared LuaRequests header to stop IR from including Http or vice versa
 
 class SkinHttp
 {

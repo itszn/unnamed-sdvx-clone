@@ -13,7 +13,7 @@ The following fields are available under the ``gameplay`` table:
     float progress // 0.0 at the start of a song, 1.0 at the end
     float hispeed
     float bpm
-    float gauge
+    Gauge gauge
     
     // The following are all in the range 0.0 - 1.0
     float hiddenCutoff
@@ -22,7 +22,6 @@ The following fields are available under the ``gameplay`` table:
     float suddenFade
     
     bool autoplay
-    int gaugeType // 1 = hard, 0 = normal
     int comboState // 2 = puc, 1 = uc, 0 = normal
     bool[6] noteHeld // Array indicating wether a hold note is being held, in order: ABCDLR
     bool[2] laserActive // Array indicating if the laser cursor is on a laser, in order: LR
@@ -100,6 +99,18 @@ A ``Line`` contains the following fields:
     float y1 // start y coordinate
     float x2 // end x coordinate
     float y2 // end y coordinate
+
+Gauge
+*****
+A ``Gauge`` contains the following fields:
+
+.. code-block:: c
+    
+    int type // 0 = normal, 1 = hard. Should be defined in constants sometime
+    int options // type specific, such as difficulty level for the same gauge type if available
+    float value // current gauge value
+    char* name
+
 
 HitWindow
 *********

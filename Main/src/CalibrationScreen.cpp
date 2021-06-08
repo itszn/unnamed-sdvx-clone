@@ -1,11 +1,10 @@
 #include "stdafx.h"
-#include "Application.hpp"
 #include "CalibrationScreen.hpp"
-#include "Audio/Audio.hpp"
-#include "SettingsScreen.hpp"
-#include "../third_party/nuklear/nuklear.h"
-#include <unordered_set>
 
+#include "Application.hpp"
+#include "Audio/Audio.hpp"
+#include "GameConfig.hpp"
+#include "SettingsScreen.hpp"
 
 CalibrationScreen::CalibrationScreen(nk_context* nk_ctx)
 {
@@ -87,6 +86,7 @@ void CalibrationScreen::Render(float deltaTime)
 	{
 		m_track.DrawTrackCover(renderQueue);
 	}
+	m_track.DrawHitEffects(renderQueue);
 	m_track.DrawOverlays(renderQueue);
 	m_track.DrawCalibrationCritLine(renderQueue);
 	renderQueue.Process();
@@ -102,9 +102,9 @@ void CalibrationScreen::Render(float deltaTime)
 			m_audioOffset = nk_propertyi(m_ctx, "Global Offset", -1000, m_audioOffset, 1000, 1, 1);
 			m_inputOffset = nk_propertyi(m_ctx, "Input Offset", -1000, m_inputOffset, 1000, 1, 1);
 
-			int boolValue = m_autoCalibrate ? 0 : 1;
+			int boolValue = m_autoCalibrate ? 1 : 0;
 			nk_checkbox_label(m_ctx, "Auto Calibrate Input offset", &boolValue);
-			m_autoCalibrate = boolValue == 0;
+			m_autoCalibrate = boolValue > 0;
 
 			nk_label(m_ctx, *Utility::Sprintf("HiSpeed (%.2f x 120 = %.1f):", m_hispeed, m_hispeed * 120.0), nk_text_alignment::NK_TEXT_LEFT);
 			nk_slider_float(m_ctx, 0.5, &m_hispeed, 10.0f, 0.01f);
@@ -130,9 +130,9 @@ void CalibrationScreen::Render(float deltaTime)
 				nk_group_end(m_ctx);
 			}
 			nk_layout_row_dynamic(m_ctx, 30, 1);
-			boolValue = m_trackCover ? 0 : 1;
+			boolValue = m_trackCover ? 1 : 0;
 			nk_checkbox_label(m_ctx, "Show Track Cover", &boolValue);
-			m_trackCover = boolValue == 0;
+			m_trackCover = boolValue > 0;
 
 
 			nk_layout_row_dynamic(m_ctx, 30, 2);
@@ -206,14 +206,13 @@ void CalibrationScreen::Render(float deltaTime)
 
 		}
 		nk_end(m_ctx);
+
 		if (!m_hasRenderedOnce) {
 			nk_window_collapse(m_ctx, "Guide", NK_MINIMIZED);
 			m_hasRenderedOnce = true;
 		}
 
-
-
-		SettingsScreen::NKRender();
+		nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
 	}
 }
 
@@ -265,13 +264,13 @@ void CalibrationScreen::m_OnButtonPressed(Input::Button buttonCode)
 		HitWindow hitWindow = HitWindow::NORMAL;
 
 		if (hitDelta <= hitWindow.perfect) {
-			m_track.AddEffect(new ButtonHitEffect((int)buttonCode, m_track.hitColors[2]));
+			m_track.AddHitEffect((int)buttonCode, m_track.hitColors[2]);
 		}
 		else if (hitDelta <= hitWindow.good) {
-			m_track.AddEffect(new ButtonHitEffect((int)buttonCode, m_track.hitColors[1]));
+			m_track.AddHitEffect((int)buttonCode, m_track.hitColors[1]);
 		}
 		else {
-			m_track.AddEffect(new ButtonHitEffect((int)buttonCode, m_track.hitColors[3]));
+			m_track.AddHitEffect((int)buttonCode, m_track.hitColors[3]);
 		}
 
 	}

@@ -6,7 +6,6 @@
 #include <random>
 #include <unordered_set>
 #include <Beatmap/BeatmapPlayback.hpp>
-#include <Beatmap/MapDatabase.hpp>
 #include <Shared/Profiling.hpp>
 #include <Audio/Audio.hpp>
 
@@ -24,12 +23,10 @@
 #include "MultiplayerScreen.hpp"
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
+#include "Gauge.hpp"
 
-#include "GUI/HealthGauge.hpp"
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
-
-#include <SDL2/SDL.h>
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -93,6 +90,7 @@ private:
 
 	// Map object approach speed, scaled by BPM
 	float m_hispeed = 1.0f;
+	float m_hispeedAdvance = 0.f;
 
 	// Current lane toggle status
 	bool m_hideLane = false;
@@ -101,8 +99,7 @@ private:
 	SpeedMods m_speedMod;
 	float m_modSpeed = 400;
 
-	// Game Canvas
-	Ref<HealthGauge> m_scoringGauge;
+	bool m_delayedHitEffects;
 
 	// Texture of the map jacket image, if available
 	Image m_jacketImage;
@@ -149,10 +146,6 @@ private:
 	const TimingPoint* m_currentTiming;
 	// Currently visible gameplay objects
 	Vector<ObjectState*> m_currentObjectSet;
-
-	// Rate to sample gauge;
-	MapTime m_gaugeSampleRate;
-	float m_gaugeSamples[256] = { 0.0f };
 
 	// Combo gain animation
 	Timer m_comboAnimation;
@@ -216,12 +209,9 @@ public:
 
 	~Game_Impl()
 	{
-		if(m_track)
-			delete m_track;
-		if(m_background)
-			delete m_background;
-		if (m_foreground)
-			delete m_foreground;
+        delete m_track;
+		delete m_background;
+		delete m_foreground;
 		if (m_lua)
 		{
 			g_application->DisposeLua(m_lua);
@@ -229,8 +219,7 @@ public:
 			if (m_multiplayer != nullptr)
 				m_multiplayer->GetTCP().ClearState(m_lua);
 		}
-		if (m_fxSamples)
-			delete[] m_fxSamples;
+		delete[] m_fxSamples;
 		
 		// Save hispeed
 		if (m_saveSpeed)
@@ -284,7 +273,6 @@ public:
 		}
 				
 		m_endTime = m_beatmap->GetLastObjectTime();
-		m_gaugeSampleRate = Math::Max(1, m_endTime / 256);
 
 		if (IsMultiplayerGame())
 			m_hitWindow = HitWindow::NORMAL;
@@ -299,6 +287,9 @@ public:
 				),
 				m_challengeManager->GetCurrentOptions().hold_judge.Get(
 					g_gameConfig.GetInt(GameConfigKeys::HitWindowHold)
+				),
+				m_challengeManager->GetCurrentOptions().slam_judge.Get(
+					g_gameConfig.GetInt(GameConfigKeys::HitWindowSlam)
 				)
 			);
 		}
@@ -325,28 +316,36 @@ public:
 			MapTime largestMT = -1;
 			double useBPM = -1;
 			double lastBPM = -1;
-			for (TimingPoint* tp : timingPoints)
+
+			if (mapSettings.speedBpm > 0.0f)
 			{
-				double thisBPM = tp->GetBPM();
-				if (!bpmDurations.count(lastBPM))
+				useBPM = mapSettings.speedBpm;
+			}
+			else 
+			{
+				for (TimingPoint* tp : timingPoints)
 				{
-					bpmDurations[lastBPM] = 0;
+					double thisBPM = tp->GetBPM();
+					if (!bpmDurations.count(lastBPM))
+					{
+						bpmDurations[lastBPM] = 0;
+					}
+					MapTime timeSinceLastTP = tp->time - lastMT;
+					bpmDurations[lastBPM] += timeSinceLastTP;
+					if (bpmDurations[lastBPM] > largestMT)
+					{
+						useBPM = lastBPM;
+						largestMT = bpmDurations[lastBPM];
+					}
+					lastMT = tp->time;
+					lastBPM = thisBPM;
 				}
-				MapTime timeSinceLastTP = tp->time - lastMT;
-				bpmDurations[lastBPM] += timeSinceLastTP;
+				bpmDurations[lastBPM] += m_endTime - lastMT;
+
 				if (bpmDurations[lastBPM] > largestMT)
 				{
 					useBPM = lastBPM;
-					largestMT = bpmDurations[lastBPM];
 				}
-				lastMT = tp->time;
-				lastBPM = thisBPM;
-			}
-			bpmDurations[lastBPM] += m_endTime - lastMT;
-
-			if (bpmDurations[lastBPM] > largestMT)
-			{
-				useBPM = lastBPM;
 			}
 
 			m_hispeed = m_modSpeed / useBPM; 
@@ -362,7 +361,6 @@ public:
 		{
 			CheckChallengeHispeed(m_beatmap->GetLinearTimingPoints().front()->GetBPM());
 		}
-
 
 		// Load replays
 		if (m_chartIndex)
@@ -381,16 +379,19 @@ public:
 						replayReader.Serialize(&(replay.hitWindow.good), 4);
 						replayReader.Serialize(&(replay.hitWindow.hold), 4);
 						replayReader.Serialize(&(replay.hitWindow.miss), 4);
+						replayReader.Serialize(&replay.hitWindow.slam, 4);
 					}
 				}
 			}
+
+        m_delayedHitEffects = g_gameConfig.GetBool(GameConfigKeys::DelayedHitEffects);
 
 		// Initialize input/scoring
 		if(!InitGameplay())
 			return false;
 
 		// Load beatmap audio
-		if(!m_audioPlayback.Init(m_playback, m_chartRootPath))
+		if(!m_audioPlayback.Init(m_playback, m_chartRootPath, g_gameConfig.GetBool(GameConfigKeys::PrerenderEffects)))
 			return false;
 
 		m_songOffset = 0;
@@ -446,6 +447,7 @@ public:
 		
 		return true;
 	}
+
 	virtual bool AsyncFinalize() override
 	{
 		if (!loader.Finalize())
@@ -484,6 +486,12 @@ public:
 		m_track->distantButtonScale = g_gameConfig.GetFloat(GameConfigKeys::DistantButtonScale);
 		m_showCover = g_gameConfig.GetBool(GameConfigKeys::ShowCover);
 
+		if (m_delayedHitEffects)
+		{
+			m_scoring.OnHoldEnter.Add(m_track, &Track::OnHoldEnter);
+			m_scoring.OnHoldLeave.Add(m_track, &Track::OnButtonReleased);
+		}
+
 		#ifdef EMBEDDED
 		basicParticleTexture = Ref<TextureRes>();
 		particleMaterial = Ref<MaterialRes>();
@@ -520,10 +528,9 @@ public:
 			m_background = CreateBackground(this);
 			m_foreground = CreateBackground(this, true);
 		}
-		g_application->LoadGauge((GetFlags() & GameFlags::Hard) != GameFlags::None);
 
 		// Do this here so we don't get input events while still loading
-		m_scoring.SetFlags(GetFlags());
+		m_scoring.SetOptions(GetPlaybackOptions());
 		m_scoring.SetPlayback(m_playback);
 		m_scoring.SetEndTime(m_endTime);
 		m_scoring.SetInput(&g_input);
@@ -533,7 +540,9 @@ public:
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
 
-		if ((GetFlags() & GameFlags::Random) != GameFlags::None)
+		m_track->hitEffectAutoplay = m_scoring.autoplayInfo.IsAutoplayButtons();
+
+		if (GetPlaybackOptions().random)
 		{
 			//Randomize
 			std::array<int,4> swaps = { 0,1,2,3 };
@@ -581,7 +590,7 @@ public:
 
 		}
 
-		if ((GetFlags() & GameFlags::Mirror) != GameFlags::None)
+		if (GetPlaybackOptions().mirror)
 		{
 			int buttonSwaps[] = { 3,2,1,0,5,4 };
 
@@ -782,22 +791,21 @@ public:
 		{
 			for (int i = 0; i < 2; i++)
 			{
-				float change = g_input.GetInputLaserDir(i) / 3.0f;
-				m_hispeed += change;
-				m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
-				if ((m_speedMod != SpeedMods::XMod) && change != 0.0f)
+				m_hispeedAdvance += g_input.GetInputLaserDir(i) / 3.0f;
+				int hispeedSteps = static_cast<int>(truncf(m_hispeedAdvance * 10.0f));
+				m_hispeedAdvance -= 0.1f * hispeedSteps;
+				if (hispeedSteps != 0)
 				{
+					m_hispeed = static_cast<float>(static_cast<int>(m_hispeed * 10.0f) + hispeedSteps) / 10.0f;
+					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
+
 					if (m_saveSpeed)
 					{
 						g_gameConfig.Set(GameConfigKeys::ModSpeed, m_hispeed * (float)m_currentTiming->GetBPM());
 					}
 					m_modSpeed = m_hispeed * (float)m_currentTiming->GetBPM();
 					// Have to check in here so we can update m_playback
-					CheckChallengeHispeed(m_currentTiming->GetBPM());
 					m_playback.cModSpeed = m_modSpeed;
-				}
-				else
-				{
 					CheckChallengeHispeed(m_currentTiming->GetBPM());
 				}
 			}
@@ -822,15 +830,22 @@ public:
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Tick(deltaTime);
 	}
+
 	virtual void Render(float deltaTime) override
 	{
 		if (m_ended && IsSuspended()) return;
 
 		// 8 beats (2 measures) in view at 1x hi-speed
 		if (m_speedMod == SpeedMods::CMod)
+		{
 			m_track->SetViewRange(1.0 / m_playback.cModSpeed);
+            m_track->scrollSpeed = m_playback.cModSpeed;
+		}
 		else
-			m_track->SetViewRange(8.0f / (m_hispeed)); 
+		{
+			m_track->SetViewRange(8.0f / m_hispeed);
+            m_track->scrollSpeed = m_hispeed * m_playback.GetCurrentTimingPoint().GetBPM();
+		}
 
 		// Get render state from the camera
 		// Get roll when there's no laser slam roll and roll ignore being applied
@@ -879,10 +894,9 @@ public:
 			{
 				if (a->type == ObjectType::Single)
 					return (((ButtonObjectState*)a)->index < 4) ? 1 : 2;
-				else if (a->type == ObjectType::Hold)
+				if (a->type == ObjectType::Hold)
 					return (((ButtonObjectState*)a)->index < 4) ? 3 : 4;
-				else
-					return 0;
+				return 0;
 			};
 			uint32 renderPriorityA = ObjectRenderPriorty(a);
 			uint32 renderPriorityB = ObjectRenderPriorty(b);
@@ -900,6 +914,9 @@ public:
 			}
 		}
 
+		RenderQueue fxHoldObjectsRq(g_gl, rs);
+		RenderQueue hitObjectsTrackCoverRq(g_gl, rs);
+
 		/// TODO: Performance impact analysis.
 		m_track->DrawLaserBase(renderQueue, m_playback, m_currentObjectSet);
 
@@ -909,15 +926,22 @@ public:
 		for(auto& object : m_currentObjectSet)
 		{
 			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
-				m_track->DrawObjectState(renderQueue, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+			{
+				MultiObjectState* mobj = (MultiObjectState*)object;
+				if (object->type == ObjectType::Hold && (mobj->button.index == 4 || mobj->button.index == 5))
+					m_track->DrawObjectState(fxHoldObjectsRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+				else
+					m_track->DrawObjectState(hitObjectsTrackCoverRq, m_playback, object, m_scoring.IsObjectHeld(object), chipFXTimes);
+			}
 		}
 		if(m_showCover)
-			m_track->DrawTrackCover(renderQueue);
+			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
 
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to
 		//	the track's near and far planes
 		rs = m_camera.CreateRenderState(false);
+		RenderQueue hitEffectsRq(g_gl, rs);
 		RenderQueue scoringRq(g_gl, rs);
 
 		// Copy over laser position and extend info
@@ -936,12 +960,13 @@ public:
 			m_track->laserPositions[i] = m_scoring.laserPositions[i];
 			m_track->laserPointerOpacity[i] = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[i] / 0.5f - 1.0f, 0, 1));
 		}
+		m_track->DrawHitEffects(hitEffectsRq);
 		m_track->DrawOverlays(scoringRq);
-		float comboZoom = Math::Max(0.0f, (1.0f - (m_comboAnimation.SecondsAsFloat() / 0.2f)) * 0.5f);
-		//m_track->DrawCombo(scoringRq, m_scoring.currentComboCounter, m_comboColors[m_scoring.comboState], 1.0f + comboZoom);
-
 		// Render queues
 		renderQueue.Process();
+		fxHoldObjectsRq.Process();
+		hitEffectsRq.Process();
+		hitObjectsTrackCoverRq.Process();
 		scoringRq.Process();
 		glFlush();
 
@@ -1284,6 +1309,7 @@ public:
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
+		m_scoring.OnGaugeChanged.Add(this, &Game_Impl::OnGaugeChanged);
 
 		m_scoring.OnLaserSlam.Add(this, &Game_Impl::OnLaserSlam);
 		m_scoring.OnLaserExit.Add(this, &Game_Impl::OnLaserExit);
@@ -1293,7 +1319,7 @@ public:
 
 		if(g_application->GetAppCommandLine().Contains("-autobuttons"))
 		{
-			m_scoring.autoplayButtons = true;
+			m_scoring.autoplayInfo.autoplayButtons = true;
 		}
 
 		return true;
@@ -1365,12 +1391,8 @@ public:
 
 		m_audioPlayback.SetFXTrackEnabled(m_scoring.GetLaserActive() || m_scoring.GetFXActive());
 
-		// If failed in multiplayer, stop giving rate, so its clear you failed
-		if (m_multiplayer != nullptr && m_multiplayer->HasFailed()) {
-			m_scoring.currentGauge = 0.0f;
-		}
-		// Stop playing if gauge is on hard and at 0%
-		if ((GetFlags() & GameFlags::Hard) != GameFlags::None && m_scoring.currentGauge == 0.f)
+		// Stop playing if last gauge has reached its failstate
+		if (m_scoring.IsFailOut())
 		{
 			// In multiplayer we don't stop, but we send the final score
 			if (m_multiplayer == nullptr) {
@@ -1378,8 +1400,9 @@ public:
 			} else if (!m_multiplayer->HasFailed()) {
 				m_multiplayer->Fail();
 
-				m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
-				m_scoring.SetFlags(m_playOptions.flags);
+				//TODO(gauge refactor): ?
+				//m_playOptions.flags = m_playOptions.flags & ~GameFlags::Hard;
+				//m_scoring.SetFlags(m_playOptions.flags);
 			}
 		}
 
@@ -1388,15 +1411,6 @@ public:
 		if (!m_ended)
 		{
 			m_scoring.Tick(deltaTime);
-
-			// Update scoring gauge
-			if (delta >= 0)
-			{
-				int32 gaugeSampleSlot = playbackPositionMs;
-				gaugeSampleSlot /= m_gaugeSampleRate;
-				gaugeSampleSlot = Math::Clamp(gaugeSampleSlot, (int32)0, (int32)255);
-				m_gaugeSamples[gaugeSampleSlot] = m_scoring.currentGauge;
-			}
 		}
 
 		// Get the current timing point
@@ -1423,9 +1437,12 @@ public:
 		{
 			EndCurrentRun();
 		}
-		else if (!m_scoring.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
+		else if (!m_scoring.autoplayInfo.autoplay && !m_isPracticeSetup && m_playOptions.failCondition && m_playOptions.failCondition->IsFailed(m_scoring))
 		{
-			m_scoring.currentGauge = 0.0f;
+			Gauge* gauge = m_scoring.GetTopGauge();
+
+			if (gauge) 
+				gauge->SetValue(0.0f);
 			FailCurrentRun();
 		}
 	}
@@ -1450,7 +1467,7 @@ public:
 				ChartIndex* chart = m_db->GetRandomChart();
 				game = Game::Create(chart, std::move(m_playOptions));
 			}
-			game->GetScoring().autoplay = true;
+			game->GetScoring().autoplayInfo.autoplay = true;
 			game->SetDemoMode(true);
 			game->SetSongDB(m_db);
 
@@ -1644,9 +1661,9 @@ public:
 			while (!game) // ensure a working game
 			{
 				ChartIndex* diff = m_db->GetRandomChart();
-				game = Game::Create(diff, m_playOptions.flags);
+				game = Game::Create(diff, m_playOptions.playbackOptions);
 			}
-			game->GetScoring().autoplay = true;
+			game->GetScoring().autoplayInfo.autoplay = true;
 			game->SetDemoMode(true);
 			game->SetSongDB(m_db);
 
@@ -1790,8 +1807,8 @@ public:
 
 		float currentBPM = (float)(60000.0 / tp.beatDuration);
 		textPos.y += RenderText(Utility::Sprintf("BPM: %.1f | Time Sig: %d/%d", currentBPM, tp.numerator, tp.denominator), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Hit Window: p=%d g=%d h=%d m=%d",
-			m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.miss), textPos).y;
+		textPos.y += RenderText(Utility::Sprintf("Hit Window: p=%d g=%d h=%d s=%d m=%d",
+			m_scoring.hitWindow.perfect, m_scoring.hitWindow.good, m_scoring.hitWindow.hold, m_scoring.hitWindow.slam, m_scoring.hitWindow.miss), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Paused: %s, LastMapTime: %d", m_paused ? "Yes" : "No", m_lastMapTime), textPos).y;
 		if (IsPartialPlay())
 			textPos.y += RenderText(Utility::Sprintf("Partial play: from %d ms to %d ms", m_playOptions.range.begin, m_playOptions.range.end), textPos).y;
@@ -1799,7 +1816,12 @@ public:
 
 		textPos.y += RenderText(Utility::Sprintf("Score: %d/%d (Max: %d)", m_scoring.currentHitScore, m_scoring.currentMaxScore, m_scoring.mapTotals.maxScore), textPos).y;
 		textPos.y += RenderText(Utility::Sprintf("Actual Score: %d", m_scoring.CalculateCurrentScore()), textPos).y;
-		textPos.y += RenderText(Utility::Sprintf("Health Gauge: %f", m_scoring.currentGauge), textPos).y;
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge)
+		{
+			textPos.y += RenderText(Utility::Sprintf("Health Gauge: %s, %f", gauge->GetName(), gauge->GetValue()), textPos).y;
+		}
 
 		textPos.y += RenderText(Utility::Sprintf("Roll: %f(x%f) %s",
 			m_camera.GetRoll(), m_rollIntensity, m_camera.GetRollKeep() ? "[Keep]" : ""), textPos).y;
@@ -1816,7 +1838,7 @@ public:
 			{
 				textPos.y += RenderText("Practice setup", textPos, Color::Magenta).y;
 			}
-			else if(m_scoring.autoplay)
+			else if(m_scoring.autoplayInfo.autoplay)
 			{
 				textPos.y += RenderText("Autoplay enabled", textPos, Color::Magenta).y;
 			}
@@ -1929,12 +1951,11 @@ public:
 		ButtonObjectState* st = (ButtonObjectState*)hitObject;
 		uint32 buttonIdx = (uint32)button;
 		Color c = m_track->hitColors[(size_t)rating];
+		auto buttonIndex = (uint32) button;
+		bool skipEffect = m_scoring.HoldObjectAvailable(buttonIndex, false) && (!m_delayedHitEffects || buttonIndex > 3);
 
-		// Show crit color on idle if a hold not is hit
-		if (rating == ScoreHitRating::Idle && m_scoring.IsObjectHeld((uint32)button))
-			c = m_track->hitColors[(size_t)ScoreHitRating::Perfect];
-
-		m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
+		if (!skipEffect)
+            m_track->AddHitEffect(buttonIdx, c, st && st->type == ObjectType::Hold);
 
 		if (st != nullptr && st->hasSample)
 		{
@@ -1945,7 +1966,7 @@ public:
 			}
 		}
 
-		if(rating != ScoreHitRating::Idle)
+		if (rating != ScoreHitRating::Idle)
 		{
 			// Floating text effect
 			m_track->AddEffect(new ButtonHitRatingEffect(buttonIdx, rating));
@@ -1993,6 +2014,7 @@ public:
 		}
 		lua_settop(m_lua, 0);
 	}
+
 	void OnButtonMiss(Input::Button button, bool hitEffect, ObjectState* object)
 	{
 		uint32 buttonIdx = (uint32)button;
@@ -2001,7 +2023,7 @@ public:
 			ButtonObjectState* st = (ButtonObjectState*)object;
 			//m_hiddenObjects.insert(object);
 			Color c = m_track->hitColors[0];
-			m_track->AddEffect(new ButtonHitEffect(buttonIdx, c));
+			m_track->AddHitEffect(buttonIdx, c);
 		}
 		m_track->AddEffect(new ButtonHitRatingEffect(buttonIdx, ScoreHitRating::Miss));
 
@@ -2019,6 +2041,7 @@ public:
 		}
 		lua_settop(m_lua, 0);
 	}
+
 	void OnComboChanged(uint32 newCombo)
 	{
 		m_comboAnimation.Restart();
@@ -2029,6 +2052,7 @@ public:
 			Logf("Lua error on calling update_combo: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
 		}
 	}
+
 	void OnScoreChanged()
 	{
 		lua_getglobal(m_lua, "update_score");
@@ -2039,18 +2063,25 @@ public:
 		}
 	}
 
+	void OnGaugeChanged(Gauge* from, Gauge* to) {
+		Logf("Gauge changed: %s -> %s", Logger::Severity::Info, from->GetName(), to->GetName());
+		//TODO: Lua call?
+	}
+
 	// These functions control if FX button DSP's are muted or not
-	void OnObjectHold(Input::Button, ObjectState* object)
+	void OnObjectHold(Input::Button buttonCode, ObjectState* object)
 	{
+	    auto buttonIdx = (int)buttonCode;
 		if(object->type == ObjectType::Hold)
 		{
 			HoldObjectState* hold = (HoldObjectState*)object;
 			if(hold->effectType != EffectType::None)
 			{
-				m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
-			}
+                m_audioPlayback.SetEffectEnabled(hold->index - 4, true);
+            }
 		}
 	}
+
 	void OnObjectReleased(Input::Button, ObjectState* object)
 	{
 		if(object->type == ObjectType::Hold)
@@ -2324,6 +2355,11 @@ public:
 	}
 	ClearMark m_getClearState()
 	{
+		Gauge* g = m_scoring.GetTopGauge();
+
+		if (g == nullptr)
+			return ClearMark::NotPlayed;
+
 		if (m_manualExit)
 			return ClearMark::NotPlayed;
 
@@ -2331,11 +2367,16 @@ public:
 			return ClearMark::Played;
 
 		ScoreIndex scoreData;
+		auto opts = GetPlaybackOptions();
 		scoreData.miss = m_scoring.categorizedHits[0];
 		scoreData.almost = m_scoring.categorizedHits[1];
 		scoreData.crit = m_scoring.categorizedHits[2];
-		scoreData.gameflags = (uint32) GetFlags();
-		scoreData.gauge = m_scoring.currentGauge;
+		scoreData.gaugeType = g->GetType();
+		scoreData.gaugeOption = g->GetOpts();
+		scoreData.mirror = opts.mirror;
+		scoreData.random = opts.random;
+		scoreData.autoFlags = opts.autoFlags;
+		scoreData.gauge = g->GetValue();
 		scoreData.score = m_scoring.CalculateCurrentScore();
 
 		return Scoring::CalculateBadge(scoreData);
@@ -2427,7 +2468,7 @@ public:
 
 		m_isPracticeSetupNavEnabled = g_gameConfig.GetBool(GameConfigKeys::PracticeSetupNavEnabled);
 
-		m_scoring.autoplay = true;
+		m_scoring.autoplayInfo.autoplay = true;
 
 		m_practiceSetupRange = m_playOptions.range;
 		m_playOptions.range = { 0, 0 };
@@ -2546,7 +2587,9 @@ public:
 		assert(m_isPracticeMode);
 
 		m_isPracticeSetup = true;
-		m_scoring.autoplay = true;
+		m_scoring.autoplayInfo.autoplay = true;
+
+		m_track->hitEffectAutoplay = true;
 
 		m_playOptions.range = { 0, 0 };
 		m_playOnDialogClose = true;
@@ -2582,7 +2625,9 @@ public:
 		assert(m_isPracticeMode && m_isPracticeSetup);
 
 		m_isPracticeSetup = false;
-		m_scoring.autoplay = false;
+		m_scoring.autoplayInfo.autoplay = false;
+
+		m_track->hitEffectAutoplay = false;
 
 		m_paused = false;
 		m_triggerPause = false;
@@ -2679,13 +2724,13 @@ public:
 	{
 		return m_scoring;
 	}
-	virtual float* GetGaugeSamples() override
+	virtual const std::array<float, 256>& GetGaugeSamples() override
 	{
-		return m_gaugeSamples;
+		return m_scoring.GetTopGauge()->GetSamples();
 	}
-	virtual GameFlags GetFlags() override
+	virtual PlaybackOptions GetPlaybackOptions() override
 	{
-		return m_playOptions.flags;
+		return m_playOptions.playbackOptions;
 	}
 	virtual lua_State* GetLuaState() override 
 	{
@@ -2693,12 +2738,19 @@ public:
 	}
 	virtual void SetGauge(float g) override
 	{
-		m_scoring.currentGauge = g;
+		auto gauge = m_scoring.GetTopGauge();
+		if (gauge)
+		{
+			gauge->SetValue(g);
+		}
+	}
+	virtual void SetAllGaugeValues(const Vector<float> values)
+	{
+		m_scoring.SetAllGaugeValues(values);
 	}
 	virtual bool IsStorableScore() override
 	{
-		if (m_scoring.autoplay) return false;
-		if (m_scoring.autoplayButtons) return false;
+		if (m_scoring.autoplayInfo.IsAutoplayButtons()) return false;
 		if (m_isPracticeSetup) return false;
 
 		// GetPlaybackSpeed() returns 0 on end of a song
@@ -2759,6 +2811,12 @@ public:
 	}
 	void SetGameplayLua(lua_State* L) override
 	{
+		Gauge* gauge = m_scoring.GetTopGauge();
+
+		if (gauge == nullptr) //if gauge is null, assume something is wrong
+			return;
+
+
 		//set lua
 		lua_getglobal(L, "gameplay");
 
@@ -2766,7 +2824,7 @@ public:
 
 		//set autoplay here as it's not set during the creation of the gameplay
 		lua_pushstring(L, "autoplay");
-		lua_pushboolean(L, m_scoring.autoplay);
+		lua_pushboolean(L, m_scoring.autoplayInfo.autoplay);
 		lua_settable(L, -3);
 
 		if (m_isPracticeMode)
@@ -2828,9 +2886,29 @@ public:
 		lua_pushnumber(L, m_currentTiming->GetBPM());
 		lua_settable(L, -3);
 		// gauge
-		lua_pushstring(L, "gauge");
-		lua_pushnumber(L, m_scoring.currentGauge);
-		lua_settable(L, -3);
+		{
+			Gauge* gauge = m_scoring.GetTopGauge();
+			lua_getfield(L, -1, "gauge");
+
+
+			lua_pushstring(L, "type");
+			lua_pushinteger(L, (uint32)gauge->GetType());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "options");
+			lua_pushinteger(L, gauge->GetOpts());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "value");
+			lua_pushnumber(L, gauge->GetValue());
+			lua_settable(L, -3);
+
+			lua_pushstring(L, "name");
+			lua_pushstring(L, gauge->GetName());
+			lua_settable(L, -3);
+
+			lua_pop(L, 1);
+		}
 		// combo state
 		lua_pushstring(L, "comboState");
 		lua_pushnumber(L, m_scoring.comboState);
@@ -2973,7 +3051,22 @@ public:
 
 		pushIntToTable("difficulty", mapSettings.difficulty);
 		pushIntToTable("level", mapSettings.level);
-		pushIntToTable("gaugeType", (GetFlags() & GameFlags::Hard) != GameFlags::None ? 1 : 0);
+
+		//gauge table
+		{
+			PlaybackOptions opts = GetPlaybackOptions();
+
+			lua_pushstring(L, "gauge");
+			lua_newtable(L);
+			pushIntToTable("type", (uint32)opts.gaugeType);
+			pushIntToTable("options", opts.gaugeOption);
+			pushFloatToTable("value", 0.0f);
+			pushStringToTable("name", "");
+			lua_settable(L, -3);
+
+		}
+
+
 		lua_pushstring(L, "scoreReplays");
 		lua_newtable(L);
 		lua_settable(L, -3);
@@ -3009,7 +3102,7 @@ public:
 		}
 
 		lua_pushstring(L, "autoplay");
-		lua_pushboolean(L, m_scoring.autoplay);
+		lua_pushboolean(L, m_scoring.autoplayInfo.autoplay);
 		lua_settable(L, -3);
 
 		if (m_isPracticeMode)
@@ -3079,16 +3172,15 @@ GameFlags operator~(const GameFlags & a)
 	return (GameFlags)(~(uint32)a);
 }
 
-GameFlags Game::FlagsFromSettings()
+PlaybackOptions Game::PlaybackOptionsFromSettings()
 {
-	GameFlags flags = GameFlags::None;
+	PlaybackOptions options;
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
-		flags = flags | GameFlags::Hard;
-	if (g_gameConfig.GetBool(GameConfigKeys::MirrorChart))
-		flags = flags | GameFlags::Mirror;
-	if (g_gameConfig.GetBool(GameConfigKeys::RandomizeChart))
-		flags = flags | GameFlags::Random;
+		options.gaugeType = GaugeType::Hard;
+	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
+	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
+	options.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge);
 
-	return flags;
+	return options;
 }

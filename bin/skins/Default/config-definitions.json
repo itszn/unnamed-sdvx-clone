@@ -1,6 +1,6 @@
 {
 	"Gameplay:" : { "type" : "label" },
-	
+
 	"earlate_position": {
 		"type": "selection",
 		"label": "Early/Late display position",
@@ -12,7 +12,7 @@
 		"label" : "Display name",
 		"default" : "Guest"
 	},
-	
+
 	"separator_a" : {},
 	"Song select:" : { "type" : "label" },
 	"show_guide": {
@@ -20,7 +20,7 @@
 		"type": "bool",
 		"default": true
 	},
-	
+
 	"separator_b" : {},
 	"Result:" : { "type" : "label" },
 	"show_result_hiscore": {
@@ -50,7 +50,12 @@
 		"type": "bool",
 		"default": true
 	},
-	
+	"ir_or_hiscore": {
+		"label": "Show IR by default in place of hiscore",
+		"type": "bool",
+		"default": false
+	},
+
 	"separator_c" : {},
 	"Test objects:" : { "type" : "label" },
 	"Testing with space" : {
@@ -60,7 +65,7 @@
 		"max": 100.0,
 		"min": -100.0
 	},
-	
+
 	"Ineger_test" : {
 		"type": "int",
 		"label": "Ineger Test with range -100<->100",
@@ -68,7 +73,7 @@
 		"max": 100,
 		"min": -100
 	},
-	
+
 	"col_test" : {
 		"type": "color",
 		"label": "Color Test",

@@ -3,6 +3,7 @@
 
 #include "Shared/Log.hpp"
 #include "HitStat.hpp"
+#include "Input.hpp"
 
 // When this should change, the UpdateVersion MUST be updated to update the old config files.
 // If there's no need to update the UpdateVersion, there's no need to touch this too.
@@ -62,6 +63,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Fullscreen, false);
 	Set(GameConfigKeys::FullscreenMonitorIndex, 0);
 	Set(GameConfigKeys::WindowedFullscreen, false);
+	Set(GameConfigKeys::AdjustWindowPositionOnStartup, true);
 	Set(GameConfigKeys::AntiAliasing, 1);
 	Set(GameConfigKeys::MasterVolume, 1.0f);
 	Set(GameConfigKeys::ScreenX, -1);
@@ -74,14 +76,12 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::HitWindowPerfect, HitWindow::NORMAL.perfect);
 	Set(GameConfigKeys::HitWindowGood, HitWindow::NORMAL.good);
 	Set(GameConfigKeys::HitWindowHold, HitWindow::NORMAL.hold);
+	Set(GameConfigKeys::HitWindowSlam, HitWindow::NORMAL.slam);
 	Set(GameConfigKeys::HiSpeed, 1.0f);
 	Set(GameConfigKeys::GlobalOffset, 0);
 	Set(GameConfigKeys::InputOffset, 0);
+	Set(GameConfigKeys::LaserOffset, 0);
 	Set(GameConfigKeys::FPSTarget, 0);
-	Set(GameConfigKeys::LaserAssistLevel, 1.05f);
-	Set(GameConfigKeys::LaserPunish, 1.7f);
-	Set(GameConfigKeys::LaserChangeTime, 100.0f);
-	Set(GameConfigKeys::LaserChangeExponent, 1.5f);
 	Set(GameConfigKeys::GaugeDrainNormal, 180);
 	Set(GameConfigKeys::GaugeDrainHalf, 300);
 	Set(GameConfigKeys::ModSpeed, 300.0f);
@@ -107,6 +107,8 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::RevertToSetupAfterScoreScreen, false);
 	Set(GameConfigKeys::DisplayPracticeInfoInGame, true);
 	Set(GameConfigKeys::AutoComputeSongOffset, false);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay, SongOffsetUpdateMethod::None);
+	SetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay, SongOffsetUpdateMethod::None);
 
 	SetEnum<Logger::Enum_Severity>(GameConfigKeys::LogLevel, Logger::Severity::Normal);
 
@@ -190,8 +192,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::AutoResetSettings, false);
 	Set(GameConfigKeys::AutoResetToSpeed, 400.0f);
 	Set(GameConfigKeys::SlamThicknessMultiplier, 1.0f);
-
-	Set(GameConfigKeys::SettingsTreesOpen, 1);
+	Set(GameConfigKeys::DelayedHitEffects, true);
 
 	SetEnum<Enum_AutoScoreScreenshotSettings>(GameConfigKeys::AutoScoreScreenshot, AutoScoreScreenshotSettings::Off);
 
@@ -199,6 +200,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::EditorParamsFormat, "%s");
 	Set(GameConfigKeys::WASAPI_Exclusive, false);
 	Set(GameConfigKeys::MuteUnfocused, false);
+	Set(GameConfigKeys::PrerenderEffects, false);
 
 	Set(GameConfigKeys::CheckForUpdates, true);
 	Set(GameConfigKeys::OnlyRelease, true); // deprecated
@@ -211,13 +213,22 @@ void GameConfig::InitDefaults()
 
 	Set(GameConfigKeys::EnableFancyHighwayRoll, true);
 
+	// IR
+	Set(GameConfigKeys::IRBaseURL, "");
+	Set(GameConfigKeys::IRToken, "");
+	Set(GameConfigKeys::IRLowBandwidth, false);
+
 	//Gameplay
 	Set(GameConfigKeys::RandomizeChart, false);
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
+	Set(GameConfigKeys::BackupGauge, false);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
+	Set(GameConfigKeys::SettingsLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
+
+	Set(GameConfigKeys::CurrentProfileName, "Main");
 	Set(GameConfigKeys::UpdateChannel, "master");
 }
 
@@ -274,3 +285,80 @@ void GameConfig::UpdateVersion()
 	assert(configVersion == GameConfig::VERSION);
 	Set(GameConfigKeys::ConfigVersion, configVersion);
 }
+
+#define Key(v) static_cast<uint32>(GameConfigKeys::v)
+ConfigBase::KeyList GameConfigProfileSettings = {
+	Key(HitWindowPerfect),
+	Key(HitWindowGood),
+	Key(HitWindowHold),
+	Key(HitWindowSlam),
+	Key(GlobalOffset),
+	Key(InputOffset),
+	Key(LaserOffset),
+
+	Key(HiddenCutoff),
+	Key(HiddenFade),
+	Key(SuddenCutoff),
+	Key(SuddenFade),
+
+	Key(UseBackCombo),
+	Key(LaserInputDevice),
+	Key(ButtonInputDevice),
+	Key(Mouse_Laser0Axis),
+	Key(Mouse_Laser1Axis),
+	Key(Mouse_Sensitivity),
+
+	Key(Key_BTS),
+	Key(Key_BTSAlt),
+	Key(Key_BT0),
+	Key(Key_BT1),
+	Key(Key_BT2),
+	Key(Key_BT3),
+	Key(Key_BT0Alt),
+	Key(Key_BT1Alt),
+	Key(Key_BT2Alt),
+	Key(Key_BT3Alt),
+	Key(Key_FX0),
+	Key(Key_FX1),
+	Key(Key_FX0Alt),
+	Key(Key_FX1Alt),
+	Key(Key_Laser0Pos),
+	Key(Key_Laser0Neg),
+	Key(Key_Laser1Pos),
+	Key(Key_Laser1Neg),
+	Key(Key_Laser0PosAlt),
+	Key(Key_Laser0NegAlt),
+	Key(Key_Laser1PosAlt),
+	Key(Key_Laser1NegAlt),
+	Key(Key_Back),
+	Key(Key_BackAlt),
+	Key(Key_Sensitivity),
+	Key(Key_LaserReleaseTime),
+
+	Key(Controller_DeviceID),
+	Key(Controller_BTS),
+	Key(Controller_BT0),
+	Key(Controller_BT1),
+	Key(Controller_BT2),
+	Key(Controller_BT3),
+	Key(Controller_FX0),
+	Key(Controller_FX1),
+	Key(Controller_Back),
+	Key(Controller_Laser0Axis),
+	Key(Controller_Laser1Axis),
+	Key(Controller_Deadzone),
+	Key(Controller_DirectMode),
+	Key(Controller_Sensitivity),
+	Key(InputBounceGuard),
+	Key(SongSelSensMult),
+	Key(InvertLaserInput),
+
+	Key(RestartPlayMethod),
+	Key(RestartPlayHoldDuration),
+	Key(ExitPlayMethod),
+	Key(ExitPlayHoldDuration),
+	Key(DisableNonButtonInputsDuringPlay),
+
+	Key(MultiplayerUsername)
+};
+#undef Key

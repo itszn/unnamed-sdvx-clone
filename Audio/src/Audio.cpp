@@ -5,7 +5,7 @@
 #include "AudioOutput.hpp"
 #include "DSP.hpp"
 
-Audio* g_audio = nullptr;
+Audio *g_audio = nullptr;
 static Audio_Impl g_impl;
 
 Audio_Impl::Audio_Impl()
@@ -15,7 +15,7 @@ Audio_Impl::Audio_Impl()
 #endif
 }
 
-void Audio_Impl::Mix(void* data, uint32& numSamples)
+void Audio_Impl::Mix(void *data, uint32 &numSamples)
 {
 	double adv = GetSecondsPerSample();
 
@@ -30,17 +30,17 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 	}
 
 	uint32 currentNumberOfSamples = 0;
-	while(currentNumberOfSamples < numSamples)
+	while (currentNumberOfSamples < numSamples)
 	{
 		// Generate new sample
-		if(m_remainingSamples <= 0)
+		if (m_remainingSamples <= 0)
 		{
 			// Clear sample buffer storing a fixed amount of samples
 			m_sampleBuffer.fill(0);
 
 			// Render items
 			lock.lock();
-			for(auto& item : itemsToRender)
+			for (auto &item : itemsToRender)
 			{
 				// Clear per-channel data
 				m_itemBuffer.fill(0);
@@ -54,7 +54,7 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 #endif
 
 				// Mix into buffer and apply volume scaling
-				for(uint32 i = 0; i < m_sampleBufferLength; i++)
+				for (uint32 i = 0; i < m_sampleBufferLength; i++)
 				{
 					m_sampleBuffer[i * 2 + 0] += m_itemBuffer[i * 2] * item->GetVolume();
 					m_sampleBuffer[i * 2 + 1] += m_itemBuffer[i * 2 + 1] * item->GetVolume();
@@ -62,14 +62,14 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 			}
 
 			// Process global DSPs
-			for(auto dsp : globalDSPs)
+			for (auto dsp : globalDSPs)
 			{
 				dsp->Process(m_sampleBuffer.data(), m_sampleBufferLength);
 			}
 			lock.unlock();
 
 			// Apply volume levels
-			for(uint32 i = 0; i < m_sampleBufferLength; i++)
+			for (uint32 i = 0; i < m_sampleBufferLength; i++)
 			{
 				m_sampleBuffer[i * 2 + 0] *= globalVolume;
 				m_sampleBuffer[i * 2 + 1] *= globalVolume;
@@ -86,19 +86,19 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 		// Copy samples from sample buffer
 		uint32 sampleOffset = m_sampleBufferLength - m_remainingSamples;
 		uint32 maxSamples = Math::Min(numSamples - currentNumberOfSamples, m_remainingSamples);
-		for(uint32 c = 0; c < outputChannels; c++)
+		for (uint32 c = 0; c < outputChannels; c++)
 		{
-			if(c < 2)
+			if (c < 2)
 			{
-				for(uint32 i = 0; i < maxSamples; i++)
+				for (uint32 i = 0; i < maxSamples; i++)
 				{
 					if (output->IsIntegerFormat())
 					{
-						((int16*)data)[(currentNumberOfSamples + i) * outputChannels + c] = (int16)(0x7FFF * Math::Clamp(m_sampleBuffer[(sampleOffset + i) * 2 + c],-1.f,1.f));
+						((int16 *)data)[(currentNumberOfSamples + i) * outputChannels + c] = (int16)(0x7FFF * Math::Clamp(m_sampleBuffer[(sampleOffset + i) * 2 + c], -1.f, 1.f));
 					}
 					else
 					{
-						((float*)data)[(currentNumberOfSamples + i) * outputChannels + c] = m_sampleBuffer[(sampleOffset + i) * 2 + c];
+						((float *)data)[(currentNumberOfSamples + i) * outputChannels + c] = m_sampleBuffer[(sampleOffset + i) * 2 + c];
 					}
 				}
 			}
@@ -111,7 +111,6 @@ void Audio_Impl::Mix(void* data, uint32& numSamples)
 void Audio_Impl::Start()
 {
 	limiter = new LimiterDSP(GetSampleRate());
-	limiter->SetAudio(this);
 	limiter->releaseTime = 0.2f;
 
 	globalDSPs.Add(limiter);
@@ -125,7 +124,7 @@ void Audio_Impl::Stop()
 	delete limiter;
 	limiter = nullptr;
 }
-void Audio_Impl::Register(AudioBase* audio)
+void Audio_Impl::Register(AudioBase *audio)
 {
 	if (audio)
 	{
@@ -135,7 +134,7 @@ void Audio_Impl::Register(AudioBase* audio)
 		lock.unlock();
 	}
 }
-void Audio_Impl::Deregister(AudioBase* audio)
+void Audio_Impl::Deregister(AudioBase *audio)
 {
 	lock.lock();
 	itemsToRender.Remove(audio);
@@ -159,7 +158,7 @@ Audio::Audio()
 }
 Audio::~Audio()
 {
-	if(m_initialized)
+	if (m_initialized)
 	{
 		g_impl.Stop();
 		delete g_impl.output;
@@ -174,7 +173,7 @@ bool Audio::Init(bool exclusive)
 	audioLatency = 0;
 
 	g_impl.output = new AudioOutput();
-	if(!g_impl.output->Init(exclusive))
+	if (!g_impl.output->Init(exclusive))
 	{
 		delete g_impl.output;
 		g_impl.output = nullptr;
@@ -193,16 +192,16 @@ uint32 Audio::GetSampleRate() const
 {
 	return g_impl.output->GetSampleRate();
 }
-class Audio_Impl* Audio::GetImpl()
+class Audio_Impl *Audio::GetImpl()
 {
 	return &g_impl;
 }
 
-Ref<AudioStream> Audio::CreateStream(const String& path, bool preload)
+Ref<AudioStream> Audio::CreateStream(const String &path, bool preload)
 {
 	return AudioStream::Create(this, path, preload);
 }
-Sample Audio::CreateSample(const String& path)
+Sample Audio::CreateSample(const String &path)
 {
 	return SampleRes::Create(this, path);
 }
@@ -214,6 +213,7 @@ void Audio_Impl::InitMemoryGuard()
 }
 void Audio_Impl::CheckMemoryGuard()
 {
-	for (auto x : m_guard) assert(x == 0);
+	for (auto x : m_guard)
+		assert(x == 0);
 }
 #endif

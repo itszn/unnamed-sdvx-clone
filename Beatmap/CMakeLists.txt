@@ -1,5 +1,7 @@
 # Beatmap library
 
+set(ENV{ASAN_OPTIONS}, "new_delete_type_mismatch=0")
+
 set(INCROOT ${CMAKE_CURRENT_SOURCE_DIR}/include/Beatmap/)
 set(SRCROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 set(PCHROOT ${CMAKE_CURRENT_SOURCE_DIR}/)
@@ -22,7 +24,7 @@ source_group("" FILES ${PCH_FILES})
 enable_precompiled_headers("${BEATMAP_SRC}" ${PCH_SRC})
 
 add_library(Beatmap ${BEATMAP_SRC} ${PCH_FILES})
-target_compile_features(Beatmap PUBLIC cxx_std_14)
+target_compile_features(Beatmap PUBLIC cxx_std_17)
 target_include_directories(Beatmap PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(Beatmap PRIVATE
     ${INCROOT}
@@ -39,7 +41,9 @@ target_link_libraries(Beatmap Shared)
 target_link_libraries(Beatmap sqlite3)
 target_link_libraries(Beatmap nlohmann_json)
 
-if(WIN32)
-    target_compile_options(Beatmap PRIVATE /Zi)
-endif()
+target_link_libraries(Beatmap cc-common)
 
+# Enable multiprocess compiling
+if(MSVC)
+    target_compile_options(Beatmap PRIVATE /MP)
+endif(MSVC)

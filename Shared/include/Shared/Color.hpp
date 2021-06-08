@@ -35,8 +35,8 @@ public:
 	// Constructor with alpha=1
 	Color(float r, float g, float b);
 	Color(const VectorMath::VectorBase<uint8, 4>& icolor);
-	bool operator ==(const Color& other);
-	bool operator !=(const Color& other);
+	bool operator ==(const Color& other) const;
+	bool operator !=(const Color& other) const;
 	Colori ToRGBA8() const;
 	// Returns the same color, but with a different alpha value
 	Color WithAlpha(float a) const;

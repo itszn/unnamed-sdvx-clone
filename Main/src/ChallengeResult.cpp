@@ -8,7 +8,6 @@
 #include "Scoring.hpp"
 #include "Game.hpp"
 #include "AsyncAssetLoader.hpp"
-#include "HealthGauge.hpp"
 #include "lua.hpp"
 #include "Shared/Time.hpp"
 #include "json.hpp"
@@ -133,7 +132,13 @@ public:
 			m_PushIntToTable("score", cres.score);
 			m_PushIntToTable("percent", cres.percent);
 			m_PushFloatToTable("gauge", cres.gauge);
-			m_PushIntToTable("flags", (int)cres.flags);
+
+			m_PushIntToTable("gauge_type", (uint32)cres.opts.gaugeType);
+			m_PushIntToTable("gauge_option", cres.opts.gaugeOption);
+			m_PushBoolToTable("random", cres.opts.random);
+			m_PushBoolToTable("mirror", cres.opts.mirror);
+			m_PushIntToTable("auto_flags", (uint32)cres.opts.autoFlags);
+
 			m_PushIntToTable("misses", cres.errors);
 			m_PushIntToTable("goods", cres.nears);
 			m_PushIntToTable("perfects", cres.crits);
@@ -181,7 +186,13 @@ public:
 				lua_pushinteger(m_lua, scoreIndex++);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+
+				m_PushIntToTable("gauge_type", (uint32)score->gaugeType);
+				m_PushIntToTable("gauge_option", score->gaugeOption);
+				m_PushIntToTable("random", score->random);
+				m_PushIntToTable("mirror", score->mirror);
+				m_PushIntToTable("auto_flags", (uint32)score->autoFlags);
+
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);
@@ -189,7 +200,7 @@ public:
 				m_PushIntToTable("timestamp", score->timestamp);
 				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_pushstring(m_lua, "hitWindow");
-				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold).ToLuaTable(m_lua);
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(m_lua);
 				lua_settable(m_lua, -3);
 				lua_settable(m_lua, -3);
 			}

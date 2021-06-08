@@ -1,6 +1,7 @@
 #pragma once
 #include "Beatmap.hpp"
 #include "json.hpp"
+#include "PlaybackOptions.hpp"
 
 struct SimpleHitStat
 {
@@ -24,7 +25,11 @@ struct ScoreIndex
 	int32 almost;
 	int32 miss;
 	float gauge;
-	uint32 gameflags;
+	GaugeType gaugeType;
+	uint32 gaugeOption;
+	AutoFlags autoFlags;
+	bool random;
+	bool mirror;
 	String replayPath;
 	String chartHash;
 	uint64 timestamp;
@@ -36,6 +41,7 @@ struct ScoreIndex
 	int32 hitWindowGood;
 	int32 hitWindowHold;
 	int32 hitWindowMiss;
+	int32 hitWindowSlam;
 };
 
 

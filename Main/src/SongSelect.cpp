@@ -394,7 +394,7 @@ private:
 		lua_newtable(m_lua);
 		int songIndex = 0;
 
-		
+
 		if (sorted)
 		{
 			// sortVec should only have the current maps in the collection
@@ -406,7 +406,7 @@ private:
 			}
 		}
 		else {
-			
+
 			for (auto& song : collection)
 			{
 				m_PushSongToLua(song.second, ++songIndex);
@@ -436,6 +436,7 @@ private:
 			m_PushIntToTable("level", diff->level);
 			m_PushIntToTable("difficulty", diff->diff_index);
 			m_PushIntToTable("id", diff->id);
+			m_PushStringToTable("hash", diff->hash.c_str());
 			m_PushStringToTable("effector", diff->effector.c_str());
 			m_PushStringToTable("illustrator", diff->illustrator.c_str());
 			m_PushIntToTable("topBadge", static_cast<int>(Scoring::CalculateBestBadge(diff->scores)));
@@ -447,7 +448,13 @@ private:
 				lua_pushinteger(m_lua, ++scoreIndex);
 				lua_newtable(m_lua);
 				m_PushFloatToTable("gauge", score->gauge);
-				m_PushIntToTable("flags", score->gameflags);
+
+				m_PushIntToTable("gauge_type", (uint32)score->gaugeType);
+				m_PushIntToTable("gauge_option", score->gaugeOption);
+				m_PushIntToTable("random", score->random);
+				m_PushIntToTable("mirror", score->mirror);
+				m_PushIntToTable("auto_flags", (uint32)score->autoFlags);
+
 				m_PushIntToTable("score", score->score);
 				m_PushIntToTable("perfects", score->crit);
 				m_PushIntToTable("goods", score->almost);
@@ -1091,14 +1098,14 @@ public:
 
 			ChartIndex* chart = GetCurrentSelectedChart();
 			if (chart == nullptr) return;
-			Game* game = Game::Create(chart, Game::FlagsFromSettings());
+			Game* game = Game::Create(chart, Game::PlaybackOptionsFromSettings());
 			if (!game)
 			{
 				Log("Failed to start game", Logger::Severity::Error);
 				return;
 			}
 
-			game->GetScoring().autoplay = true;
+			game->GetScoring().autoplayInfo.autoplay = true;
 
 			if(m_settDiag.IsActive()) m_settDiag.Close();
 			m_suspended = true;
@@ -1106,7 +1113,7 @@ public:
 			// Transition to game
 			g_transition->TransitionTo(game);
 		});
-		
+
 		m_settDiag.onPressPractice.AddLambda([this]() {
 			if (m_multiplayer != nullptr) return;
 
@@ -1114,7 +1121,7 @@ public:
 			if (chart == nullptr) return;
 			m_mapDatabase->UpdateChartOffset(chart);
 
-			Game* practiceGame = Game::CreatePractice(chart, Game::FlagsFromSettings());
+			Game* practiceGame = Game::CreatePractice(chart, Game::PlaybackOptionsFromSettings());
 			if (!practiceGame)
 			{
 				Log("Failed to start practice", Logger::Severity::Error);
@@ -1274,13 +1281,13 @@ public:
 
 				ChartIndex* chart = GetCurrentSelectedChart();
 				m_mapDatabase->UpdateChartOffset(chart);
-				Game *game = Game::Create(chart, Game::FlagsFromSettings());
+				Game *game = Game::Create(chart, Game::PlaybackOptionsFromSettings());
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Severity::Error);
 					return;
 				}
-				game->GetScoring().autoplay = autoplay;
+				game->GetScoring().autoplayInfo.autoplay = autoplay;
 
 				// Transition to game
 				g_transition->TransitionTo(game);
@@ -1480,14 +1487,14 @@ public:
 			else if (code == SDL_SCANCODE_F8 && m_multiplayer == nullptr) // start demo mode
 			{
 				ChartIndex *chart = m_mapDatabase->GetRandomChart();
-
-				Game *game = Game::Create(chart, GameFlags::None);
+				PlaybackOptions opts;
+				Game *game = Game::Create(chart, opts);
 				if (!game)
 				{
 					Log("Failed to start game", Logger::Severity::Error);
 					return;
 				}
-				game->GetScoring().autoplay = true;
+				game->GetScoring().autoplayInfo.autoplay = true;
 				game->SetDemoMode(true);
 				game->SetSongDB(m_mapDatabase);
 				m_suspended = true;
@@ -1704,6 +1711,7 @@ public:
 		m_hasRestored = true;
 		m_transitionedToGame = false;
 		m_previewPlayer.Restore();
+		m_mapDatabase->Update(); //flush pending db changes before setting lua tables
 		m_selectionWheel->ResetLuaTables();
 		m_mapDatabase->ResumeSearching();
 		if (g_gameConfig.GetBool(GameConfigKeys::AutoResetSettings))
