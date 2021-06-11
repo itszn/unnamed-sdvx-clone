@@ -32,7 +32,7 @@ void GameplaySettingsDialog::InitTabs()
     // For now we can't set these like this in mp
     if (m_multiPlayerScreen == nullptr)
     {
-        gameTab->settings.push_back(CreateEnumSetting<Enum_GaugeTypes>(GameConfigKeys::GaugeType, "Gauge"))
+        gameTab->settings.push_back(CreateEnumSetting<Enum_GaugeTypes>(GameConfigKeys::GaugeType, "Gauge"));
         gameTab->settings.back()->setter.AddLambda([this](const auto& data) { this->ResetTabs(); });
         if (g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType) == GaugeTypes::Blastive)
         {
