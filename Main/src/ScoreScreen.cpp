@@ -41,7 +41,7 @@ private:
 	std::array<float, 256> m_gaugeSamples;
 	String m_jacketPath;
 	uint32 m_timedHits[2];
-	int m_irState = IR::ResponseState["Unused"];
+	int m_irState = IR::ResponseState::Unused;
 	String m_chartHash;
 
 	//promote this to higher scope so i can use it in tick
@@ -210,6 +210,170 @@ private:
 		lua_settable(m_lua, -3);
 	}
 
+	void m_AddNewScore(class Game* game)
+	{
+		ScoreIndex* newScore = new ScoreIndex();
+		ChartIndex* chart = game->GetChartIndex();
+
+		// If chart file can't be opened, use existing hash.
+		String hash = chart->hash;
+
+		File chartFile;
+		if (chartFile.OpenRead(chart->path))
+		{
+			char data_buffer[0x80];
+			uint32_t digest[5];
+			sha1::SHA1 s;
+
+			size_t amount_read = 0;
+			size_t read_size;
+			do
+			{
+				read_size = chartFile.Read(data_buffer, sizeof(data_buffer));
+				amount_read += read_size;
+				s.processBytes(data_buffer, read_size);
+			} while (read_size != 0);
+
+			s.getDigest(digest);
+			hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
+		}
+		else
+		{
+			Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Severity::Warning);
+		}
+
+		m_chartHash = hash;
+
+		Path::CreateDir(Path::Absolute("replays/" + hash));
+		m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
+		File replayFile;
+
+		if (replayFile.OpenWrite(m_replayPath))
+		{
+			FileWriter fw(replayFile);
+			fw.SerializeObject(m_simpleHitStats);
+			fw.Serialize(&(m_hitWindow.perfect), 4);
+			fw.Serialize(&(m_hitWindow.good), 4);
+			fw.Serialize(&(m_hitWindow.hold), 4);
+			fw.Serialize(&(m_hitWindow.miss), 4);
+			fw.Serialize(&m_hitWindow.slam, 4);
+		}
+
+		newScore->score = m_score;
+		newScore->crit = m_categorizedHits[2];
+		newScore->almost = m_categorizedHits[1];
+		newScore->miss = m_categorizedHits[0];
+		newScore->gauge = m_finalGaugeValue;
+
+		newScore->gaugeType = m_gaugeType;
+		newScore->gaugeOption = m_gaugeOption;
+		newScore->mirror = m_options.mirror;
+		newScore->random = m_options.random;
+		newScore->autoFlags = m_options.autoFlags;
+
+		newScore->timestamp = Shared::Time::Now().Data();
+		newScore->replayPath = m_replayPath;
+		newScore->chartHash = hash;
+		newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
+		newScore->localScore = true;
+
+		newScore->hitWindowPerfect = m_hitWindow.perfect;
+		newScore->hitWindowGood = m_hitWindow.good;
+		newScore->hitWindowHold = m_hitWindow.hold;
+		newScore->hitWindowMiss = m_hitWindow.miss;
+		newScore->hitWindowSlam = m_hitWindow.slam;
+
+		m_mapDatabase.AddScore(newScore);
+
+		if (g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
+		{
+			m_irState = IR::ResponseState::Pending;
+			m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
+		}
+
+		const bool cleared = Scoring::CalculateBadge(*newScore) >= ClearMark::NormalClear;
+		const bool wholeChartPlayed = cleared || newScore->gaugeType == GaugeType::Normal;
+
+		bool firstClear = cleared;
+		bool firstPlayWholeChart = wholeChartPlayed;
+		bool firstPlay = chart->scores.empty();
+
+		if (wholeChartPlayed)
+		{
+			for (const ScoreIndex* oldScore : chart->scores)
+			{
+				if (oldScore->gaugeType == GaugeType::Normal)
+				{
+					firstPlayWholeChart = false;
+				}
+
+				const ClearMark clearMark = Scoring::CalculateBadge(*oldScore);
+				if (clearMark >= ClearMark::NormalClear)
+				{
+					firstPlayWholeChart = false;
+					firstClear = false;
+					break;
+				}
+			}
+		}
+
+		chart->scores.Add(newScore);
+		chart->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
+			{
+				return a->score > b->score;
+			});
+
+		// Update chart song offset
+		bool updateSongOffset = false;
+		switch (g_gameConfig.GetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterFirstPlay))
+		{
+		case SongOffsetUpdateMethod::None:
+			updateSongOffset = false;
+			break;
+		case SongOffsetUpdateMethod::Play:
+			updateSongOffset = firstPlay;
+			break;
+		case SongOffsetUpdateMethod::PlayWholeChart:
+			updateSongOffset = firstPlayWholeChart;
+			break;
+		case SongOffsetUpdateMethod::Clear:
+			updateSongOffset = firstClear;
+			break;
+		default:
+			break;
+		}
+
+		if (!updateSongOffset)
+		{
+			switch (g_gameConfig.GetEnum<Enum_SongOffsetUpdateMethod>(GameConfigKeys::UpdateSongOffsetAfterEveryPlay))
+			{
+			case SongOffsetUpdateMethod::None:
+				updateSongOffset = false;
+				break;
+			case SongOffsetUpdateMethod::Play:
+				updateSongOffset = true;
+				break;
+			case SongOffsetUpdateMethod::PlayWholeChart:
+				updateSongOffset = wholeChartPlayed;
+				break;
+			case SongOffsetUpdateMethod::Clear:
+				updateSongOffset = cleared;
+				break;
+			default:
+				break;
+			}
+		}
+
+		if (updateSongOffset)
+		{
+			const int oldOffset = chart->custom_offset;
+			chart->custom_offset = oldOffset + m_medianHitDelta[0];
+
+			Logf("Updating song offset %d -> %d based on hitstat", Logger::Severity::Info, oldOffset, chart->custom_offset);
+			m_mapDatabase.UpdateChartOffset(chart);
+		}
+	}
+
 public:
 
 	void loadScoresFromGame(class Game* game)
@@ -258,8 +422,6 @@ public:
 		m_medianHitDelta[1] = scoring.GetMedianHitDelta(true);
 
 		m_hitWindow = scoring.hitWindow;
-
-
 	}
 
 	void loadScoresFromMultiplayer() {
@@ -316,7 +478,6 @@ public:
 
 		m_numPlayersSeen = m_stats->size();
 		m_displayId = static_cast<String>((*m_stats)[m_displayIndex].value("uid",""));
-
 	}
 
 	ScoreScreen_Impl(class Game* game, MultiplayerScreen* multiplayer,
@@ -326,8 +487,8 @@ public:
 		m_displayIndex = 0;
 		m_selfDisplayIndex = 0;
 		Scoring& scoring = game->GetScoring();
-		m_autoplay = scoring.autoplay;
-		m_autoButtons = scoring.autoplayButtons;
+		m_autoplay = scoring.autoplayInfo.autoplay;
+		m_autoButtons = scoring.autoplayInfo.autoplayButtons;
 
 		if (ChartIndex* chart = game->GetChartIndex())
 		{
@@ -411,91 +572,10 @@ public:
 		// also don't save the score if the song was manually exited
 		if (!m_autoplay && !m_autoButtons && game->GetChartIndex() && game->IsStorableScore())
 		{
-			ScoreIndex* newScore = new ScoreIndex();
-			auto chart = game->GetChartIndex();
-			String hash = chart->hash; //If chart file can't be opened, use existing hash.
-
-
-			File chartFile;
-			if (chartFile.OpenRead(chart->path))
-			{
-				char data_buffer[0x80];
-				uint32_t digest[5];
-				sha1::SHA1 s;
-
-				size_t amount_read = 0;
-				size_t read_size;
-				do
-				{
-					read_size = chartFile.Read(data_buffer, sizeof(data_buffer));
-					amount_read += read_size;
-					s.processBytes(data_buffer, read_size);
-				} while (read_size != 0);
-
-				s.getDigest(digest);
-				hash = Utility::Sprintf("%08x%08x%08x%08x%08x", digest[0], digest[1], digest[2], digest[3], digest[4]);
-			}
-			else
-			{
-				Log("Couldn't open the chart file for hashing, using existing hash.", Logger::Severity::Warning);
-			}
-
-			m_chartHash = hash;
-
-			Path::CreateDir(Path::Absolute("replays/" + hash));
-			m_replayPath = Path::Normalize(Path::Absolute("replays/" + chart->hash + "/" + Shared::Time::Now().ToString() + ".urf"));
-			File replayFile;
-
-			if (replayFile.OpenWrite(m_replayPath))
-			{
-				FileWriter fw(replayFile);
-				fw.SerializeObject(m_simpleHitStats);
-				fw.Serialize(&(m_hitWindow.perfect), 4);
-				fw.Serialize(&(m_hitWindow.good), 4);
-				fw.Serialize(&(m_hitWindow.hold), 4);
-				fw.Serialize(&(m_hitWindow.miss), 4);
-			}
-
-			newScore->score = m_score;
-			newScore->crit = m_categorizedHits[2];
-			newScore->almost = m_categorizedHits[1];
-			newScore->miss = m_categorizedHits[0];
-			newScore->gauge = m_finalGaugeValue;
-
-			newScore->gaugeType = m_gaugeType;
-			newScore->gaugeOption = m_gaugeOption;
-			newScore->mirror = m_options.mirror;
-			newScore->random = m_options.random;
-			newScore->autoFlags = m_options.autoFlags;
-
-			newScore->timestamp = Shared::Time::Now().Data();
-			newScore->replayPath = m_replayPath;
-			newScore->chartHash = hash;
-			newScore->userName = g_gameConfig.GetString(GameConfigKeys::MultiplayerUsername);
-			newScore->localScore = true;
-
-			newScore->hitWindowPerfect = m_hitWindow.perfect;
-			newScore->hitWindowGood = m_hitWindow.good;
-			newScore->hitWindowHold = m_hitWindow.hold;
-			newScore->hitWindowMiss = m_hitWindow.miss;
-
-			m_mapDatabase.AddScore(newScore);
-
-			if(g_gameConfig.GetString(GameConfigKeys::IRBaseURL) != "")
-			{
-				m_irState = IR::ResponseState["Pending"];
-				m_irResponse = IR::PostScore(*newScore, m_beatmapSettings);
-			}
-
-		 	chart->scores.Add(newScore);
-			chart->scores.Sort([](ScoreIndex* a, ScoreIndex* b)
-			{
-				return a->score > b->score;
-			});
+			m_AddNewScore(game);
 		}
 
 		m_startPressed = false;
-
 
 		if (m_challengeManager != nullptr)
 		{
@@ -610,7 +690,7 @@ public:
 		//description (for displaying any errors, etc)
 		if(m_irState >= 20)
 		{
-			if(m_irState == IR::ResponseState["RequestFailure"])
+			if(m_irState == IR::ResponseState::RequestFailure)
 				m_PushStringToTable("irDescription", "The request to the IR failed.");
 			else
 				m_PushStringToTable("irDescription", m_irResponseJson["description"]);
@@ -685,7 +765,7 @@ public:
 				m_PushIntToTable("timestamp", score->timestamp);
 				m_PushIntToTable("badge", static_cast<int>(Scoring::CalculateBadge(*score)));
 				lua_pushstring(m_lua, "hitWindow");
-				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold).ToLuaTable(m_lua);
+				HitWindow(score->hitWindowPerfect, score->hitWindowGood, score->hitWindowHold, score->hitWindowSlam).ToLuaTable(m_lua);
 				lua_settable(m_lua, -3);
 				lua_settable(m_lua, -3);
 			}
@@ -693,7 +773,7 @@ public:
 		}
 
 		//ir scores moved to be in multiplayer too, not yet tested
-		if(m_irState == IR::ResponseState["Success"])
+		if(m_irState == IR::ResponseState::Success)
 			m_PushIRScores();
 
 		if (isSelf)
@@ -872,7 +952,7 @@ public:
 			m_multiplayer->GetChatOverlay()->Tick(deltaTime);
 
 		//handle ir score submission request
-		if (m_irState == IR::ResponseState["Pending"])
+		if (m_irState == IR::ResponseState::Pending)
 		{
 			try {
 
@@ -884,14 +964,14 @@ public:
 		        	if(response.status_code != 200)
 					{
 						Logf("Submitting score to IR failed with code: %d", Logger::Severity::Error, response.status_code);
-						m_irState = IR::ResponseState["RequestFailure"];
+						m_irState = IR::ResponseState::RequestFailure;
 					}
 					else
 					{
 						try {
 							m_irResponseJson = nlohmann::json::parse(response.text);
 
-							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState["RequestFailure"];
+							if(!IR::ValidatePostScoreReturn(m_irResponseJson)) m_irState = IR::ResponseState::RequestFailure;
 							else
 							{
 								m_irState = m_irResponseJson["statusCode"];

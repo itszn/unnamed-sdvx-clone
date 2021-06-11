@@ -1,9 +1,7 @@
 #pragma once
-#include <Audio/Sample.hpp>
-#include <Shared/Jobs.hpp>
-#include <Shared/Thread.hpp>
 #include "SkinHttp.hpp"
 #include "SkinIR.hpp"
+#include "Scoring.hpp"
 
 #define DISCORD_APPLICATION_ID "514489760568573952"
 
@@ -107,6 +105,8 @@ public:
 	//else: index 0 = url, index 1 = version
 	Vector<String> GetUpdateAvailable();
 
+	AutoplayInfo* autoplayInfo = nullptr;
+
 private:
 	bool m_LoadConfig(String profileName = "");
 	void m_UpdateConfigVersion();
@@ -118,7 +118,10 @@ private:
 	void m_Cleanup();
 	void m_OnKeyPressed(SDL_Scancode code);
 	void m_OnKeyReleased(SDL_Scancode code);
+	void m_UpdateWindowPosAndShape();
+	void m_UpdateWindowPosAndShape(int32 monitorId, bool fullscreen, bool ensureInBound);
 	void m_OnWindowResized(const Vector2i& newSize);
+	void m_OnWindowMoved(const Vector2i& newPos);
 	void m_OnFocusChanged(bool focused);
 	void m_unpackSkins();
 

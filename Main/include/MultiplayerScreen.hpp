@@ -2,13 +2,11 @@
 #include "ApplicationTickable.hpp"
 #include "Shared/LuaBindable.hpp"
 #include "Input.hpp"
-#include "Shared/Thread.hpp"
+#include "GameplaySettingsDialog.hpp"
 #include "GameConfig.hpp"
-#include "cpr/cpr.h"
 #include "Beatmap/MapDatabase.hpp"
-#include "json.hpp"
 #include "TCPSocket.hpp"
-#include <Scoring.hpp>
+#include "Scoring.hpp"
 #include "DBUpdateScreen.hpp"
 #include "PreviewPlayer.hpp"
 
@@ -42,7 +40,7 @@ struct MultiplayerBPMInfo {
 class MultiplayerScreen : public IAsyncLoadableApplicationTickable
 {
 public:
-	MultiplayerScreen();
+	MultiplayerScreen() : m_settDiag(this) {};
 	~MultiplayerScreen();
 
 	bool Init() override;
@@ -53,6 +51,7 @@ public:
 	void OnKeyPressed(SDL_Scancode code) override;
 	void OnKeyReleased(SDL_Scancode code) override;
 	void MousePressed(MouseButton button);
+
 
 	void OnSuspend() override;
 	void OnRestore() override;
@@ -73,6 +72,8 @@ public:
 	void PerformScoreTick(Scoring& scoring, MapTime time);
 	void SendFinalScore(class Game* game, ClearMark clearState);
 	void GetMapBPMForSpeed(const String path, struct MultiplayerBPMInfo& info);
+
+	ChartIndex* GetCurrentSelectedChart() const;
 
 	Vector<nlohmann::json> const* GetFinalStats() const
 	{
@@ -137,6 +138,7 @@ private:
 	bool m_handleError(nlohmann::json& packet);
 	void m_handleSocketClose();
 	bool m_handleFinalStats(nlohmann::json& packet);
+	void m_SetCurrentChartOffset(int newValue);
 
 	void m_onDatabaseUpdateStart(int max);
 	void m_onDatabaseUpdateProgress(int, int);
@@ -148,6 +150,7 @@ private:
 	void m_render(float deltaTime);
 
 	void m_joinRoomWithToken();
+	bool m_returnToMainList();
 
 	void OnSearchStatusUpdated(String status);
 
@@ -216,6 +219,10 @@ private:
 	String m_selectedMapShortPath;
 	String m_selectedMapHash;
 
+	Map<Input::Button, float> m_timeSinceButtonPressed;
+	Map<Input::Button, float> m_timeSinceButtonReleased;
+	Map<Input::Button, bool> m_buttonPressed;
+
 	// Selected index into the map's difficulties
 	int32 m_selectedDiffIndex = 0;
 	bool m_hasSelectedMap = false;
@@ -235,6 +242,8 @@ private:
 	String m_roomToJoin;
 
 	String m_joinToken;
+
+	GameplaySettingsDialog m_settDiag;
 
 	String m_userName;
 	String m_newRoomName;

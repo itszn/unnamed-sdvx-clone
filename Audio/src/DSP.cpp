@@ -2,7 +2,6 @@
 #include "DSP.hpp"
 #include "AudioOutput.hpp"
 #include "Audio_Impl.hpp"
-#include <Shared/Interpolation.hpp>
 
 void PanDSP::Process(float *out, uint32 numSamples)
 {
@@ -217,6 +216,7 @@ void GateDSP::SetLength(double length)
 }
 void GateDSP::SetGating(float gating)
 {
+	gating = Math::Clamp(gating, 0.f, 1.f);
 	float flength = (float)m_length;
 	m_gating = gating;
 	m_halfway = (uint32)(flength * gating);
@@ -335,6 +335,7 @@ void RetriggerDSP::SetResetDuration(uint32 resetDuration)
 }
 void RetriggerDSP::SetGating(float gating)
 {
+	gating = Math::Clamp(gating, 0.f, 1.f);
 	m_gating = gating;
 	m_gateLength = (uint32)((float)m_length * gating);
 }
@@ -354,11 +355,12 @@ void RetriggerDSP::Process(float *out, uint32 numSamples)
 
 	const uint32 startSample = GetStartSample();
 	const uint32 nowSample = GetCurrentSample();
+	const auto maxSample = m_audioBase->GetPCMCount();
 
 	float *pcmSource = m_audioBase->GetPCM();
 	double rateMult = (double)m_audioBase->GetSampleRate() / m_sampleRate;
 	uint32 pcmStartSample = static_cast<uint32>(lastTimingPoint * ((double)m_audioBase->GetSampleRate() / 1000.0));
-	uint32 baseStartRepeat = static_cast<uint32>(lastTimingPoint * ((double)m_sampleRate / 1000.0));
+	uint32 baseStartRepeat = static_cast<uint32>(lastTimingPoint * ((double)m_audioBase->GetSampleRate() / 1000.0));
 
 	for (uint32 i = 0; i < numSamples; i++)
 	{
@@ -370,12 +372,12 @@ void RetriggerDSP::Process(float *out, uint32 numSamples)
 		int startOffset = 0;
 		if (m_resetDuration > 0)
 		{
-			startOffset = (nowSample + i - baseStartRepeat) / (int)m_resetDuration;
+			startOffset = (nowSample + i - baseStartRepeat) / (int)(m_resetDuration * rateMult);
 			startOffset = static_cast<int>(startOffset * m_resetDuration * rateMult);
 		}
 		else
 		{
-			startOffset = static_cast<int>((startSample - baseStartRepeat) * rateMult);
+			startOffset = static_cast<int>((startSample - baseStartRepeat));
 		}
 
 		int pcmSample = static_cast<int>(pcmStartSample) + startOffset + static_cast<int>(m_currentSample * rateMult);
@@ -383,8 +385,12 @@ void RetriggerDSP::Process(float *out, uint32 numSamples)
 		if (m_currentSample > m_gateLength)
 			gating = 0;
 		// Sample from buffer
-		out[i * 2] = gating * pcmSource[pcmSample * 2] * mix + out[i * 2] * (1 - mix);
-		out[i * 2 + 1] = gating * pcmSource[pcmSample * 2 + 1] * mix + out[i * 2 + 1] * (1 - mix);
+		assert(static_cast<uint64>(pcmSample) < maxSample);
+		if (static_cast<uint64>(pcmSample) < maxSample) //TODO: Improve whatever is necessary to make sure this never happens
+		{
+			out[i * 2] = gating * pcmSource[pcmSample * 2] * mix + out[i * 2] * (1 - mix);
+			out[i * 2 + 1] = gating * pcmSource[pcmSample * 2 + 1] * mix + out[i * 2 + 1] * (1 - mix);
+		}
 
 		// Increase index
 		m_currentSample = (m_currentSample + 1) % m_length;
@@ -670,12 +676,8 @@ private:
 	Vector<float> m_receiveBuffer;
 
 public:
-	PitchShiftDSP_Impl()
-	{
-	}
-	~PitchShiftDSP_Impl()
-	{
-	}
+	PitchShiftDSP_Impl() = default;
+	~PitchShiftDSP_Impl() = default;
 	void Init(uint32 sampleRate)
 	{
 		m_soundtouch.setChannels(2);

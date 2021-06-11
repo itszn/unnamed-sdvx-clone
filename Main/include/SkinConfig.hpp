@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 
 struct SkinSetting
 {
@@ -56,20 +55,20 @@ struct SkinSetting
 class SkinConfig : ConfigBase
 {
 public:
-	SkinConfig(String skin);
+	SkinConfig(const String& skin);
 	~SkinConfig();
-	void Set(String key, const String& value);
-	void Set(String key, const float& value);
-	void Set(String key, const int32& value);
-	void Set(String key, const bool& value);
-	void Set(String key, const Color& value);
-	int GetInt(String key) const;
-	float GetFloat(String key) const;
-	String GetString(String key) const;
-	bool GetBool(String key) const;
-	Color GetColor(String key) const;
-	IConfigEntry* GetEntry(String key) const;
-	bool IsSet(String key) const;
+	void Set(const String& key, const String& value);
+	void Set(const String& key, const float& value);
+	void Set(const String& key, const int32& value);
+	void Set(const String& key, const bool& value);
+	void Set(const String& key, const Color& value);
+	int GetInt(const String& key) const;
+	float GetFloat(const String& key) const;
+	const String& GetString(const String& key) const;
+	bool GetBool(const String& key) const;
+	Color GetColor(const String& key) const;
+	IConfigEntry* GetEntry(const String& key) const;
+	bool IsSet(const String& key) const;
 	const Vector<SkinSetting>& GetSettings() const;
 
 private:
@@ -79,7 +78,7 @@ private:
 	Vector<SkinSetting> m_settings;
 
 	// Create or returns with type checking
-	template<typename T> T* SetEnsure(String key)
+	template<typename T> T* SetEnsure(const String& key)
 	{
 		m_keys.FindOrAdd(key, m_keys.size());
 		IConfigEntry** found = m_entries.Find(m_keys.at(key));
@@ -98,7 +97,7 @@ private:
 		}
 	}
 	// Gets the wanted type with type checking and seeing if it exists
-	template<typename T> const T* GetEnsure(String key) const
+	template<typename T> const T* GetEnsure(const String& key) const
 	{
 		assert(m_keys.Contains(key));
 		IConfigEntry*const* found = m_entries.Find(m_keys.at(key));

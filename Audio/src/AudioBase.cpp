@@ -5,7 +5,7 @@
 
 uint32 DSP::GetStartSample() const
 {
-	return static_cast<uint32>(startTime * static_cast<double>(m_sampleRate) / 1000.0);
+	return static_cast<uint32>(startTime * static_cast<double>(m_audioBase->GetSampleRate()) / 1000.0);
 }
 
 uint32 DSP::GetCurrentSample() const

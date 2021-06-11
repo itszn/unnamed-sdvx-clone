@@ -1,5 +1,4 @@
 #pragma once
-#include "stdafx.h"
 #include <Beatmap/BeatmapObjects.hpp>
 #include "Scoring.hpp"
 

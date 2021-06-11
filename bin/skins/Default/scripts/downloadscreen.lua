@@ -348,16 +348,15 @@ function button_pressed(button)
          else
             screenState = 0
         end
-    end
-end
-
-function key_pressed(key)
-    if key == 27 then --escape pressed
+    elseif button == game.BUTTON_BCK then
         dlcache = io.open(cachepath, "w")
         dlcache:write(json.encode(downloaded))
         dlcache:close()
         dlScreen.Exit() 
     end
+end
+
+function key_pressed(key)
 end
 
 

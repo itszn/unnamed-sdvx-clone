@@ -2,8 +2,6 @@
 #include "ApplicationTickable.hpp"
 #include "Shared/LuaBindable.hpp"
 #include "Input.hpp"
-#include "Shared/Thread.hpp"
-#include "cpr/cpr.h"
 #include "PreviewPlayer.hpp"
 
 struct ArchiveRequest
