@@ -15,6 +15,24 @@ public:
 	void SetPrimitiveType(const PrimitiveType& type);
 	void SetOpaque(bool opaque);
 
+	void SetPos(float x, float y, float z)
+	{
+		m_pos = Vector3(x, y, z);
+	}
+	Vector3& GetPos() { return m_pos; }
+	void SetScale(float x, float y, float z)
+	{
+		m_scale = Vector3(x, y, z);
+	}
+	Vector3& GetScale() { return m_scale; }
+	void SetRotation(float x, float y, float z)
+	{
+		m_rotation = Vector3(x, y, z);
+	}
+	Vector3& GetRotation() { return m_rotation; }
+	bool IsWireframe() const { return m_isWireframe; }
+	void SetIsWireframe(bool b) { m_isWireframe = b; }
+
 	template<typename T>
 	void SetParam(const String& name, const T& value) {
 		m_params.SetParameter(name, value);
@@ -30,6 +48,10 @@ protected:
 	Material m_material;
 	MaterialParameterSet m_params;
 	Map<String, Texture> m_textures;
+	Vector3 m_pos = Vector3(0.0,0.0,0.0);
+	Vector3 m_scale = Vector3(1.0,1.0,1.0);
+	Vector3 m_rotation = Vector3(0.0, 0.0, 0.0);
+	bool m_isWireframe = false;
 };
 
 class ShadedMeshOnTrack : public ShadedMesh {
@@ -43,16 +65,6 @@ public:
 	void DrawOnTrack();
 	void lUseGameMesh(struct lua_State* L);
 
-	void SetTrackPos(float x, float y, float z)
-	{
-		m_trackPos = Vector3(x, y, z);
-	}
-	Vector3& GetTrackPos() { return m_trackPos; }
-	void SetScale(float x, float y, float z)
-	{
-		m_scale = Vector3(x, y, z);
-	}
-	Vector3& GetScale() { return m_scale; }
 
 	void SetLength(float l) { m_length = l; }
 	float GetLength() { return m_length; }
@@ -62,8 +74,6 @@ public:
 
 private:
 	class Game* m_game = nullptr;
-	Vector3 m_trackPos;
-	Vector3 m_scale = Vector3(1,1,1);
 	float m_length = 1;
 	bool m_clip = false;
 };
