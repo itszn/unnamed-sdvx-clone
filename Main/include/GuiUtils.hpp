@@ -20,6 +20,7 @@ public:
 
 	static void StartFontInit();
 	static void BakeFontWithLock();
+	static void DestroyFont();
 
 protected:
 	bool m_nuklearRunning = false;

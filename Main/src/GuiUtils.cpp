@@ -111,23 +111,26 @@ void BasicNuklearGui::BakeFont()
 	usc_nk_bake_atlas(s_atlas, s_fontImageWidth, s_fontImageHeight);
 }
 
+void BasicNuklearGui::DestroyFont()
+{
+    glDeleteTextures(1, &s_fontTexture);
+}
+
 void BasicNuklearGui::InitNuklearFontAtlas()
 {
 	BasicNuklearGui::s_mutex.lock();
 	if (s_atlas == nullptr)
 	{
 		StartFontInit();
-		assert(s_atlas);
 	}
 
+	assert(s_atlas);
 	if (!s_hasFontTexture && s_atlas->pixel == nullptr)
 	{
 		// Our thread didn't work
 		Log("Failed to bake font in thread, trying again on main thread", Logger::Severity::Warning);
 		BakeFont();
 	}
-
-	assert(s_atlas);
 
 	if (!s_hasFontTexture)
 	{

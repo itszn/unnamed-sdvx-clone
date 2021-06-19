@@ -338,6 +338,7 @@ usc_nk_sdl_device_upload_atlas(const void *image, int width, int height)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
                 GL_RGBA, GL_UNSIGNED_BYTE, 0);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+    glDeleteBuffers(1, &pdo);
 #else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
                 GL_RGBA, GL_UNSIGNED_BYTE, image);
@@ -348,6 +349,8 @@ GLuint usc_nk_sdl_generate_texture(nk_font_atlas* atlas, const void* image, int 
 {
     usc_nk_sdl_device_upload_atlas(image, w, h);
     nk_font_atlas_end_keep_atlas(atlas, nk_handle_id((int)sdl.ogl.font_tex), &sdl.ogl.null);
+    atlas->temporary.free(atlas->temporary.userdata, atlas->pixel);
+    atlas->pixel = nullptr;
     if (atlas->default_font)
         nk_style_set_font(&sdl.ctx, &atlas->default_font->handle);
     sdl.atlas = *atlas;
