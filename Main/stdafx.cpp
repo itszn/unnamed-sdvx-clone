@@ -354,7 +354,7 @@ void usc_nk_sdl_use_atlas(nk_font_atlas* atlas, GLuint texture)
         nk_style_set_font(&sdl.ctx, &sdl.atlas.default_font->handle);
 }
 
-NK_INTERN void
+NK_API void
 nk_sdl_device_upload_pregenerated_atlas(GLuint texture, const void* image, int width, int height)
 {
     glBindTexture(GL_TEXTURE_2D, texture);

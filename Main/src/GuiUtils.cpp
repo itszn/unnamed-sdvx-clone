@@ -123,7 +123,7 @@ void BasicNuklearGui::InitNuklearFontAtlas()
 	if (!s_hasFontTexture && s_atlas->pixel == nullptr)
 	{
 		// Our thread didn't work
-		Logf("Failed to bake font in thread, trying again on main thread", Logger::Severity::Warning);
+		Log("Failed to bake font in thread, trying again on main thread", Logger::Severity::Warning);
 		BakeFont();
 	}
 
