@@ -317,22 +317,36 @@ nk_font_atlas_end_keep_atlas(struct nk_font_atlas *atlas, nk_handle texture,
     }
     for (i = 0; i < NK_CURSOR_COUNT; ++i)
         atlas->cursors[i].img.handle = texture;
+}
 
-    /*
-    atlas->temporary.free(atlas->temporary.userdata, atlas->pixel);
-    atlas->pixel = 0;
-    atlas->tex_width = 0;
-    atlas->tex_height = 0;
-    atlas->custom.x = 0;
-    atlas->custom.y = 0;
-    atlas->custom.w = 0;
-    atlas->custom.h = 0;
-    */
+NK_INTERN void
+usc_nk_sdl_device_upload_atlas(const void *image, int width, int height)
+{
+#ifndef EMBEDDED
+    // Use PDO for async texture upload
+    GLuint pdo;
+    glGenBuffers(1, &pdo);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pdo);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, 4*(nk_size)width*(nk_size)height, image, GL_STATIC_DRAW);
+#endif
+    struct nk_sdl_device *dev = &sdl.ogl;
+    glGenTextures(1, &dev->font_tex);
+    glBindTexture(GL_TEXTURE_2D, dev->font_tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifndef EMBEDDED
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
+                GL_RGBA, GL_UNSIGNED_BYTE, image);
+#endif
 }
 
 GLuint usc_nk_sdl_generate_texture(nk_font_atlas* atlas, const void* image, int w, int h)
 {
-    nk_sdl_device_upload_atlas(image, w, h);
+    usc_nk_sdl_device_upload_atlas(image, w, h);
     nk_font_atlas_end_keep_atlas(atlas, nk_handle_id((int)sdl.ogl.font_tex), &sdl.ogl.null);
     if (atlas->default_font)
         nk_style_set_font(&sdl.ctx, &atlas->default_font->handle);
