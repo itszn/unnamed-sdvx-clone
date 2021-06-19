@@ -99,7 +99,6 @@ void usc_nk_sdl_font_stash_end();
 const void* usc_nk_bake_atlas(nk_font_atlas * atlas, int& w, int& h);
 GLuint usc_nk_sdl_generate_texture(nk_font_atlas * atlas, const void* image, int w, int h);
 void usc_nk_sdl_use_atlas(nk_font_atlas * atlas, GLuint texture);
-void nk_sdl_device_upload_pregenerated_atlas(GLuint texture, const void* image, int width, int height);
 void nk_sdl_device_destroy_keep_font(void);
 void nk_sdl_shutdown_keep_font(void);
 void nk_atlas_font_stash_begin(struct nk_font_atlas* atlas);

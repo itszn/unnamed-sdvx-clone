@@ -372,16 +372,6 @@ void usc_nk_sdl_use_atlas(nk_font_atlas* atlas, GLuint texture)
 }
 
 NK_API void
-nk_sdl_device_upload_pregenerated_atlas(GLuint texture, const void* image, int width, int height)
-{
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, image);
-}
-
-NK_API void
 nk_sdl_device_destroy_keep_font(void)
 {
     struct nk_sdl_device *dev = &sdl.ogl;

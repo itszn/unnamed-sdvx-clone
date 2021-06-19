@@ -1013,8 +1013,10 @@ bool Application::m_Init()
 		g_transition = TransitionScreen::Create();
 	}
 
-	BasicNuklearGui::StartFontInit();
-	m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
+	if (g_gameConfig.GetBool(GameConfigKeys::KeepFontTexture)) {
+		BasicNuklearGui::StartFontInit();
+		m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
+	}
 
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));

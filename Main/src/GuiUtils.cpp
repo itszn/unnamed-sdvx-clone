@@ -22,6 +22,12 @@ void BasicNuklearGui::ShutdownNuklear()
     g_gameWindow->OnAnyEvent.RemoveAll(this);
     nk_sdl_shutdown_keep_font();
 
+	if (!g_gameConfig.GetBool(GameConfigKeys::KeepFontTexture)) {
+		glDeleteTextures(1, &s_fontTexture);
+		s_fontTexture = 0;
+		s_hasFontTexture = false;
+	}
+
     m_nuklearRunning = false;
 }
 
@@ -113,7 +119,18 @@ void BasicNuklearGui::BakeFont()
 
 void BasicNuklearGui::DestroyFont()
 {
-    glDeleteTextures(1, &s_fontTexture);
+	if (s_hasFontTexture)
+	{
+		glDeleteTextures(1, &s_fontTexture);
+		s_hasFontTexture = false;
+	}
+	if (s_atlas)
+	{
+		nk_font_atlas_clear(s_atlas);
+		delete s_atlas;
+		s_atlas = nullptr;
+		s_font = nullptr;
+	}
 }
 
 void BasicNuklearGui::InitNuklearFontAtlas()
@@ -128,7 +145,7 @@ void BasicNuklearGui::InitNuklearFontAtlas()
 	if (!s_hasFontTexture && s_atlas->pixel == nullptr)
 	{
 		// Our thread didn't work
-		Log("Failed to bake font in thread, trying again on main thread", Logger::Severity::Warning);
+		Log("Baking nuklear font on main thread", Logger::Severity::Warning);
 		BakeFont();
 	}
 
