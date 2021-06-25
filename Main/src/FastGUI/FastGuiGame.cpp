@@ -49,7 +49,7 @@ void FastGuiGame::Render(float deltaTime)
 		gaugeBorderParams.SetParameter("color", Color::Black.WithAlpha(3.0f / 4.0f));
 		rq.Draw(gaugeTransform * Transform::Scale({ 1, GAUGE_ASPECT, 1 }), m_guiMesh, m_fillMat, gaugeBorderParams);
 
-		gaugeBorderParams.SetParameter("color", Lerp(m_clearColors[0], m_clearColors[1], m_clearTransition, Predefined::EaseOutQuad));
+		gaugeBorderParams.SetParameter("color", Color(Lerp<Vector4>(m_clearColors[0], m_clearColors[1], m_clearTransition, Predefined::EaseOutQuad)));
 
 		float gaugeDisplay = Lerp(m_gauge[0], m_gauge[1], m_gaugeTransition, Predefined::EaseOutCubic);
 		gaugeTransform *= Transform::Translation({ 0, GAUGE_ASPECT - gaugeDisplay * GAUGE_ASPECT, 0 });
@@ -80,9 +80,6 @@ void FastGuiGame::Render(float deltaTime)
 	{
 		Transform t;
 		MaterialParameterSet p;
-
-
-		Vector2 pos = m_critPos + Vector2(m_laserPos[i], 0);
 
 		t *= Transform::Translation({ m_critPos.x, m_critPos.y, 0.f });
 		t *= Transform::Rotation({ 0.0f, 0.0f, -Math::radToDeg * m_critLineAngle });
