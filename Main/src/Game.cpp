@@ -1108,9 +1108,7 @@ public:
 		lua_getglobal(m_lua, "gfx"); \
 		lua_getfield(m_lua, -1, "ForceRender"); \
 		if (lua_pcall(m_lua, 0, 0, 0) != 0) { \
-			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1)); \
-			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0); \
-			assert(false); \
+			g_application->ScriptError("gameplay", m_lua); \
 		} \
 		lua_pop(m_lua, 1); \
 		} while (0)
@@ -1120,9 +1118,11 @@ public:
 			lua_pushnumber(m_lua, deltaTime);
 			if (lua_pcall(m_lua, 1, 0, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				m_renderFastGui = true;
+				if (!g_application->ScriptError("gameplay", m_lua))
+				{
+					m_renderFastGui = true;
+					return;
+				}
 			}
 			// flush NVG
 			NVG_FLUSH();
@@ -1150,9 +1150,11 @@ public:
 			lua_pushnumber(m_lua, deltaTime);
 			if (lua_pcall(m_lua, 1, 0, 0) != 0)
 			{
-				Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-				g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				m_renderFastGui = true;
+				if (!g_application->ScriptError("gameplay", m_lua))
+				{
+					m_renderFastGui = true;
+					return;
+				}
 			}
 			if (!m_introCompleted)
 			{
@@ -1163,9 +1165,11 @@ public:
 					lua_pushnumber(m_lua, deltaTime);
 					if (lua_pcall(m_lua, 1, 1, 0) != 0)
 					{
-						Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-						g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-						m_renderFastGui = true;
+						if (!g_application->ScriptError("gameplay", m_lua))
+						{
+							m_renderFastGui = true;
+							return;
+						}
 					}
 					m_introCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
 				}
@@ -1186,9 +1190,11 @@ public:
 					lua_pushnumber(m_lua, static_cast<lua_Number>(m_getClearState()));
 					if (lua_pcall(m_lua, 2, 2, 0) != 0)
 					{
-						Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-						g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-						m_renderFastGui = true;
+						if (!g_application->ScriptError("gameplay", m_lua))
+						{
+							m_renderFastGui = true;
+							return;
+						}
 					}
 					if (lua_isnumber(m_lua, lua_gettop(m_lua)))
 					{
