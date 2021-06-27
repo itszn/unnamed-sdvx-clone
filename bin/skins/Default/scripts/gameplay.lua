@@ -820,9 +820,25 @@ function draw_song_info(deltaTime)
                     gameplay.hiddenFade * 100, gameplay.suddenFade * 100),
                     textX, 115)
         else
-            gfx.Text(string.format("HiSpeed: %.0f x %.1f = %.0f",
-                    gameplay.bpm, gameplay.hispeed, gameplay.bpm * gameplay.hispeed),
-                    textX, 115)
+            local hslabel = string.format("HiSpeed: %.0f x ", gameplay.bpm)
+            local xModText = string.format("%.1f", gameplay.hispeed)
+            local _, _, xModTextX, _ = gfx.TextBounds(textX, 115, hslabel)
+            local _, _, eqTextX, _ = gfx.TextBounds(xModTextX, 115, xModText)
+            local _, _, mModTextX, _ = gfx.TextBounds(eqTextX, 115, " = ")
+
+
+            gfx.Text(hslabel, textX, 115)
+            if gameplay.hispeedAdjust == 1 then
+                gfx.FillColor(0, 255, 0)
+            end
+            gfx.Text(xModText, xModTextX, 115)
+            gfx.FillColor(255,255,255)
+            gfx.Text(" = ", eqTextX, 115)
+            if gameplay.hispeedAdjust == 2 then
+                gfx.FillColor(0, 255, 0)
+            end
+            gfx.Text(string.format("%.0f", gameplay.bpm *gameplay.hispeed), mModTextX, 115)
+
         end
     end
 
