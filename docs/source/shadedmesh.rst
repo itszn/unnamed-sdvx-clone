@@ -122,6 +122,11 @@ ShadedMeshOnTrack
 =================
 ShadedMeshOnTrack is a ShadedMesh that renders with the track camera instead of the screen.
 
+track.CreateShadedMeshOnTrack(string material = "guiTex")
+*******************************
+Creates a new `ShadedMeshOnTrack` object, the material is loaded from the skin shaders folder where
+``material.fs`` and ``material.vs`` need to exist. Note: `track` can only exists in gameplay.lua and in background/foreground scripts.
+
 ShadedMeshOnTrack:UseGameMesh(string meshName)
 **********************************************
 Uses an existing game mesh (useful for drawing fake buttons with a `ShadedMeshOnTrack`). Current valid meshes are `"button"`,`"fxbutton"`, and `"track"`. The length of the mesh will also be set the correct mesh length.
@@ -138,10 +143,7 @@ ShadedMeshOnTrack:GetLength()
 *****************************
 Return the length of the mesh if previously set.
 
-track.CreateShadedMeshOnTrack(string material = "guiTex")
-*******************************
-Creates a new `ShadedMeshOnTrack` object, the material is loaded from the skin shaders folder where
-``material.fs`` and ``material.vs`` need to exist. Note: `track` can only exists in gameplay.lua and in background/foreground scripts.
+
 
 ShadedMeshOnTrack:ScaleToLength(float length)
 *********************************************

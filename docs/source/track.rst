@@ -5,6 +5,7 @@ Functions available under the `track` table, these are only available in `gamepl
 track.HideObject(int time, int lane)
 ************************************
 Hide a hit object at a given time (in miliseconds) and in a given lane. This will prevent the hit object from rendering. This only works for buttons currently. Lanes are::
+
     1: A Button
     2: B Button
     3: C Button
@@ -29,5 +30,5 @@ Get the y length of a long note that starts at a given time (in miliseconds) and
 track.CreateShadedMeshOnTrack(string material = "guiTex")
 *******************************
 Creates a new `ShadedMeshOnTrack` object, the material is loaded from the skin shaders folder where
-``material.fs`` and ``material.vs`` need to exist. See `ShadedMeshOnTrack`_ for more information.
+``material.fs`` and ``material.vs`` need to exist. See ShadedMeshOnTrack for more information.
 
