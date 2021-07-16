@@ -91,7 +91,6 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Laser0Color, 200.0f);
 	Set(GameConfigKeys::Laser1Color, 330.0f);
 	Set(GameConfigKeys::SongSelSensMult, 1.0f);
-
 	Set(GameConfigKeys::EnableHiddenSudden, false);
 	Set(GameConfigKeys::HiddenCutoff, 0.0f);
 	Set(GameConfigKeys::HiddenFade, 0.2f);
@@ -150,7 +149,7 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::Key_LaserReleaseTime, 0.0f);
 
 	// Default controller settings
-	Set(GameConfigKeys::Controller_DeviceID, 0); // First device
+	SetBlob<16>(GameConfigKeys::Controller_DeviceID, { 0 }); // null device
 	Set(GameConfigKeys::Controller_BTS, 0);
 	Set(GameConfigKeys::Controller_BT0, 1);
 	Set(GameConfigKeys::Controller_BT1, 2);
@@ -223,13 +222,22 @@ void GameConfig::InitDefaults()
 	Set(GameConfigKeys::MirrorChart, false);
 	SetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType, GaugeTypes::Normal);
 	Set(GameConfigKeys::BackupGauge, false);
+	Set(GameConfigKeys::BlastiveLevel, 1);
 
 	Set(GameConfigKeys::GameplaySettingsDialogLastTab, 0);
 	Set(GameConfigKeys::SettingsLastTab, 0);
 	Set(GameConfigKeys::TransferScoresOnChartUpdate, true);
+	Set(GameConfigKeys::FastGUI, false);
+	Set(GameConfigKeys::SkinDevMode, false);
 
 	Set(GameConfigKeys::CurrentProfileName, "Main");
 	Set(GameConfigKeys::UpdateChannel, "master");
+
+#ifndef EMBEDDED
+	Set(GameConfigKeys::KeepFontTexture, true);
+#else
+	Set(GameConfigKeys::KeepFontTexture, false);
+#endif
 }
 
 void GameConfig::UpdateVersion()
