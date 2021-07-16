@@ -1435,6 +1435,8 @@ Material Application::LoadMaterial(const String &name, const String &path)
 		assert(gshader);
 		ret->AssignShader(ShaderType::Geometry, gshader);
 	}
+	if (!ret)
+		g_gameWindow->ShowMessageBox("Shader Error", "Could not load shaders "+path+name+".vs and "+path+name+".fs", 0);
 	assert(ret);
 	return ret;
 }
@@ -1519,7 +1521,7 @@ void Application::SetScriptPath(lua_State *s)
 	std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
 	cur_path.append(";");						// do your path magic here
 	cur_path.append(lua_path.c_str());
-	lua_pop(s, 1);						 // get rid of the string on the stack we just pushed on line 5
+	lua_pop(s, 1);						 // get rid of the string on the stack e just pushed on line 5
 	lua_pushstring(s, cur_path.c_str()); // push the new one
 	lua_setfield(s, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
 	lua_pop(s, 1);						 // get rid of package table from top of stack
