@@ -29,7 +29,7 @@ Creates a new ShadedMesh object, the material is loaded from the skin shaders fo
 ``material.fs`` and ``material.vs`` need to exist.
 
 gfx.CreateShadedMesh(String material, String path)
-************************************************
+**************************************************
 Creates a new ShadedMesh object, the material is loaded from the given path where
 ``material.fs`` and ``material.vs`` need to exist.
 
@@ -44,6 +44,10 @@ Adds a texture to the material that can be used in the shader code.
 ShadedMesh:AddSkinTexture(String name, String path)
 ***************************************************
 Same as AddTexture but it looks for the path using the skin texture folder as the root folder.
+
+ShadedMesh:AddSharedTexture(String name, String key)
+****************************************************
+Adds a texture that was loaded with ``gfx.LoadSharedTexture`` to the material that can be used in the shader code.
 
 ShadedMesh:SetParam(String name, float value)
 *********************************************
@@ -106,7 +110,7 @@ ShadedMesh:GetScale()
 Returns the current scale as `(x,y,z)`.
 
 ShadedMesh:SetRotation(float roll, float yaw = 0.0f, float pitch = 0.0f)
-**********************************************************
+************************************************************************
 Sets the rotation of the mesh in degrees. Note: For normal `ShadedMesh`, pitch and yaw may clip, causing part or all of the mesh to be invisible.
 
 ShadedMesh:GetRotation()
@@ -123,7 +127,7 @@ ShadedMeshOnTrack
 ShadedMeshOnTrack is a ShadedMesh that renders with the track camera instead of the screen.
 
 track.CreateShadedMeshOnTrack(string material = "guiTex")
-*******************************
+*********************************************************
 Creates a new `ShadedMeshOnTrack` object, the material is loaded from the skin shaders folder where
 ``material.fs`` and ``material.vs`` need to exist. Note: `track` can only exists in gameplay.lua and in background/foreground scripts.
 
