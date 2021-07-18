@@ -9,6 +9,7 @@
 #include <Graphics/ResourceManagers.hpp>
 #include <Shared/Profiling.hpp>
 #include "GameConfig.hpp"
+#include "GuiUtils.hpp"
 #include "Input.hpp"
 #include "TransitionScreen.hpp"
 #include "SkinConfig.hpp"
@@ -206,6 +207,8 @@ NVGcontext *Application::GetVGContext()
 {
 	return g_guiState.vg;
 }
+
+
 
 Vector<String> Application::GetUpdateAvailable()
 {
@@ -1012,6 +1015,11 @@ bool Application::m_Init()
 		g_transition = TransitionScreen::Create();
 	}
 
+	if (g_gameConfig.GetBool(GameConfigKeys::KeepFontTexture)) {
+		BasicNuklearGui::StartFontInit();
+		m_fontBakeThread = Thread(BasicNuklearGui::BakeFontWithLock);
+	}
+
 	///TODO: check if directory exists already?
 	Path::CreateDir(Path::Absolute("screenshots"));
 	Path::CreateDir(Path::Absolute("songs"));
@@ -1034,7 +1042,12 @@ void Application::m_MainLoop()
 
 		// Process changes in the list of items
 		bool restoreTop = false;
-		for (auto &ch : g_tickableChanges)
+
+		// Flush current changes from g_tickables in case another tickable needs to be added while destroying or initializing another tickable
+		Vector<TickableChange> currentChanges(g_tickableChanges);
+		g_tickableChanges.clear();
+
+		for (auto &ch : currentChanges)
 		{
 			if (ch.mode == TickableChange::Added)
 			{
@@ -1080,12 +1093,11 @@ void Application::m_MainLoop()
 			g_tickables.back()->m_Restore();
 
 		// Application should end, no more active screens
-		if (!g_tickableChanges.empty() && g_tickables.empty())
+		if (g_tickableChanges.empty() && g_tickables.empty())
 		{
 			Log("No more IApplicationTickables, shutting down", Logger::Severity::Warning);
 			return;
 		}
-		g_tickableChanges.clear();
 
 		// Determine target tick rates for update and render
 		int32 targetFPS = 120; // Default to 120 FPS
@@ -1196,7 +1208,6 @@ void Application::m_Tick()
 		g_guiState.scissor = Rect(0, 0, -1, -1);
 		g_guiState.imageTint = nvgRGB(255, 255, 255);
 		// Render all items
-		assert(!g_tickables.empty());
 		for (auto &tickable : g_tickables)
 		{
 			tickable->Render(m_deltaTime);
@@ -1291,8 +1302,8 @@ void Application::m_Cleanup()
 		delete img.second;
 	}
 
+	sharedTextures.clear();
 	// Clear fonts before freeing library
-
 	for (auto &f : g_guiState.fontCahce)
 	{
 		f.second.reset();
@@ -1312,6 +1323,9 @@ void Application::m_Cleanup()
 	Graphics::FontRes::FreeLibrary();
 	if (m_updateThread.joinable())
 		m_updateThread.join();
+
+	if (m_fontBakeThread.joinable())
+		m_fontBakeThread.join();
 
 	// Finally, save config
 	m_SaveConfig();
@@ -1423,6 +1437,8 @@ Material Application::LoadMaterial(const String &name, const String &path)
 		assert(gshader);
 		ret->AssignShader(ShaderType::Geometry, gshader);
 	}
+	if (!ret)
+		g_gameWindow->ShowMessageBox("Shader Error", "Could not load shaders "+path+name+".vs and "+path+name+".fs", 0);
 	assert(ret);
 	return ret;
 }
@@ -1507,13 +1523,26 @@ void Application::SetScriptPath(lua_State *s)
 	std::string cur_path = lua_tostring(s, -1); // grab path string from top of stack
 	cur_path.append(";");						// do your path magic here
 	cur_path.append(lua_path.c_str());
-	lua_pop(s, 1);						 // get rid of the string on the stack we just pushed on line 5
+	lua_pop(s, 1);						 // get rid of the string on the stack e just pushed on line 5
 	lua_pushstring(s, cur_path.c_str()); // push the new one
 	lua_setfield(s, -2, "path");		 // set the field "path" in table at -2 with value at top of stack
 	lua_pop(s, 1);						 // get rid of package table from top of stack
 }
 
-std::set<String> g_luaErrorsSeen;
+bool Application::ScriptError(const String& name, lua_State* L)
+{
+	Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1)); //TODO: Don't spam the same message
+	if (g_gameConfig.GetBool(GameConfigKeys::SkinDevMode))
+	{
+		String message = Utility::Sprintf("Lua error: %s \n\nReload Script?", lua_tostring(L, -1));
+		if (g_gameWindow->ShowYesNoMessage("Lua Error", message)) {
+			return ReloadScript(name, L);
+		}
+	}
+
+	return false;
+}
+
 
 lua_State *Application::LoadScript(const String &name, bool noError)
 {
@@ -1549,23 +1578,11 @@ lua_State *Application::LoadScript(const String &name, bool noError)
 		lua_close(s);
 		return nullptr;
 	}
-	else
-		g_luaErrorsSeen.clear();
+
 	return s;
 }
 
-// TODO add option for this
-void Application::ShowLuaError(const String &error)
-{
-	if (g_luaErrorsSeen.find(error) != g_luaErrorsSeen.end())
-		return;
-	g_luaErrorsSeen.insert(error);
-
-	Logf("Lua error: %s", Logger::Severity::Error, *error);
-	g_gameWindow->ShowMessageBox("Lua Error", error, 0);
-}
-
-void Application::ReloadScript(const String &name, lua_State *L)
+bool Application::ReloadScript(const String &name, lua_State *L)
 {
 	SetScriptPath(L);
 	String path = "skins/" + m_skin + "/scripts/" + name + ".lua";
@@ -1580,10 +1597,9 @@ void Application::ReloadScript(const String &name, lua_State *L)
 		Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(L, -1));
 		g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(L, -1), 0);
 		lua_close(L);
-		assert(false);
+		return false;
 	}
-	else
-		g_luaErrorsSeen.clear();
+	return true;
 }
 
 void Application::ReloadSkin()
@@ -1609,6 +1625,7 @@ void Application::ReloadSkin()
 	g_guiState.nextPaintId.clear();
 	g_guiState.paintCache.clear();
 	m_jacketImages.clear();
+	sharedTextures.clear();
 
 	for (auto &sample : m_samples)
 	{
@@ -1779,6 +1796,11 @@ Material Application::GetFontMaterial() const
 Material Application::GetGuiTexMaterial() const
 {
 	return m_guiTex;
+}
+
+Material Application::GetGuiFillMaterial() const
+{
+	return m_fillMaterial;
 }
 
 Transform Application::GetGUIProjection() const
@@ -2337,6 +2359,73 @@ static int lGetSkinSetting(lua_State *L /*String key*/)
 	}
 }
 
+int lLoadSharedTexture(lua_State* L) {
+	Ref<SharedTexture> newTexture = Utility::MakeRef(new SharedTexture());
+
+
+	const auto key = luaL_checkstring(L, 1);
+	const auto path = luaL_checkstring(L, 2);
+	int imageflags = 0;
+	if (lua_isinteger(L, 3)) {
+		imageflags = luaL_checkinteger(L, 3);
+	}
+
+	newTexture->nvgTexture = nvgCreateImage(g_guiState.vg, path, imageflags);
+	newTexture->texture = g_application->LoadTexture(path, true);
+
+	if (newTexture->Valid())
+	{
+		g_application->sharedTextures.Add(key, newTexture);
+	}
+	else {
+		lua_pushstring(L, *Utility::Sprintf("Failed to load shared texture with path: '%s', key: '%s'", path, key));
+		return lua_error(L);
+	}
+	
+	return 0;
+}
+
+int lLoadSharedSkinTexture(lua_State* L) {
+	Ref<SharedTexture> newTexture = Utility::MakeRef(new SharedTexture());
+	const auto key = luaL_checkstring(L, 1);
+	const auto filename = luaL_checkstring(L, 2);
+	int imageflags = 0;
+	if (lua_isinteger(L, 3)) {
+		imageflags = luaL_checkinteger(L, 3);
+	}
+
+
+	String path = "skins/" + g_application->GetCurrentSkin() + "/textures/" + filename;
+	path = Path::Absolute(path);
+
+	newTexture->nvgTexture = nvgCreateImage(g_guiState.vg, path.c_str(), imageflags);
+	newTexture->texture = g_application->LoadTexture(path, true);
+
+	if (newTexture->Valid())
+	{
+		g_application->sharedTextures.Add(key, newTexture);
+	}
+	else {
+		return luaL_error(L, "Failed to load shared texture with path: '%s', key: '%s'", *path, *key);
+	}
+
+	return 0;
+}
+
+int lGetSharedTexture(lua_State* L) {
+	const auto key = luaL_checkstring(L, 1);
+
+	if (g_application->sharedTextures.Contains(key))
+	{
+		auto& t = g_application->sharedTextures.at(key);
+		lua_pushnumber(L, t->nvgTexture);
+		return 1;
+	}
+
+	
+	return 0;
+}
+
 void Application::SetLuaBindings(lua_State *state)
 {
 	auto pushFuncToTable = [&](const char *name, int (*func)(lua_State *)) {
@@ -2423,6 +2512,9 @@ void Application::SetLuaBindings(lua_State *state)
 		pushFuncToTable("SetImageTint", lSetImageTint);
 		pushFuncToTable("LoadAnimation", lLoadAnimation);
 		pushFuncToTable("LoadSkinAnimation", lLoadSkinAnimation);
+		pushFuncToTable("LoadSharedTexture", lLoadSharedTexture);
+		pushFuncToTable("LoadSharedSkinTexture", lLoadSharedSkinTexture);
+		pushFuncToTable("GetSharedTexture", lGetSharedTexture);
 		pushFuncToTable("TickAnimation", lTickAnimation);
 		pushFuncToTable("ResetAnimation", lResetAnimation);
 		pushFuncToTable("GlobalCompositeOperation", lGlobalCompositeOperation);
@@ -2592,4 +2684,14 @@ void JacketLoadingJob::Finalize()
 		target->texture = nvgCreateImageRGBA(g_guiState.vg, loadedImage->GetSize().x, loadedImage->GetSize().y, 0, (unsigned char *)loadedImage->GetBits());
 		target->loaded = true;
 	}
+}
+
+SharedTexture::~SharedTexture()
+{
+	nvgDeleteImage(g_guiState.vg, nvgTexture);
+}
+
+bool SharedTexture::Valid()
+{
+	return nvgTexture != 0 && texture;
 }

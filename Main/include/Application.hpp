@@ -16,6 +16,8 @@ extern class Input g_input;
 extern class SkinConfig* g_skinConfig;
 extern class TransitionScreen* g_transition;
 
+class SharedTexture;
+
 class Application
 {
 public:
@@ -29,6 +31,8 @@ public:
 		bool loaded = false;
 		Job loadingJob;
 	};
+
+
 	void ApplySettings();
 	// Runs the application
 	int32 Run();
@@ -68,9 +72,13 @@ public:
 	Graphics::Font LoadFont(const String& name, const bool& external = false);
 	int LoadImageJob(const String& path, Vector2i size, int placeholder, const bool& web = false);
 	void SetScriptPath(lua_State* L);
+
+
+	// Called when a pcall fails, returns true if the script was reloaded
+	bool ScriptError(const String& name, lua_State* L);
+
 	lua_State* LoadScript(const String& name, bool noError = false);
-	void ReloadScript(const String& name, lua_State* L);
-	void ShowLuaError(const String& error);
+	bool ReloadScript(const String& name, lua_State* L);
 
 	void WarnGauge();
 	int FastText(String text, float x, float y, int size, int align, const Color& color = Color::White);
@@ -78,6 +86,7 @@ public:
 	float GetRenderFPS() const;
 	Material GetFontMaterial() const;
 	Material GetGuiTexMaterial() const;
+	Material GetGuiFillMaterial() const;
 	Transform GetGUIProjection() const;
 	Transform GetCurrentGUITransform() const;
 	Rect GetCurrentGUIScissor() const;
@@ -106,6 +115,7 @@ public:
 	Vector<String> GetUpdateAvailable();
 
 	AutoplayInfo* autoplayInfo = nullptr;
+	Map<String, Ref<SharedTexture>> sharedTextures;
 
 private:
 	bool m_LoadConfig(String profileName = "");
@@ -136,6 +146,7 @@ private:
 	Map<String, CachedJacketImage*> m_jacketImages;
 	String m_lastMapPath;
 	Thread m_updateThread;
+	Thread m_fontBakeThread;
 	class Beatmap* m_currentMap = nullptr;
 	SkinHttp m_skinHttp;
 	SkinIR m_skinIR;
@@ -177,3 +188,12 @@ public:
 };
 
 void __discordJoinGame(const char* joins);
+
+class SharedTexture {
+public:
+	SharedTexture() = default;
+	~SharedTexture();
+	bool Valid();
+	int nvgTexture = 0;
+	Texture texture;
+};

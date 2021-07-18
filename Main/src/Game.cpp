@@ -24,9 +24,11 @@
 #include "GameConfig.hpp"
 #include <Shared/Time.hpp>
 #include "Gauge.hpp"
+#include "FastGUI/FastGuiGame.hpp"
 
 #include "PracticeModeSettingsDialog.hpp"
 #include "Audio/OffsetComputer.hpp"
+#include <ShadedMesh.hpp>
 
 // Try load map helper
 Ref<Beatmap> TryLoadMap(const String& path)
@@ -73,6 +75,8 @@ private:
 	bool m_saveSpeed = false;
 
 	bool m_renderDebugHUD = false;
+	bool m_renderFastGui = false;
+
 
 	MultiplayerScreen* m_multiplayer = nullptr;
 	ChallengeManager* m_challengeManager = nullptr;
@@ -171,6 +175,7 @@ private:
 	Vector<ScoreReplay> m_scoreReplays;
 	MapDatabase* m_db;
 	std::unordered_set<ObjectState*> m_hiddenObjects;
+	std::unordered_set<ObjectState*> m_permanentlyHiddenObjects;
 
 	// Hold detection for restart and exit
 	MapTime m_restartTriggerTime = 0;
@@ -179,6 +184,12 @@ private:
 	bool m_exitTriggerTimeSet = false;
 
 	HitWindow m_hitWindow = HitWindow::NORMAL;
+
+	LuaBindable* m_trackBindable = nullptr;
+	FastGuiGame m_fastGui;
+	uint32 m_releaseTimes[static_cast<size_t>(Input::Button::Length)] = { 0 };
+	uint32 m_pressTimes[static_cast<size_t>(Input::Button::Length)] = { 0 };
+	uint8 m_hispeedAdjustMode = 0; // for skins, 0 = not adjusting, 1 = coarse adjustment, 2 = fine adjustment
 
 public:
 	Game_Impl(const String& mapPath, PlayOptions&& options) : m_playOptions(std::move(options))
@@ -220,6 +231,12 @@ public:
 				m_multiplayer->GetTCP().ClearState(m_lua);
 		}
 		delete[] m_fxSamples;
+
+		if (m_trackBindable)
+		{
+			delete m_trackBindable;
+			m_trackBindable = nullptr;
+		}
 		
 		// Save hispeed
 		if (m_saveSpeed)
@@ -238,6 +255,7 @@ public:
 		// In case the cursor was still hidden
 		g_gameWindow->SetCursorVisible(true); 
 		g_input.OnButtonPressed.RemoveAll(this);
+		g_input.OnButtonReleased.RemoveAll(this);
 		g_transition->OnLoadingComplete.RemoveAll(this);
 	}
 
@@ -422,6 +440,7 @@ public:
 		InitPlaybacks(0);
 
 		m_saveSpeed = g_gameConfig.GetBool(GameConfigKeys::AutoSaveSpeed);
+		m_renderFastGui = g_gameConfig.GetBool(GameConfigKeys::FastGUI);
 
 		/// TODO: Check if debugmute is enabled
 		g_audio->SetGlobalVolume(g_gameConfig.GetFloat(GameConfigKeys::MasterVolume));
@@ -460,6 +479,11 @@ public:
 		m_lua = g_application->LoadScript("gameplay");
 		if (!m_lua)
 			return false;
+
+		m_trackBindable = MakeTrackLuaBindable(m_lua);
+		m_trackBindable->Push();
+		lua_settop(m_lua, 0);
+
 
 		if (g_gameConfig.GetBool(GameConfigKeys::EnableHiddenSudden)) {
 			m_track->suddenCutoff = g_gameConfig.GetFloat(GameConfigKeys::SuddenCutoff);
@@ -539,6 +563,8 @@ public:
 		m_scoring.SetHitWindow(GetHitWindow());
 
 		g_input.OnButtonPressed.Add(this, &Game_Impl::m_OnButtonPressed);
+		g_input.OnButtonReleased.Add(this, &Game_Impl::m_OnButtonReleased);
+
 
 		m_track->hitEffectAutoplay = m_scoring.autoplayInfo.IsAutoplayButtons();
 
@@ -620,7 +646,7 @@ public:
 			m_practiceSetupDialog->Open();
 		}
 
-		return true;
+		return m_fastGui.Init(this);
 	}
 
 	void CheckChallengeHispeed(double bpm)
@@ -786,17 +812,27 @@ public:
 			}
 		}
 
+		m_hispeedAdjustMode = 0;
 		// Update hispeed or hidden range
 		if (g_input.GetButton(Input::Button::BT_S))
 		{
+			bool fineAdjustment = m_pressTimes[(size_t)Input::Button::BT_S] - m_releaseTimes[(size_t)Input::Button::BT_S] < 100;
+			m_hispeedAdjustMode = fineAdjustment ? 2 : 1;
 			for (int i = 0; i < 2; i++)
 			{
-				m_hispeedAdvance += g_input.GetInputLaserDir(i) / 3.0f;
+				m_hispeedAdvance += g_input.GetInputLaserDir(i) / (fineAdjustment ? 2.0f : 3.0f);
 				int hispeedSteps = static_cast<int>(truncf(m_hispeedAdvance * 10.0f));
-				m_hispeedAdvance -= 0.1f * hispeedSteps;
+				m_hispeedAdvance -= 0.1f * hispeedSteps;				
 				if (hispeedSteps != 0)
 				{
-					m_hispeed = static_cast<float>(static_cast<int>(m_hispeed * 10.0f) + hispeedSteps) / 10.0f;
+					if (fineAdjustment) {
+						float bpm = m_currentTiming->GetBPM();
+						int targetSpeed = static_cast<int>(Math::Round(bpm * m_hispeed)) + hispeedSteps;
+						m_hispeed = static_cast<float>(targetSpeed) / bpm;
+					}
+					else {
+						m_hispeed = static_cast<float>(static_cast<int>(m_hispeed * 10.0f) + hispeedSteps) / 10.0f;
+					}
 					m_hispeed = Math::Clamp(m_hispeed, 0.1f, 16.f);
 
 					if (m_saveSpeed)
@@ -829,6 +865,30 @@ public:
 
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Tick(deltaTime);
+
+		if (m_renderFastGui)
+		{
+			int portrait = g_aspectRatio <= 1.0 ? 1 : 0;
+			Vector2 critPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(0, 0, 0)));
+			Vector2 leftPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(-m_track->trackWidth / 2.0, 0, 0)));
+			Vector2 rightPos = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3(m_track->trackWidth / 2.0, 0, 0)));
+
+			for (size_t i = 0; i < 2; i++)
+			{
+#define TPOINT(name, y) Vector2 name = m_camera.Project(m_camera.critOrigin.TransformPoint(Vector3((m_scoring.laserPositions[i] - Track::trackWidth * 0.5f) * (5.0f / 6), y, 0)))
+				TPOINT(cPos, 0);
+#undef TPOINT
+
+				float distFromCritCenter = (critPos - cPos).Length() * (m_scoring.laserPositions[i] < 0.5 ? -1 : 1);
+				float alpha = (1.0f - Math::Clamp<float>(m_scoring.timeSinceLaserUsed[i] / 0.5f - 1.0f, 0, 1));
+				float pos = distFromCritCenter * (m_scoring.lasersAreExtend[i] ? 2 : 1);
+				m_fastGui.SetLaserCursor(i, pos, alpha);
+			}
+
+
+			
+			m_fastGui.Update(deltaTime, 1.0 - m_camera.pitchOffsets[portrait], leftPos, rightPos, critPos, m_scoring.GetTopGauge());
+		}
 	}
 
 	virtual void Render(float deltaTime) override
@@ -925,7 +985,8 @@ public:
 
 		for(auto& object : m_currentObjectSet)
 		{
-			if(m_hiddenObjects.find(object) == m_hiddenObjects.end())
+			// TODO(itszn) use something better than m_permanentlyHiddenObjects
+			if(m_hiddenObjects.find(object) == m_hiddenObjects.end() && m_permanentlyHiddenObjects.find(object) == m_permanentlyHiddenObjects.end())
 			{
 				MultiObjectState* mobj = (MultiObjectState*)object;
 				if (object->type == ObjectType::Hold && (mobj->button.index == 4 || mobj->button.index == 5))
@@ -936,6 +997,9 @@ public:
 		}
 		if(m_showCover)
 			m_track->DrawTrackCover(hitObjectsTrackCoverRq);
+
+		if (m_renderFastGui || m_renderDebugHUD)
+			m_track->DrawCalibrationCritLine(hitObjectsTrackCoverRq);
 
 		// Use new camera for scoring overlay
 		//	this is because otherwise some of the scoring elements would get clipped to
@@ -962,6 +1026,7 @@ public:
 		}
 		m_track->DrawHitEffects(hitEffectsRq);
 		m_track->DrawOverlays(scoringRq);
+		
 		// Render queues
 		renderQueue.Process();
 		fxHoldObjectsRq.Process();
@@ -971,7 +1036,7 @@ public:
 		glFlush();
 
 		// Set laser follow particle visiblity
-		if (particleMaterial &&	particleMaterial)
+		if (particleMaterial && basicParticleTexture)
 		{
 			for (uint32 i = 0; i < 2; i++)
 			{
@@ -1020,6 +1085,44 @@ public:
 			}
 		}
 
+		if (m_renderDebugHUD)// Render debug hud if enabled
+		{
+			m_introCompleted = true;
+			if (m_ended)
+			{
+				m_outroCompleted = true;
+			}
+
+			RenderDebugHUD(deltaTime);
+
+			// Render particle effects last
+			if (particleMaterial && basicParticleTexture)
+			{
+				RenderParticles(rs, deltaTime);
+				glFlush();
+			}
+		}
+		else if (m_renderFastGui)		
+		{
+			m_introCompleted = true;
+			if (m_ended)
+			{
+				m_outroCompleted = true;
+			}
+
+			m_introCompleted = true;
+
+			m_fastGui.Render(deltaTime);
+
+			// Render particle effects last
+			if (particleMaterial && basicParticleTexture)
+			{
+				RenderParticles(rs, deltaTime);
+				glFlush();
+			}
+		}
+		else
+		{
 		// IF YOU INCLUDE nanovg.h YOU CAN DO
 		/* THIS WHICH IS FROM Application.cpp, lForceRender
 		nvgEndFrame(g_guiState.vg);
@@ -1031,110 +1134,123 @@ public:
 		lua_getglobal(m_lua, "gfx"); \
 		lua_getfield(m_lua, -1, "ForceRender"); \
 		if (lua_pcall(m_lua, 0, 0, 0) != 0) { \
-			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1)); \
-			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0); \
-			assert(false); \
+			g_application->ScriptError("gameplay", m_lua); \
 		} \
 		lua_pop(m_lua, 1); \
 		} while (0)
 
-		// Render Critical Line Base
-		lua_getglobal(m_lua, "render_crit_base");
-		lua_pushnumber(m_lua, deltaTime);
-		if (lua_pcall(m_lua, 1, 0, 0) != 0)
-		{
-			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-			assert(false);
-		}
-		// flush NVG
-		NVG_FLUSH();
-
-		// Render particle effects last
-		if (particleMaterial && basicParticleTexture) 
-		{
-			RenderParticles(rs, deltaTime);
-			glFlush();
-		}
-
-		// Render Critical Line Overlay
-		lua_getglobal(m_lua, "render_crit_overlay");
-		lua_pushnumber(m_lua, deltaTime);
-		// only flush if the overlay exists. overlay isn't required, only one crit function is required.
-		if (lua_pcall(m_lua, 1, 0, 0) == 0)
+			// Render Critical Line Base
+			lua_getglobal(m_lua, "render_crit_base");
+			lua_pushnumber(m_lua, deltaTime);
+			if (lua_pcall(m_lua, 1, 0, 0) != 0)
+			{
+				if (!g_application->ScriptError("gameplay", m_lua))
+				{
+					m_renderFastGui = true;
+					return;
+				}
+			}
+			// flush NVG
 			NVG_FLUSH();
 
-		// Render foreground
-		if(m_foreground)
-			m_foreground->Render(deltaTime);
+			// Render particle effects last
+			if (particleMaterial && basicParticleTexture) 
+			{
+				RenderParticles(rs, deltaTime);
+				glFlush();
+			}
 
-		// Render Lua HUD
-		lua_getglobal(m_lua, "render");
-		lua_pushnumber(m_lua, deltaTime);
-		if (lua_pcall(m_lua, 1, 0, 0) != 0)
-		{
-			Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-			g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-			assert(false);
-		}
-		if (!m_introCompleted)
-		{
-			// Render Lua Intro
-			lua_getglobal(m_lua, "render_intro");
-			if (lua_isfunction(m_lua, -1))
+			// Render Critical Line Overlay
+			lua_getglobal(m_lua, "render_crit_overlay");
+			lua_pushnumber(m_lua, deltaTime);
+			// only flush if the overlay exists. overlay isn't required, only one crit function is required.
+			if (lua_pcall(m_lua, 1, 0, 0) == 0)
+				NVG_FLUSH();
+
+			// Render foreground
+			if (m_foreground)
 			{
-				lua_pushnumber(m_lua, deltaTime);
-				if (lua_pcall(m_lua, 1, 1, 0) != 0)
+				m_foreground->Render(deltaTime);
+				glFlush();
+			}
+
+			// Render Lua HUD
+			lua_getglobal(m_lua, "render");
+			lua_pushnumber(m_lua, deltaTime);
+			if (lua_pcall(m_lua, 1, 0, 0) != 0)
+			{
+				if (!g_application->ScriptError("gameplay", m_lua))
 				{
-					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
+					m_renderFastGui = true;
+					return;
 				}
-				m_introCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
 			}
-			else
+			if (!m_introCompleted)
 			{
-				m_introCompleted = true;
-			}
+				// Render Lua Intro
+				lua_getglobal(m_lua, "render_intro");
+				if (lua_isfunction(m_lua, -1))
+				{
+					lua_pushnumber(m_lua, deltaTime);
+					if (lua_pcall(m_lua, 1, 1, 0) != 0)
+					{
+						if (!g_application->ScriptError("gameplay", m_lua))
+						{
+							m_renderFastGui = true;
+							return;
+						}
+					}
+					m_introCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
+				}
+				else
+				{
+					m_introCompleted = true;
+				}
 			
-			lua_settop(m_lua, 0);
-		}
-		if (m_ended)
-		{
-			// Render Lua Outro
-			lua_getglobal(m_lua, "render_outro");
-			if (lua_isfunction(m_lua, -1))
-			{
-				lua_pushnumber(m_lua, deltaTime);
-				lua_pushnumber(m_lua, static_cast<lua_Number>(m_getClearState()));
-				if (lua_pcall(m_lua, 2, 2, 0) != 0)
-				{
-					Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-					g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-				}
-				if (lua_isnumber(m_lua, lua_gettop(m_lua)))
-				{
-					float speed = Math::Clamp((float)lua_tonumber(m_lua, lua_gettop(m_lua)), 0.0f, 1.0f);
-					m_audioPlayback.SetPlaybackSpeed(speed);
-					m_audioPlayback.SetVolume(Math::Clamp(speed * 10.0f, 0.0f, 1.0f));
-				}
-				lua_pop(m_lua, 1);
-				m_outroCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
+				lua_settop(m_lua, 0);
 			}
-			else
+			if (m_ended)
 			{
-				m_outroCompleted = true;
+				// Render Lua Outro
+				lua_getglobal(m_lua, "render_outro");
+				if (lua_isfunction(m_lua, -1))
+				{
+					lua_pushnumber(m_lua, deltaTime);
+					lua_pushnumber(m_lua, static_cast<lua_Number>(m_getClearState()));
+					if (lua_pcall(m_lua, 2, 2, 0) != 0)
+					{
+						if (!g_application->ScriptError("gameplay", m_lua))
+						{
+							m_renderFastGui = true;
+							return;
+						}
+					}
+					if (lua_isnumber(m_lua, lua_gettop(m_lua)))
+					{
+						float speed = Math::Clamp((float)lua_tonumber(m_lua, lua_gettop(m_lua)), 0.0f, 1.0f);
+						m_audioPlayback.SetPlaybackSpeed(speed);
+						m_audioPlayback.SetVolume(Math::Clamp(speed * 10.0f, 0.0f, 1.0f));
+					}
+					lua_pop(m_lua, 1);
+					m_outroCompleted = lua_toboolean(m_lua, lua_gettop(m_lua));
+				}
+				else
+				{
+					m_outroCompleted = true;
+				}
+				lua_settop(m_lua, 0);
 			}
-			lua_settop(m_lua, 0);
 		}
 
-		// Render debug hud if enabled
-		if(m_renderDebugHUD)
-		{
-			RenderDebugHUD(deltaTime);
-		}
+
 
 		if (m_practiceSetupDialog)
 			m_practiceSetupDialog->Render(deltaTime);
+	}
+	virtual void PermanentlyHideTickObject(MapTime t, int lane) override
+	{
+		ObjectState* obj = m_playback.GetFirstButtonOrHoldAfterTime(t, lane);
+		m_permanentlyHiddenObjects.insert(obj);
 	}
 
 	virtual void OnSuspend() override
@@ -1306,6 +1422,7 @@ public:
 		m_scoring.OnLaserSlamHit.Add(this, &Game_Impl::OnLaserSlamHit);
 		m_scoring.OnButtonHit.Add(this, &Game_Impl::OnButtonHit);
 		m_scoring.OnComboChanged.Add(this, &Game_Impl::OnComboChanged);
+		m_scoring.OnComboChanged.Add(&m_fastGui, &FastGuiGame::OnComboChanged);
 		m_scoring.OnObjectHold.Add(this, &Game_Impl::OnObjectHold);
 		m_scoring.OnObjectReleased.Add(this, &Game_Impl::OnObjectReleased);
 		m_scoring.OnScoreChanged.Add(this, &Game_Impl::OnScoreChanged);
@@ -2055,8 +2172,13 @@ public:
 
 	void OnScoreChanged()
 	{
+		uint32 score = m_scoring.CalculateCurrentDisplayScore();
+		if (m_renderFastGui)
+		{
+			m_fastGui.UpdateScore(score);
+		}
 		lua_getglobal(m_lua, "update_score");
-		lua_pushinteger(m_lua, m_scoring.CalculateCurrentDisplayScore());
+		lua_pushinteger(m_lua, score);
 		if (lua_pcall(m_lua, 1, 0, 0) != 0)
 		{
 			Logf("Lua error on calling update_score: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
@@ -2169,6 +2291,10 @@ public:
 	{
 		if (m_scoring.timeSinceLaserUsed[object->index] > 3.0f)
 		{
+			if (m_renderFastGui)
+			{
+				m_fastGui.OnLaserAlert(object->index);
+			}
 			m_track->SendLaserAlert(object->index);
 			lua_getglobal(m_lua, "laser_alert");
 			lua_pushboolean(m_lua, object->index == 1);
@@ -2289,8 +2415,13 @@ public:
 			FinishGame();
 		}
 	}
+	void m_OnButtonReleased(Input::Button buttonCode) {
+		m_releaseTimes[(size_t)buttonCode] = SDL_GetTicks();
+	}
 	void m_OnButtonPressed(Input::Button buttonCode)
 	{
+		m_pressTimes[(size_t)buttonCode] = SDL_GetTicks();
+
 		if (m_practiceSetupDialog && m_practiceSetupDialog->IsActive())
 			return;
 
@@ -2685,6 +2816,72 @@ public:
 		return m_hitWindow;
 	}
 
+	virtual LuaBindable* MakeTrackLuaBindable(struct lua_State* L)
+	{
+		auto* bind = new LuaBindable(L, "track");
+		bind->AddFunction("GetCurrentLaneXPos", this, &Game_Impl::lTrackGetCurrentLaneXPos);
+		bind->AddFunction("GetYPosForTime", this, &Game_Impl::lTrackGetYPosForTime);
+		bind->AddFunction("GetLengthForDuration", this, &Game_Impl::lTrackGetLengthForDuration);
+		bind->AddFunction("HideObject", this, &Game_Impl::lTrackHideObject);
+		bind->AddFunction("CreateShadedMeshOnTrack", this, &Game_Impl::lCreateShadedMeshOnTrack);
+		return bind;
+	}
+
+	int lCreateShadedMeshOnTrack(struct lua_State* L)
+	{
+		lua_remove(L, 1); // remove the scriptable arg
+		return ShadedMeshOnTrack::lNew(L, this);
+	}
+
+	int lTrackGetCurrentLaneXPos(struct lua_State* L)
+	{
+		int lane = luaL_checkinteger(L, 2) - 1;
+
+		float xposition;
+		if (lane < 4)
+			xposition = Track::buttonTrackWidth * -0.5f + Track::buttonWidth * lane;
+		else
+			xposition = Track::buttonTrackWidth * -0.5f + Track::fxbuttonWidth *(lane - 4);
+
+		xposition += (lane < 2? -1 : 1)* 0.5 * this->GetTrack().centerSplit * Track::buttonWidth;
+		lua_pushnumber(L, xposition);
+		return 1;
+	}
+
+	int lTrackGetYPosForTime(struct lua_State* L)
+	{
+		int time = luaL_checkinteger(L, 2);
+
+		Track& track = this->GetTrack();
+		float viewRange = track.GetViewRange();
+		float position = this->GetPlayback().TimeToViewDistance(time) / viewRange;
+		float y = track.trackLength * position;
+		lua_pushnumber(L, y);
+		return 1;
+	}
+
+	int lTrackGetLengthForDuration(struct lua_State* L)
+	{
+		int time = luaL_checkinteger(L, 2);
+		int duration = luaL_checkinteger(L, 3);
+		Track& track = this->GetTrack();
+		float viewRange = track.GetViewRange();
+
+		float trackScale = (this->GetPlayback().DurationToViewDistanceAtTime(time, duration) / viewRange);
+		float scale = trackScale * track.trackLength;
+		lua_pushnumber(L, scale);
+		return 1;
+	}
+
+	int lTrackHideObject(struct lua_State* L)
+	{
+		int time = luaL_checkinteger(L, 2);
+		int lane = luaL_checkinteger(L, 3) - 1;
+
+		this->PermanentlyHideTickObject(time, lane);
+		return 0;
+	}
+
 	virtual bool IsPlaying() const override
 	{
 		return m_playing;
@@ -2877,6 +3074,11 @@ public:
 		lua_pushstring(L, "hispeed");
 		lua_pushnumber(L, m_hispeed);
 		lua_settable(L, -3);
+		// hispeed adjustment
+		lua_pushstring(L, "hispeedAdjust");
+		lua_pushnumber(L, m_hispeedAdjustMode);
+		lua_settable(L, -3);
+
 		// playback speed
 		lua_pushstring(L, "playbackSpeed");
 		lua_pushnumber(L, m_playOptions.playbackSpeed);
@@ -3178,6 +3380,14 @@ PlaybackOptions Game::PlaybackOptionsFromSettings()
 	GaugeTypes gaugeType = g_gameConfig.GetEnum<Enum_GaugeTypes>(GameConfigKeys::GaugeType);
 	if (gaugeType == GaugeTypes::Hard)
 		options.gaugeType = GaugeType::Hard;
+	else if (gaugeType == GaugeTypes::Permissive)
+		options.gaugeType = GaugeType::Permissive;
+	else if (gaugeType == GaugeTypes::Blastive)
+	{
+		options.gaugeType = GaugeType::Blastive;
+		options.gaugeLevel = (float)g_gameConfig.GetInt(GameConfigKeys::BlastiveLevel) / 2.0f;
+	}
+
 	options.mirror = g_gameConfig.GetBool(GameConfigKeys::MirrorChart);
 	options.random = g_gameConfig.GetBool(GameConfigKeys::RandomizeChart);
 	options.backupGauge = g_gameConfig.GetBool(GameConfigKeys::BackupGauge);

@@ -26,6 +26,11 @@ BaseGameSettingsDialog::~BaseGameSettingsDialog()
 
 void BaseGameSettingsDialog::ResetTabs()
 {
+    m_needsToResetTabs = true;
+}
+
+void BaseGameSettingsDialog::m_ResetTabs()
+{
 	for (auto& tab : m_tabs)
 	{
 		tab->settings.clear();
@@ -50,6 +55,12 @@ void BaseGameSettingsDialog::Tick(float deltaTime)
     if (!m_active)
     {
         return;
+    }
+
+    if (m_needsToResetTabs)
+    {
+        m_ResetTabs();
+        m_needsToResetTabs = false;
     }
 
     if (!m_enableFXInputs)
@@ -106,9 +117,7 @@ void BaseGameSettingsDialog::Render(float deltaTime)
     lua_pushboolean(m_lua, m_active);
     if (lua_pcall(m_lua, 2, 0, 0) != 0)
     {
-        Logf("Lua error: %s", Logger::Severity::Error, lua_tostring(m_lua, -1));
-        g_gameWindow->ShowMessageBox("Lua Error", lua_tostring(m_lua, -1), 0);
-        assert(false);
+        g_application->ScriptError("gamesettingsdialog", m_lua);
     }
     lua_settop(m_lua, 0);
 }
