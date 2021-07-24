@@ -328,12 +328,18 @@ function button_pressed(button)
         if screenState == 0 then
             local song = songs[cursorPos + 1]
             if song == nil then return end
-            dlScreen.PlayPreview(encodeURI(song.preview_url), header, song.id)
-            song.status = "Playing"
-            if lastPlaying ~=nil then
+            if lastPlaying ~= nil and lastPlaying.id == song.id then
+                dlScreen.StopPreview()
                 lastPlaying.status = nil
+                lastPlaying = nil
+            else
+                dlScreen.PlayPreview(encodeURI(song.preview_url), header, song.id)
+                song.status = "Playing"
+                if lastPlaying ~=nil then
+                    lastPlaying.status = nil
+                end
+                lastPlaying = song
             end
-            lastPlaying = song
         end
         
     elseif button == game.BUTTON_FXL then
