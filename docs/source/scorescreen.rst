@@ -50,7 +50,7 @@ Note that, for multiplayer play every fields other than ``isSelf`` and ``uid`` m
     HidSud hidsud // Only when isSelf is true
     HitStat[] noteHitStats // Only when isSelf is true; contains HitStat for notes (excluding hold notes and lasers) 
     HitStat[] holdHitStats // Only when isSelf is true; contains HitStat for holds
-    HitStat[] holdHitStats // Only when isSelf is true; contains HitStat for lasers
+    HitStat[] laserHitStats // Only when isSelf is true; contains HitStat for lasers
 
 HitStat
 *******
