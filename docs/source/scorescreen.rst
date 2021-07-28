@@ -49,6 +49,8 @@ Note that, for multiplayer play every fields other than ``isSelf`` and ``uid`` m
     int speedModValue // Only when isSelf is true; HiSpeed for XMOD, ModSpeed for MMOD and CMOD
     HidSud hidsud // Only when isSelf is true
     HitStat[] noteHitStats // Only when isSelf is true; contains HitStat for notes (excluding hold notes and lasers) 
+    HitStat[] holdHitStats // Only when isSelf is true; contains HitStat for holds
+    HitStat[] holdHitStats // Only when isSelf is true; contains HitStat for lasers
 
 HitStat
 *******
@@ -61,7 +63,7 @@ A ``HitStat`` contains the following fields:
     int time // In milliseconds
     float timeFrac // Between 0 and 1
     int delta
-    int hold // 0 for chip, otherwise # of ticks in hold
+    int hold // 0 for chip or laser, otherwise # of ticks in hold
 
 
 Calls made to lua
