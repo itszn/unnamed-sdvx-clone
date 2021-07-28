@@ -811,6 +811,7 @@ public:
 				m_PushFloatToTable("timeFrac",
 					Math::Clamp(static_cast<float>(simpleHitStat.time) / (m_beatmapDuration > 0 ? m_beatmapDuration : 1), 0.0f, 1.0f));
 				m_PushIntToTable("delta", simpleHitStat.delta);
+				m_PushIntToTable("hold", simpleHitStat.hold);
 
 				lua_rawseti(m_lua, -2, i + 1);
 			}

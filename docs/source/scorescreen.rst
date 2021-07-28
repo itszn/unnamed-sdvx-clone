@@ -57,10 +57,11 @@ A ``HitStat`` contains the following fields:
 .. code-block:: c
 
     int rating // 0 for miss, 1 for near, 2 for crit
-    int lane
+    int lane  // 0-3 btn, 4-5 fx, 6-7 lasers
     int time // In milliseconds
     float timeFrac // Between 0 and 1
     int delta
+    int hold // 0 for chip, otherwise # of ticks in hold
 
 
 Calls made to lua
