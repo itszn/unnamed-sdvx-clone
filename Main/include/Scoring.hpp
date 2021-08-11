@@ -308,8 +308,11 @@ private:
 	// Decides if the coming tick should be auto completed
 	float m_autoLaserTime[2] = { 0.0f };
 	const double m_laserDistanceLeniency = 1 / 6.;
-	const float m_autoLaserDuration = 4 / 60.f;
-	const float m_autoLaserDurationAfterSlam = 8 / 60.f;
+	const float m_autoLaserDuration = 4.5f / 60.f;
+	const float m_autoLaserDurationAfterSlam = 8.25f / 60.f;
+
+	//Ehhhh maybe
+	const MapTime m_offsetLaserConstant = 5;
 	
 	// Saves the time when a button was hit, used to decide if a button was held before a hold object was active
 	MapTime m_buttonHitTime[6] = { 0, 0, 0, 0, 0, 0 };

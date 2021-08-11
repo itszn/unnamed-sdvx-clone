@@ -141,7 +141,7 @@ void Scoring::Reset(const MapTimeRange& range)
 
 	// Get input offset
 	m_inputOffset = g_gameConfig.GetInt(GameConfigKeys::InputOffset);
-	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset);
+	m_laserOffset = g_gameConfig.GetInt(GameConfigKeys::LaserOffset) + m_offsetLaserConstant;
 	// Get bounce guard duration
 	m_bounceGuard = g_gameConfig.GetInt(GameConfigKeys::InputBounceGuard);
 
